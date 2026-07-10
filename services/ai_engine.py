@@ -6,7 +6,7 @@ from services.market_engine import market_score
 from services.sentiment import sentiment_score
 from services.option_ai import option_score
 from services.strategy_engine import strategy_engine
-
+from services.trade_engine import trade_recommendation
 
 def ai_engine(technical):
 
@@ -23,10 +23,22 @@ def ai_engine(technical):
         sentiment=sentiment,
     )
 
+    trade = trade_recommendation(
+    market["price"],
+    decision
+)
+
     return {
-        "technical": technical,
-        "market": market,
-        "sentiment": sentiment,
-        "option": option,
-        "decision": decision,
-    }
+
+    "technical": technical,
+
+    "market": market,
+
+    "sentiment": sentiment,
+
+    "option": option,
+
+    "decision": decision,
+
+    "trade": trade,
+}
