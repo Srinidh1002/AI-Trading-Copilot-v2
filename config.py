@@ -1,25 +1,11 @@
-"""
-Application Configuration
-"""
+import os
 
-# Default Stock Symbol
-DEFAULT_SYMBOL = "AAPL"
+from dotenv import load_dotenv
 
-# Dashboard
-APP_TITLE = "AI Trading Copilot"
-PAGE_ICON = "📈"
+load_dotenv()
 
-# Market Data
-HISTORY_PERIOD = "6mo"
-INTERVAL = "1d"
+UPSTOX_API_KEY = os.getenv("UPSTOX_API_KEY")
 
-# News
-NEWS_LIMIT = 10
+UPSTOX_API_SECRET = os.getenv("UPSTOX_API_SECRET")
 
-# Technical Analysis
-RSI_PERIOD = 14
-EMA_FAST = 20
-EMA_SLOW = 50
-
-# Auto Refresh (seconds)
-REFRESH_INTERVAL = 300
+REDIRECT_URI = os.getenv("REDIRECT_URI")

@@ -98,3 +98,31 @@ def trade_card(trade):
         "Risk : Reward",
         f'{trade["risk_reward"]} : 1'
     )
+def market_overview_card(data):
+    """
+    Displays Indian market indices.
+    """
+
+    st.subheader("🇮🇳 Indian Market")
+
+    cols = st.columns(5)
+
+    names = [
+        "NIFTY",
+        "BANKNIFTY",
+        "SENSEX",
+        "FINNIFTY",
+        "VIX",
+    ]
+
+    for col, name in zip(cols, names):
+
+        item = data[name]
+
+        delta = f"{item['change']} ({item['percent']}%)"
+
+        col.metric(
+            label=name,
+            value=item["price"],
+            delta=delta,
+        )    

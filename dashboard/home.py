@@ -16,7 +16,12 @@ from services.market_data import (
     get_stock_data,
     get_chart_data,
 )
-
+from dashboard.widgets import (
+    decision_card,
+    score_card,
+    market_overview_card,
+)
+from services.market_overview import market_overview
 from services.technical import calculate_indicators
 from services.technical_score import technical_score
 from services.ai_engine import ai_engine
@@ -38,7 +43,7 @@ def home():
 
     stock = get_stock_data(symbol)
     history = get_chart_data(symbol)
-
+    overview = market_overview()
     # ====================================================
     # Technical Analysis
     # ====================================================
@@ -68,6 +73,9 @@ def home():
     # ====================================================
 
     st.title("📈 AI Trading Copilot")
+    market_overview_card(overview)
+
+    st.divider()
     st.write(f"### {stock['company']} ({symbol})")
 
     st.divider()
