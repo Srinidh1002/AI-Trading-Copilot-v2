@@ -40,21 +40,18 @@ def select_strategy(
     """
     Select the best strategy from multiple independent signals.
 
-    All inputs are dictionaries.
-
-    Returns:
-        {
-            strategy,
-            direction,
-            confidence,
-            decision,
-            confirmations,
-            risk_flags
-        }
+    Returns an explainable TRADE or NO_TRADE decision.
     """
 
-    suitable_strategies = get_strategies_for_regime(
-        regime["primary_regime"]
+    primary_regime = regime.get(
+        "primary_regime",
+        "UNCERTAIN",
+    ).upper()
+
+    suitable_strategies = (
+        get_strategies_for_regime(
+            primary_regime
+        )
     )
 
     bullish_score = 0
@@ -85,7 +82,7 @@ def select_strategy(
         )
 
     # ---------------------------------
-    # MULTI-TIMEFRAME
+    # MULTI-TIMEFRAME ANALYSIS
     # ---------------------------------
 
     timeframe_trend = timeframe.get(
@@ -174,6 +171,11 @@ def select_strategy(
             "Bearish candlestick confirmation"
         )
 
+    if bullish_candles and bearish_candles:
+        risk_flags.append(
+            "Conflicting bullish and bearish candlestick patterns"
+        )
+
     # ---------------------------------
     # CHART PATTERNS
     # ---------------------------------
@@ -207,10 +209,22 @@ def select_strategy(
             "Bearish chart-pattern confirmation"
         )
 
-    if chart.get(
-        "volume_confirmation",
-        False,
-    ):
+    # Important:
+    # Do not trust a setup when chart patterns
+    # simultaneously indicate both directions.
+    if bullish_chart and bearish_chart:
+        risk_flags.append(
+            "Conflicting bullish and bearish chart patterns"
+        )
+
+    volume_confirmation = bool(
+        chart.get(
+            "volume_confirmation",
+            False,
+        )
+    )
+
+    if volume_confirmation:
         confirmations.append(
             "Volume confirmation present"
         )
@@ -296,6 +310,22 @@ def select_strategy(
         )
 
     # ---------------------------------
+    # BREAKOUT CONFIRMATION
+    # ---------------------------------
+
+    bullish_breakout_confirmed = (
+        "BREAKOUT" in chart_patterns
+        or "BULLISH_BREAKOUT"
+        in candlestick_patterns
+    )
+
+    bearish_breakdown_confirmed = (
+        "BREAKDOWN" in chart_patterns
+        or "BEARISH_BREAKDOWN"
+        in candlestick_patterns
+    )
+
+    # ---------------------------------
     # SELECT STRATEGY
     # ---------------------------------
 
@@ -313,11 +343,12 @@ def select_strategy(
         elif (
             "VOLATILITY_EXPANSION"
             in suitable_strategies
-            and regime["primary_regime"]
+            and primary_regime
             in {
                 "COMPRESSION",
                 "LOW_VOLATILITY",
             }
+            and bullish_breakout_confirmed
         ):
             selected_strategy = (
                 "VOLATILITY_EXPANSION"
@@ -357,11 +388,12 @@ def select_strategy(
         elif (
             "VOLATILITY_EXPANSION"
             in suitable_strategies
-            and regime["primary_regime"]
+            and primary_regime
             in {
                 "COMPRESSION",
                 "LOW_VOLATILITY",
             }
+            and bearish_breakdown_confirmed
         ):
             selected_strategy = (
                 "VOLATILITY_EXPANSION"
@@ -393,12 +425,22 @@ def select_strategy(
     # TRADE / NO TRADE
     # ---------------------------------
 
+    blocking_risks = {
+        "Conflicting timeframe signals",
+        "Conflicting bullish and bearish chart patterns",
+        "Conflicting bullish and bearish candlestick patterns",
+    }
+
+    has_blocking_risk = any(
+        risk in blocking_risks
+        for risk in risk_flags
+    )
+
     if (
         selected_strategy == "NO_TRADE"
         or direction == "NEUTRAL"
         or confidence < 65
-        or "Conflicting timeframe signals"
-        in risk_flags
+        or has_blocking_risk
     ):
         decision = "NO_TRADE"
 
