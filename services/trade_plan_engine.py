@@ -5,6 +5,7 @@ Combines:
 - Selected option contract
 - Market ATR and structure
 - Dynamic stop-loss and target
+- Automatic exchange lot size
 - Lot-based position sizing
 - Final risk authorization
 
@@ -20,13 +21,42 @@ from services.risk_engine import (
 )
 
 
+def _normalize_lot_size(
+    raw_lot_size,
+):
+    """
+    Convert a lot-size value into a positive integer.
+
+    Returns zero when the value is missing or invalid.
+    """
+
+    try:
+        lot_size = int(
+            float(
+                raw_lot_size
+                or 0
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+        return 0
+
+    if lot_size <= 0:
+        return 0
+
+    return lot_size
+
+
 def build_trade_plan(
     contract,
     direction,
     spot_price,
     atr,
     capital,
-    lot_size,
+    lot_size=None,
     support=None,
     resistance=None,
     risk_percent=1.0,
@@ -37,6 +67,13 @@ def build_trade_plan(
 ):
     """
     Build a complete risk-controlled option trade plan.
+
+    Lot-size priority:
+    1. Actual lot size stored in the selected contract.
+    2. Manually supplied lot_size fallback.
+
+    This preserves backward compatibility while allowing
+    live contracts to use exchange-provided lot sizes.
     """
 
     # ---------------------------------
@@ -69,6 +106,10 @@ def build_trade_plan(
                 "Option contract was not selected."
             ],
         }
+
+    # ---------------------------------
+    # DIRECTION VALIDATION
+    # ---------------------------------
 
     direction = str(
         direction
@@ -111,6 +152,10 @@ def build_trade_plan(
             ],
         }
 
+    # ---------------------------------
+    # OPTION PREMIUM
+    # ---------------------------------
+
     option_premium = float(
         contract.get(
             "premium",
@@ -125,9 +170,47 @@ def build_trade_plan(
             "greater than zero."
         )
 
-    if lot_size <= 0:
+    # ---------------------------------
+    # AUTOMATIC LOT SIZE
+    # ---------------------------------
+
+    contract_lot_size = (
+        _normalize_lot_size(
+            contract.get(
+                "lot_size",
+                0,
+            )
+        )
+    )
+
+    fallback_lot_size = (
+        _normalize_lot_size(
+            lot_size
+        )
+    )
+
+    if contract_lot_size > 0:
+        resolved_lot_size = (
+            contract_lot_size
+        )
+
+        lot_size_source = (
+            "CONTRACT"
+        )
+
+    elif fallback_lot_size > 0:
+        resolved_lot_size = (
+            fallback_lot_size
+        )
+
+        lot_size_source = (
+            "MANUAL_FALLBACK"
+        )
+
+    else:
         raise ValueError(
-            "lot_size must be greater than zero."
+            "No valid lot size is available "
+            "from the selected contract or fallback."
         )
 
     # ---------------------------------
@@ -167,7 +250,7 @@ def build_trade_plan(
         target_price=levels[
             "option_target"
         ],
-        lot_size=lot_size,
+        lot_size=resolved_lot_size,
         risk_percent=risk_percent,
         minimum_risk_reward=(
             minimum_risk_reward
@@ -210,6 +293,25 @@ def build_trade_plan(
         )
     )
 
+    if (
+        lot_size_source
+        == "CONTRACT"
+    ):
+        reasons.append(
+            "Lot size was obtained from "
+            "the selected exchange contract."
+        )
+
+    else:
+        reasons.append(
+            "Contract lot size was unavailable; "
+            "manual fallback lot size was used."
+        )
+
+    # ---------------------------------
+    # FINAL TRADE PLAN
+    # ---------------------------------
+
     return {
         "allowed": allowed,
         "decision": decision,
@@ -238,8 +340,11 @@ def build_trade_plan(
         "target_price": levels[
             "option_target"
         ],
-        "lot_size": int(
-            lot_size
+        "lot_size": (
+            resolved_lot_size
+        ),
+        "lot_size_source": (
+            lot_size_source
         ),
         "lots": risk[
             "lots"

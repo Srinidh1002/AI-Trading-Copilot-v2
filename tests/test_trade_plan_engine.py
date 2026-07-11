@@ -185,3 +185,50 @@ def test_rejects_invalid_premium():
             capital=100000,
             lot_size=50,
         )
+def test_uses_contract_lot_size_automatically():
+
+    contract = {
+        "selected": True,
+        "symbol": "NIFTY14JUL24200CE",
+        "strike": 24200,
+        "option_type": "CE",
+        "expiry": "14JUL2026",
+        "premium": 100,
+        "lot_size": 65,
+    }
+
+    result = build_trade_plan(
+        contract=contract,
+        direction="BULLISH",
+        spot_price=24200,
+        atr=100,
+        capital=100000,
+    )
+
+    assert result["lot_size"] == 65
+    assert result["lot_size_source"] == "CONTRACT"
+
+
+def test_contract_lot_size_overrides_manual_fallback():
+
+    contract = {
+        "selected": True,
+        "symbol": "NIFTY14JUL24200CE",
+        "strike": 24200,
+        "option_type": "CE",
+        "expiry": "14JUL2026",
+        "premium": 100,
+        "lot_size": 65,
+    }
+
+    result = build_trade_plan(
+        contract=contract,
+        direction="BULLISH",
+        spot_price=24200,
+        atr=100,
+        capital=100000,
+        lot_size=50,
+    )
+
+    assert result["lot_size"] == 65
+    assert result["lot_size_source"] == "CONTRACT"        

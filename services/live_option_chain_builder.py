@@ -5,6 +5,7 @@ Builds a normalized option chain using:
 - Angel One instrument master
 - Nearest listed expiry
 - Live FULL market data
+- Actual exchange lot size
 
 Read-only. No orders are placed.
 """
@@ -54,6 +55,31 @@ class LiveOptionChainBuilder:
 
         return strike
 
+    @staticmethod
+    def _normalize_lot_size(raw_lot_size):
+        """
+        Convert Angel One lot-size data into an integer.
+
+        Angel instrument-master values may be returned
+        as strings, integers, or decimal-like strings.
+        """
+
+        try:
+            lot_size = int(
+                float(
+                    raw_lot_size
+                    or 0
+                )
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            lot_size = 0
+
+        return lot_size
+
     def get_nearby_contracts(
         self,
         underlying,
@@ -77,7 +103,9 @@ class LiveOptionChainBuilder:
             )
         )
 
-        expiry_raw = nearest_expiry["raw"]
+        expiry_raw = nearest_expiry[
+            "raw"
+        ]
 
         all_contracts = (
             self.instrument_master
@@ -94,7 +122,7 @@ class LiveOptionChainBuilder:
                 str(
                     contract.get(
                         "expiry",
-                        ""
+                        "",
                     )
                 ).strip()
                 != expiry_raw
@@ -111,7 +139,7 @@ class LiveOptionChainBuilder:
             symbol = str(
                 contract.get(
                     "symbol",
-                    ""
+                    "",
                 )
             ).upper()
 
@@ -124,12 +152,17 @@ class LiveOptionChainBuilder:
             else:
                 continue
 
-            item = dict(contract)
-
-            item["_strike"] = strike
-            item["_option_type"] = (
-                option_type
+            item = dict(
+                contract
             )
+
+            item[
+                "_strike"
+            ] = strike
+
+            item[
+                "_option_type"
+            ] = option_type
 
             expiry_contracts.append(
                 item
@@ -151,10 +184,14 @@ class LiveOptionChainBuilder:
 
         nearest_index = min(
             range(
-                len(available_strikes)
+                len(
+                    available_strikes
+                )
             ),
             key=lambda index: abs(
-                available_strikes[index]
+                available_strikes[
+                    index
+                ]
                 - spot_price
             ),
         )
@@ -166,7 +203,9 @@ class LiveOptionChainBuilder:
         )
 
         end = min(
-            len(available_strikes),
+            len(
+                available_strikes
+            ),
             nearest_index
             + strikes_each_side
             + 1,
@@ -186,10 +225,14 @@ class LiveOptionChainBuilder:
         ]
 
         return {
-            "underlying": underlying.upper(),
+            "underlying": (
+                underlying.upper()
+            ),
             "expiry": nearest_expiry,
             "spot_price": spot_price,
-            "contracts": selected_contracts,
+            "contracts": (
+                selected_contracts
+            ),
         }
 
     def build_chain(
@@ -218,10 +261,14 @@ class LiveOptionChainBuilder:
 
         tokens = [
             str(
-                contract.get("token")
+                contract.get(
+                    "token"
+                )
             )
             for contract in contracts
-            if contract.get("token")
+            if contract.get(
+                "token"
+            )
         ]
 
         if not tokens:
@@ -242,15 +289,21 @@ class LiveOptionChainBuilder:
 
         fetched = (
             response
-            .get("data", {})
-            .get("fetched", [])
+            .get(
+                "data",
+                {},
+            )
+            .get(
+                "fetched",
+                [],
+            )
         )
 
         market_by_token = {
             str(
                 item.get(
                     "symbolToken",
-                    ""
+                    "",
                 )
             ): item
             for item in fetched
@@ -263,7 +316,7 @@ class LiveOptionChainBuilder:
             token = str(
                 contract.get(
                     "token",
-                    ""
+                    "",
                 )
             )
 
@@ -276,20 +329,29 @@ class LiveOptionChainBuilder:
             if not market:
                 continue
 
-            depth = market.get(
-                "depth",
-                {},
-            ) or {}
+            depth = (
+                market.get(
+                    "depth",
+                    {},
+                )
+                or {}
+            )
 
-            buy_depth = depth.get(
-                "buy",
-                [],
-            ) or []
+            buy_depth = (
+                depth.get(
+                    "buy",
+                    [],
+                )
+                or []
+            )
 
-            sell_depth = depth.get(
-                "sell",
-                [],
-            ) or []
+            sell_depth = (
+                depth.get(
+                    "sell",
+                    [],
+                )
+                or []
+            )
 
             bid = (
                 float(
@@ -315,6 +377,15 @@ class LiveOptionChainBuilder:
                 else 0.0
             )
 
+            lot_size = (
+                self._normalize_lot_size(
+                    contract.get(
+                        "lotsize",
+                        0,
+                    )
+                )
+            )
+
             normalized.append({
                 "token": token,
                 "symbol": contract.get(
@@ -329,6 +400,7 @@ class LiveOptionChainBuilder:
                 "expiry": selection[
                     "expiry"
                 ]["display"],
+                "lot_size": lot_size,
                 "premium": float(
                     market.get(
                         "ltp",
