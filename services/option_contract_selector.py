@@ -4,6 +4,8 @@ Option contract selection engine.
 Selects the best option contract from an already-normalized
 option chain.
 
+Greeks such as delta are optional unless explicitly required.
+
 This module does not place orders.
 """
 
@@ -17,7 +19,37 @@ def select_option_contract(
     minimum_open_interest=500,
     minimum_delta=0.30,
     maximum_delta=0.75,
+    require_delta=False,
 ):
+    """
+    Select the best option contract for a directional market view.
+
+    Parameters
+    ----------
+    contracts : list
+        Normalized option contracts.
+
+    direction : str
+        BULLISH selects CE contracts.
+        BEARISH selects PE contracts.
+
+    spot_price : float
+        Current underlying spot price.
+
+    require_delta : bool
+        If True, contracts without valid delta are rejected.
+        If False, contracts may be evaluated without Greeks.
+
+    Returns
+    -------
+    dict
+        Selected contract or NO_CONTRACT result.
+    """
+
+    # ---------------------------------
+    # INPUT VALIDATION
+    # ---------------------------------
+
     if not contracts:
         return {
             "selected": False,
@@ -38,7 +70,9 @@ def select_option_contract(
             "Spot price must be greater than zero."
         )
 
-    direction = direction.upper()
+    direction = str(
+        direction
+    ).upper()
 
     if direction == "BULLISH":
         required_type = "CE"
@@ -63,12 +97,16 @@ def select_option_contract(
 
     candidates = []
 
+    # ---------------------------------
+    # EVALUATE CONTRACTS
+    # ---------------------------------
+
     for contract in contracts:
 
         option_type = str(
             contract.get(
                 "option_type",
-                ""
+                "",
             )
         ).upper()
 
@@ -78,7 +116,7 @@ def select_option_contract(
         premium = float(
             contract.get(
                 "premium",
-                0
+                0,
             )
             or 0
         )
@@ -86,7 +124,7 @@ def select_option_contract(
         bid = float(
             contract.get(
                 "bid",
-                0
+                0,
             )
             or 0
         )
@@ -94,7 +132,7 @@ def select_option_contract(
         ask = float(
             contract.get(
                 "ask",
-                0
+                0,
             )
             or 0
         )
@@ -102,7 +140,7 @@ def select_option_contract(
         volume = int(
             contract.get(
                 "volume",
-                0
+                0,
             )
             or 0
         )
@@ -110,28 +148,43 @@ def select_option_contract(
         open_interest = int(
             contract.get(
                 "open_interest",
-                0
+                0,
             )
             or 0
-        )
-
-        delta = abs(
-            float(
-                contract.get(
-                    "delta",
-                    0
-                )
-                or 0
-            )
         )
 
         strike = float(
             contract.get(
                 "strike",
-                0
+                0,
             )
             or 0
         )
+
+        # ---------------------------------
+        # OPTIONAL DELTA
+        # ---------------------------------
+
+        raw_delta = contract.get(
+            "delta"
+        )
+
+        try:
+            delta = (
+                abs(float(raw_delta))
+                if raw_delta is not None
+                else None
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            delta = None
+
+        # ---------------------------------
+        # BASIC DATA QUALITY
+        # ---------------------------------
 
         if (
             premium <= 0
@@ -146,10 +199,17 @@ def select_option_contract(
             bid + ask
         ) / 2
 
+        if midpoint <= 0:
+            continue
+
         spread_percent = (
             (ask - bid)
             / midpoint
         ) * 100
+
+        # ---------------------------------
+        # HARD FILTERS
+        # ---------------------------------
 
         if (
             spread_percent
@@ -166,12 +226,21 @@ def select_option_contract(
         ):
             continue
 
-        if not (
-            minimum_delta
-            <= delta
-            <= maximum_delta
-        ):
-            continue
+        if require_delta:
+
+            if delta is None:
+                continue
+
+            if not (
+                minimum_delta
+                <= delta
+                <= maximum_delta
+            ):
+                continue
+
+        # ---------------------------------
+        # SCORING
+        # ---------------------------------
 
         score = 0
         reasons = []
@@ -189,12 +258,14 @@ def select_option_contract(
 
         if strike_distance_percent <= 0.5:
             score += 4
+
             reasons.append(
                 "Strike is close to ATM."
             )
 
         elif strike_distance_percent <= 1.0:
             score += 2
+
             reasons.append(
                 "Strike is near ATM."
             )
@@ -205,12 +276,14 @@ def select_option_contract(
 
         if spread_percent <= 0.5:
             score += 3
+
             reasons.append(
                 "Excellent bid-ask spread."
             )
 
         elif spread_percent <= 1.0:
             score += 2
+
             reasons.append(
                 "Good bid-ask spread."
             )
@@ -219,11 +292,15 @@ def select_option_contract(
             score += 1
 
         # -------------------------
-        # LIQUIDITY
+        # VOLUME QUALITY
         # -------------------------
 
         if volume >= 10000:
             score += 3
+
+            reasons.append(
+                "Strong trading volume."
+            )
 
         elif volume >= 1000:
             score += 2
@@ -231,8 +308,16 @@ def select_option_contract(
         else:
             score += 1
 
+        # -------------------------
+        # OPEN INTEREST QUALITY
+        # -------------------------
+
         if open_interest >= 10000:
             score += 3
+
+            reasons.append(
+                "Strong open interest."
+            )
 
         elif open_interest >= 2000:
             score += 2
@@ -244,17 +329,34 @@ def select_option_contract(
         # DELTA QUALITY
         # -------------------------
 
-        if 0.45 <= delta <= 0.65:
-            score += 3
-            reasons.append(
-                "Delta is in preferred range."
-            )
+        if delta is not None:
 
-        elif 0.35 <= delta <= 0.70:
-            score += 2
+            if 0.45 <= delta <= 0.65:
+                score += 3
+
+                reasons.append(
+                    "Delta is in preferred range."
+                )
+
+            elif 0.35 <= delta <= 0.70:
+                score += 2
+
+                reasons.append(
+                    "Delta is in acceptable range."
+                )
+
+            else:
+                score += 1
 
         else:
-            score += 1
+            reasons.append(
+                "Delta unavailable; "
+                "contract evaluated without Greeks."
+            )
+
+        # ---------------------------------
+        # STORE CANDIDATE
+        # ---------------------------------
 
         candidate = dict(
             contract
@@ -280,6 +382,10 @@ def select_option_contract(
             candidate
         )
 
+    # ---------------------------------
+    # NO VALID CONTRACT
+    # ---------------------------------
+
     if not candidates:
         return {
             "selected": False,
@@ -295,9 +401,15 @@ def select_option_contract(
             ],
         }
 
+    # ---------------------------------
+    # RANK CONTRACTS
+    # ---------------------------------
+
     candidates.sort(
         key=lambda item: (
-            item["_selection_score"],
+            item[
+                "_selection_score"
+            ],
             -item[
                 "_strike_distance_percent"
             ],
@@ -310,16 +422,28 @@ def select_option_contract(
 
     best = candidates[0]
 
+    # ---------------------------------
+    # RETURN BEST CONTRACT
+    # ---------------------------------
+
     return {
         "selected": True,
         "decision": "CONTRACT_SELECTED",
-        "symbol": best.get("symbol"),
-        "strike": best.get("strike"),
+        "symbol": best.get(
+            "symbol"
+        ),
+        "strike": best.get(
+            "strike"
+        ),
         "option_type": best.get(
             "option_type"
         ),
-        "expiry": best.get("expiry"),
-        "premium": best.get("premium"),
+        "expiry": best.get(
+            "expiry"
+        ),
+        "premium": best.get(
+            "premium"
+        ),
         "score": best[
             "_selection_score"
         ],

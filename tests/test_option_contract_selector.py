@@ -158,3 +158,35 @@ def test_invalid_spot_price():
             direction="BULLISH",
             spot_price=0,
         )
+def test_allows_missing_delta_when_optional():
+
+    data = contracts()
+
+    data[0]["delta"] = None
+
+    result = select_option_contract(
+        contracts=data,
+        direction="BULLISH",
+        spot_price=24206,
+        require_delta=False,
+    )
+
+    assert result["selected"] is True
+    assert result["option_type"] == "CE"
+
+
+def test_rejects_missing_delta_when_required():
+
+    data = contracts()
+
+    for contract in data:
+        contract["delta"] = None
+
+    result = select_option_contract(
+        contracts=data,
+        direction="BULLISH",
+        spot_price=24206,
+        require_delta=True,
+    )
+
+    assert result["selected"] is False
