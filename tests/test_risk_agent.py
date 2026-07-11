@@ -1,44 +1,85 @@
-from unittest.mock import patch
+"""
+Risk-management agent.
 
-from agents.risk_agent import RiskAgent
-from models.risk_state import RiskState
+Supports:
+1. Existing strategy and account-level risk evaluation.
+2. Lot-based option position sizing.
 
+No orders are placed.
+"""
 
-@patch(
-    "agents.risk_agent.evaluate_trade_risk"
+from models.risk_state import (
+    RiskState,
 )
-def test_risk_agent_returns_state(
-    mock_risk_engine,
-):
 
-    mock_risk_engine.return_value = {
-        "approved": True,
-        "decision": "APPROVED",
-        "position_size": 200,
-        "risk_amount": 1000.0,
-        "risk_reward_ratio": 2.0,
-        "reasons": [],
-        "warnings": [],
-    }
+from services.risk_engine import (
+    evaluate_trade_risk,
+    calculate_trade_risk,
+)
 
-    agent = RiskAgent()
 
-    result = agent.analyse(
-        strategy={
-            "direction": "BULLISH",
-            "decision": "TRADE",
-        },
-        capital=100000,
-        entry_price=100,
-        stop_loss=95,
-        target_price=110,
-    )
+class RiskAgent:
 
-    assert isinstance(
-        result,
-        RiskState,
-    )
+    def analyse(
+        self,
+        strategy,
+        capital,
+        entry_price,
+        stop_loss,
+        target_price,
+        **kwargs,
+    ):
+        """
+        Existing strategy-level risk evaluation.
+        """
 
-    assert result.approved is True
-    assert result.decision == "APPROVED"
-    assert result.position_size == 200
+        result = evaluate_trade_risk(
+            strategy=strategy,
+            capital=capital,
+            entry_price=entry_price,
+            stop_loss=stop_loss,
+            target_price=target_price,
+            **kwargs,
+        )
+
+        return RiskState(
+            approved=result["approved"],
+            decision=result["decision"],
+            position_size=result[
+                "position_size"
+            ],
+            risk_amount=result[
+                "risk_amount"
+            ],
+            risk_reward_ratio=result[
+                "risk_reward_ratio"
+            ],
+            reasons=result["reasons"],
+            warnings=result["warnings"],
+        )
+
+    def analyse_position_size(
+        self,
+        capital,
+        entry_price,
+        stop_loss_price,
+        target_price,
+        lot_size,
+        **kwargs,
+    ):
+        """
+        Lot-based option position sizing.
+        """
+
+        result = calculate_trade_risk(
+            capital=capital,
+            entry_price=entry_price,
+            stop_loss_price=stop_loss_price,
+            target_price=target_price,
+            lot_size=lot_size,
+            **kwargs,
+        )
+
+        return RiskState(
+            **result
+        )

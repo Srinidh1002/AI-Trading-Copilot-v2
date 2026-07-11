@@ -1,6 +1,18 @@
-from models.risk_state import RiskState
+"""
+Risk-management agent.
+
+Wraps the lot-based risk engine and returns
+a structured RiskState.
+
+No orders are placed.
+"""
+
+from models.risk_state import (
+    RiskState,
+)
+
 from services.risk_engine import (
-    evaluate_trade_risk,
+    calculate_trade_risk,
 )
 
 
@@ -8,35 +20,22 @@ class RiskAgent:
 
     def analyse(
         self,
-        strategy,
         capital,
         entry_price,
-        stop_loss,
+        stop_loss_price,
         target_price,
+        lot_size,
         **kwargs,
     ):
-
-        result = evaluate_trade_risk(
-            strategy=strategy,
+        result = calculate_trade_risk(
             capital=capital,
             entry_price=entry_price,
-            stop_loss=stop_loss,
+            stop_loss_price=stop_loss_price,
             target_price=target_price,
+            lot_size=lot_size,
             **kwargs,
         )
 
         return RiskState(
-            approved=result["approved"],
-            decision=result["decision"],
-            position_size=result[
-                "position_size"
-            ],
-            risk_amount=result[
-                "risk_amount"
-            ],
-            risk_reward_ratio=result[
-                "risk_reward_ratio"
-            ],
-            reasons=result["reasons"],
-            warnings=result["warnings"],
+            **result
         )
