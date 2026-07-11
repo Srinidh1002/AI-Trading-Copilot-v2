@@ -1,24 +1,20 @@
 from models.market_state import MarketState
-from services.market_score import Score
+from services.market_analyzer import analyse_market
 
 
 class MarketAgent:
+    """Adapt market-analyzer output into the domain market-state model."""
 
-    def analyse(self):
+    def analyse(self) -> MarketState:
+        """Return the current analysed market state."""
 
-        score = Score()
+        analysis = analyse_market()
 
         return MarketState(
-
-            trend=score.trend,
-
-            strength=score.strength,
-
-            momentum=score.momentum,
-
-            volatility=score.volatility,
-
-            confidence=score.confidence,
-
-            reasons=score.reasons,
+            trend=analysis["trend"],
+            strength=analysis["strength"],
+            momentum=analysis["momentum"],
+            volatility=analysis["volatility"],
+            confidence=analysis["confidence"],
+            reasons=analysis["reasons"],
         )
