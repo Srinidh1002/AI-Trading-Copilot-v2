@@ -325,3 +325,75 @@ class DecisionAuditLogger:
                 )
 
         return records
+
+    def get_recent_records(
+        self,
+        limit=10,
+    ):
+        """
+        Retrieve the most recent audit records.
+
+        Parameters
+        ----------
+        limit : int
+            Maximum number of recent records to return.
+            Must be an integer >= 1.
+            Default is 10.
+
+        Returns
+        -------
+        list[dict]
+            The most recent records, up to `limit` records,
+            in chronological order (oldest to newest).
+            Returns an empty list if no records exist or
+            if the audit log file does not exist.
+
+        Raises
+        ------
+        ValueError
+            If limit is not an integer, is a boolean,
+            or is less than 1.
+
+        Notes
+        -----
+        This method reuses read_records() internally,
+        which means it loads and validates all records
+        before returning the most recent ones.
+
+        Invalid or malformed records are caught by
+        read_records() and raise ValueError (fail-closed).
+
+        Returned records are deep copies and cannot
+        mutate persisted data.
+        """
+
+        # Validate limit is an integer but not boolean
+        if isinstance(
+            limit,
+            bool,
+        ):
+            raise ValueError(
+                "Limit must be an integer, not a boolean."
+            )
+
+        if not isinstance(
+            limit,
+            int,
+        ):
+            raise ValueError(
+                f"Limit must be an integer, got {type(limit).__name__}."
+            )
+
+        if limit < 1:
+            raise ValueError(
+                f"Limit must be >= 1, got {limit}."
+            )
+
+        # Read all records (reuses existing validation)
+        records = self.read_records()
+
+        # Return the last N records in chronological order
+        if not records:
+            return []
+
+        return records[-limit:]
