@@ -11,13 +11,24 @@ TRADE_ALLOWED
     -> CLOSED
     -> REALIZED P&L
 
-The engine also integrates:
+The engine integrates:
 - PaperTradeLifecycleAudit for structured in-memory events.
-- PaperTradeJournal for optional persistent JSONL logging.
+- PaperTradeJournal for optional append-only event persistence.
+- PaperTradeRepository for optional latest-state persistence.
+- Recovery of persisted paper trades after application restart.
 
-Journal persistence is optional and failure-isolated.
-A journal failure must never change a paper-trade state,
-P&L result, or lifecycle decision.
+Journal and repository persistence are optional and
+failure-isolated.
+
+A persistence failure must never change:
+- paper-trade state
+- P&L
+- stop-loss decisions
+- target decisions
+- manual close decisions
+
+Recovery itself is fail-closed because corrupted persisted
+state must never be silently loaded.
 
 This module is paper-only.
 It does not connect to brokers and does not place orders.
@@ -44,27 +55,24 @@ from services.paper_trade_lifecycle_audit import (
     PaperTradeLifecycleAudit,
 )
 
-from services.paper_trade_journal import (
-    PaperTradeJournal,
-)
-
 
 class PaperTradingEngine:
     """
-    Manage in-memory paper trade positions.
+    Manage paper-trade positions.
 
     Responsibilities:
     - Open validated paper trades.
     - Prevent duplicate trade IDs.
     - Retrieve paper trades safely.
-    - Update open positions with simulated market prices.
-    - Calculate unrealized P&L.
-    - Automatically close positions at stop loss or target.
+    - Update simulated market prices.
+    - Calculate unrealized and realized P&L.
+    - Automatically close at stop loss or target.
     - Support manual simulated exits.
-    - Calculate realized P&L.
-    - Record structured lifecycle audit events.
+    - Record lifecycle audit events.
     - Optionally persist lifecycle events.
-    - Isolate journal failures from paper-trade behavior.
+    - Optionally persist latest trade state.
+    - Recover persisted trades after restart.
+    - Isolate persistence failures from trade behavior.
     - Preserve defensive-copy boundaries.
 
     This engine never places real broker orders.
@@ -77,6 +85,8 @@ class PaperTradingEngine:
         lifecycle_audit_factory=None,
         journal=None,
         persist_journal=False,
+        repository=None,
+        persist_state=False,
     ):
         self.validator = (
             validator
@@ -109,15 +119,23 @@ class PaperTradingEngine:
             persist_journal
         )
 
+        self.repository = repository
+
+        self.persist_state = bool(
+            persist_state
+        )
+
         self._trades = {}
 
         self._lifecycle_audits = {}
 
         self._journal_status = {}
 
-    # ---------------------------------
+        self._repository_status = {}
+
+    # =========================================================
     # VALIDATION HELPERS
-    # ---------------------------------
+    # =========================================================
 
     @staticmethod
     def _validate_trade_id(
@@ -192,7 +210,7 @@ class PaperTradingEngine:
         exit_reason,
     ):
         """
-        Validate and normalize a paper trade exit reason.
+        Validate and normalize a paper-trade exit reason.
         """
 
         if exit_reason is None:
@@ -204,7 +222,10 @@ class PaperTradingEngine:
             exit_reason
         ).strip().upper()
 
-        if normalized not in PaperTradeExitReason.ALL:
+        if (
+            normalized
+            not in PaperTradeExitReason.ALL
+        ):
             raise ValueError(
                 "exit_reason must be STOP_LOSS, "
                 "TARGET, or MANUAL_EXIT."
@@ -212,9 +233,9 @@ class PaperTradingEngine:
 
         return normalized
 
-    # ---------------------------------
+    # =========================================================
     # INTERNAL STORAGE HELPERS
-    # ---------------------------------
+    # =========================================================
 
     def _require_trade(
         self,
@@ -223,8 +244,7 @@ class PaperTradingEngine:
         """
         Return the internally stored trade.
 
-        This method intentionally returns the internal
-        object and must only be used inside this engine.
+        Internal use only.
         """
 
         resolved_trade_id = (
@@ -233,9 +253,12 @@ class PaperTradingEngine:
             )
         )
 
-        if resolved_trade_id not in self._trades:
+        if (
+            resolved_trade_id
+            not in self._trades
+        ):
             raise ValueError(
-                f"Paper trade not found: "
+                "Paper trade not found: "
                 f"{resolved_trade_id}"
             )
 
@@ -255,7 +278,10 @@ class PaperTradingEngine:
             trade_id
         )
 
-        if trade.status != PaperTradeStatus.OPEN:
+        if (
+            trade.status
+            != PaperTradeStatus.OPEN
+        ):
             raise ValueError(
                 "Paper trade must be OPEN."
             )
@@ -267,7 +293,7 @@ class PaperTradingEngine:
         trade_id,
     ):
         """
-        Return the lifecycle audit for a paper trade.
+        Return the lifecycle audit for one trade.
         """
 
         resolved_trade_id = (
@@ -289,9 +315,9 @@ class PaperTradingEngine:
             resolved_trade_id
         ]
 
-    # ---------------------------------
+    # =========================================================
     # JOURNAL HELPERS
-    # ---------------------------------
+    # =========================================================
 
     def _build_journal_metadata(
         self,
@@ -342,14 +368,7 @@ class PaperTradingEngine:
         """
         Optionally persist one lifecycle event.
 
-        Persistence is deliberately failure-isolated.
-
-        A journal exception:
-        - is captured
-        - is reported through journal status
-        - does not change the paper trade
-        - does not change P&L
-        - does not raise into the trade lifecycle
+        Journal failures are isolated from trade behavior.
         """
 
         status = {
@@ -361,6 +380,7 @@ class PaperTradingEngine:
         }
 
         if not self.persist_journal:
+
             self._journal_status[
                 trade.trade_id
             ] = deepcopy(
@@ -372,6 +392,7 @@ class PaperTradingEngine:
             )
 
         if self.journal is None:
+
             status[
                 "error"
             ] = (
@@ -406,6 +427,7 @@ class PaperTradingEngine:
             ] = True
 
         except Exception as exc:
+
             status[
                 "error"
             ] = str(
@@ -429,11 +451,8 @@ class PaperTradingEngine:
         **kwargs,
     ):
         """
-        Record one lifecycle event and optionally persist it.
-
-        The in-memory lifecycle event is authoritative.
-        Journal persistence is secondary and cannot
-        modify the trade lifecycle.
+        Record one lifecycle event and optionally
+        persist it to the journal.
         """
 
         lifecycle_event = (
@@ -453,9 +472,90 @@ class PaperTradingEngine:
             lifecycle_event
         )
 
-    # ---------------------------------
+    # =========================================================
+    # REPOSITORY HELPERS
+    # =========================================================
+
+    def _persist_trade_state(
+        self,
+        trade,
+    ):
+        """
+        Optionally persist the latest complete trade state.
+
+        Repository failures are isolated from paper-trade
+        lifecycle decisions.
+        """
+
+        status = {
+            "enabled": (
+                self.persist_state
+            ),
+            "persisted": False,
+            "error": None,
+        }
+
+        if not self.persist_state:
+
+            self._repository_status[
+                trade.trade_id
+            ] = deepcopy(
+                status
+            )
+
+            return deepcopy(
+                status
+            )
+
+        if self.repository is None:
+
+            status[
+                "error"
+            ] = (
+                "State persistence is enabled "
+                "but no repository is configured."
+            )
+
+            self._repository_status[
+                trade.trade_id
+            ] = deepcopy(
+                status
+            )
+
+            return deepcopy(
+                status
+            )
+
+        try:
+            self.repository.save_trade(
+                trade.as_dict()
+            )
+
+            status[
+                "persisted"
+            ] = True
+
+        except Exception as exc:
+
+            status[
+                "error"
+            ] = str(
+                exc
+            )
+
+        self._repository_status[
+            trade.trade_id
+        ] = deepcopy(
+            status
+        )
+
+        return deepcopy(
+            status
+        )
+
+    # =========================================================
     # OPEN PAPER TRADE
-    # ---------------------------------
+    # =========================================================
 
     def open_trade(
         self,
@@ -472,12 +572,7 @@ class PaperTradingEngine:
         """
         Open a new simulated paper trade.
 
-        The pipeline result must pass the strict
-        PaperTradeValidator and must contain an explicit
-        TRADE_ALLOWED decision.
-
-        A lifecycle OPENED event is recorded after the
-        paper trade has been successfully created.
+        The request must pass PaperTradeValidator.
 
         No real order is placed.
         """
@@ -512,13 +607,17 @@ class PaperTradingEngine:
         resolved_trade_id = None
 
         if trade_id is not None:
+
             resolved_trade_id = (
                 self._validate_trade_id(
                     trade_id
                 )
             )
 
-            if resolved_trade_id in self._trades:
+            if (
+                resolved_trade_id
+                in self._trades
+            ):
                 raise ValueError(
                     "A paper trade with this trade_id "
                     "already exists."
@@ -585,7 +684,10 @@ class PaperTradingEngine:
             trade_id=resolved_trade_id,
         )
 
-        if trade.trade_id in self._trades:
+        if (
+            trade.trade_id
+            in self._trades
+        ):
             raise ValueError(
                 "A paper trade with this trade_id "
                 "already exists."
@@ -633,6 +735,16 @@ class PaperTradingEngine:
             "error": None,
         }
 
+        self._repository_status[
+            trade.trade_id
+        ] = {
+            "enabled": (
+                self.persist_state
+            ),
+            "persisted": False,
+            "error": None,
+        }
+
         self._record_and_persist(
             trade=trade,
             recorder=(
@@ -660,11 +772,15 @@ class PaperTradingEngine:
             timestamp=opened_at,
         )
 
+        self._persist_trade_state(
+            trade
+        )
+
         return trade.copy()
 
-    # ---------------------------------
+    # =========================================================
     # GET PAPER TRADE
-    # ---------------------------------
+    # =========================================================
 
     def get_trade(
         self,
@@ -680,9 +796,9 @@ class PaperTradingEngine:
 
         return trade.copy()
 
-    # ---------------------------------
+    # =========================================================
     # LIST PAPER TRADES
-    # ---------------------------------
+    # =========================================================
 
     def get_all_trades(
         self,
@@ -693,7 +809,8 @@ class PaperTradingEngine:
 
         return [
             trade.copy()
-            for trade in self._trades.values()
+            for trade
+            in self._trades.values()
         ]
 
     def get_open_trades(
@@ -705,9 +822,12 @@ class PaperTradingEngine:
 
         return [
             trade.copy()
-            for trade in self._trades.values()
-            if trade.status
-            == PaperTradeStatus.OPEN
+            for trade
+            in self._trades.values()
+            if (
+                trade.status
+                == PaperTradeStatus.OPEN
+            )
         ]
 
     def get_closed_trades(
@@ -719,14 +839,17 @@ class PaperTradingEngine:
 
         return [
             trade.copy()
-            for trade in self._trades.values()
-            if trade.status
-            == PaperTradeStatus.CLOSED
+            for trade
+            in self._trades.values()
+            if (
+                trade.status
+                == PaperTradeStatus.CLOSED
+            )
         ]
 
-    # ---------------------------------
+    # =========================================================
     # LIFECYCLE AUDIT QUERIES
-    # ---------------------------------
+    # =========================================================
 
     def get_lifecycle_events(
         self,
@@ -742,15 +865,16 @@ class PaperTradingEngine:
             )
         )
 
-        return lifecycle_audit.get_events()
+        return (
+            lifecycle_audit.get_events()
+        )
 
     def get_lifecycle_summary(
         self,
         trade_id,
     ):
         """
-        Return the complete lifecycle audit summary
-        for one paper trade.
+        Return lifecycle audit summary.
         """
 
         lifecycle_audit = (
@@ -759,14 +883,16 @@ class PaperTradingEngine:
             )
         )
 
-        return lifecycle_audit.build_summary()
+        return (
+            lifecycle_audit.build_summary()
+        )
 
     def get_latest_lifecycle_event(
         self,
         trade_id,
     ):
         """
-        Return the latest lifecycle event for one trade.
+        Return latest lifecycle event.
         """
 
         lifecycle_audit = (
@@ -775,15 +901,20 @@ class PaperTradingEngine:
             )
         )
 
-        return lifecycle_audit.latest_event()
+        return (
+            lifecycle_audit.latest_event()
+        )
+
+    # =========================================================
+    # JOURNAL STATUS
+    # =========================================================
 
     def get_journal_status(
         self,
         trade_id,
     ):
         """
-        Return the latest journal persistence status
-        for one paper trade.
+        Return latest journal persistence status.
         """
 
         resolved_trade_id = (
@@ -809,9 +940,44 @@ class PaperTradingEngine:
             )
         )
 
-    # ---------------------------------
+    # =========================================================
+    # REPOSITORY STATUS
+    # =========================================================
+
+    def get_repository_status(
+        self,
+        trade_id,
+    ):
+        """
+        Return latest repository persistence status.
+        """
+
+        resolved_trade_id = (
+            self._validate_trade_id(
+                trade_id
+            )
+        )
+
+        self._require_trade(
+            resolved_trade_id
+        )
+
+        return deepcopy(
+            self._repository_status.get(
+                resolved_trade_id,
+                {
+                    "enabled": (
+                        self.persist_state
+                    ),
+                    "persisted": False,
+                    "error": None,
+                },
+            )
+        )
+
+    # =========================================================
     # UPDATE PAPER TRADE
-    # ---------------------------------
+    # =========================================================
 
     def update_price(
         self,
@@ -823,18 +989,21 @@ class PaperTradingEngine:
         """
         Update an OPEN paper trade with a simulated price.
 
-        Every successful price update records a
-        PRICE_UPDATED lifecycle event.
+        Every successful update:
+        - updates current price
+        - recalculates unrealized P&L
+        - records PRICE_UPDATED
+        - persists latest state when enabled
 
-        When auto_close is enabled:
-        - price <= stop loss -> STOP_LOSS close
-        - price >= target -> TARGET close
-
-        Returns the updated PaperTrade copy.
+        Automatic close:
+        - price <= stop loss -> STOP_LOSS
+        - price >= target -> TARGET
         """
 
-        trade = self._require_open_trade(
-            trade_id
+        trade = (
+            self._require_open_trade(
+                trade_id
+            )
         )
 
         resolved_price = (
@@ -879,7 +1048,8 @@ class PaperTradingEngine:
         self._record_and_persist(
             trade=trade,
             recorder=(
-                lifecycle_audit.record_price_updated
+                lifecycle_audit
+                .record_price_updated
             ),
             price=resolved_price,
             unrealized_pnl=(
@@ -896,39 +1066,49 @@ class PaperTradingEngine:
             timestamp=updated_at,
         )
 
+        self._persist_trade_state(
+            trade
+        )
+
         if auto_close:
 
             if (
                 resolved_price
                 <= trade.stop_loss_price
             ):
-                return self._close_internal(
-                    trade=trade,
-                    exit_price=resolved_price,
-                    exit_reason=(
-                        PaperTradeExitReason.STOP_LOSS
-                    ),
-                    closed_at=updated_at,
+                return (
+                    self._close_internal(
+                        trade=trade,
+                        exit_price=resolved_price,
+                        exit_reason=(
+                            PaperTradeExitReason
+                            .STOP_LOSS
+                        ),
+                        closed_at=updated_at,
+                    )
                 )
 
             if (
                 resolved_price
                 >= trade.target_price
             ):
-                return self._close_internal(
-                    trade=trade,
-                    exit_price=resolved_price,
-                    exit_reason=(
-                        PaperTradeExitReason.TARGET
-                    ),
-                    closed_at=updated_at,
+                return (
+                    self._close_internal(
+                        trade=trade,
+                        exit_price=resolved_price,
+                        exit_reason=(
+                            PaperTradeExitReason
+                            .TARGET
+                        ),
+                        closed_at=updated_at,
+                    )
                 )
 
         return trade.copy()
 
-    # ---------------------------------
+    # =========================================================
     # MANUAL PAPER EXIT
-    # ---------------------------------
+    # =========================================================
 
     def close_trade(
         self,
@@ -945,8 +1125,10 @@ class PaperTradingEngine:
         This is a simulated close only.
         """
 
-        trade = self._require_open_trade(
-            trade_id
+        trade = (
+            self._require_open_trade(
+                trade_id
+            )
         )
 
         resolved_price = (
@@ -962,16 +1144,18 @@ class PaperTradingEngine:
             )
         )
 
-        return self._close_internal(
-            trade=trade,
-            exit_price=resolved_price,
-            exit_reason=resolved_reason,
-            closed_at=closed_at,
+        return (
+            self._close_internal(
+                trade=trade,
+                exit_price=resolved_price,
+                exit_reason=resolved_reason,
+                closed_at=closed_at,
+            )
         )
 
-    # ---------------------------------
+    # =========================================================
     # INTERNAL CLOSE
-    # ---------------------------------
+    # =========================================================
 
     def _close_internal(
         self,
@@ -1005,7 +1189,10 @@ class PaperTradingEngine:
                 "trade must be a PaperTrade."
             )
 
-        if trade.status != PaperTradeStatus.OPEN:
+        if (
+            trade.status
+            != PaperTradeStatus.OPEN
+        ):
             raise ValueError(
                 "Paper trade must be OPEN."
             )
@@ -1096,6 +1283,7 @@ class PaperTradingEngine:
             resolved_reason
             == PaperTradeExitReason.STOP_LOSS
         ):
+
             self._record_and_persist(
                 trade=trade,
                 recorder=(
@@ -1117,6 +1305,7 @@ class PaperTradingEngine:
             resolved_reason
             == PaperTradeExitReason.TARGET
         ):
+
             self._record_and_persist(
                 trade=trade,
                 recorder=(
@@ -1137,7 +1326,8 @@ class PaperTradingEngine:
         self._record_and_persist(
             trade=trade,
             recorder=(
-                lifecycle_audit.record_closed
+                lifecycle_audit
+                .record_closed
             ),
             price=resolved_price,
             realized_pnl=(
@@ -1153,11 +1343,173 @@ class PaperTradingEngine:
             timestamp=closed_at,
         )
 
+        self._persist_trade_state(
+            trade
+        )
+
         return trade.copy()
 
-    # ---------------------------------
+    # =========================================================
+    # RECOVERY
+    # =========================================================
+
+    def recover_trades(
+        self,
+        include_closed=True,
+    ):
+        """
+        Recover persisted paper trades from the repository.
+
+        Recovery is fail-closed:
+        - missing repository -> ValueError
+        - corrupted repository -> exception propagates
+        - invalid PaperTrade state -> exception propagates
+        - duplicate in-memory trade ID -> ValueError
+
+        Repository persistence is not triggered during
+        recovery because the state already came from the
+        repository.
+
+        Recovered trades receive fresh in-memory lifecycle
+        audit containers. Historical lifecycle events remain
+        available in the persistent journal.
+
+        Returns independent copies of recovered trades.
+        """
+
+        if self.repository is None:
+            raise ValueError(
+                "Cannot recover paper trades because "
+                "no repository is configured."
+            )
+
+        if include_closed:
+
+            persisted_states = (
+                self.repository
+                .get_all_trades()
+            )
+
+        else:
+
+            persisted_states = (
+                self.repository
+                .get_open_trades()
+            )
+
+        if not isinstance(
+            persisted_states,
+            list,
+        ):
+            raise ValueError(
+                "Repository recovery must return a list."
+            )
+
+        recovered_trades = []
+
+        recovered_ids = set()
+
+        # Validate and reconstruct everything first.
+        # Nothing is inserted into memory until all
+        # persisted states have been successfully parsed.
+
+        for state in persisted_states:
+
+            trade = (
+                PaperTrade.from_dict(
+                    state
+                )
+            )
+
+            resolved_trade_id = (
+                self._validate_trade_id(
+                    trade.trade_id
+                )
+            )
+
+            if (
+                resolved_trade_id
+                in recovered_ids
+            ):
+                raise ValueError(
+                    "Duplicate trade_id found during "
+                    "paper trade recovery."
+                )
+
+            if (
+                resolved_trade_id
+                in self._trades
+            ):
+                raise ValueError(
+                    "Cannot recover paper trade because "
+                    "the trade_id already exists in memory: "
+                    f"{resolved_trade_id}"
+                )
+
+            if (
+                trade.status
+                not in PaperTradeStatus.ALL
+            ):
+                raise ValueError(
+                    "Recovered paper trade has invalid "
+                    f"status: {trade.status}"
+                )
+
+            recovered_ids.add(
+                resolved_trade_id
+            )
+
+            recovered_trades.append(
+                trade
+            )
+
+        # Commit validated recovery to memory.
+
+        for trade in recovered_trades:
+
+            lifecycle_audit = (
+                self.lifecycle_audit_factory(
+                    trade.trade_id
+                )
+            )
+
+            self._trades[
+                trade.trade_id
+            ] = trade
+
+            self._lifecycle_audits[
+                trade.trade_id
+            ] = lifecycle_audit
+
+            self._journal_status[
+                trade.trade_id
+            ] = {
+                "enabled": (
+                    self.persist_journal
+                ),
+                "persisted": False,
+                "error": None,
+            }
+
+            self._repository_status[
+                trade.trade_id
+            ] = {
+                "enabled": (
+                    self.persist_state
+                ),
+                "persisted": True,
+                "error": None,
+            }
+
+        return [
+            trade.copy()
+            for trade
+            in recovered_trades
+        ]
+
+    # =========================================================
     # PAPER TRADE P&L SNAPSHOT
-    # ---------------------------------
+    # =========================================================
 
     def get_pnl_snapshot(
         self,
@@ -1165,30 +1517,32 @@ class PaperTradingEngine:
         current_price=None,
     ):
         """
-        Return a complete P&L snapshot for a paper trade.
+        Return a complete P&L snapshot.
 
         OPEN:
-            Uses current_price when supplied, otherwise
-            the trade's stored current_price.
+            Uses supplied current_price or stored price.
 
         CLOSED:
-            Uses the recorded exit price.
+            Uses recorded exit price.
         """
 
-        trade = self._require_trade(
-            trade_id
+        trade = (
+            self._require_trade(
+                trade_id
+            )
         )
 
         return deepcopy(
-            self.pnl_engine.calculate_trade_snapshot(
+            self.pnl_engine
+            .calculate_trade_snapshot(
                 trade=trade,
                 current_price=current_price,
             )
         )
 
-    # ---------------------------------
+    # =========================================================
     # COUNTS
-    # ---------------------------------
+    # =========================================================
 
     def count_trades(
         self,
@@ -1210,9 +1564,12 @@ class PaperTradingEngine:
 
         return sum(
             1
-            for trade in self._trades.values()
-            if trade.status
-            == PaperTradeStatus.OPEN
+            for trade
+            in self._trades.values()
+            if (
+                trade.status
+                == PaperTradeStatus.OPEN
+            )
         )
 
     def count_closed_trades(
@@ -1224,7 +1581,10 @@ class PaperTradingEngine:
 
         return sum(
             1
-            for trade in self._trades.values()
-            if trade.status
-            == PaperTradeStatus.CLOSED
+            for trade
+            in self._trades.values()
+            if (
+                trade.status
+                == PaperTradeStatus.CLOSED
+            )
         )
