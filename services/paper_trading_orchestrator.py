@@ -8,26 +8,21 @@ Responsibilities:
 - Accept a completed pipeline decision result.
 - Open paper trades only for TRADE_ALLOWED decisions.
 - Skip non-trade decisions safely.
-- Prevent duplicate source decisions from opening
-  duplicate paper trades.
+- Prevent duplicate source decisions.
+- Optionally enforce PaperTradingRiskGuard.
 - Preserve source decision and audit references.
-- Isolate paper-trading failures from the decision pipeline.
+- Isolate paper-trading and risk-guard failures.
 - Return structured orchestration results.
 
-This module:
+IMPORTANT:
+- PAPER TRADING ONLY.
 - Does NOT place real broker orders.
-- Does NOT modify the decision pipeline.
-- Does NOT call broker execution APIs.
 """
 
 from copy import deepcopy
-from typing import Any, Dict, Optional
 
 
 class PaperTradingOrchestrator:
-    """
-    Coordinate decision results with PaperTradingEngine.
-    """
 
     STATUS_OPENED = "OPENED"
     STATUS_SKIPPED = "SKIPPED"
@@ -39,20 +34,8 @@ class PaperTradingOrchestrator:
         self,
         paper_trading_engine,
         enabled=True,
+        risk_guard=None,
     ):
-        """
-        Initialize the orchestrator.
-
-        Parameters
-        ----------
-        paper_trading_engine
-            PaperTradingEngine-compatible instance.
-
-        enabled : bool
-            Whether automatic paper-trade orchestration
-            is enabled.
-        """
-
         if paper_trading_engine is None:
             raise ValueError(
                 "paper_trading_engine is required."
@@ -66,14 +49,30 @@ class PaperTradingOrchestrator:
                 "enabled must be a boolean."
             )
 
+        if (
+            risk_guard is not None
+            and not callable(
+                getattr(
+                    risk_guard,
+                    "evaluate",
+                    None,
+                )
+            )
+        ):
+            raise ValueError(
+                "risk_guard must expose an evaluate method."
+            )
+
         self.paper_trading_engine = (
             paper_trading_engine
         )
 
         self.enabled = enabled
 
-        # Tracks source decision IDs successfully opened
-        # during the current process lifetime.
+        self.risk_guard = (
+            risk_guard
+        )
+
         self._processed_decision_ids = set()
 
     # ========================================================
@@ -93,29 +92,6 @@ class PaperTradingOrchestrator:
         metadata=None,
         trade_id=None,
     ):
-        """
-        Process one completed decision result.
-
-        A paper trade is opened only when:
-
-        - orchestrator is enabled
-        - pipeline_result is valid
-        - decision == TRADE_ALLOWED
-        - source_decision_id has not already been processed
-
-        Returns
-        -------
-        dict
-            Structured orchestration result.
-
-        Notes
-        -----
-        Paper-trading engine exceptions are isolated and
-        returned as FAILED results.
-
-        The original pipeline_result is never modified.
-        """
-
         self._validate_pipeline_result(
             pipeline_result
         )
@@ -179,9 +155,7 @@ class PaperTradingOrchestrator:
         if not self.enabled:
             return self._build_result(
                 status=self.STATUS_SKIPPED,
-                reason=(
-                    "PAPER_TRADING_DISABLED"
-                ),
+                reason="PAPER_TRADING_DISABLED",
                 decision=decision,
                 source_decision_id=(
                     source_decision_id
@@ -189,7 +163,7 @@ class PaperTradingOrchestrator:
             )
 
         # ----------------------------------------------------
-        # DECISION IS NOT TRADE_ALLOWED
+        # NON-TRADE DECISION
         # ----------------------------------------------------
 
         if (
@@ -208,7 +182,7 @@ class PaperTradingOrchestrator:
             )
 
         # ----------------------------------------------------
-        # DUPLICATE DECISION PROTECTION
+        # DUPLICATE SOURCE DECISION
         # ----------------------------------------------------
 
         if (
@@ -229,11 +203,46 @@ class PaperTradingOrchestrator:
             )
 
         # ----------------------------------------------------
-        # BUILD SAFE METADATA
+        # RISK GUARD
+        # ----------------------------------------------------
+
+        risk_result = (
+            self._evaluate_risk_guard(
+                pipeline_result=(
+                    pipeline_result
+                ),
+                underlying=underlying,
+                symboltoken=symboltoken,
+            )
+        )
+
+        if (
+            risk_result is not None
+            and not risk_result.get(
+                "allowed",
+                False,
+            )
+        ):
+            return self._build_result(
+                status=self.STATUS_SKIPPED,
+                reason="RISK_GUARD_BLOCKED",
+                decision=decision,
+                source_decision_id=(
+                    source_decision_id
+                ),
+                risk_guard=(
+                    risk_result
+                ),
+            )
+
+        # ----------------------------------------------------
+        # SAFE METADATA
         # ----------------------------------------------------
 
         safe_metadata = (
-            deepcopy(metadata)
+            deepcopy(
+                metadata
+            )
             if metadata is not None
             else {}
         )
@@ -247,6 +256,13 @@ class PaperTradingOrchestrator:
             "paper_trade",
             True,
         )
+
+        if risk_result is not None:
+            safe_metadata[
+                "risk_guard"
+            ] = deepcopy(
+                risk_result
+            )
 
         # ----------------------------------------------------
         # OPEN PAPER TRADE
@@ -286,11 +302,16 @@ class PaperTradingOrchestrator:
                 source_decision_id=(
                     source_decision_id
                 ),
-                error=str(exc),
+                error=str(
+                    exc
+                ),
+                risk_guard=(
+                    risk_result
+                ),
             )
 
         # ----------------------------------------------------
-        # MARK DECISION AS PROCESSED ONLY AFTER SUCCESS
+        # MARK SOURCE DECISION AFTER SUCCESS
         # ----------------------------------------------------
 
         if (
@@ -303,14 +324,15 @@ class PaperTradingOrchestrator:
 
         return self._build_result(
             status=self.STATUS_OPENED,
-            reason=(
-                "PAPER_TRADE_OPENED"
-            ),
+            reason="PAPER_TRADE_OPENED",
             decision=decision,
             source_decision_id=(
                 source_decision_id
             ),
             trade=trade,
+            risk_guard=(
+                risk_result
+            ),
         )
 
     def process(
@@ -318,10 +340,6 @@ class PaperTradingOrchestrator:
         pipeline_result,
         **kwargs,
     ):
-        """
-        Alias for process_decision().
-        """
-
         return self.process_decision(
             pipeline_result,
             **kwargs,
@@ -331,11 +349,6 @@ class PaperTradingOrchestrator:
         self,
         source_decision_id,
     ):
-        """
-        Return whether a source decision ID has already
-        opened a paper trade in this process.
-        """
-
         self._validate_required_text(
             source_decision_id,
             "source_decision_id",
@@ -349,10 +362,6 @@ class PaperTradingOrchestrator:
     def get_processed_decision_ids(
         self,
     ):
-        """
-        Return a defensive copy of processed decision IDs.
-        """
-
         return set(
             self._processed_decision_ids
         )
@@ -360,27 +369,202 @@ class PaperTradingOrchestrator:
     def clear_processed_decision_ids(
         self,
     ):
-        """
-        Clear in-memory duplicate tracking.
-
-        Intended for controlled testing or explicit lifecycle
-        reset only.
-        """
-
         self._processed_decision_ids.clear()
 
     # ========================================================
-    # INTERNAL HELPERS
+    # RISK GUARD
+    # ========================================================
+
+    def _evaluate_risk_guard(
+        self,
+        *,
+        pipeline_result,
+        underlying,
+        symboltoken,
+    ):
+        if self.risk_guard is None:
+            return None
+
+        try:
+            trades = (
+                self.paper_trading_engine
+                .get_all_trades()
+            )
+
+        except Exception as exc:
+            return {
+                "allowed": False,
+                "code": (
+                    "TRADE_HISTORY_UNAVAILABLE"
+                ),
+                "message": (
+                    "Paper trade blocked because "
+                    "trade history could not be loaded: "
+                    f"{type(exc).__name__}: {exc}"
+                ),
+                "metrics": {},
+            }
+
+        candidate = (
+            self._build_risk_candidate(
+                pipeline_result=(
+                    pipeline_result
+                ),
+                underlying=underlying,
+                symboltoken=symboltoken,
+            )
+        )
+
+        try:
+            result = (
+                self.risk_guard.evaluate(
+                    candidate,
+                    trades,
+                )
+            )
+
+        except Exception as exc:
+            return {
+                "allowed": False,
+                "code": "RISK_GUARD_ERROR",
+                "message": (
+                    "Paper trade blocked because "
+                    "the risk guard failed: "
+                    f"{type(exc).__name__}: {exc}"
+                ),
+                "metrics": {},
+            }
+
+        if not isinstance(
+            result,
+            dict,
+        ):
+            return {
+                "allowed": False,
+                "code": (
+                    "INVALID_RISK_GUARD_RESULT"
+                ),
+                "message": (
+                    "Paper trade blocked because "
+                    "the risk guard returned invalid data."
+                ),
+                "metrics": {},
+            }
+
+        if not isinstance(
+            result.get(
+                "allowed"
+            ),
+            bool,
+        ):
+            return {
+                "allowed": False,
+                "code": (
+                    "INVALID_RISK_GUARD_RESULT"
+                ),
+                "message": (
+                    "Paper trade blocked because "
+                    "the risk guard result did not contain "
+                    "a valid allowed flag."
+                ),
+                "metrics": {},
+            }
+
+        return deepcopy(
+            result
+        )
+
+    @classmethod
+    def _build_risk_candidate(
+        cls,
+        *,
+        pipeline_result,
+        underlying,
+        symboltoken,
+    ):
+        option_symbol = (
+            cls._find_nested_value(
+                pipeline_result,
+                (
+                    "option_symbol",
+                    "tradingsymbol",
+                    "trading_symbol",
+                    "symbol",
+                ),
+            )
+        )
+
+        return {
+            "underlying": underlying,
+            "option_symbol": (
+                option_symbol
+            ),
+            "symboltoken": symboltoken,
+        }
+
+    @classmethod
+    def _find_nested_value(
+        cls,
+        value,
+        keys,
+    ):
+        if isinstance(
+            value,
+            dict,
+        ):
+            for key in keys:
+                candidate = (
+                    value.get(
+                        key
+                    )
+                )
+
+                if (
+                    candidate is not None
+                    and str(
+                        candidate
+                    ).strip()
+                ):
+                    return candidate
+
+            for nested_value in (
+                value.values()
+            ):
+                found = (
+                    cls._find_nested_value(
+                        nested_value,
+                        keys,
+                    )
+                )
+
+                if found is not None:
+                    return found
+
+        elif isinstance(
+            value,
+            (list, tuple),
+        ):
+            for item in value:
+                found = (
+                    cls._find_nested_value(
+                        item,
+                        keys,
+                    )
+                )
+
+                if found is not None:
+                    return found
+
+        return None
+
+    # ========================================================
+    # VALIDATION
     # ========================================================
 
     @staticmethod
     def _validate_pipeline_result(
         pipeline_result,
     ):
-        """
-        Validate the top-level pipeline result.
-        """
-
         if not isinstance(
             pipeline_result,
             dict,
@@ -418,10 +602,6 @@ class PaperTradingOrchestrator:
         value,
         field_name,
     ):
-        """
-        Validate required non-empty text.
-        """
-
         if not isinstance(
             value,
             str,
@@ -440,10 +620,6 @@ class PaperTradingOrchestrator:
         value,
         field_name,
     ):
-        """
-        Validate optional text.
-        """
-
         if value is None:
             return
 
@@ -460,19 +636,14 @@ class PaperTradingOrchestrator:
                 f"{field_name} must not be empty."
             )
 
+    # ========================================================
+    # RESULT HELPERS
+    # ========================================================
+
     @staticmethod
     def _trade_to_dict(
         trade,
     ):
-        """
-        Convert a trade object into a safe dictionary.
-
-        Supports:
-        - objects exposing as_dict()
-        - objects exposing to_dict()
-        - dictionaries
-        """
-
         if trade is None:
             return None
 
@@ -500,8 +671,6 @@ class PaperTradingOrchestrator:
                 trade.to_dict()
             )
 
-        # Fallback preserves the trade object safely enough
-        # for compatibility with mocked/custom engines.
         return deepcopy(
             trade
         )
@@ -515,11 +684,8 @@ class PaperTradingOrchestrator:
         source_decision_id=None,
         trade=None,
         error=None,
+        risk_guard=None,
     ):
-        """
-        Build a consistent orchestration result.
-        """
-
         trade_data = (
             self._trade_to_dict(
                 trade
@@ -571,4 +737,11 @@ class PaperTradingOrchestrator:
             "trade_id": trade_id,
             "trade": trade_data,
             "error": error,
+            "risk_guard": (
+                deepcopy(
+                    risk_guard
+                )
+                if risk_guard is not None
+                else None
+            ),
         }
