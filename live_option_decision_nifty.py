@@ -24,6 +24,10 @@ from services.broker.angel_client import (
     AngelMarketDataClient,
 )
 
+from services.decision_audit_logger import (
+    DecisionAuditLogger,
+)
+
 from services.live_option_decision_pipeline import (
     LiveOptionDecisionPipeline,
 )
@@ -59,6 +63,8 @@ CONFIRMATION_INTERVAL = "FIVE_MINUTE"
 ENFORCE_MARKET_SESSION = True
 
 MAXIMUM_CANDLE_AGE_MINUTES = 10
+
+PERSIST_AUDIT = True
 
 NSE_HOLIDAY_CALENDAR = (
     get_nse_holiday_calendar()
@@ -440,8 +446,17 @@ print(
     "risk-controlled pipeline..."
 )
 
+# ---------------------------------
+# SETUP AUDIT LOGGING
+# ---------------------------------
+
+audit_logger = DecisionAuditLogger()
+
 pipeline = (
-    LiveOptionDecisionPipeline()
+    LiveOptionDecisionPipeline(
+        audit_logger=audit_logger,
+        persist_audit=PERSIST_AUDIT,
+    )
 )
 
 try:
