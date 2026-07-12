@@ -11,12 +11,16 @@ ContinuousPaperTradingRuntime
         -> live_option_decision_nifty.py
         -> monitor_paper_positions.py
 
+PaperTradingRuntimeHealth
+    -> reports final runtime operational health
+
 Startup order:
 
 1. Recover persisted paper trades.
 2. Start opportunity cycle.
 3. Start monitoring cycle.
 4. Continue at configured interval.
+5. Report final runtime health when stopped.
 
 IMPORTANT:
 - PAPER TRADING ONLY.
@@ -43,6 +47,9 @@ from services.paper_trading_recovery_manager import (
 )
 from services.paper_trading_runtime_adapter import (
     PaperTradingRuntimeAdapter,
+)
+from services.paper_trading_runtime_health import (
+    PaperTradingRuntimeHealth,
 )
 
 
@@ -123,6 +130,10 @@ def print_header(
 
     print(
         "Startup Recovery: ENABLED"
+    )
+
+    print(
+        "Runtime Health Reporting: ENABLED"
     )
 
     print(
@@ -444,8 +455,113 @@ def build_runtime(
     )
 
 
+def create_health_snapshot(
+    runtime,
+):
+    """
+    Build a final read-only runtime health snapshot.
+
+    Compatibility behavior:
+    custom or legacy runtimes without get_stats() return None
+    instead of breaking the entry point.
+    """
+
+    get_stats = getattr(
+        runtime,
+        "get_stats",
+        None,
+    )
+
+    if not callable(
+        get_stats
+    ):
+        return None
+
+    health = (
+        PaperTradingRuntimeHealth(
+            runtime
+        )
+    )
+
+    return (
+        health.snapshot()
+    )
+
+
+def print_runtime_health(
+    health_snapshot,
+):
+    """
+    Print the final runtime health report.
+    """
+
+    if not isinstance(
+        health_snapshot,
+        dict,
+    ):
+        return
+
+    print(
+        "\n================================"
+    )
+    print(
+        "RUNTIME HEALTH"
+    )
+    print(
+        "================================"
+    )
+
+    print(
+        "Health Status:",
+        health_snapshot.get(
+            "health_status",
+            "UNKNOWN",
+        ),
+    )
+
+    print(
+        "Paper Trading Only:",
+        health_snapshot.get(
+            "paper_trading_only",
+            True,
+        ),
+    )
+
+    print(
+        "Real Order Execution:",
+        health_snapshot.get(
+            "real_order_execution",
+            False,
+        ),
+    )
+
+    print(
+        "Total Failures:",
+        health_snapshot.get(
+            "total_failures",
+            0,
+        ),
+    )
+
+    startup = (
+        health_snapshot.get(
+            "startup"
+        )
+        or {}
+    )
+
+    print(
+        "Startup Health:",
+        startup.get(
+            "status",
+            "NOT_REPORTED",
+        ),
+    )
+
+
 def print_final_stats(
     stats,
+    health_snapshot=None,
 ):
     print(
         "\n================================"
@@ -575,6 +691,10 @@ def print_final_stats(
         ),
     )
 
+    print_runtime_health(
+        health_snapshot
+    )
+
     print(
         "\nPAPER TRADING ONLY"
     )
@@ -637,8 +757,17 @@ def main(
             )
         )
 
+        health_snapshot = (
+            create_health_snapshot(
+                runtime
+            )
+        )
+
         print_final_stats(
-            stats
+            stats,
+            health_snapshot=(
+                health_snapshot
+            ),
         )
 
         return 0
