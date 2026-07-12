@@ -6,7 +6,7 @@ Runs existing standalone entry-point scripts as isolated subprocesses.
 Purpose:
 - Preserve legacy/module-scope entry points without importing them.
 - Prevent SystemExit inside a child script from terminating the runtime.
-- Capture stdout and stderr.
+- Capture stdout and stderr safely using UTF-8.
 - Convert subprocess results into structured dictionaries.
 - Provide callables compatible with ContinuousPaperTradingRuntime.
 
@@ -15,6 +15,7 @@ IMPORTANT:
 - It only launches configured Python scripts.
 """
 
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -79,12 +80,17 @@ class PaperTradingRuntimeAdapter:
         value,
         field_name,
     ):
-        if not isinstance(value, (str, Path)):
+        if not isinstance(
+            value,
+            (str, Path),
+        ):
             raise ValueError(
                 f"{field_name} must be a path."
             )
 
-        value = str(value).strip()
+        value = str(
+            value
+        ).strip()
 
         if not value:
             raise ValueError(
@@ -97,15 +103,23 @@ class PaperTradingRuntimeAdapter:
     def _validate_timeout(
         value,
     ):
-        if isinstance(value, bool):
+        if isinstance(
+            value,
+            bool,
+        ):
             raise ValueError(
                 "timeout_seconds must be a positive number."
             )
 
         try:
-            value = float(value)
+            value = float(
+                value
+            )
 
-        except (TypeError, ValueError) as exc:
+        except (
+            TypeError,
+            ValueError,
+        ) as exc:
             raise ValueError(
                 "timeout_seconds must be a positive number."
             ) from exc
@@ -125,7 +139,9 @@ class PaperTradingRuntimeAdapter:
         self,
         script,
     ):
-        path = Path(script)
+        path = Path(
+            script
+        )
 
         if not path.is_absolute():
             path = (
@@ -136,6 +152,33 @@ class PaperTradingRuntimeAdapter:
         return path.resolve()
 
     # ---------------------------------------------------------
+    # CHILD PROCESS ENVIRONMENT
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def _build_child_environment():
+        """
+        Build a UTF-8-safe environment for child Python processes.
+
+        This prevents Windows cp1252 encoding failures for characters
+        such as the Indian rupee symbol.
+        """
+
+        child_environment = (
+            os.environ.copy()
+        )
+
+        child_environment[
+            "PYTHONIOENCODING"
+        ] = "utf-8"
+
+        child_environment[
+            "PYTHONUTF8"
+        ] = "1"
+
+        return child_environment
+
+    # ---------------------------------------------------------
     # SCRIPT EXECUTION
     # ---------------------------------------------------------
 
@@ -144,25 +187,38 @@ class PaperTradingRuntimeAdapter:
         script,
         cycle_name,
     ):
-        script_path = self._resolve_script(
-            script
+        script_path = (
+            self._resolve_script(
+                script
+            )
         )
 
         command = [
             self.python_executable,
-            str(script_path),
+            str(
+                script_path
+            ),
         ]
 
+        child_environment = (
+            self._build_child_environment()
+        )
+
         try:
-            completed = self.subprocess_runner(
-                command,
-                cwd=str(
-                    self.working_directory
-                ),
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_seconds,
-                check=False,
+            completed = (
+                self.subprocess_runner(
+                    command,
+                    cwd=str(
+                        self.working_directory
+                    ),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    env=child_environment,
+                    timeout=self.timeout_seconds,
+                    check=False,
+                )
             )
 
         except subprocess.TimeoutExpired as exc:
@@ -171,15 +227,23 @@ class PaperTradingRuntimeAdapter:
                 "status": "TIMEOUT",
                 "success": False,
                 "returncode": None,
-                "script": str(script_path),
+                "script": str(
+                    script_path
+                ),
                 "stdout": (
                     exc.stdout
-                    if isinstance(exc.stdout, str)
+                    if isinstance(
+                        exc.stdout,
+                        str,
+                    )
                     else ""
                 ),
                 "stderr": (
                     exc.stderr
-                    if isinstance(exc.stderr, str)
+                    if isinstance(
+                        exc.stderr,
+                        str,
+                    )
                     else ""
                 ),
                 "error": (
@@ -194,10 +258,14 @@ class PaperTradingRuntimeAdapter:
                 "status": "ERROR",
                 "success": False,
                 "returncode": None,
-                "script": str(script_path),
+                "script": str(
+                    script_path
+                ),
                 "stdout": "",
                 "stderr": "",
-                "error": str(exc),
+                "error": str(
+                    exc
+                ),
             }
 
         returncode = int(
@@ -217,7 +285,9 @@ class PaperTradingRuntimeAdapter:
             ),
             "success": success,
             "returncode": returncode,
-            "script": str(script_path),
+            "script": str(
+                script_path
+            ),
             "stdout": (
                 completed.stdout
                 or ""
