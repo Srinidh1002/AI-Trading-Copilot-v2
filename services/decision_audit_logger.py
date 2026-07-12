@@ -397,3 +397,351 @@ class DecisionAuditLogger:
             return []
 
         return records[-limit:]
+
+    @staticmethod
+    def _parse_timestamp(
+        timestamp_str,
+    ):
+        """
+        Parse an ISO 8601 timestamp string.
+
+        Returns the datetime object for comparison.
+
+        Raises ValueError if the timestamp is invalid.
+        """
+
+        try:
+            # Try parsing with timezone info (preferred)
+            return datetime.fromisoformat(
+                timestamp_str
+            )
+
+        except (
+            ValueError,
+            TypeError,
+        ) as exc:
+            raise ValueError(
+                f"Invalid timestamp format: {timestamp_str}. "
+                "Expected ISO 8601 format (e.g., "
+                "2026-07-12T10:00:00+00:00)."
+            ) from exc
+
+    def query_records(
+        self,
+        limit=None,
+        final_decision=None,
+        underlying=None,
+        start_time=None,
+        end_time=None,
+    ):
+        """
+        Query audit records with optional filters.
+
+        Parameters
+        ----------
+        limit : int, optional
+            Maximum number of records to return.
+            Must be >= 1. Default is None (no limit).
+
+        final_decision : str, optional
+            Filter by final decision value.
+            (e.g., "TRADE_ALLOWED", "NO_TRADE").
+
+        underlying : str, optional
+            Filter by underlying asset.
+            (e.g., "NIFTY", "BANKNIFTY").
+
+        start_time : str, optional
+            ISO 8601 timestamp. Return records
+            logged at or after this time.
+
+        end_time : str, optional
+            ISO 8601 timestamp. Return records
+            logged at or before this time.
+
+        Returns
+        -------
+        list[dict]
+            Records matching the filters,
+            in chronological order (oldest to newest).
+            Returns an empty list if no records exist
+            or if no records match the filters.
+
+        Raises
+        ------
+        ValueError
+            If limit is invalid, or if timestamps
+            are malformed.
+
+        Notes
+        -----
+        All filters are optional and applied together
+        (AND logic). Filtering never modifies records.
+        Returned records are deep copies.
+        """
+
+        # Validate limit if provided
+        if limit is not None:
+            if isinstance(
+                limit,
+                bool,
+            ):
+                raise ValueError(
+                    "Limit must be an integer, "
+                    "not a boolean."
+                )
+
+            if not isinstance(
+                limit,
+                int,
+            ):
+                raise ValueError(
+                    f"Limit must be an integer, "
+                    f"got {type(limit).__name__}."
+                )
+
+            if limit < 1:
+                raise ValueError(
+                    f"Limit must be >= 1, got {limit}."
+                )
+
+        # Parse timestamps if provided
+        start_dt = None
+        end_dt = None
+
+        if start_time is not None:
+            start_dt = self._parse_timestamp(
+                start_time
+            )
+
+        if end_time is not None:
+            end_dt = self._parse_timestamp(
+                end_time
+            )
+
+        # Read all records
+        all_records = self.read_records()
+
+        # Apply filters
+        filtered = []
+
+        for record in all_records:
+
+            # Filter by final_decision
+            if (
+                final_decision is not None
+                and record.get(
+                    "final_decision"
+                )
+                != final_decision
+            ):
+                continue
+
+            # Filter by underlying
+            if underlying is not None:
+
+                metadata = record.get(
+                    "metadata",
+                    {},
+                )
+
+                if (
+                    metadata.get(
+                        "underlying"
+                    )
+                    != underlying
+                ):
+                    continue
+
+            # Filter by time range
+            if (
+                start_dt is not None
+                or end_dt is not None
+            ):
+
+                logged_at_str = record.get(
+                    "logged_at"
+                )
+
+                if logged_at_str is None:
+                    continue
+
+                try:
+
+                    logged_at = (
+                        self._parse_timestamp(
+                            logged_at_str
+                        )
+                    )
+
+                except ValueError:
+                    # Skip records with invalid timestamps
+                    continue
+
+                if (
+                    start_dt is not None
+                    and logged_at < start_dt
+                ):
+                    continue
+
+                if (
+                    end_dt is not None
+                    and logged_at > end_dt
+                ):
+                    continue
+
+            filtered.append(
+                record
+            )
+
+        # Apply limit
+        if limit is not None:
+            filtered = filtered[-limit:]
+
+        # Return deep copies
+        return [
+            deepcopy(
+                record
+            )
+            for record in filtered
+        ]
+
+    def get_summary_statistics(
+        self,
+        limit=None,
+        final_decision=None,
+        underlying=None,
+        start_time=None,
+        end_time=None,
+    ):
+        """
+        Retrieve summary statistics for audit records.
+
+        Applies the same optional filters as query_records().
+
+        Parameters
+        ----------
+        limit, final_decision, underlying,
+        start_time, end_time : optional
+            Same as query_records().
+
+        Returns
+        -------
+        dict
+            Summary statistics including:
+            - total_records: Count of records
+            - count_by_decision: Dict of decision type -> count
+            - count_by_underlying: Dict of underlying -> count
+            - earliest_logged_at: ISO 8601 timestamp
+            - latest_logged_at: ISO 8601 timestamp
+
+        Notes
+        -----
+        Statistics are informational only and must never
+        affect trading authorization.
+
+        Missing timestamps are skipped (already filtered
+        by query_records()).
+
+        Returns empty stats if no records match the filters.
+        """
+
+        # Query records with filters
+        records = self.query_records(
+            limit=None,  # Get all matching records
+            final_decision=final_decision,
+            underlying=underlying,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        # Build statistics
+        stats = {
+            "total_records": len(
+                records
+            ),
+            "count_by_decision": {},
+            "count_by_underlying": {},
+            "earliest_logged_at": None,
+            "latest_logged_at": None,
+        }
+
+        if not records:
+            return stats
+
+        # Count by decision
+        for record in records:
+
+            decision = record.get(
+                "final_decision"
+            )
+
+            if decision is not None:
+
+                stats["count_by_decision"][
+                    decision
+                ] = (
+                    stats[
+                        "count_by_decision"
+                    ].get(
+                        decision,
+                        0,
+                    )
+                    + 1
+                )
+
+        # Count by underlying
+        for record in records:
+
+            metadata = record.get(
+                "metadata",
+                {},
+            )
+
+            underlying_val = metadata.get(
+                "underlying"
+            )
+
+            if underlying_val is not None:
+
+                stats["count_by_underlying"][
+                    underlying_val
+                ] = (
+                    stats[
+                        "count_by_underlying"
+                    ].get(
+                        underlying_val,
+                        0,
+                    )
+                    + 1
+                )
+
+        # Find earliest and latest timestamps
+        timestamps = []
+
+        for record in records:
+
+            logged_at = record.get(
+                "logged_at"
+            )
+
+            if logged_at is not None:
+                timestamps.append(
+                    logged_at
+                )
+
+        if timestamps:
+
+            stats["earliest_logged_at"] = (
+                min(
+                    timestamps
+                )
+            )
+
+            stats["latest_logged_at"] = (
+                max(
+                    timestamps
+                )
+            )
+
+        return stats
