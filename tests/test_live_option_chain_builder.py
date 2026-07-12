@@ -11,7 +11,13 @@ def instrument_contract(
     token,
     strike,
     option_type,
+    lot_size=75,
 ):
+    """
+    Create a realistic mock Angel One
+    option instrument-master contract.
+    """
+
     return {
         "token": str(token),
         "symbol": (
@@ -23,12 +29,19 @@ def instrument_contract(
         "strike": str(
             strike * 100
         ),
+        "lotsize": str(
+            lot_size
+        ),
         "instrumenttype": "OPTIDX",
         "exch_seg": "NFO",
     }
 
 
 def make_instruments():
+    """
+    Build mock CE and PE contracts
+    across nearby NIFTY strikes.
+    """
 
     instruments = []
 
@@ -53,9 +66,10 @@ def make_instruments():
 
             instruments.append(
                 instrument_contract(
-                    token,
-                    strike,
-                    option_type,
+                    token=token,
+                    strike=strike,
+                    option_type=option_type,
+                    lot_size=75,
                 )
             )
 
@@ -116,6 +130,16 @@ def test_get_nearby_contracts():
     assert len(
         result["contracts"]
     ) == 10
+
+    for contract in result[
+        "contracts"
+    ]:
+        assert (
+            int(
+                contract["lotsize"]
+            )
+            == 75
+        )
 
 
 def test_build_normalized_chain():
@@ -181,25 +205,68 @@ def test_build_normalized_chain():
         == 1
     )
 
+    assert (
+        result["validated_contracts"]
+        == 1
+    )
+
+    assert (
+        result["rejected_contracts"]
+        == 0
+    )
+
+    assert (
+        result["integrity_validated"]
+        is True
+    )
+
+    assert len(
+        result["contracts"]
+    ) == 1
+
     contract = result[
         "contracts"
     ][0]
 
-    assert contract[
-        "premium"
-    ] == 150.0
+    assert (
+        contract["premium"]
+        == 150.0
+    )
 
-    assert contract[
-        "bid"
-    ] == 149.5
+    assert (
+        contract["bid"]
+        == 149.5
+    )
 
-    assert contract[
-        "ask"
-    ] == 150.5
+    assert (
+        contract["ask"]
+        == 150.5
+    )
 
-    assert contract[
-        "open_interest"
-    ] == 30000
+    assert (
+        contract["open_interest"]
+        == 30000
+    )
+
+    assert (
+        contract["volume"]
+        == 20000
+    )
+
+    assert (
+        contract["lot_size"]
+        == 75
+    )
+
+    assert (
+        contract["option_type"]
+        == "CE"
+    )
+
+    assert (
+        contract["strike"]
+        == 24200.0
+    )
 
 
 def test_invalid_spot_price():

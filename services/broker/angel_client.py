@@ -1,14 +1,21 @@
 """
-Angel One SmartAPI client.
+Resilient Angel One SmartAPI market-data client.
 
 Handles:
 - Authentication using TOTP
+- Automatic retry for temporary API/network failures
+- Exponential retry backoff
+- Automatic re-authentication when the session expires
 - Live market data requests
 - Historical candle data requests
 - Option Greeks requests
+- Response validation
 
+Read-only.
 No orders are placed from this client.
 """
+
+import time
 
 import pyotp
 from SmartApi import SmartConnect
@@ -22,30 +29,78 @@ from config import (
 
 
 class AngelMarketDataClient:
-    """Read-only client for Angel One SmartAPI market data."""
+    """
+    Resilient read-only client for
+    Angel One SmartAPI market data.
+    """
 
-    def __init__(self):
+    def __init__(
+        self,
+        max_retries=3,
+        retry_delay_seconds=1.0,
+        retry_backoff_multiplier=2.0,
+    ):
         if not ANGEL_API_KEY:
             raise ValueError(
                 "ANGEL_API_KEY is missing."
+            )
+
+        if max_retries < 1:
+            raise ValueError(
+                "max_retries must be at least 1."
+            )
+
+        if retry_delay_seconds < 0:
+            raise ValueError(
+                "retry_delay_seconds cannot be negative."
+            )
+
+        if retry_backoff_multiplier < 1:
+            raise ValueError(
+                "retry_backoff_multiplier must "
+                "be at least 1."
             )
 
         self.api = SmartConnect(
             api_key=ANGEL_API_KEY
         )
 
+        self.max_retries = (
+            max_retries
+        )
+
+        self.retry_delay_seconds = (
+            retry_delay_seconds
+        )
+
+        self.retry_backoff_multiplier = (
+            retry_backoff_multiplier
+        )
+
         self.authenticated = False
+
         self.session = None
 
     # ---------------------------------
     # AUTHENTICATION
     # ---------------------------------
 
-    def login(self):
+    def login(
+        self,
+        force=False,
+    ):
         """
         Authenticate with Angel One using
         Client ID, PIN and TOTP.
+
+        When force=True, create a fresh session.
         """
+
+        if (
+            self.authenticated
+            and not force
+        ):
+            return self.session
 
         if not ANGEL_CLIENT_ID:
             raise ValueError(
@@ -62,41 +117,483 @@ class AngelMarketDataClient:
                 "ANGEL_TOTP_SECRET is missing."
             )
 
+        if force:
+            self.authenticated = False
+            self.session = None
+
         totp = pyotp.TOTP(
             ANGEL_TOTP_SECRET
         ).now()
 
-        response = self.api.generateSession(
-            ANGEL_CLIENT_ID,
-            ANGEL_PIN,
-            totp,
-        )
+        try:
+            response = (
+                self.api.generateSession(
+                    ANGEL_CLIENT_ID,
+                    ANGEL_PIN,
+                    totp,
+                )
+            )
+
+        except Exception as exc:
+            self.authenticated = False
+            self.session = None
+
+            raise RuntimeError(
+                "Angel One login request failed: "
+                f"{exc}"
+            ) from exc
 
         if (
             not response
-            or not response.get("status")
-        ):
-            message = (
-                response.get(
-                    "message",
-                    "Unknown login error",
-                )
-                if isinstance(
-                    response,
-                    dict,
-                )
-                else "Unknown login error"
+            or not isinstance(
+                response,
+                dict,
             )
+        ):
+            self.authenticated = False
+            self.session = None
+
+            raise RuntimeError(
+                "Angel One login returned "
+                "an invalid response."
+            )
+
+        if not response.get(
+            "status",
+            False,
+        ):
+            self.authenticated = False
+            self.session = None
 
             raise RuntimeError(
                 "Angel One login failed: "
-                f"{message}"
+                f"{response.get('message', 'Unknown login error')}"
             )
 
         self.authenticated = True
+
         self.session = response
 
         return response
+
+    # ---------------------------------
+    # SESSION HELPERS
+    # ---------------------------------
+
+    def _ensure_authenticated(
+        self,
+    ):
+        """
+        Ensure an authenticated session exists.
+        """
+
+        if not self.authenticated:
+            self.login()
+
+    def _reset_session(
+        self,
+    ):
+        """
+        Mark the current session as invalid.
+
+        A new login will occur before the
+        next protected API request.
+        """
+
+        self.authenticated = False
+
+        self.session = None
+
+    # ---------------------------------
+    # ERROR CLASSIFICATION
+    # ---------------------------------
+
+    @staticmethod
+    def _is_authentication_error(
+        response=None,
+        exception=None,
+    ):
+        """
+        Detect errors that may indicate an
+        expired or invalid authentication session.
+        """
+
+        messages = []
+
+        if isinstance(
+            response,
+            dict,
+        ):
+            messages.extend(
+                [
+                    str(
+                        response.get(
+                            "message",
+                            "",
+                        )
+                    ),
+                    str(
+                        response.get(
+                            "errorcode",
+                            "",
+                        )
+                    ),
+                ]
+            )
+
+        if exception is not None:
+            messages.append(
+                str(
+                    exception
+                )
+            )
+
+        combined = " ".join(
+            messages
+        ).lower()
+
+        authentication_terms = (
+            "token expired",
+            "invalid token",
+            "invalid jwt",
+            "jwt",
+            "session expired",
+            "unauthorized",
+            "authentication failed",
+            "access denied",
+        )
+
+        return any(
+            term in combined
+            for term
+            in authentication_terms
+        )
+
+    @staticmethod
+    def _is_retryable_exception(
+        exception,
+    ):
+        """
+        Detect temporary network or service failures.
+
+        Because SmartAPI may wrap requests/urllib3
+        exceptions, classification uses the exception
+        class name and message.
+        """
+
+        exception_name = (
+            exception.__class__.__name__
+            .lower()
+        )
+
+        message = str(
+            exception
+        ).lower()
+
+        retryable_names = (
+            "timeout",
+            "connecttimeout",
+            "readtimeout",
+            "connectionerror",
+            "maxretryerror",
+        )
+
+        retryable_messages = (
+            "timed out",
+            "timeout",
+            "connection reset",
+            "connection aborted",
+            "connection refused",
+            "temporarily unavailable",
+            "temporary failure",
+            "max retries exceeded",
+            "service unavailable",
+            "bad gateway",
+            "gateway timeout",
+            "too many requests",
+        )
+
+        return (
+            any(
+                term in exception_name
+                for term
+                in retryable_names
+            )
+            or any(
+                term in message
+                for term
+                in retryable_messages
+            )
+        )
+
+    @staticmethod
+    def _is_retryable_response(
+        response,
+    ):
+        """
+        Detect API responses representing
+        temporary service failures.
+        """
+
+        if not isinstance(
+            response,
+            dict,
+        ):
+            return False
+
+        message = str(
+            response.get(
+                "message",
+                "",
+            )
+        ).lower()
+
+        error_code = str(
+            response.get(
+                "errorcode",
+                "",
+            )
+        ).lower()
+
+        combined = (
+            f"{message} {error_code}"
+        )
+
+        retryable_terms = (
+            "timeout",
+            "temporarily unavailable",
+            "temporary failure",
+            "service unavailable",
+            "server error",
+            "internal server error",
+            "bad gateway",
+            "gateway timeout",
+            "too many requests",
+            "rate limit",
+        )
+
+        return any(
+            term in combined
+            for term
+            in retryable_terms
+        )
+
+    # ---------------------------------
+    # RESPONSE VALIDATION
+    # ---------------------------------
+
+    @staticmethod
+    def _validate_response(
+        response,
+        request_name,
+    ):
+        """
+        Validate a SmartAPI response.
+
+        Returns the response when valid.
+        Raises RuntimeError when invalid.
+        """
+
+        if not response:
+            raise RuntimeError(
+                f"Angel One returned an empty "
+                f"{request_name} response."
+            )
+
+        if not isinstance(
+            response,
+            dict,
+        ):
+            raise RuntimeError(
+                f"Angel One returned an invalid "
+                f"{request_name} response type."
+            )
+
+        if response.get(
+            "status"
+        ) is False:
+            raise RuntimeError(
+                f"Angel One {request_name} "
+                f"request failed: "
+                f"{response.get('message', 'Unknown error')}"
+            )
+
+        return response
+
+    # ---------------------------------
+    # RESILIENT REQUEST EXECUTION
+    # ---------------------------------
+
+    def _execute_request(
+        self,
+        request_callable,
+        request_name,
+    ):
+        """
+        Execute a read-only SmartAPI request
+        with retry and authentication recovery.
+
+        Retry behavior:
+        - Temporary network errors are retried.
+        - Temporary API failures are retried.
+        - Authentication failures trigger one
+          fresh login before retrying.
+        - Permanent failures stop immediately.
+        """
+
+        delay = (
+            self.retry_delay_seconds
+        )
+
+        last_exception = None
+
+        authentication_retry_used = False
+
+        for attempt in range(
+            1,
+            self.max_retries + 1,
+        ):
+
+            try:
+                self._ensure_authenticated()
+
+                response = (
+                    request_callable()
+                )
+
+                # -------------------------
+                # SESSION EXPIRED
+                # -------------------------
+
+                if self._is_authentication_error(
+                    response=response,
+                ):
+
+                    if authentication_retry_used:
+                        raise RuntimeError(
+                            f"Angel One {request_name} "
+                            "failed after session "
+                            "re-authentication."
+                        )
+
+                    authentication_retry_used = True
+
+                    self._reset_session()
+
+                    self.login(
+                        force=True
+                    )
+
+                    continue
+
+                # -------------------------
+                # TEMPORARY API FAILURE
+                # -------------------------
+
+                if self._is_retryable_response(
+                    response
+                ):
+
+                    if (
+                        attempt
+                        >= self.max_retries
+                    ):
+                        return (
+                            self._validate_response(
+                                response,
+                                request_name,
+                            )
+                        )
+
+                    time.sleep(
+                        delay
+                    )
+
+                    delay *= (
+                        self.retry_backoff_multiplier
+                    )
+
+                    continue
+
+                # -------------------------
+                # NORMAL RESPONSE
+                # -------------------------
+
+                return (
+                    self._validate_response(
+                        response,
+                        request_name,
+                    )
+                )
+
+            except Exception as exc:
+
+                last_exception = exc
+
+                # -------------------------
+                # AUTHENTICATION EXCEPTION
+                # -------------------------
+
+                if self._is_authentication_error(
+                    exception=exc,
+                ):
+
+                    if not authentication_retry_used:
+
+                        authentication_retry_used = True
+
+                        self._reset_session()
+
+                        try:
+                            self.login(
+                                force=True
+                            )
+
+                        except Exception as login_exc:
+                            raise RuntimeError(
+                                "Angel One session "
+                                "re-authentication failed: "
+                                f"{login_exc}"
+                            ) from login_exc
+
+                        continue
+
+                # -------------------------
+                # NON-RETRYABLE FAILURE
+                # -------------------------
+
+                if not self._is_retryable_exception(
+                    exc
+                ):
+                    raise
+
+                # -------------------------
+                # RETRIES EXHAUSTED
+                # -------------------------
+
+                if (
+                    attempt
+                    >= self.max_retries
+                ):
+                    break
+
+                # -------------------------
+                # WAIT BEFORE RETRY
+                # -------------------------
+
+                time.sleep(
+                    delay
+                )
+
+                delay *= (
+                    self.retry_backoff_multiplier
+                )
+
+        raise RuntimeError(
+            f"Angel One {request_name} request "
+            f"failed after {self.max_retries} attempts: "
+            f"{last_exception}"
+        ) from last_exception
 
     # ---------------------------------
     # LIVE MARKET DATA
@@ -128,7 +625,9 @@ class AngelMarketDataClient:
             "FULL",
         }
 
-        mode = mode.upper()
+        mode = str(
+            mode
+        ).upper()
 
         if mode not in valid_modes:
             raise ValueError(
@@ -150,28 +649,15 @@ class AngelMarketDataClient:
                 "exchange_tokens cannot be empty."
             )
 
-        if not self.authenticated:
-            self.login()
-
-        response = self.api.getMarketData(
-            mode,
-            exchange_tokens,
+        return self._execute_request(
+            request_callable=lambda: (
+                self.api.getMarketData(
+                    mode,
+                    exchange_tokens,
+                )
+            ),
+            request_name="market-data",
         )
-
-        if not response:
-            raise RuntimeError(
-                "Angel One returned an empty "
-                "market-data response."
-            )
-
-        if response.get("status") is False:
-            raise RuntimeError(
-                "Angel One market-data request "
-                "failed: "
-                f"{response.get('message', 'Unknown error')}"
-            )
-
-        return response
 
     # ---------------------------------
     # HISTORICAL CANDLE DATA
@@ -187,34 +673,32 @@ class AngelMarketDataClient:
     ):
         """
         Fetch historical candle data.
-
-        Parameters
-        ----------
-        exchange : str
-            Example: NSE.
-
-        symboltoken : str
-            Angel One symbol token.
-
-        interval : str
-            Examples:
-            ONE_MINUTE
-            FIVE_MINUTE
-            FIFTEEN_MINUTE
-            ONE_HOUR
-            ONE_DAY
-
-        fromdate : str
-            Example:
-            "2026-07-10 09:15"
-
-        todate : str
-            Example:
-            "2026-07-10 15:30"
         """
 
-        if not self.authenticated:
-            self.login()
+        if not exchange:
+            raise ValueError(
+                "exchange is required."
+            )
+
+        if not symboltoken:
+            raise ValueError(
+                "symboltoken is required."
+            )
+
+        if not interval:
+            raise ValueError(
+                "interval is required."
+            )
+
+        if not fromdate:
+            raise ValueError(
+                "fromdate is required."
+            )
+
+        if not todate:
+            raise ValueError(
+                "todate is required."
+            )
 
         params = {
             "exchange": exchange,
@@ -224,24 +708,14 @@ class AngelMarketDataClient:
             "todate": todate,
         }
 
-        response = self.api.getCandleData(
-            params
+        return self._execute_request(
+            request_callable=lambda: (
+                self.api.getCandleData(
+                    params
+                )
+            ),
+            request_name="historical-data",
         )
-
-        if not response:
-            raise RuntimeError(
-                "Angel One returned an empty "
-                "historical-data response."
-            )
-
-        if response.get("status") is False:
-            raise RuntimeError(
-                "Angel One historical-data request "
-                "failed: "
-                f"{response.get('message', 'Unknown error')}"
-            )
-
-        return response
 
     # ---------------------------------
     # OPTION GREEKS
@@ -255,24 +729,14 @@ class AngelMarketDataClient:
         """
         Fetch option Greeks from Angel One.
 
-        Parameters
-        ----------
-        name : str
-            Underlying name.
-            Example: NIFTY.
-
-        expiry_date : str
-            Expiry format required by
-            Angel One SmartAPI.
-
-        Returns Greeks such as:
+        Returns data such as:
         - Delta
         - Gamma
         - Theta
         - Vega
         - Implied volatility
 
-        This method is read-only.
+        Read-only.
         """
 
         if not name:
@@ -287,29 +751,18 @@ class AngelMarketDataClient:
                 "is required."
             )
 
-        if not self.authenticated:
-            self.login()
-
         params = {
-            "name": name.upper(),
+            "name": str(
+                name
+            ).upper(),
             "expirydate": expiry_date,
         }
 
-        response = self.api.optionGreek(
-            params
+        return self._execute_request(
+            request_callable=lambda: (
+                self.api.optionGreek(
+                    params
+                )
+            ),
+            request_name="Option Greeks",
         )
-
-        if not response:
-            raise RuntimeError(
-                "Angel One returned an empty "
-                "Option Greeks response."
-            )
-
-        if response.get("status") is False:
-            raise RuntimeError(
-                "Angel One Option Greeks request "
-                "failed: "
-                f"{response.get('message', 'Unknown error')}"
-            )
-
-        return response

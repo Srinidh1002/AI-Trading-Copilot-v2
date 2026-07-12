@@ -11,7 +11,6 @@ Flow:
 6. Select the best CE or PE contract.
 7. Build a risk-controlled trade plan when capital is supplied.
 8. Attach a structured decision audit trail.
-9. Optionally persist the audit trail.
 
 Read-only. No orders are placed.
 """
@@ -65,6 +64,10 @@ from services.decision_audit_trail import (
     DecisionAuditTrail,
 )
 
+from services.decision_audit_logger import (
+    DecisionAuditLogger,
+)
+
 
 class LiveOptionDecisionPipeline:
     """
@@ -83,7 +86,6 @@ class LiveOptionDecisionPipeline:
     - Contract selection
     - Risk planning
     - Decision audit trail
-    - Optional audit persistence
     """
 
     def __init__(
@@ -123,10 +125,18 @@ class LiveOptionDecisionPipeline:
             else get_nse_holiday_calendar()
         )
 
-        self.audit_logger = audit_logger
-
         self.persist_audit = bool(
             persist_audit
+        )
+
+        self.audit_logger = (
+            audit_logger
+            if audit_logger is not None
+            else (
+                DecisionAuditLogger()
+                if self.persist_audit
+                else None
+            )
         )
 
     @staticmethod
@@ -223,17 +233,69 @@ class LiveOptionDecisionPipeline:
             or {}
         )
 
-    def _build_audit_trail(
+    def analyse(
         self,
-        result,
+        exchange,
+        symboltoken,
+        underlying,
+        spot_price,
+        strikes_each_side=5,
+        end_time=None,
+        capital=None,
+        risk_percent=1.0,
+        minimum_risk_reward=2.0,
+        maximum_capital_usage_percent=100.0,
+        option_stop_percent=20.0,
+        atr_stop_multiplier=1.0,
+        breakout_buffer_percent=0.0,
+        confirmation_interval="FIVE_MINUTE",
+        enforce_market_session=False,
+        session_now=None,
+        maximum_candle_age_minutes=10,
     ):
         """
-        Build a structured audit trail from the completed
-        pipeline result.
+        Run the complete pipeline and attach a structured
+        decision audit trail.
 
-        Audit generation is informational only and cannot
-        change the trading decision.
+        Existing pipeline decisions and exception behavior
+        remain unchanged.
         """
+
+        result = self._analyse_core(
+            exchange=exchange,
+            symboltoken=symboltoken,
+            underlying=underlying,
+            spot_price=spot_price,
+            strikes_each_side=strikes_each_side,
+            end_time=end_time,
+            capital=capital,
+            risk_percent=risk_percent,
+            minimum_risk_reward=(
+                minimum_risk_reward
+            ),
+            maximum_capital_usage_percent=(
+                maximum_capital_usage_percent
+            ),
+            option_stop_percent=(
+                option_stop_percent
+            ),
+            atr_stop_multiplier=(
+                atr_stop_multiplier
+            ),
+            breakout_buffer_percent=(
+                breakout_buffer_percent
+            ),
+            confirmation_interval=(
+                confirmation_interval
+            ),
+            enforce_market_session=(
+                enforce_market_session
+            ),
+            session_now=session_now,
+            maximum_candle_age_minutes=(
+                maximum_candle_age_minutes
+            ),
+        )
 
         audit = DecisionAuditTrail()
 
@@ -634,29 +696,23 @@ class LiveOptionDecisionPipeline:
             ),
         )
 
-        return audit.build_summary(
+        result[
+            "audit_trail"
+        ] = audit.build_summary(
             final_decision=(
                 final_decision
             )
         )
 
-    def _persist_audit_trail(
-        self,
-        result,
-        exchange,
-        symboltoken,
-        underlying,
-        spot_price,
-    ):
-        """
-        Optionally persist the audit trail.
+        # ---------------------------------
+        # OPTIONAL PERSISTENT AUDIT LOGGING
+        # ---------------------------------
+        #
+        # Persistence is isolated from trading
+        # authorization. A logging failure must
+        # never change the core pipeline decision.
 
-        Persistence is deliberately isolated from trading
-        authorization. Logging failures are captured and
-        never change or upgrade the pipeline decision.
-        """
-
-        persistence_status = {
+        audit_persistence = {
             "enabled": (
                 self.persist_audit
             ),
@@ -664,142 +720,60 @@ class LiveOptionDecisionPipeline:
             "error": None,
         }
 
-        if not self.persist_audit:
+        if self.persist_audit:
 
-            return persistence_status
+            try:
 
-        if self.audit_logger is None:
+                logger = (
+                    self.audit_logger
+                    if self.audit_logger is not None
+                    else DecisionAuditLogger()
+                )
 
-            persistence_status[
-                "error"
-            ] = (
-                "Audit logger is not configured."
-            )
-
-            return persistence_status
-
-        try:
-
-            self.audit_logger.log(
-                audit_trail=(
-                    result[
-                        "audit_trail"
-                    ]
-                ),
-                metadata={
-                    "exchange": exchange,
-                    "symboltoken": symboltoken,
-                    "underlying": underlying,
-                    "spot_price": spot_price,
-                    "final_decision": (
-                        result.get(
-                            "decision"
-                        )
+                logger.log(
+                    audit_trail=(
+                        result[
+                            "audit_trail"
+                        ]
                     ),
-                },
-            )
+                    metadata={
+                        "exchange": exchange,
+                        "symboltoken": (
+                            str(
+                                symboltoken
+                            )
+                        ),
+                        "underlying": (
+                            str(
+                                underlying
+                            )
+                            .strip()
+                            .upper()
+                        ),
+                        "spot_price": (
+                            spot_price
+                        ),
+                        "final_decision": (
+                            final_decision
+                        ),
+                    },
+                )
 
-            persistence_status[
-                "persisted"
-            ] = True
+                audit_persistence[
+                    "persisted"
+                ] = True
 
-        except Exception as exc:
+            except Exception as exc:
 
-            persistence_status[
-                "error"
-            ] = str(
-                exc
-            )
-
-        return persistence_status
-
-    def analyse(
-        self,
-        exchange,
-        symboltoken,
-        underlying,
-        spot_price,
-        strikes_each_side=5,
-        end_time=None,
-        capital=None,
-        risk_percent=1.0,
-        minimum_risk_reward=2.0,
-        maximum_capital_usage_percent=100.0,
-        option_stop_percent=20.0,
-        atr_stop_multiplier=1.0,
-        breakout_buffer_percent=0.0,
-        confirmation_interval="FIVE_MINUTE",
-        enforce_market_session=False,
-        session_now=None,
-        maximum_candle_age_minutes=10,
-    ):
-        """
-        Run the complete pipeline, attach a structured
-        audit trail, and optionally persist that trail.
-
-        Existing pipeline decisions and exception behavior
-        remain unchanged.
-        """
-
-        result = self._analyse_core(
-            exchange=exchange,
-            symboltoken=symboltoken,
-            underlying=underlying,
-            spot_price=spot_price,
-            strikes_each_side=strikes_each_side,
-            end_time=end_time,
-            capital=capital,
-            risk_percent=risk_percent,
-            minimum_risk_reward=(
-                minimum_risk_reward
-            ),
-            maximum_capital_usage_percent=(
-                maximum_capital_usage_percent
-            ),
-            option_stop_percent=(
-                option_stop_percent
-            ),
-            atr_stop_multiplier=(
-                atr_stop_multiplier
-            ),
-            breakout_buffer_percent=(
-                breakout_buffer_percent
-            ),
-            confirmation_interval=(
-                confirmation_interval
-            ),
-            enforce_market_session=(
-                enforce_market_session
-            ),
-            session_now=session_now,
-            maximum_candle_age_minutes=(
-                maximum_candle_age_minutes
-            ),
-        )
-
-        # ---------------------------------
-        # ATTACH AUDIT TRAIL
-        # ---------------------------------
-
-        result[
-            "audit_trail"
-        ] = self._build_audit_trail(
-            result
-        )
-
-        # ---------------------------------
-        # OPTIONAL AUDIT PERSISTENCE
-        # ---------------------------------
+                audit_persistence[
+                    "error"
+                ] = str(
+                    exc
+                )
 
         result[
             "audit_persistence"
-        ] = self._persist_audit_trail(
-            result=result,
-            exchange=exchange,
-            symboltoken=symboltoken,
-            underlying=underlying,
-            spot_price=spot_price,
-        )
+        ] = audit_persistence
 
         return result
 
@@ -1218,7 +1192,6 @@ class LiveOptionDecisionPipeline:
             "BULLISH",
             "BEARISH",
         }:
-
             return {
                 "decision": "NO_TRADE",
                 "market_decision": market_decision,
@@ -1273,7 +1246,6 @@ class LiveOptionDecisionPipeline:
             "selected",
             False,
         ):
-
             return {
                 "decision": "NO_TRADE",
                 "market_decision": market_decision,
@@ -1297,7 +1269,6 @@ class LiveOptionDecisionPipeline:
         # ---------------------------------
 
         if capital is None:
-
             return {
                 "decision": "TRADE_READY",
                 "market_decision": market_decision,
@@ -1338,7 +1309,6 @@ class LiveOptionDecisionPipeline:
         ]
 
         if atr <= 0:
-
             return {
                 "decision": "TRADE_REJECTED",
                 "market_decision": market_decision,
@@ -1395,13 +1365,11 @@ class LiveOptionDecisionPipeline:
             "allowed",
             False,
         ):
-
             final_decision = (
                 "TRADE_ALLOWED"
             )
 
         else:
-
             final_decision = (
                 "TRADE_REJECTED"
             )
