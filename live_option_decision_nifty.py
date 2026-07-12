@@ -54,12 +54,22 @@ from services.paper_trading_engine import (
 from services.paper_trading_orchestrator import (
     PaperTradingOrchestrator,
 )
-
+from services.paper_trading_risk_guard import (
+    PaperTradingRiskGuard,
+)
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
+PAPER_MAX_OPEN_POSITIONS = 1
 
+PAPER_MAX_TRADES_PER_DAY = 5
+
+PAPER_MAX_DAILY_REALIZED_LOSS = 500.0
+
+PAPER_BLOCK_DUPLICATE_POSITIONS = True
+
+PAPER_TRADING_KILL_SWITCH = False
 NIFTY_TOKEN = "99926000"
 
 CAPITAL = 10_000
@@ -311,6 +321,26 @@ paper_trading_engine = (
     )
 )
 
+paper_trading_risk_guard = (
+    PaperTradingRiskGuard(
+        max_open_positions=(
+            PAPER_MAX_OPEN_POSITIONS
+        ),
+        max_trades_per_day=(
+            PAPER_MAX_TRADES_PER_DAY
+        ),
+        max_daily_realized_loss=(
+            PAPER_MAX_DAILY_REALIZED_LOSS
+        ),
+        block_duplicate_positions=(
+            PAPER_BLOCK_DUPLICATE_POSITIONS
+        ),
+        kill_switch=(
+            PAPER_TRADING_KILL_SWITCH
+        ),
+    )
+)
+
 paper_trading_orchestrator = (
     PaperTradingOrchestrator(
         paper_trading_engine=(
@@ -318,6 +348,9 @@ paper_trading_orchestrator = (
         ),
         enabled=(
             ENABLE_PAPER_TRADING
+        ),
+        risk_guard=(
+            paper_trading_risk_guard
         ),
     )
 )
