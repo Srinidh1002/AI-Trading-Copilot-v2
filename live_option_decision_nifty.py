@@ -1,23 +1,21 @@
 """
-Live read-only NIFTY option trade-plan test.
+Live read-only NIFTY option trade-plan test with paper trading.
 
 Flow:
 1. Check whether the Indian market session is open.
 2. Check whether today is a configured NSE trading holiday.
-3. If the market is closed:
-   - Stop safely before calling Angel One.
-4. If the market is open:
-   - Fetch the current NIFTY spot price.
-   - Validate the live spot price.
-   - Run full market intelligence analysis.
-   - Detect waiting breakout/breakdown setups.
-   - Validate completed-candle freshness and integrity.
-   - Confirm breakout/breakdown using a completed candle.
-   - Build the option chain only after authorization.
-   - Select the best option contract.
-   - Build the risk-controlled trade plan.
+3. Stop safely before calling Angel One if the market is closed.
+4. Fetch and validate the current NIFTY spot price.
+5. Run the complete live option decision pipeline.
+6. Persist the decision audit trail.
+7. Send the completed decision to the paper-trading orchestrator.
+8. Open a paper trade only when the pipeline authorizes TRADE_ALLOWED.
+9. Persist paper-trade state and recover it after restart.
 
-No orders are placed.
+IMPORTANT:
+- Paper trading only.
+- No real broker order is placed.
+- Paper-trading failures cannot change the pipeline decision.
 """
 
 from services.broker.angel_client import (
@@ -45,10 +43,22 @@ from services.nse_holiday_calendar import (
     get_nse_holiday_calendar,
 )
 
+from services.paper_trade_repository import (
+    PaperTradeRepository,
+)
 
-# ---------------------------------
+from services.paper_trading_engine import (
+    PaperTradingEngine,
+)
+
+from services.paper_trading_orchestrator import (
+    PaperTradingOrchestrator,
+)
+
+
+# ============================================================
 # CONFIGURATION
-# ---------------------------------
+# ============================================================
 
 NIFTY_TOKEN = "99926000"
 
@@ -66,14 +76,18 @@ MAXIMUM_CANDLE_AGE_MINUTES = 10
 
 PERSIST_AUDIT = True
 
+ENABLE_PAPER_TRADING = True
+
+PERSIST_PAPER_TRADES = True
+
 NSE_HOLIDAY_CALENDAR = (
     get_nse_holiday_calendar()
 )
 
 
-# ---------------------------------
+# ============================================================
 # HEADER
-# ---------------------------------
+# ============================================================
 
 print("\n================================")
 print("AI TRADING COPILOT")
@@ -99,10 +113,20 @@ print(
     "minutes",
 )
 
+print(
+    "Paper trading:",
+    ENABLE_PAPER_TRADING,
+)
 
-# ---------------------------------
+print(
+    "Paper trade persistence:",
+    PERSIST_PAPER_TRADES,
+)
+
+
+# ============================================================
 # PRE-CHECK MARKET SESSION
-# ---------------------------------
+# ============================================================
 
 pre_session = None
 
@@ -112,13 +136,15 @@ if ENFORCE_MARKET_SESSION:
         "\nChecking Indian market session..."
     )
 
-    pre_session = evaluate_market_session(
-        maximum_candle_age_minutes=(
-            MAXIMUM_CANDLE_AGE_MINUTES
-        ),
-        holiday_calendar=(
-            NSE_HOLIDAY_CALENDAR
-        ),
+    pre_session = (
+        evaluate_market_session(
+            maximum_candle_age_minutes=(
+                MAXIMUM_CANDLE_AGE_MINUTES
+            ),
+            holiday_calendar=(
+                NSE_HOLIDAY_CALENDAR
+            ),
+        )
     )
 
     print("\nMARKET SESSION PRE-CHECK")
@@ -173,9 +199,11 @@ if ENFORCE_MARKET_SESSION:
         ),
     )
 
-    reasons = pre_session.get(
-        "reasons",
-        [],
+    reasons = (
+        pre_session.get(
+            "reasons",
+            [],
+        )
     )
 
     if reasons:
@@ -189,10 +217,9 @@ if ENFORCE_MARKET_SESSION:
                 reason,
             )
 
-    # ---------------------------------
-    # STOP BEFORE ANY BROKER API CALL
-    # WHEN MARKET IS CLOSED
-    # ---------------------------------
+    # --------------------------------------------------------
+    # STOP BEFORE ANY BROKER API CALL WHEN MARKET IS CLOSED
+    # --------------------------------------------------------
 
     if not pre_session.get(
         "market_open",
@@ -249,11 +276,15 @@ if ENFORCE_MARKET_SESSION:
         )
 
         print(
+            "No paper trade was opened."
+        )
+
+        print(
             "\nREAD-ONLY ANALYSIS COMPLETE"
         )
 
         print(
-            "NO ORDER WAS PLACED"
+            "NO REAL ORDER WAS PLACED"
         )
 
         raise SystemExit(
@@ -261,25 +292,123 @@ if ENFORCE_MARKET_SESSION:
         )
 
 
-# ---------------------------------
+# ============================================================
+# SETUP PAPER TRADING
+# ============================================================
+
+paper_trade_repository = (
+    PaperTradeRepository()
+)
+
+paper_trading_engine = (
+    PaperTradingEngine(
+        repository=(
+            paper_trade_repository
+        ),
+        persist_state=(
+            PERSIST_PAPER_TRADES
+        ),
+    )
+)
+
+paper_trading_orchestrator = (
+    PaperTradingOrchestrator(
+        paper_trading_engine=(
+            paper_trading_engine
+        ),
+        enabled=(
+            ENABLE_PAPER_TRADING
+        ),
+    )
+)
+
+recovered_paper_trades = []
+
+try:
+
+    recovered_paper_trades = (
+        paper_trading_engine.recover_trades()
+    )
+
+    print("\nPAPER TRADING STARTUP")
+    print("=====================")
+
+    print(
+        "Enabled:",
+        ENABLE_PAPER_TRADING,
+    )
+
+    print(
+        "Persistence:",
+        PERSIST_PAPER_TRADES,
+    )
+
+    print(
+        "Recovered Trades:",
+        len(
+            recovered_paper_trades
+        ),
+    )
+
+    print(
+        "Open Trades:",
+        paper_trading_engine.count_open_trades(),
+    )
+
+    print(
+        "Closed Trades:",
+        paper_trading_engine.count_closed_trades(),
+    )
+
+except Exception as exc:
+
+    # Paper-trading recovery failure must not
+    # affect live market analysis.
+
+    recovered_paper_trades = []
+
+    print("\nPAPER TRADING RECOVERY WARNING")
+    print("==============================")
+
+    print(
+        "Paper-trade recovery failed."
+    )
+
+    print(
+        "Live market analysis will continue."
+    )
+
+    print(
+        "Error:",
+        str(
+            exc
+        ),
+    )
+
+
+# ============================================================
 # FETCH CURRENT NIFTY SPOT
-# ---------------------------------
+# ============================================================
 
 print(
     "\nFetching live NIFTY spot..."
 )
 
-client = AngelMarketDataClient()
+client = (
+    AngelMarketDataClient()
+)
 
 try:
 
-    response = client.get_market_data(
-        mode="LTP",
-        exchange_tokens={
-            "NSE": [
-                NIFTY_TOKEN
-            ]
-        },
+    response = (
+        client.get_market_data(
+            mode="LTP",
+            exchange_tokens={
+                "NSE": [
+                    NIFTY_TOKEN
+                ]
+            },
+        )
     )
 
 except Exception as exc:
@@ -310,7 +439,11 @@ except Exception as exc:
     )
 
     print(
-        "NO ORDER WAS PLACED"
+        "No paper trade was opened."
+    )
+
+    print(
+        "NO REAL ORDER WAS PLACED"
     )
 
     raise SystemExit(
@@ -318,9 +451,9 @@ except Exception as exc:
     )
 
 
-# ---------------------------------
+# ============================================================
 # EXTRACT FETCHED MARKET DATA
-# ---------------------------------
+# ============================================================
 
 fetched = (
     response
@@ -357,7 +490,11 @@ if not fetched:
     )
 
     print(
-        "NO ORDER WAS PLACED"
+        "No paper trade was opened."
+    )
+
+    print(
+        "NO REAL ORDER WAS PLACED"
     )
 
     raise SystemExit(
@@ -365,18 +502,22 @@ if not fetched:
     )
 
 
-# ---------------------------------
+# ============================================================
 # VALIDATE LIVE NIFTY SPOT
-# ---------------------------------
+# ============================================================
 
-raw_spot_price = fetched[0].get(
-    "ltp"
+raw_spot_price = (
+    fetched[0].get(
+        "ltp"
+    )
 )
 
 try:
 
-    spot_price = validate_live_price(
-        raw_spot_price
+    spot_price = (
+        validate_live_price(
+            raw_spot_price
+        )
     )
 
 except MarketDataValidationError as exc:
@@ -420,7 +561,11 @@ except MarketDataValidationError as exc:
     )
 
     print(
-        "NO ORDER WAS PLACED"
+        "No paper trade was opened."
+    )
+
+    print(
+        "NO REAL ORDER WAS PLACED"
     )
 
     raise SystemExit(
@@ -437,50 +582,72 @@ print(
 )
 
 
-# ---------------------------------
+# ============================================================
+# SETUP DECISION AUDIT LOGGING
+# ============================================================
+
+audit_logger = (
+    DecisionAuditLogger()
+)
+
+
+# ============================================================
+# SETUP LIVE DECISION PIPELINE
+# ============================================================
+
+pipeline = (
+    LiveOptionDecisionPipeline(
+        audit_logger=(
+            audit_logger
+        ),
+        persist_audit=(
+            PERSIST_AUDIT
+        ),
+    )
+)
+
+
+# ============================================================
 # RUN COMPLETE LIVE PIPELINE
-# ---------------------------------
+# ============================================================
 
 print(
     "\nRunning complete "
     "risk-controlled pipeline..."
 )
 
-# ---------------------------------
-# SETUP AUDIT LOGGING
-# ---------------------------------
-
-audit_logger = DecisionAuditLogger()
-
-pipeline = (
-    LiveOptionDecisionPipeline(
-        audit_logger=audit_logger,
-        persist_audit=PERSIST_AUDIT,
-    )
-)
-
 try:
 
-    result = pipeline.analyse(
-        exchange="NSE",
-        symboltoken=NIFTY_TOKEN,
-        underlying="NIFTY",
-        spot_price=spot_price,
-        strikes_each_side=5,
-        capital=CAPITAL,
-        risk_percent=RISK_PERCENT,
-        breakout_buffer_percent=(
-            BREAKOUT_BUFFER_PERCENT
-        ),
-        confirmation_interval=(
-            CONFIRMATION_INTERVAL
-        ),
-        enforce_market_session=(
-            ENFORCE_MARKET_SESSION
-        ),
-        maximum_candle_age_minutes=(
-            MAXIMUM_CANDLE_AGE_MINUTES
-        ),
+    result = (
+        pipeline.analyse(
+            exchange="NSE",
+            symboltoken=(
+                NIFTY_TOKEN
+            ),
+            underlying="NIFTY",
+            spot_price=(
+                spot_price
+            ),
+            strikes_each_side=5,
+            capital=(
+                CAPITAL
+            ),
+            risk_percent=(
+                RISK_PERCENT
+            ),
+            breakout_buffer_percent=(
+                BREAKOUT_BUFFER_PERCENT
+            ),
+            confirmation_interval=(
+                CONFIRMATION_INTERVAL
+            ),
+            enforce_market_session=(
+                ENFORCE_MARKET_SESSION
+            ),
+            maximum_candle_age_minutes=(
+                MAXIMUM_CANDLE_AGE_MINUTES
+            ),
+        )
     )
 
 except MarketDataValidationError as exc:
@@ -506,7 +673,11 @@ except MarketDataValidationError as exc:
     )
 
     print(
-        "NO ORDER WAS PLACED"
+        "No paper trade was opened."
+    )
+
+    print(
+        "NO REAL ORDER WAS PLACED"
     )
 
     raise SystemExit(
@@ -536,7 +707,11 @@ except Exception as exc:
     )
 
     print(
-        "NO ORDER WAS PLACED"
+        "No paper trade was opened."
+    )
+
+    print(
+        "NO REAL ORDER WAS PLACED"
     )
 
     raise SystemExit(
@@ -544,9 +719,151 @@ except Exception as exc:
     )
 
 
-# ---------------------------------
+# ============================================================
+# PAPER TRADING ORCHESTRATION
+# ============================================================
+
+paper_trading_result = None
+
+try:
+
+    # --------------------------------------------------------
+    # BUILD SOURCE DECISION REFERENCE
+    # --------------------------------------------------------
+
+    audit_trail = (
+        result.get(
+            "audit_trail",
+            {},
+        )
+        or {}
+    )
+
+    audit_events = (
+        audit_trail.get(
+            "events",
+            [],
+        )
+        or []
+    )
+
+    source_event = (
+        audit_events[-1]
+        if audit_events
+        else {}
+    )
+
+    source_timestamp = (
+        source_event.get(
+            "timestamp"
+        )
+        or "NO_AUDIT_TIMESTAMP"
+    )
+
+    source_sequence = (
+        source_event.get(
+            "sequence"
+        )
+    )
+
+    if source_sequence is None:
+
+        source_sequence = (
+            len(
+                audit_events
+            )
+        )
+
+    final_pipeline_decision = (
+        result.get(
+            "decision",
+            "UNKNOWN"
+        )
+    )
+
+    source_decision_id = (
+        f"NSE:"
+        f"NIFTY:"
+        f"{NIFTY_TOKEN}:"
+        f"{source_timestamp}:"
+        f"{source_sequence}:"
+        f"{final_pipeline_decision}"
+    )
+
+    source_audit_ref = (
+        source_decision_id
+    )
+
+    # --------------------------------------------------------
+    # PROCESS DECISION
+    # --------------------------------------------------------
+
+    paper_trading_result = (
+        paper_trading_orchestrator.process_decision(
+            pipeline_result=(
+                result
+            ),
+            underlying="NIFTY",
+            exchange="NSE",
+            symboltoken=(
+                NIFTY_TOKEN
+            ),
+            source_decision_id=(
+                source_decision_id
+            ),
+            source_audit_ref=(
+                source_audit_ref
+            ),
+            metadata={
+                "entry_point": (
+                    "live_option_decision_nifty.py"
+                ),
+                "spot_price": (
+                    spot_price
+                ),
+                "paper_trading_enabled": (
+                    ENABLE_PAPER_TRADING
+                ),
+                "paper_trade_persistence": (
+                    PERSIST_PAPER_TRADES
+                ),
+                "audit_persistence": (
+                    PERSIST_AUDIT
+                ),
+            },
+        )
+    )
+
+except Exception as exc:
+
+    # --------------------------------------------------------
+    # CRITICAL SAFETY BOUNDARY
+    # --------------------------------------------------------
+    #
+    # Paper-trading failure must never:
+    #
+    # - change the pipeline decision
+    # - authorize a real order
+    # - modify market analysis
+    # - crash successful market analysis
+    #
+
+    paper_trading_result = {
+        "status": "ERROR",
+        "opened": False,
+        "trade_id": None,
+        "reason": (
+            "PAPER_TRADING_ORCHESTRATION_FAILED"
+        ),
+        "error": str(
+            exc
+        ),
+    }
+
+
+# ============================================================
 # MARKET SESSION STATUS
-# ---------------------------------
+# ============================================================
 
 market_session = (
     result.get(
@@ -636,9 +953,11 @@ if market_session:
         ),
     )
 
-    reasons = market_session.get(
-        "reasons",
-        [],
+    reasons = (
+        market_session.get(
+            "reasons",
+            [],
+        )
     )
 
     if reasons:
@@ -653,9 +972,9 @@ if market_session:
             )
 
 
-# ---------------------------------
+# ============================================================
 # MARKET DECISION
-# ---------------------------------
+# ============================================================
 
 print("\nMARKET DECISION")
 print("================")
@@ -713,12 +1032,14 @@ print(
 )
 
 
-# ---------------------------------
+# ============================================================
 # SETUP / TRIGGER STATUS
-# ---------------------------------
+# ============================================================
 
-setup_trigger = result.get(
-    "setup_trigger"
+setup_trigger = (
+    result.get(
+        "setup_trigger"
+    )
 )
 
 if setup_trigger:
@@ -747,12 +1068,16 @@ if setup_trigger:
         ),
     )
 
-    trigger_price = setup_trigger.get(
-        "trigger_price"
+    trigger_price = (
+        setup_trigger.get(
+            "trigger_price"
+        )
     )
 
-    current_price = setup_trigger.get(
-        "current_price"
+    current_price = (
+        setup_trigger.get(
+            "current_price"
+        )
     )
 
     if (
@@ -797,9 +1122,11 @@ if setup_trigger:
         ),
     )
 
-    reasons = setup_trigger.get(
-        "reasons",
-        [],
+    reasons = (
+        setup_trigger.get(
+            "reasons",
+            [],
+        )
     )
 
     if reasons:
@@ -814,12 +1141,14 @@ if setup_trigger:
             )
 
 
-# ---------------------------------
+# ============================================================
 # COMPLETED CANDLE
-# ---------------------------------
+# ============================================================
 
-completed_candle = result.get(
-    "completed_candle"
+completed_candle = (
+    result.get(
+        "completed_candle"
+    )
 )
 
 if completed_candle:
@@ -870,12 +1199,14 @@ if completed_candle:
     )
 
 
-# ---------------------------------
+# ============================================================
 # BREAKOUT / BREAKDOWN CONFIRMATION
-# ---------------------------------
+# ============================================================
 
-breakout_confirmation = result.get(
-    "breakout_confirmation"
+breakout_confirmation = (
+    result.get(
+        "breakout_confirmation"
+    )
 )
 
 if breakout_confirmation:
@@ -932,9 +1263,11 @@ if breakout_confirmation:
         ),
     )
 
-    reasons = breakout_confirmation.get(
-        "reasons",
-        [],
+    reasons = (
+        breakout_confirmation.get(
+            "reasons",
+            [],
+        )
     )
 
     if reasons:
@@ -967,9 +1300,9 @@ if breakout_confirmation:
             )
 
 
-# ---------------------------------
+# ============================================================
 # CONTRACT SELECTION
-# ---------------------------------
+# ============================================================
 
 contract = (
     result.get(
@@ -1053,12 +1386,14 @@ else:
         )
 
 
-# ---------------------------------
+# ============================================================
 # TRADE PLAN
-# ---------------------------------
+# ============================================================
 
-trade_plan = result.get(
-    "trade_plan"
+trade_plan = (
+    result.get(
+        "trade_plan"
+    )
 )
 
 if trade_plan:
@@ -1139,9 +1474,11 @@ if trade_plan:
         f"{trade_plan.get('estimated_maximum_loss', 0):,.2f}"
     )
 
-    reasons = trade_plan.get(
-        "reasons",
-        [],
+    reasons = (
+        trade_plan.get(
+            "reasons",
+            [],
+        )
     )
 
     if reasons:
@@ -1156,16 +1493,18 @@ if trade_plan:
             )
 
 
-# ---------------------------------
+# ============================================================
 # FINAL STATUS
-# ---------------------------------
+# ============================================================
 
 print("\n================================")
 print("FINAL STATUS")
 print("================================")
 
-final_decision = result.get(
-    "decision"
+final_decision = (
+    result.get(
+        "decision"
+    )
 )
 
 print(
@@ -1266,10 +1605,83 @@ else:
     )
 
 
+# ============================================================
+# PAPER TRADING STATUS
+# ============================================================
+
+print("\nPAPER TRADING")
+print("=============")
+
 print(
-    "\nREAD-ONLY ANALYSIS COMPLETE"
+    "Enabled:",
+    ENABLE_PAPER_TRADING,
 )
 
 print(
-    "NO ORDER WAS PLACED"
+    "Persistence:",
+    PERSIST_PAPER_TRADES,
+)
+
+if paper_trading_result:
+
+    print(
+        "Status:",
+        paper_trading_result.get(
+            "status"
+        ),
+    )
+
+    print(
+        "Opened:",
+        paper_trading_result.get(
+            "opened"
+        ),
+    )
+
+    print(
+        "Trade ID:",
+        paper_trading_result.get(
+            "trade_id"
+        ),
+    )
+
+    print(
+        "Reason:",
+        paper_trading_result.get(
+            "reason"
+        ),
+    )
+
+    if paper_trading_result.get(
+        "error"
+    ):
+
+        print(
+            "Paper Trading Error:",
+            paper_trading_result.get(
+                "error"
+            ),
+        )
+
+else:
+
+    print(
+        "No paper-trading result."
+    )
+
+
+# ============================================================
+# SAFETY FOOTER
+# ============================================================
+
+print(
+    "\nREAD-ONLY MARKET ANALYSIS COMPLETE"
+)
+
+print(
+    "PAPER TRADING MAY BE ENABLED"
+)
+
+print(
+    "NO REAL ORDER WAS PLACED"
 )
