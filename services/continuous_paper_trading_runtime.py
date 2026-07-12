@@ -1,12 +1,13 @@
 """
 Continuous Paper Trading Runtime.
 
-Coordinates two injected operations:
+Coordinates injected operations:
 
-1. Opportunity cycle
-2. Position-monitoring cycle
-3. Wait
-4. Repeat
+1. Optional startup operation
+2. Opportunity cycle
+3. Position-monitoring cycle
+4. Wait
+5. Repeat
 
 Safety properties:
 - Paper-trading orchestration only.
@@ -15,6 +16,7 @@ Safety properties:
 - Graceful stop support.
 - KeyboardInterrupt handling.
 - Per-operation error isolation.
+- Startup failure is fail-closed.
 - Monotonic interval timing.
 - Optional maximum cycle count.
 """
@@ -32,6 +34,7 @@ class ContinuousPaperTradingRuntime:
         opportunity_cycle,
         monitoring_cycle,
         *,
+        startup_operation=None,
         interval_seconds=60.0,
         sleep_function=time.sleep,
         monotonic_function=time.monotonic,
@@ -48,6 +51,16 @@ class ContinuousPaperTradingRuntime:
         ):
             raise ValueError(
                 "monitoring_cycle must be callable."
+            )
+
+        if (
+            startup_operation is not None
+            and not callable(
+                startup_operation
+            )
+        ):
+            raise ValueError(
+                "startup_operation must be callable."
             )
 
         if not callable(
@@ -76,6 +89,10 @@ class ContinuousPaperTradingRuntime:
 
         self.monitoring_cycle = (
             monitoring_cycle
+        )
+
+        self.startup_operation = (
+            startup_operation
         )
 
         self.sleep_function = (
@@ -191,6 +208,9 @@ class ContinuousPaperTradingRuntime:
             "interrupted": False,
             "running": False,
             "last_cycle": None,
+            "startup_status": "NOT_RUN",
+            "startup_result": None,
+            "startup_error": None,
         }
 
     def reset_stats(
@@ -298,6 +318,97 @@ class ContinuousPaperTradingRuntime:
                     exc
                 ),
             }
+
+    # ---------------------------------------------------------
+    # STARTUP OPERATION
+    # ---------------------------------------------------------
+
+    def _run_startup_operation(
+        self,
+    ):
+        """
+        Run the optional startup operation once before
+        continuous paper-trading cycles begin.
+
+        Startup failure is fail-closed.
+        """
+
+        if self.startup_operation is None:
+            self._stats[
+                "startup_status"
+            ] = "NOT_CONFIGURED"
+
+            self._stats[
+                "startup_result"
+            ] = None
+
+            self._stats[
+                "startup_error"
+            ] = None
+
+            return True
+
+        try:
+            result = (
+                self.startup_operation()
+            )
+
+        except KeyboardInterrupt:
+            raise
+
+        except Exception as exc:
+            self._stats[
+                "startup_status"
+            ] = "ERROR"
+
+            self._stats[
+                "startup_result"
+            ] = None
+
+            self._stats[
+                "startup_error"
+            ] = str(
+                exc
+            )
+
+            return False
+
+        self._stats[
+            "startup_result"
+        ] = deepcopy(
+            result
+        )
+
+        self._stats[
+            "startup_error"
+        ] = None
+
+        if (
+            isinstance(
+                result,
+                dict,
+            )
+            and result.get(
+                "success"
+            ) is False
+        ):
+            self._stats[
+                "startup_status"
+            ] = "FAILED"
+
+            self._stats[
+                "startup_error"
+            ] = result.get(
+                "error"
+            )
+
+            return False
+
+        self._stats[
+            "startup_status"
+        ] = "COMPLETED"
+
+        return True
 
     # ---------------------------------------------------------
     # ONE COMPLETE CYCLE
@@ -459,11 +570,6 @@ class ContinuousPaperTradingRuntime:
     ):
         """
         Wait only for the remaining interval.
-
-        Example:
-        interval = 60 seconds
-        cycle duration = 8 seconds
-        remaining wait = 52 seconds
         """
 
         elapsed = (
@@ -502,6 +608,9 @@ class ContinuousPaperTradingRuntime:
         - KeyboardInterrupt occurs,
         - max_cycles is reached.
 
+        The optional startup operation runs once before
+        the first cycle of each run.
+
         Returns final runtime statistics.
         """
 
@@ -525,6 +634,13 @@ class ContinuousPaperTradingRuntime:
         completed_in_this_run = 0
 
         try:
+            startup_allowed = (
+                self._run_startup_operation()
+            )
+
+            if not startup_allowed:
+                return self.get_stats()
+
             while not self.is_stop_requested():
 
                 cycle_started_at = (
