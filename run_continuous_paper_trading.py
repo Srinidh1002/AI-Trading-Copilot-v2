@@ -3,22 +3,43 @@ Continuous Paper Trading Entry Point.
 
 Coordinates:
 
+PaperTradingRecoveryManager
+    -> recover persisted paper trades
+
 ContinuousPaperTradingRuntime
     -> PaperTradingRuntimeAdapter
         -> live_option_decision_nifty.py
         -> monitor_paper_positions.py
 
+Startup order:
+
+1. Recover persisted paper trades.
+2. Start opportunity cycle.
+3. Start monitoring cycle.
+4. Continue at configured interval.
+
 IMPORTANT:
 - PAPER TRADING ONLY.
 - NO REAL ORDER PLACEMENT.
 - Existing standalone scripts run in isolated subprocesses.
+- Recovery failure is fail-closed in the real continuous runtime.
 """
 
+import inspect
 import os
 from pathlib import Path
 
 from services.continuous_paper_trading_runtime import (
     ContinuousPaperTradingRuntime,
+)
+from services.paper_trade_repository import (
+    PaperTradeRepository,
+)
+from services.paper_trading_engine import (
+    PaperTradingEngine,
+)
+from services.paper_trading_recovery_manager import (
+    PaperTradingRecoveryManager,
 )
 from services.paper_trading_runtime_adapter import (
     PaperTradingRuntimeAdapter,
@@ -98,6 +119,10 @@ def print_header(
 
     print(
         "\nMode: PAPER TRADING ONLY"
+    )
+
+    print(
+        "Startup Recovery: ENABLED"
     )
 
     print(
@@ -183,8 +208,9 @@ def create_cycle_callable(
     """
     Wrap an adapter subprocess cycle.
 
-    Non-zero exits, timeouts, and execution failures become exceptions so
-    ContinuousPaperTradingRuntime records them as operation failures.
+    Non-zero exits, timeouts, and execution failures become
+    exceptions so ContinuousPaperTradingRuntime records them
+    as operation failures.
     """
 
     if not callable(
@@ -234,11 +260,94 @@ def create_cycle_callable(
     return cycle
 
 
+def create_recovery_operation(
+    *,
+    repository_factory=PaperTradeRepository,
+    engine_factory=PaperTradingEngine,
+    recovery_manager_factory=(
+        PaperTradingRecoveryManager
+    ),
+):
+    """
+    Build the startup paper-trade recovery operation.
+
+    The repository and engine are reconstructed so persisted
+    paper trades can be recovered before runtime cycle 1.
+    """
+
+    repository = (
+        repository_factory()
+    )
+
+    engine = (
+        engine_factory(
+            repository=repository,
+            persist_state=True,
+        )
+    )
+
+    recovery_manager = (
+        recovery_manager_factory(
+            engine,
+            include_closed=True,
+        )
+    )
+
+    return (
+        recovery_manager.recover
+    )
+
+
+def _runtime_supports_startup_operation(
+    runtime_factory,
+):
+    """
+    Detect whether a runtime factory accepts startup_operation.
+
+    This preserves compatibility with older test/custom runtime
+    factories while enabling startup recovery in the real runtime.
+    """
+
+    try:
+        signature = (
+            inspect.signature(
+                runtime_factory
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+        return True
+
+    parameters = (
+        signature.parameters
+    )
+
+    if (
+        "startup_operation"
+        in parameters
+    ):
+        return True
+
+    return any(
+        parameter.kind
+        == inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
+    )
+
+
 def build_runtime(
     *,
     config=None,
     adapter_factory=PaperTradingRuntimeAdapter,
     runtime_factory=ContinuousPaperTradingRuntime,
+    repository_factory=PaperTradeRepository,
+    engine_factory=PaperTradingEngine,
+    recovery_manager_factory=(
+        PaperTradingRecoveryManager
+    ),
     working_directory=None,
 ):
     if config is None:
@@ -286,19 +395,46 @@ def build_runtime(
         )
     )
 
+    runtime_kwargs = {
+        "opportunity_cycle": (
+            opportunity_cycle
+        ),
+        "monitoring_cycle": (
+            monitoring_cycle
+        ),
+        "interval_seconds": (
+            config[
+                "interval_seconds"
+            ]
+        ),
+    }
+
+    if (
+        _runtime_supports_startup_operation(
+            runtime_factory
+        )
+    ):
+        startup_operation = (
+            create_recovery_operation(
+                repository_factory=(
+                    repository_factory
+                ),
+                engine_factory=(
+                    engine_factory
+                ),
+                recovery_manager_factory=(
+                    recovery_manager_factory
+                ),
+            )
+        )
+
+        runtime_kwargs[
+            "startup_operation"
+        ] = startup_operation
+
     runtime = (
         runtime_factory(
-            opportunity_cycle=(
-                opportunity_cycle
-            ),
-            monitoring_cycle=(
-                monitoring_cycle
-            ),
-            interval_seconds=(
-                config[
-                    "interval_seconds"
-                ]
-            ),
+            **runtime_kwargs
         )
     )
 
@@ -320,6 +456,60 @@ def print_final_stats(
     print(
         "================================"
     )
+
+    print(
+        "Startup Status:",
+        stats.get(
+            "startup_status",
+            "NOT_REPORTED",
+        ),
+    )
+
+    startup_result = (
+        stats.get(
+            "startup_result"
+        )
+    )
+
+    if isinstance(
+        startup_result,
+        dict,
+    ):
+        print(
+            "Recovered Trades:",
+            startup_result.get(
+                "recovered_count",
+                0,
+            ),
+        )
+
+        print(
+            "Recovered Open Trades:",
+            startup_result.get(
+                "open_count",
+                0,
+            ),
+        )
+
+        print(
+            "Recovered Closed Trades:",
+            startup_result.get(
+                "closed_count",
+                0,
+            ),
+        )
+
+    startup_error = (
+        stats.get(
+            "startup_error"
+        )
+    )
+
+    if startup_error:
+        print(
+            "Startup Error:",
+            startup_error,
+        )
 
     print(
         "Cycles Started:",
@@ -400,6 +590,11 @@ def main(
     config=None,
     adapter_factory=PaperTradingRuntimeAdapter,
     runtime_factory=ContinuousPaperTradingRuntime,
+    repository_factory=PaperTradeRepository,
+    engine_factory=PaperTradingEngine,
+    recovery_manager_factory=(
+        PaperTradingRecoveryManager
+    ),
     working_directory=None,
 ):
     try:
@@ -420,6 +615,15 @@ def main(
                 ),
                 runtime_factory=(
                     runtime_factory
+                ),
+                repository_factory=(
+                    repository_factory
+                ),
+                engine_factory=(
+                    engine_factory
+                ),
+                recovery_manager_factory=(
+                    recovery_manager_factory
                 ),
                 working_directory=(
                     working_directory
