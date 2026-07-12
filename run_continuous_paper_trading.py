@@ -14,6 +14,9 @@ ContinuousPaperTradingRuntime
 PaperTradingRuntimeHealth
     -> reports final runtime operational health
 
+PaperTradingRuntimeHeartbeat
+    -> persists final runtime health status
+
 Startup order:
 
 1. Recover persisted paper trades.
@@ -21,6 +24,7 @@ Startup order:
 3. Start monitoring cycle.
 4. Continue at configured interval.
 5. Report final runtime health when stopped.
+6. Persist final runtime heartbeat.
 
 IMPORTANT:
 - PAPER TRADING ONLY.
@@ -50,6 +54,9 @@ from services.paper_trading_runtime_adapter import (
 )
 from services.paper_trading_runtime_health import (
     PaperTradingRuntimeHealth,
+)
+from services.paper_trading_runtime_heartbeat import (
+    PaperTradingRuntimeHeartbeat,
 )
 
 
@@ -134,6 +141,10 @@ def print_header(
 
     print(
         "Runtime Health Reporting: ENABLED"
+    )
+
+    print(
+        "Runtime Heartbeat Persistence: ENABLED"
     )
 
     print(
@@ -488,6 +499,31 @@ def create_health_snapshot(
     )
 
 
+def persist_runtime_heartbeat(
+    health_snapshot,
+    *,
+    heartbeat_factory=PaperTradingRuntimeHeartbeat,
+):
+    """
+    Persist the final runtime health snapshot.
+
+    Returns None when no health snapshot is available.
+    """
+
+    if health_snapshot is None:
+        return None
+
+    heartbeat = (
+        heartbeat_factory()
+    )
+
+    return (
+        heartbeat.write(
+            health_snapshot
+        )
+    )
+
+
 def print_runtime_health(
     health_snapshot,
 ):
@@ -761,6 +797,10 @@ def main(
             create_health_snapshot(
                 runtime
             )
+        )
+
+        persist_runtime_heartbeat(
+            health_snapshot
         )
 
         print_final_stats(
