@@ -1067,6 +1067,106 @@ print(
 
 
 # ============================================================
+# VOLUME INTELLIGENCE
+# ============================================================
+
+volume_analysis = (
+    market_analysis.get(
+        "volume",
+        {},
+    )
+    or {}
+)
+
+if volume_analysis:
+
+    print("\nVOLUME INTELLIGENCE")
+    print("===================")
+
+    print("Bias:", volume_analysis.get("bias"))
+    print(
+        "Relative Volume:",
+        volume_analysis.get("relative_volume"),
+    )
+    print(
+        "Volume Spike:",
+        volume_analysis.get("volume_spike"),
+    )
+
+    volume_signals = (
+        volume_analysis.get("signals", [])
+        or []
+    )
+
+    if volume_signals:
+        print("\nVOLUME SIGNALS")
+        for signal in volume_signals:
+            print("-", signal)
+
+    volume_reasons = (
+        volume_analysis.get("reasons", [])
+        or []
+    )
+
+    if volume_reasons:
+        print("\nVOLUME REASONS")
+        for reason in volume_reasons:
+            print("-", reason)
+
+
+# ============================================================
+# REGIME-AWARE EVIDENCE
+# ============================================================
+
+regime_aware_evidence = (
+    market_analysis.get(
+        "regime_aware_evidence",
+        {},
+    )
+    or {}
+)
+
+if regime_aware_evidence:
+
+    print("\nREGIME-AWARE EVIDENCE")
+    print("=====================")
+
+    print(
+        "Regime:",
+        regime_aware_evidence.get("regime"),
+    )
+    print(
+        "Contextual Bias:",
+        regime_aware_evidence.get(
+            "contextual_bias"
+        ),
+    )
+
+    evidence_sections = (
+        ("BULLISH EVIDENCE", "bullish_evidence"),
+        ("BEARISH EVIDENCE", "bearish_evidence"),
+        ("CONFIRMATIONS", "confirmations"),
+        ("WARNINGS", "warnings"),
+        ("RELEVANT SIGNALS", "relevant_signals"),
+    )
+
+    for section_title, section_key in evidence_sections:
+
+        items = (
+            regime_aware_evidence.get(
+                section_key,
+                [],
+            )
+            or []
+        )
+
+        if items:
+            print(f"\n{section_title}")
+            for item in items:
+                print("-", item)
+
+
+# ============================================================
 # SETUP / TRIGGER STATUS
 # ============================================================
 

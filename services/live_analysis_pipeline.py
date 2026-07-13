@@ -233,13 +233,9 @@ class LiveAnalysisPipeline:
             "technical": technical_analysis,
             "timeframe": timeframe_analysis,
             "regime": regime_analysis,
-            "candlestick": (
-                candlestick_analysis
-            ),
+            "candlestick":candlestick_analysis,
             "chart": chart_analysis,
             "volume": volume_analysis,
-            "regime_aware_evidence": (
-                regime_aware_evidence
-            ),
+            "regime_aware_evidence": regime_aware_evidence,
             "strategy": strategy_analysis,
         }
