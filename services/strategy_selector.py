@@ -36,6 +36,7 @@ def select_strategy(
     candlestick,
     chart,
     option=None,
+    regime_aware_evidence=None,
 ):
     """
     Select the best strategy from multiple independent signals.
@@ -420,7 +421,94 @@ def select_strategy(
             selected_strategy = (
                 "MEAN_REVERSION"
             )
+    # ---------------------------------
+    # REGIME-AWARE EVIDENCE GATE
+    #
+    # This layer does not add directional
+    # score and cannot create a trade.
+    # It can only validate, warn, or veto
+    # an already existing candidate.
+    # ---------------------------------
 
+    contextual_bias = "NEUTRAL"
+    contextual_regime = primary_regime
+
+    if regime_aware_evidence is not None:
+
+        contextual_bias = str(
+            regime_aware_evidence.get(
+                "contextual_bias",
+                "NEUTRAL",
+            )
+        ).upper()
+
+        contextual_regime = str(
+            regime_aware_evidence.get(
+                "regime",
+                primary_regime,
+            )
+        ).upper()
+
+        evidence_warnings = (
+            regime_aware_evidence.get(
+                "warnings",
+                [],
+            )
+            or []
+        )
+
+        for warning in evidence_warnings:
+            warning_text = str(
+                warning
+            ).strip()
+
+            if (
+                warning_text
+                and warning_text
+                not in risk_flags
+            ):
+                risk_flags.append(
+                    warning_text
+                )
+
+        if (
+            direction
+            in {
+                "BULLISH",
+                "BEARISH",
+            }
+            and contextual_bias
+            in {
+                "BULLISH",
+                "BEARISH",
+            }
+            and contextual_bias
+            != direction
+        ):
+            risk_flags.append(
+                "Regime-aware evidence conflicts "
+                "with candidate direction"
+            )
+
+        elif (
+            direction
+            in {
+                "BULLISH",
+                "BEARISH",
+            }
+            and contextual_bias
+            == direction
+        ):
+            confirmations.append(
+                "Regime-aware evidence confirms "
+                "candidate direction"
+            )
+
+        if contextual_regime == "UNCERTAIN":
+            risk_flags.append(
+                "Regime-aware evidence identifies "
+                "an uncertain market"
+            )
     # ---------------------------------
     # TRADE / NO TRADE
     # ---------------------------------
@@ -429,8 +517,15 @@ def select_strategy(
         "Conflicting timeframe signals",
         "Conflicting bullish and bearish chart patterns",
         "Conflicting bullish and bearish candlestick patterns",
+        (
+            "Regime-aware evidence conflicts "
+            "with candidate direction"
+        ),
+        (
+            "Regime-aware evidence identifies "
+            "an uncertain market"
+        ),
     }
-
     has_blocking_risk = any(
         risk in blocking_risks
         for risk in risk_flags
@@ -457,4 +552,6 @@ def select_strategy(
         "confirmations": confirmations,
         "risk_flags": risk_flags,
         "suitable_strategies": suitable_strategies,
+        "contextual_bias": contextual_bias,
+        "contextual_regime": contextual_regime,
     }

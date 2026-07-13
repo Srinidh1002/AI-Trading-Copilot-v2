@@ -4,6 +4,8 @@ End-to-end live market analysis pipeline.
 Read-only:
 - Fetches market data
 - Runs analytical engines
+- Calculates volume intelligence
+- Routes evidence according to the live market regime
 - Selects a strategy
 
 It does not place orders.
@@ -40,6 +42,14 @@ from services.pattern_analyzer import (
 
 from services.chart_pattern_analyzer import (
     analyse_chart_patterns,
+)
+
+from services.volume_intelligence import (
+    analyse_volume_intelligence,
+)
+
+from services.regime_aware_evidence import (
+    evaluate_regime_aware_evidence,
 )
 
 from services.strategy_selector import (
@@ -93,7 +103,9 @@ class LiveAnalysisPipeline:
 
         # Use 5-minute timeframe for
         # immediate setup analysis.
-        base_data = uppercase_timeframes["5m"]
+        base_data = (
+            uppercase_timeframes["5m"]
+        )
 
         # ---------------------------------
         # TECHNICAL ANALYSIS
@@ -122,7 +134,7 @@ class LiveAnalysisPipeline:
         )
 
         # ---------------------------------
-        # PATTERN ANALYSIS
+        # LOWERCASE DATA ADAPTER
         # ---------------------------------
 
         lowercase_data = (
@@ -131,11 +143,39 @@ class LiveAnalysisPipeline:
             )
         )
 
+        # ---------------------------------
+        # CANDLESTICK / PRICE PATTERNS
+        # ---------------------------------
+
         candlestick_analysis = (
             analyse_patterns(
                 lowercase_data
             )
         )
+
+        # ---------------------------------
+        # VOLUME INTELLIGENCE
+        # ---------------------------------
+
+        volume_analysis = (
+            analyse_volume_intelligence(
+                lowercase_data,
+                support=(
+                    candlestick_analysis.get(
+                        "support"
+                    )
+                ),
+                resistance=(
+                    candlestick_analysis.get(
+                        "resistance"
+                    )
+                ),
+            )
+        )
+
+        # ---------------------------------
+        # CHART PATTERN ANALYSIS
+        # ---------------------------------
 
         chart_analysis = (
             analyse_chart_patterns(
@@ -144,7 +184,32 @@ class LiveAnalysisPipeline:
         )
 
         # ---------------------------------
+        # REGIME-AWARE EVIDENCE
+        #
+        # Observational only at this stage.
+        # It does not yet alter strategy
+        # selection or authorize a trade.
+        # ---------------------------------
+
+        regime_aware_evidence = (
+            evaluate_regime_aware_evidence(
+                regime=regime_analysis,
+                timeframe=timeframe_analysis,
+                technical=technical_analysis,
+                candlestick=(
+                    candlestick_analysis
+                ),
+                chart=chart_analysis,
+                volume=volume_analysis,
+            )
+        )
+
+        # ---------------------------------
         # STRATEGY SELECTION
+        #
+        # Existing behaviour is intentionally
+        # preserved. Regime-aware evidence
+        # is not passed into the selector yet.
         # ---------------------------------
 
         strategy_analysis = (
@@ -157,6 +222,9 @@ class LiveAnalysisPipeline:
                 ),
                 chart=chart_analysis,
                 option=option_analysis,
+                regime_aware_evidence=(
+                    regime_aware_evidence
+                ),
             )
         )
 
@@ -169,5 +237,9 @@ class LiveAnalysisPipeline:
                 candlestick_analysis
             ),
             "chart": chart_analysis,
+            "volume": volume_analysis,
+            "regime_aware_evidence": (
+                regime_aware_evidence
+            ),
             "strategy": strategy_analysis,
         }

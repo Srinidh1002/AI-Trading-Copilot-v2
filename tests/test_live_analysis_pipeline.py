@@ -45,11 +45,19 @@ def market_data():
 
 @patch(
     "services.live_analysis_pipeline."
+    "evaluate_regime_aware_evidence"
+)
+@patch(
+    "services.live_analysis_pipeline."
     "select_strategy"
 )
 @patch(
     "services.live_analysis_pipeline."
     "analyse_chart_patterns"
+)
+@patch(
+    "services.live_analysis_pipeline."
+    "analyse_volume_intelligence"
 )
 @patch(
     "services.live_analysis_pipeline."
@@ -72,8 +80,10 @@ def test_live_analysis_pipeline(
     mock_timeframe,
     mock_regime,
     mock_patterns,
+    mock_volume,
     mock_chart,
     mock_strategy,
+    mock_regime_evidence,
 ):
 
     mock_service = MagicMock()
@@ -108,6 +118,17 @@ def test_live_analysis_pipeline(
             "BULLISH_ENGULFING"
         ],
         "signal": "BULLISH",
+        "support": 100.0,
+        "resistance": 400.0,
+    }
+
+    mock_volume.return_value = {
+        "bias": "BULLISH",
+        "relative_volume": 1.8,
+        "volume_spike": True,
+        "signals": [
+            "VOLUME_SPIKE"
+        ],
     }
 
     mock_chart.return_value = {
@@ -116,6 +137,20 @@ def test_live_analysis_pipeline(
         ],
         "signal": "BULLISH",
         "volume_confirmation": True,
+    }
+
+    mock_regime_evidence.return_value = {
+        "regime": "TRENDING_BULLISH",
+        "contextual_bias": "BULLISH",
+        "bullish_evidence": [
+            "Multi-timeframe trend is bullish."
+        ],
+        "bearish_evidence": [],
+        "confirmations": [],
+        "warnings": [],
+        "relevant_signals": [
+            "MULTI_TIMEFRAME_TREND"
+        ],
     }
 
     mock_strategy.return_value = {
@@ -149,6 +184,52 @@ def test_live_analysis_pipeline(
     assert (
         result["timeframe"]["alignment"]
         == "FULL"
+    )
+
+    assert (
+        result["volume"]["bias"]
+        == "BULLISH"
+    )
+
+    assert (
+        result[
+            "regime_aware_evidence"
+        ][
+            "contextual_bias"
+        ]
+        == "BULLISH"
+    )
+
+    mock_volume.assert_called_once()
+
+    volume_call = (
+        mock_volume.call_args.kwargs
+    )
+
+    assert (
+        volume_call["support"]
+        == 100.0
+    )
+
+    assert (
+        volume_call["resistance"]
+        == 400.0
+    )
+
+    mock_regime_evidence.assert_called_once()
+
+    evidence_call = (
+        mock_regime_evidence.call_args.kwargs
+    )
+
+    assert (
+        evidence_call["regime"]
+        == mock_regime.return_value
+    )
+
+    assert (
+        evidence_call["volume"]
+        == mock_volume.return_value
     )
 
     mock_service.fetch_all.assert_called_once()

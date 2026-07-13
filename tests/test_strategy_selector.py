@@ -160,6 +160,151 @@ def test_neutral_market_no_trade():
         },
         option=None,
     )
+def bullish_candidate(
+    regime_aware_evidence,
+):
 
-    assert result["strategy"] == "NO_TRADE"
+    return select_strategy(
+        regime={
+            "primary_regime": (
+                "TRENDING_BULLISH"
+            ),
+            "trend": "BULLISH",
+        },
+        timeframe={
+            "overall_trend": "BULLISH",
+            "alignment": "FULL",
+        },
+        technical={
+            "trend": "BULLISH",
+        },
+        candlestick={
+            "patterns": [
+                "BULLISH_ENGULFING"
+            ],
+        },
+        chart={
+            "patterns": [
+                "UPTREND_STRUCTURE"
+            ],
+            "volume_confirmation": True,
+        },
+        option={
+            "trend": "BULLISH",
+        },
+        regime_aware_evidence=(
+            regime_aware_evidence
+        ),
+    )
+
+
+def test_regime_aware_evidence_confirms_candidate():
+
+    result = bullish_candidate({
+        "regime": "TRENDING_BULLISH",
+        "contextual_bias": "BULLISH",
+        "warnings": [],
+    })
+
+    assert result["decision"] == "TRADE"
+
+    assert (
+        "Regime-aware evidence confirms "
+        "candidate direction"
+        in result["confirmations"]
+    )
+
+
+def test_regime_aware_evidence_vetoes_conflicting_candidate():
+
+    result = bullish_candidate({
+        "regime": "TRENDING_BULLISH",
+        "contextual_bias": "BEARISH",
+        "warnings": [],
+    })
+
+    assert result["direction"] == "BULLISH"
     assert result["decision"] == "NO_TRADE"
+
+    assert (
+        "Regime-aware evidence conflicts "
+        "with candidate direction"
+        in result["risk_flags"]
+    )
+
+
+def test_uncertain_context_vetoes_trade():
+
+    result = bullish_candidate({
+        "regime": "UNCERTAIN",
+        "contextual_bias": "NEUTRAL",
+        "warnings": [],
+    })
+
+    assert result["decision"] == "NO_TRADE"
+
+
+def test_neutral_context_does_not_create_trade():
+
+    result = select_strategy(
+        regime={
+            "primary_regime": "UNCERTAIN",
+            "trend": "NEUTRAL",
+        },
+        timeframe={
+            "overall_trend": "MIXED",
+            "alignment": "PARTIAL",
+        },
+        technical={
+            "trend": "NEUTRAL",
+        },
+        candlestick={
+            "patterns": [],
+        },
+        chart={
+            "patterns": [],
+            "volume_confirmation": False,
+        },
+        option=None,
+        regime_aware_evidence={
+            "regime": "RANGING",
+            "contextual_bias": "BULLISH",
+            "warnings": [],
+        },
+    )
+
+    assert result["decision"] == "NO_TRADE"
+
+
+def test_existing_call_without_context_remains_compatible():
+
+    result = select_strategy(
+        regime={
+            "primary_regime": "TRENDING_BULLISH",
+            "trend": "BULLISH",
+        },
+        timeframe={
+            "overall_trend": "BULLISH",
+            "alignment": "FULL",
+        },
+        technical={
+            "trend": "BULLISH",
+        },
+        candlestick={
+            "patterns": [
+                "BULLISH_ENGULFING"
+            ],
+        },
+        chart={
+            "patterns": [
+                "UPTREND_STRUCTURE"
+            ],
+            "volume_confirmation": True,
+        },
+        option={
+            "trend": "BULLISH",
+        },
+    )
+
+    assert result["decision"] == "TRADE"
+    assert result["strategy"] == "TREND_CONTINUATION"
