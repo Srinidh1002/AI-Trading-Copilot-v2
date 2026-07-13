@@ -33,6 +33,14 @@ def candle_data():
     }
 
 
+def make_cache():
+    cache = MagicMock()
+
+    cache.get.return_value = None
+
+    return cache
+
+
 def test_fetch_single_timeframe():
 
     mock_client = MagicMock()
@@ -41,8 +49,11 @@ def test_fetch_single_timeframe():
         candle_data()
     )
 
+    cache = make_cache()
+
     service = LiveMultiTimeframeData(
-        client=mock_client
+        client=mock_client,
+        cache=cache,
     )
 
     result = service.fetch_timeframe(
@@ -74,6 +85,15 @@ def test_fetch_single_timeframe():
         "Volume",
     ]
 
+    assert (
+        mock_client
+        .get_historical_data
+        .call_count
+        == 1
+    )
+
+    cache.set.assert_called_once()
+
 
 def test_fetch_all_timeframes():
 
@@ -83,8 +103,11 @@ def test_fetch_all_timeframes():
         candle_data()
     )
 
+    cache = make_cache()
+
     service = LiveMultiTimeframeData(
-        client=mock_client
+        client=mock_client,
+        cache=cache,
     )
 
     result = service.fetch_all(
@@ -113,13 +136,93 @@ def test_fetch_all_timeframes():
         == 4
     )
 
+    assert (
+        cache.set.call_count
+        == 4
+    )
+
+
+def test_fresh_cache_avoids_broker_request():
+
+    mock_client = MagicMock()
+
+    cache = MagicMock()
+
+    cache.get.return_value = (
+        candle_data()
+    )
+
+    service = LiveMultiTimeframeData(
+        client=mock_client,
+        cache=cache,
+    )
+
+    result = service.fetch_timeframe(
+        exchange="NSE",
+        symboltoken="99926000",
+        timeframe="5m",
+    )
+
+    assert isinstance(
+        result,
+        pd.DataFrame,
+    )
+
+    assert len(result) == 2
+
+    mock_client.get_historical_data.assert_not_called()
+
+    cache.set.assert_not_called()
+
+
+def test_cache_disabled_always_uses_broker():
+
+    mock_client = MagicMock()
+
+    mock_client.get_historical_data.return_value = (
+        candle_data()
+    )
+
+    cache = MagicMock()
+
+    service = LiveMultiTimeframeData(
+        client=mock_client,
+        cache=cache,
+        cache_enabled=False,
+    )
+
+    service.fetch_timeframe(
+        exchange="NSE",
+        symboltoken="99926000",
+        timeframe="5m",
+        end_time=datetime(
+            2026,
+            7,
+            10,
+            15,
+            30,
+        ),
+    )
+
+    cache.get.assert_not_called()
+
+    cache.set.assert_not_called()
+
+    assert (
+        mock_client
+        .get_historical_data
+        .call_count
+        == 1
+    )
+
 
 def test_invalid_timeframe():
 
     mock_client = MagicMock()
 
     service = LiveMultiTimeframeData(
-        client=mock_client
+        client=mock_client,
+        cache=make_cache(),
     )
 
     with pytest.raises(
@@ -133,7 +236,7 @@ def test_invalid_timeframe():
         )
 
 
-def test_empty_api_data():
+def test_empty_api_data_is_not_cached():
 
     mock_client = MagicMock()
 
@@ -142,8 +245,11 @@ def test_empty_api_data():
         "data": [],
     }
 
+    cache = make_cache()
+
     service = LiveMultiTimeframeData(
-        client=mock_client
+        client=mock_client,
+        cache=cache,
     )
 
     with pytest.raises(
@@ -155,3 +261,5 @@ def test_empty_api_data():
             symboltoken="99926000",
             timeframe="5m",
         )
+
+    cache.set.assert_not_called()

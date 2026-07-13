@@ -1,3 +1,9 @@
 .env
 __pycache__/
 *.py[cod]
+venv/
+
+# Runtime-generated data
+data/market_data_cache/
+data/audit/
+data/paper_trading_runtime_heartbeat.json
