@@ -1081,16 +1081,48 @@ class LiveOptionDecisionPipeline:
             # FETCH LATEST COMPLETED CANDLE
             # ---------------------------------
 
-            completed_candle = (
-                self.completed_candle_service
-                .get_latest_completed_candle(
-                    exchange=exchange,
-                    symboltoken=symboltoken,
-                    interval=(
-                        confirmation_interval
-                    ),
+            reusable_timeframe = None
+
+            if (
+                confirmation_interval
+                == "FIVE_MINUTE"
+            ):
+                reusable_timeframe = (
+                    market_result
+                    .get(
+                        "timeframes",
+                        {},
+                    )
+                    .get(
+                        "5m"
+                    )
                 )
-            )
+
+            if reusable_timeframe is not None:
+                completed_candle = (
+                    self.completed_candle_service
+                    .get_latest_completed_candle_from_dataframe(
+                        dataframe=(
+                            reusable_timeframe
+                        ),
+                        interval=(
+                            confirmation_interval
+                        ),
+                        now=session_now,
+                    )
+                )
+
+            else:
+                completed_candle = (
+                    self.completed_candle_service
+                    .get_latest_completed_candle(
+                        exchange=exchange,
+                        symboltoken=symboltoken,
+                        interval=(
+                            confirmation_interval
+                        ),
+                    )
+                )
 
             # ---------------------------------
             # COMPLETED CANDLE INTEGRITY GATE

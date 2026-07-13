@@ -2,7 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
-
+import pandas as pd
 from services.completed_candle_service import (
     CompletedCandleService,
 )
@@ -171,3 +171,54 @@ def test_rejects_unsupported_interval():
             symboltoken="99926000",
             interval="INVALID_INTERVAL",
         )
+def test_reuses_dataframe_without_broker_request():
+
+    client = MagicMock()
+
+    dataframe = pd.DataFrame(
+        [
+            {
+                "timestamp": pd.Timestamp(
+                    "2026-07-11T10:05:00+05:30"
+                ),
+                "Open": 100,
+                "High": 105,
+                "Low": 99,
+                "Close": 104,
+                "Volume": 1000,
+            },
+            {
+                "timestamp": pd.Timestamp(
+                    "2026-07-11T10:10:00+05:30"
+                ),
+                "Open": 104,
+                "High": 110,
+                "Low": 103,
+                "Close": 109,
+                "Volume": 1500,
+            },
+        ]
+    )
+
+    service = CompletedCandleService(
+        market_client=client
+    )
+
+    result = (
+        service
+        .get_latest_completed_candle_from_dataframe(
+            dataframe=dataframe,
+            interval="FIVE_MINUTE",
+            now=datetime(
+                2026,
+                7,
+                11,
+                10,
+                12,
+            ),
+        )
+    )
+
+    assert result["close"] == 104.0
+
+    client.get_historical_data.assert_not_called()        

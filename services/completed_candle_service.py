@@ -279,7 +279,162 @@ class CompletedCandleService:
             return []
 
         return rows
+    def get_latest_completed_candle_from_dataframe(
+        self,
+        dataframe,
+        interval="FIVE_MINUTE",
+        now=None,
+    ):
+        """
+        Return the latest fully completed and validated candle
+        from an already-fetched normalized OHLCV DataFrame.
 
+        No broker request is made.
+        """
+
+        interval = str(
+            interval
+        ).upper()
+
+        if interval not in INTERVAL_MINUTES:
+            raise ValueError(
+                f"Unsupported interval: {interval}"
+            )
+
+        if dataframe is None or dataframe.empty:
+            raise RuntimeError(
+                "No candle data available in dataframe."
+            )
+
+        required_columns = [
+            "timestamp",
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume",
+        ]
+
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in dataframe.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                "DataFrame is missing required candle columns: "
+                + ", ".join(
+                    missing_columns
+                )
+            )
+
+        current_time = (
+            now
+            if now is not None
+            else datetime.now()
+        )
+
+        interval_minutes = (
+            INTERVAL_MINUTES[
+                interval
+            ]
+        )
+
+        rows = (
+            dataframe[
+                required_columns
+            ]
+            .itertuples(
+                index=False,
+                name=None,
+            )
+        )
+
+        completed = []
+        invalid_candle_count = 0
+
+        for row in rows:
+
+            try:
+                candle = (
+                    self._validate_and_normalize_candle(
+                        row
+                    )
+                )
+
+                candle_start = (
+                    self._parse_timestamp(
+                        candle[
+                            "timestamp"
+                        ]
+                    )
+                )
+
+                (
+                    candle_start,
+                    comparison_time,
+                ) = self._align_timezones(
+                    candle_start=candle_start,
+                    current_time=current_time,
+                )
+
+            except (
+                TypeError,
+                ValueError,
+                MarketDataValidationError,
+            ):
+                invalid_candle_count += 1
+                continue
+
+            candle_end = (
+                candle_start
+                + timedelta(
+                    minutes=interval_minutes
+                )
+            )
+
+            if candle_end <= comparison_time:
+                candle[
+                    "_parsed_timestamp"
+                ] = candle_start
+
+                completed.append(
+                    candle
+                )
+
+        if not completed:
+
+            if invalid_candle_count > 0:
+                raise MarketDataValidationError(
+                    "No valid completed candle is "
+                    "available because received market "
+                    "data failed integrity validation."
+                )
+
+            raise RuntimeError(
+                "No completed candle available "
+                "in dataframe."
+            )
+
+        completed.sort(
+            key=lambda candle: (
+                candle[
+                    "_parsed_timestamp"
+                ]
+            )
+        )
+
+        latest = dict(
+            completed[-1]
+        )
+
+        latest.pop(
+            "_parsed_timestamp",
+            None,
+        )
+
+        return latest
     def get_latest_completed_candle(
         self,
         exchange,
