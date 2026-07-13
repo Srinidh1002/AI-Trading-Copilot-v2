@@ -20,6 +20,10 @@ from services.live_analysis_pipeline import (
     LiveAnalysisPipeline,
 )
 
+from services.live_multi_timeframe_data import (
+    LiveMultiTimeframeData,
+)
+
 from services.nse_holiday_calendar import (
     get_nse_holiday_calendar,
 )
@@ -91,20 +95,39 @@ class LiveOptionDecisionPipeline:
         analysis_pipeline=None,
         option_chain_builder=None,
         completed_candle_service=None,
+        market_client=None,
         holiday_calendar=None,
         audit_logger=None,
         persist_audit=False,
     ):
+        shared_market_client = market_client
+
+        if (
+            shared_market_client is None
+            and (
+                analysis_pipeline is None
+                or option_chain_builder is None
+                or completed_candle_service is None
+            )
+        ):
+            shared_market_client = AngelMarketDataClient()
+
         self.analysis_pipeline = (
             analysis_pipeline
             if analysis_pipeline is not None
-            else LiveAnalysisPipeline()
+            else LiveAnalysisPipeline(
+                data_service=LiveMultiTimeframeData(
+                    client=shared_market_client
+                )
+            )
         )
 
         self.option_chain_builder = (
             option_chain_builder
             if option_chain_builder is not None
-            else LiveOptionChainBuilder()
+            else LiveOptionChainBuilder(
+                market_client=shared_market_client
+            )
         )
 
         self.completed_candle_service = (
@@ -112,7 +135,7 @@ class LiveOptionDecisionPipeline:
             if completed_candle_service is not None
             else CompletedCandleService(
                 market_client=(
-                    AngelMarketDataClient()
+                    shared_market_client
                 )
             )
         )

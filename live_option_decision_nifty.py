@@ -630,6 +630,7 @@ audit_logger = (
 
 pipeline = (
     LiveOptionDecisionPipeline(
+        market_client=client,
         audit_logger=(
             audit_logger
         ),

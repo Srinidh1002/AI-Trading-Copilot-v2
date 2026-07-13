@@ -15,6 +15,7 @@ Read-only.
 No orders are placed from this client.
 """
 
+import logging
 import time
 
 import pyotp
@@ -26,6 +27,14 @@ from config import (
     ANGEL_PIN,
     ANGEL_TOTP_SECRET,
 )
+from services.broker.market_data_control import (
+    BrokerMarketDataRequestError,
+    MarketDataRequestController,
+    configured_value,
+)
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class AngelMarketDataClient:
@@ -39,6 +48,12 @@ class AngelMarketDataClient:
         max_retries=3,
         retry_delay_seconds=1.0,
         retry_backoff_multiplier=2.0,
+        min_request_interval_seconds=None,
+        historical_request_interval_seconds=None,
+        cache_ttl_seconds=None,
+        rate_limit_cooldown_seconds=None,
+        max_rate_limit_retries=None,
+        request_controller=None,
     ):
         if not ANGEL_API_KEY:
             raise ValueError(
@@ -75,6 +90,30 @@ class AngelMarketDataClient:
 
         self.retry_backoff_multiplier = (
             retry_backoff_multiplier
+        )
+
+        self.max_rate_limit_retries = configured_value(
+            "ANGEL_MARKET_DATA_MAX_RATE_LIMIT_RETRIES",
+            2,
+            int,
+            max_rate_limit_retries,
+        )
+
+        self.request_controller = (
+            request_controller
+            if request_controller is not None
+            else MarketDataRequestController(
+                min_request_interval_seconds=(
+                    min_request_interval_seconds
+                ),
+                historical_request_interval_seconds=(
+                    historical_request_interval_seconds
+                ),
+                cache_ttl_seconds=cache_ttl_seconds,
+                rate_limit_cooldown_seconds=(
+                    rate_limit_cooldown_seconds
+                ),
+            )
         )
 
         self.authenticated = False
@@ -125,13 +164,27 @@ class AngelMarketDataClient:
             ANGEL_TOTP_SECRET
         ).now()
 
+        LOGGER.info(
+            "broker_auth action=generate_session monotonic=%.6f force=%s",
+            time.monotonic(),
+            bool(force),
+        )
+
         try:
+            self.request_controller.wait_for_slot(
+                "authentication",
+                1,
+            )
             response = (
                 self.api.generateSession(
                     ANGEL_CLIENT_ID,
                     ANGEL_PIN,
                     totp,
                 )
+            )
+
+            self.request_controller.mark_request_complete(
+                "authentication"
             )
 
         except Exception as exc:
@@ -142,6 +195,15 @@ class AngelMarketDataClient:
                 "Angel One login request failed: "
                 f"{exc}"
             ) from exc
+
+        if self._is_rate_limit_error(
+            response=response,
+        ):
+            self.request_controller.record_rate_limit(
+                "authentication",
+                1,
+                self.retry_backoff_multiplier,
+            )
 
         if (
             not response
@@ -268,6 +330,29 @@ class AngelMarketDataClient:
             for term
             in authentication_terms
         )
+
+    @staticmethod
+    def _is_rate_limit_error(
+        response=None,
+        exception=None,
+    ):
+        """Classify broker access-rate denials before auth recovery."""
+        messages = []
+        if isinstance(response, dict):
+            messages.extend([
+                str(response.get("message", "")),
+                str(response.get("errorcode", "")),
+            ])
+        if exception is not None:
+            messages.append(str(exception))
+        combined = " ".join(messages).lower()
+        return any(term in combined for term in (
+            "exceeding access rate",
+            "access rate",
+            "rate limit",
+            "too many requests",
+            "too many request",
+        ))
 
     @staticmethod
     def _is_retryable_exception(
@@ -428,6 +513,7 @@ class AngelMarketDataClient:
         self,
         request_callable,
         request_name,
+        cache_key=None,
     ):
         """
         Execute a read-only SmartAPI request
@@ -441,6 +527,14 @@ class AngelMarketDataClient:
         - Permanent failures stop immediately.
         """
 
+        if cache_key is not None:
+            cached = self.request_controller.get_cached(
+                cache_key,
+                request_name,
+            )
+            if cached is not None:
+                return cached
+
         delay = (
             self.retry_delay_seconds
         )
@@ -449,17 +543,47 @@ class AngelMarketDataClient:
 
         authentication_retry_used = False
 
+        rate_limit_attempts = 0
+
+        # A configured rate-limit retry budget must not be silently reduced by
+        # the older general retry budget.
+        maximum_attempts = max(
+            self.max_retries,
+            self.max_rate_limit_retries + 1,
+        )
+
         for attempt in range(
             1,
-            self.max_retries + 1,
+            maximum_attempts + 1,
         ):
 
             try:
                 self._ensure_authenticated()
 
+                self.request_controller.wait_for_slot(
+                    request_name,
+                    attempt,
+                )
+
                 response = (
                     request_callable()
                 )
+
+                if self._is_rate_limit_error(response=response):
+                    rate_limit_attempts += 1
+                    if rate_limit_attempts > self.max_rate_limit_retries:
+                        raise BrokerMarketDataRequestError(
+                            request_name,
+                            rate_limit_attempts,
+                            "rate_limited",
+                            response.get("message", "Unknown rate-limit error"),
+                        )
+                    self.request_controller.record_rate_limit(
+                        request_name,
+                        rate_limit_attempts,
+                        self.retry_backoff_multiplier,
+                    )
+                    continue
 
                 # -------------------------
                 # SESSION EXPIRED
@@ -519,16 +643,36 @@ class AngelMarketDataClient:
                 # NORMAL RESPONSE
                 # -------------------------
 
-                return (
-                    self._validate_response(
-                        response,
-                        request_name,
-                    )
-                )
+                validated = self._validate_response(response, request_name)
+                if cache_key is not None:
+                    self.request_controller.cache(cache_key, validated)
+                return validated
 
             except Exception as exc:
 
                 last_exception = exc
+
+                if isinstance(
+                    exc,
+                    BrokerMarketDataRequestError,
+                ):
+                    raise
+
+                if self._is_rate_limit_error(exception=exc):
+                    rate_limit_attempts += 1
+                    if rate_limit_attempts > self.max_rate_limit_retries:
+                        raise BrokerMarketDataRequestError(
+                            request_name,
+                            rate_limit_attempts,
+                            "rate_limited",
+                            exc,
+                        ) from exc
+                    self.request_controller.record_rate_limit(
+                        request_name,
+                        rate_limit_attempts,
+                        self.retry_backoff_multiplier,
+                    )
+                    continue
 
                 # -------------------------
                 # AUTHENTICATION EXCEPTION
@@ -595,6 +739,17 @@ class AngelMarketDataClient:
             f"{last_exception}"
         ) from last_exception
 
+    @staticmethod
+    def _market_data_cache_key(mode, exchange_tokens):
+        return (
+            "market-data",
+            mode,
+            tuple(sorted(
+                (str(exchange).upper(), tuple(sorted(map(str, tokens))))
+                for exchange, tokens in exchange_tokens.items()
+            )),
+        )
+
     # ---------------------------------
     # LIVE MARKET DATA
     # ---------------------------------
@@ -657,6 +812,7 @@ class AngelMarketDataClient:
                 )
             ),
             request_name="market-data",
+            cache_key=self._market_data_cache_key(mode, exchange_tokens),
         )
 
     # ---------------------------------
@@ -715,6 +871,9 @@ class AngelMarketDataClient:
                 )
             ),
             request_name="historical-data",
+            cache_key=(
+                "historical-data", exchange, symboltoken, interval, fromdate, todate
+            ),
         )
 
     # ---------------------------------
@@ -765,4 +924,5 @@ class AngelMarketDataClient:
                 )
             ),
             request_name="Option Greeks",
+            cache_key=("option-greeks", params["name"], expiry_date),
         )

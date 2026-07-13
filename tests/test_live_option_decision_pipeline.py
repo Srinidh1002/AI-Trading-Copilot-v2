@@ -637,3 +637,15 @@ def test_stale_completed_candle_blocks_option_chain():
     )
 
     option_builder.build_chain.assert_not_called()
+
+
+def test_default_pipeline_shares_injected_market_client():
+    market_client = MagicMock()
+
+    pipeline = LiveOptionDecisionPipeline(
+        market_client=market_client,
+    )
+
+    assert pipeline.analysis_pipeline.data_service.client is market_client
+    assert pipeline.option_chain_builder.market_client is market_client
+    assert pipeline.completed_candle_service.market_client is market_client
