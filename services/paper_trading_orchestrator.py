@@ -11,15 +11,27 @@ Responsibilities:
 - Prevent duplicate source decisions.
 - Optionally enforce PaperTradingRiskGuard.
 - Preserve source decision and audit references.
-- Isolate paper-trading and risk-guard failures.
+- Attach decision snapshots.
+- Attach advisory historical context.
+- Isolate paper-trading, risk-guard, and historical-context failures.
 - Return structured orchestration results.
 
 IMPORTANT:
 - PAPER TRADING ONLY.
 - Does NOT place real broker orders.
+- Historical context is advisory only.
+- Historical context cannot override live safety.
 """
 
 from copy import deepcopy
+
+from services.decision_snapshot import (
+    build_decision_snapshot,
+)
+
+from services.historical_context_engine import (
+    HistoricalContextEngine,
+)
 
 
 class PaperTradingOrchestrator:
@@ -35,6 +47,7 @@ class PaperTradingOrchestrator:
         paper_trading_engine,
         enabled=True,
         risk_guard=None,
+        historical_context_engine=None,
     ):
         if paper_trading_engine is None:
             raise ValueError(
@@ -63,6 +76,21 @@ class PaperTradingOrchestrator:
                 "risk_guard must expose an evaluate method."
             )
 
+        if (
+            historical_context_engine is not None
+            and not callable(
+                getattr(
+                    historical_context_engine,
+                    "evaluate",
+                    None,
+                )
+            )
+        ):
+            raise ValueError(
+                "historical_context_engine must expose "
+                "an evaluate method."
+            )
+
         self.paper_trading_engine = (
             paper_trading_engine
         )
@@ -71,6 +99,12 @@ class PaperTradingOrchestrator:
 
         self.risk_guard = (
             risk_guard
+        )
+
+        self.historical_context_engine = (
+            historical_context_engine
+            if historical_context_engine is not None
+            else HistoricalContextEngine()
         )
 
         self._processed_decision_ids = set()
@@ -236,6 +270,37 @@ class PaperTradingOrchestrator:
             )
 
         # ----------------------------------------------------
+        # DECISION SNAPSHOT
+        # ----------------------------------------------------
+
+        decision_snapshot = (
+            build_decision_snapshot(
+                pipeline_result
+            )
+        )
+
+        # ----------------------------------------------------
+        # HISTORICAL CONTEXT
+        #
+        # Advisory only.
+        # It cannot:
+        # - Block the trade
+        # - Change direction
+        # - Change strategy
+        # - Change quantity
+        # - Change stop-loss
+        # - Override live safety
+        # ----------------------------------------------------
+
+        historical_context = (
+            self._evaluate_historical_context(
+                decision_snapshot=(
+                    decision_snapshot
+                )
+            )
+        )
+
+        # ----------------------------------------------------
         # SAFE METADATA
         # ----------------------------------------------------
 
@@ -255,6 +320,20 @@ class PaperTradingOrchestrator:
         safe_metadata.setdefault(
             "paper_trade",
             True,
+        )
+
+        safe_metadata.setdefault(
+            "decision_snapshot",
+            deepcopy(
+                decision_snapshot
+            ),
+        )
+
+        safe_metadata.setdefault(
+            "historical_context",
+            deepcopy(
+                historical_context
+            ),
         )
 
         if risk_result is not None:
@@ -370,6 +449,119 @@ class PaperTradingOrchestrator:
         self,
     ):
         self._processed_decision_ids.clear()
+
+    # ========================================================
+    # HISTORICAL CONTEXT
+    # ========================================================
+
+    def _evaluate_historical_context(
+        self,
+        *,
+        decision_snapshot,
+    ):
+        """
+        Build advisory historical context from previous
+        paper trades.
+
+        Historical context must never block or modify the
+        current live trading decision.
+
+        Failures are isolated and returned as advisory
+        metadata instead of failing the paper trade.
+        """
+
+        try:
+            trades = (
+                self.paper_trading_engine
+                .get_all_trades()
+            )
+
+        except Exception as exc:
+            return {
+                "historical_bias": (
+                    "INSUFFICIENT_DATA"
+                ),
+                "similar_trades": 0,
+                "sufficient_sample": False,
+                "reason": (
+                    "Historical trade data could not "
+                    "be loaded."
+                ),
+                "error": (
+                    f"{type(exc).__name__}: {exc}"
+                ),
+                "advisory_only": True,
+                "can_override_live_safety": False,
+            }
+
+        try:
+            result = (
+                self.historical_context_engine
+                .evaluate(
+                    trades=trades,
+                    decision_snapshot=(
+                        deepcopy(
+                            decision_snapshot
+                        )
+                    ),
+                )
+            )
+
+        except Exception as exc:
+            return {
+                "historical_bias": (
+                    "INSUFFICIENT_DATA"
+                ),
+                "similar_trades": 0,
+                "sufficient_sample": False,
+                "reason": (
+                    "Historical context evaluation "
+                    "failed."
+                ),
+                "error": (
+                    f"{type(exc).__name__}: {exc}"
+                ),
+                "advisory_only": True,
+                "can_override_live_safety": False,
+            }
+
+        if not isinstance(
+            result,
+            dict,
+        ):
+            return {
+                "historical_bias": (
+                    "INSUFFICIENT_DATA"
+                ),
+                "similar_trades": 0,
+                "sufficient_sample": False,
+                "reason": (
+                    "Historical context engine "
+                    "returned invalid data."
+                ),
+                "error": (
+                    "INVALID_HISTORICAL_CONTEXT_RESULT"
+                ),
+                "advisory_only": True,
+                "can_override_live_safety": False,
+            }
+
+        safe_result = deepcopy(
+            result
+        )
+
+        # Enforce advisory-only safety regardless
+        # of the historical engine output.
+
+        safe_result[
+            "advisory_only"
+        ] = True
+
+        safe_result[
+            "can_override_live_safety"
+        ] = False
+
+        return safe_result
 
     # ========================================================
     # RISK GUARD

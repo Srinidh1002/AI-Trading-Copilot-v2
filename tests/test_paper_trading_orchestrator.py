@@ -1464,18 +1464,643 @@ def test_orchestrator_only_calls_open_trade_for_allowed_decision():
         orchestrator
     )
 
+    method_names = [
+        call[0]
+        for call in engine.method_calls
+    ]
+
     assert (
-        len(
-            engine.method_calls
-        )
-        == 1
+        method_names
+        == [
+            "get_all_trades",
+            "open_trade",
+        ]
     )
 
     assert (
-        engine.method_calls[
-            0
-        ][
-            0
-        ]
-        == "open_trade"
+        engine.open_trade.call_count
+        == 1
     )
+    # ============================================================
+# HISTORICAL CONTEXT INTEGRATION
+# ============================================================
+
+
+def make_historical_context_orchestrator(
+    historical_result=None,
+):
+    """
+    Build an orchestrator with a mocked historical
+    context engine.
+    """
+
+    engine = MagicMock()
+
+    engine.open_trade.return_value = (
+        FakeTrade()
+    )
+
+    engine.get_all_trades.return_value = []
+
+    historical_engine = MagicMock()
+
+    if historical_result is not None:
+        historical_engine.evaluate.return_value = (
+            historical_result
+        )
+
+    orchestrator = (
+        PaperTradingOrchestrator(
+            paper_trading_engine=engine,
+            historical_context_engine=(
+                historical_engine
+            ),
+        )
+    )
+
+    return (
+        orchestrator,
+        engine,
+        historical_engine,
+    )
+
+
+def test_supportive_historical_context_is_attached():
+
+    historical_result = {
+        "historical_bias": "SUPPORTIVE",
+        "similar_trades": 10,
+        "win_rate": 70.0,
+        "expectancy": 100.0,
+        "sufficient_sample": True,
+    }
+
+    (
+        orchestrator,
+        engine,
+        historical_engine,
+    ) = make_historical_context_orchestrator(
+        historical_result
+    )
+
+    result = process_allowed(
+        orchestrator
+    )
+
+    metadata = (
+        engine.open_trade
+        .call_args
+        .kwargs["metadata"]
+    )
+
+    context = metadata[
+        "historical_context"
+    ]
+
+    assert result["status"] == "OPENED"
+
+    assert (
+        context["historical_bias"]
+        == "SUPPORTIVE"
+    )
+
+    assert (
+        context["advisory_only"]
+        is True
+    )
+
+    assert (
+        context[
+            "can_override_live_safety"
+        ]
+        is False
+    )
+
+    historical_engine.evaluate.assert_called_once()
+
+
+def test_negative_historical_context_does_not_block_trade():
+
+    historical_result = {
+        "historical_bias": "NEGATIVE",
+        "similar_trades": 20,
+        "win_rate": 30.0,
+        "expectancy": -50.0,
+        "sufficient_sample": True,
+    }
+
+    (
+        orchestrator,
+        engine,
+        _,
+    ) = make_historical_context_orchestrator(
+        historical_result
+    )
+
+    result = process_allowed(
+        orchestrator
+    )
+
+    metadata = (
+        engine.open_trade
+        .call_args
+        .kwargs["metadata"]
+    )
+
+    assert result["status"] == "OPENED"
+    assert result["opened"] is True
+
+    assert (
+        metadata[
+            "historical_context"
+        ][
+            "historical_bias"
+        ]
+        == "NEGATIVE"
+    )
+
+    engine.open_trade.assert_called_once()
+
+
+def test_insufficient_historical_data_does_not_block_trade():
+
+    historical_result = {
+        "historical_bias": (
+            "INSUFFICIENT_DATA"
+        ),
+        "similar_trades": 2,
+        "sufficient_sample": False,
+    }
+
+    (
+        orchestrator,
+        engine,
+        _,
+    ) = make_historical_context_orchestrator(
+        historical_result
+    )
+
+    result = process_allowed(
+        orchestrator
+    )
+
+    assert result["status"] == "OPENED"
+
+    engine.open_trade.assert_called_once()
+
+
+def test_historical_engine_failure_does_not_block_trade():
+
+    (
+        orchestrator,
+        engine,
+        historical_engine,
+    ) = make_historical_context_orchestrator()
+
+    historical_engine.evaluate.side_effect = (
+        RuntimeError(
+            "Historical analysis failed."
+        )
+    )
+
+    result = process_allowed(
+        orchestrator
+    )
+
+    metadata = (
+        engine.open_trade
+        .call_args
+        .kwargs["metadata"]
+    )
+
+    context = metadata[
+        "historical_context"
+    ]
+
+    assert result["status"] == "OPENED"
+
+    assert (
+        context["historical_bias"]
+        == "INSUFFICIENT_DATA"
+    )
+
+    assert (
+        context["advisory_only"]
+        is True
+    )
+
+    assert (
+        context[
+            "can_override_live_safety"
+        ]
+        is False
+    )
+
+    assert (
+        "RuntimeError"
+        in context["error"]
+    )
+
+    engine.open_trade.assert_called_once()
+
+
+def test_trade_history_failure_does_not_block_trade():
+
+    (
+        orchestrator,
+        engine,
+        _,
+    ) = make_historical_context_orchestrator()
+
+    engine.get_all_trades.side_effect = (
+        OSError(
+            "Trade history unavailable."
+        )
+    )
+
+    result = process_allowed(
+        orchestrator
+    )
+
+    metadata = (
+        engine.open_trade
+        .call_args
+        .kwargs["metadata"]
+    )
+
+    context = metadata[
+        "historical_context"
+    ]
+
+    assert result["status"] == "OPENED"
+
+    assert (
+        context["historical_bias"]
+        == "INSUFFICIENT_DATA"
+    )
+
+    assert (
+        "OSError"
+        in context["error"]
+    )
+
+    engine.open_trade.assert_called_once()
+
+
+def test_custom_historical_engine_cannot_enable_safety_override():
+
+    historical_result = {
+        "historical_bias": "NEGATIVE",
+        "advisory_only": False,
+        "can_override_live_safety": True,
+    }
+
+    (
+        orchestrator,
+        engine,
+        _,
+    ) = make_historical_context_orchestrator(
+        historical_result
+    )
+
+    result = process_allowed(
+        orchestrator
+    )
+
+    context = (
+        engine.open_trade
+        .call_args
+        .kwargs["metadata"][
+            "historical_context"
+        ]
+    )
+
+    assert result["status"] == "OPENED"
+
+    assert (
+        context["advisory_only"]
+        is True
+    )
+
+    assert (
+        context[
+            "can_override_live_safety"
+        ]
+        is False
+    )
+
+
+def test_historical_context_receives_trade_history():
+
+    historical_result = {
+        "historical_bias": (
+            "INSUFFICIENT_DATA"
+        ),
+    }
+
+    (
+        orchestrator,
+        engine,
+        historical_engine,
+    ) = make_historical_context_orchestrator(
+        historical_result
+    )
+
+    historical_trades = [
+        {
+            "trade_id": "old-001",
+            "status": "CLOSED",
+        }
+    ]
+
+    engine.get_all_trades.return_value = (
+        historical_trades
+    )
+
+    process_allowed(
+        orchestrator
+    )
+
+    call_kwargs = (
+        historical_engine.evaluate
+        .call_args
+        .kwargs
+    )
+
+    assert (
+        call_kwargs["trades"]
+        == historical_trades
+    )
+
+    assert isinstance(
+        call_kwargs[
+            "decision_snapshot"
+        ],
+        dict,
+    )
+
+
+def test_invalid_historical_result_does_not_block_trade():
+
+    (
+        orchestrator,
+        engine,
+        historical_engine,
+    ) = make_historical_context_orchestrator()
+
+    historical_engine.evaluate.return_value = (
+        "INVALID"
+    )
+
+    result = process_allowed(
+        orchestrator
+    )
+
+    context = (
+        engine.open_trade
+        .call_args
+        .kwargs["metadata"][
+            "historical_context"
+        ]
+    )
+
+    assert result["status"] == "OPENED"
+
+    assert (
+        context["historical_bias"]
+        == "INSUFFICIENT_DATA"
+    )
+
+    assert (
+        context["error"]
+        == (
+            "INVALID_HISTORICAL_CONTEXT_RESULT"
+        )
+    )
+def test_live_intelligence_propagates_to_historical_context_and_trade_metadata():
+
+    historical_result = {
+        "historical_bias": "POSITIVE",
+        "similar_trades": 12,
+        "sufficient_sample": True,
+        "win_rate": 0.75,
+        "expectancy": 125.50,
+    }
+
+    (
+        orchestrator,
+        engine,
+        historical_engine,
+    ) = make_historical_context_orchestrator(
+        historical_result
+    )
+
+    pipeline_result = (
+        make_pipeline_result()
+    )
+
+    pipeline_result[
+        "market_analysis"
+    ] = {
+        "strategy": {
+            "strategy": (
+                "TREND_CONTINUATION"
+            ),
+            "decision": "TRADE",
+            "confidence": 91,
+            "risk_flags": [],
+        },
+        "regime": {
+            "primary_regime": (
+                "TRENDING_BULLISH"
+            ),
+            "trend": "BULLISH",
+            "confidence": 88,
+        },
+        "timeframe": {
+            "overall_trend": "BULLISH",
+            "alignment": "FULL",
+            "confidence": 92,
+        },
+        "technical": {
+            "trend": "BULLISH",
+            "score": 82,
+            "confidence": 86,
+        },
+        "candlestick": {
+            "signal": "BULLISH",
+            "patterns": [
+                "BULLISH_ENGULFING",
+            ],
+            "support": 25000.0,
+            "resistance": 25200.0,
+        },
+        "chart": {
+            "signal": "BULLISH",
+            "patterns": [
+                "UPTREND_STRUCTURE",
+            ],
+        },
+        "volume": {
+            "bias": "BULLISH",
+            "relative_volume": 1.8,
+            "volume_spike": True,
+            "signals": [
+                "VOLUME_SPIKE",
+                "BULLISH_VOLUME_CONFIRMATION",
+            ],
+        },
+        "regime_aware_evidence": {
+            "contextual_bias": "BULLISH",
+            "relevant_signals": [
+                "MULTI_TIMEFRAME_TREND",
+                "VOLUME_SPIKE",
+            ],
+            "confirmations": [
+                "Volume confirms bullish setup.",
+            ],
+            "warnings": [],
+        },
+    }
+
+    result = process_allowed(
+        orchestrator,
+        pipeline_result=(
+            pipeline_result
+        ),
+    )
+
+    assert result["status"] == "OPENED"
+
+    # --------------------------------------------------------
+    # VERIFY DECISION SNAPSHOT REACHES HISTORICAL ENGINE
+    # --------------------------------------------------------
+
+    historical_call = (
+        historical_engine.evaluate
+        .call_args
+        .kwargs
+    )
+
+    snapshot = historical_call[
+        "decision_snapshot"
+    ]
+
+    assert (
+        snapshot["strategy"]
+        == "TREND_CONTINUATION"
+    )
+
+    assert (
+        snapshot["strategy_confidence"]
+        == 91
+    )
+
+    assert (
+        snapshot["market_regime"]
+        == "TRENDING_BULLISH"
+    )
+
+    assert (
+        snapshot["regime_trend"]
+        == "BULLISH"
+    )
+
+    assert (
+        snapshot["volume_bias"]
+        == "BULLISH"
+    )
+
+    assert (
+        snapshot["relative_volume"]
+        == 1.8
+    )
+
+    assert (
+        snapshot["volume_spike"]
+        is True
+    )
+
+    assert (
+        "VOLUME_SPIKE"
+        in snapshot["volume_signals"]
+    )
+
+    assert (
+        snapshot["contextual_bias"]
+        == "BULLISH"
+    )
+
+    assert (
+        "MULTI_TIMEFRAME_TREND"
+        in snapshot["relevant_signals"]
+    )
+
+    # --------------------------------------------------------
+    # VERIFY SNAPSHOT AND HISTORICAL CONTEXT REACH TRADE
+    # METADATA
+    # --------------------------------------------------------
+
+    trade_metadata = (
+        engine.open_trade
+        .call_args
+        .kwargs["metadata"]
+    )
+
+    assert (
+        trade_metadata[
+            "decision_snapshot"
+        ]["strategy"]
+        == "TREND_CONTINUATION"
+    )
+
+    assert (
+        trade_metadata[
+            "decision_snapshot"
+        ]["volume_bias"]
+        == "BULLISH"
+    )
+
+    assert (
+        trade_metadata[
+            "decision_snapshot"
+        ]["contextual_bias"]
+        == "BULLISH"
+    )
+
+    historical_context = (
+        trade_metadata[
+            "historical_context"
+        ]
+    )
+
+    assert (
+        historical_context[
+            "historical_bias"
+        ]
+        == "POSITIVE"
+    )
+
+    assert (
+        historical_context[
+            "similar_trades"
+        ]
+        == 12
+    )
+
+    assert (
+        historical_context[
+            "advisory_only"
+        ]
+        is True
+    )
+
+    assert (
+        historical_context[
+            "can_override_live_safety"
+        ]
+        is False
+    )
+
+    engine.open_trade.assert_called_once()
+    historical_engine.evaluate.assert_called_once()

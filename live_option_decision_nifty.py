@@ -1064,7 +1064,99 @@ print(
         [],
     ),
 )
+# ============================================================
+# MARKET REGIME
+# ============================================================
 
+regime_analysis = (
+    market_analysis.get(
+        "regime",
+        {},
+    )
+    or {}
+)
+
+if regime_analysis:
+
+    print("\nMARKET REGIME")
+    print("=============")
+
+    print(
+        "Primary Regime:",
+        regime_analysis.get(
+            "primary_regime"
+        ),
+    )
+
+    print(
+        "Trend:",
+        regime_analysis.get(
+            "trend"
+        ),
+    )
+
+    print(
+        "Volatility:",
+        regime_analysis.get(
+            "volatility"
+        ),
+    )
+
+    print(
+        "Confidence:",
+        regime_analysis.get(
+            "confidence"
+        ),
+    )
+
+    regime_metrics = (
+        regime_analysis.get(
+            "metrics",
+            {},
+        )
+        or {}
+    )
+
+    if regime_metrics:
+
+        print(
+            "ADX:",
+            regime_metrics.get(
+                "adx"
+            ),
+        )
+
+        print(
+            "ATR %:",
+            regime_metrics.get(
+                "atr_percent"
+            ),
+        )
+
+        print(
+            "Bollinger Band Width %:",
+            regime_metrics.get(
+                "bb_width_percent"
+            ),
+        )
+
+    regime_reasons = (
+        regime_analysis.get(
+            "reasons",
+            [],
+        )
+        or []
+    )
+
+    if regime_reasons:
+
+        print("\nREGIME REASONS")
+
+        for reason in regime_reasons:
+            print(
+                "-",
+                reason,
+            )
 
 # ============================================================
 # VOLUME INTELLIGENCE
@@ -1794,6 +1886,155 @@ if paper_trading_result:
             "Paper Trading Error:",
             paper_trading_result.get(
                 "error"
+            ),
+        )
+
+    # ========================================================
+    # HISTORICAL CONTEXT
+    # ========================================================
+    #
+    # Historical context is advisory only.
+    # It is stored inside the opened paper trade metadata
+    # and must never override the live decision or safety.
+    # ========================================================
+
+    paper_trade = (
+        paper_trading_result.get(
+            "trade",
+            {},
+        )
+        or {}
+    )
+
+    if isinstance(
+        paper_trade,
+        dict,
+    ):
+
+        paper_trade_metadata = (
+            paper_trade.get(
+                "metadata",
+                {},
+            )
+            or {}
+        )
+
+    else:
+
+        paper_trade_metadata = {}
+
+    if isinstance(
+        paper_trade_metadata,
+        dict,
+    ):
+
+        historical_context = (
+            paper_trade_metadata.get(
+                "historical_context",
+                {},
+            )
+            or {}
+        )
+
+    else:
+
+        historical_context = {}
+
+    if (
+        isinstance(
+            historical_context,
+            dict,
+        )
+        and historical_context
+    ):
+
+        print("\nHISTORICAL CONTEXT")
+        print("==================")
+
+        print(
+            "Historical Bias:",
+            historical_context.get(
+                "historical_bias"
+            ),
+        )
+
+        print(
+            "Similar Trades:",
+            historical_context.get(
+                "similar_trades"
+            ),
+        )
+
+        print(
+            "Sufficient Sample:",
+            historical_context.get(
+                "sufficient_sample"
+            ),
+        )
+
+        if (
+            historical_context.get(
+                "win_rate"
+            )
+            is not None
+        ):
+
+            print(
+                "Win Rate:",
+                historical_context.get(
+                    "win_rate"
+                ),
+            )
+
+        if (
+            historical_context.get(
+                "expectancy"
+            )
+            is not None
+        ):
+
+            print(
+                "Expectancy:",
+                historical_context.get(
+                    "expectancy"
+                ),
+            )
+
+        if historical_context.get(
+            "reason"
+        ):
+
+            print(
+                "Reason:",
+                historical_context.get(
+                    "reason"
+                ),
+            )
+
+        if historical_context.get(
+            "error"
+        ):
+
+            print(
+                "Historical Context Error:",
+                historical_context.get(
+                    "error"
+                ),
+            )
+
+        print(
+            "Advisory Only:",
+            historical_context.get(
+                "advisory_only",
+                True,
+            ),
+        )
+
+        print(
+            "Can Override Live Safety:",
+            historical_context.get(
+                "can_override_live_safety",
+                False,
             ),
         )
 
