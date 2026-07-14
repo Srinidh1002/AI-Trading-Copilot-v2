@@ -32,6 +32,7 @@ from datetime import (
     datetime,
     timezone,
 )
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from threading import Lock
 
@@ -47,6 +48,10 @@ class MarketCycleJournal:
     )
 
     FILE_NAME = "cycles.jsonl"
+
+    MARKET_TIMEZONE = ZoneInfo(
+        "Asia/Kolkata"
+    )
 
     def __init__(
         self,
@@ -141,11 +146,23 @@ class MarketCycleJournal:
             "timestamp must be a datetime, string, or None."
         )
 
-    @staticmethod
+    @classmethod
     def _resolve_session_date(
+        cls,
         timestamp,
         session_date=None,
     ):
+        """
+        Resolve the Indian market session date.
+
+        Persisted timestamps may remain in UTC, but
+        market-session classification must use the
+        Asia/Kolkata calendar date.
+
+        An explicitly supplied session_date remains
+        authoritative.
+        """
+
         if session_date is not None:
             if isinstance(
                 session_date,
@@ -201,14 +218,31 @@ class MarketCycleJournal:
                 )
             )
 
-        except ValueError as exc:
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+        ) as exc:
             raise ValueError(
                 "timestamp must be ISO-8601 compatible when "
                 "session_date is not provided."
             ) from exc
 
+        if parsed_timestamp.tzinfo is None:
+            parsed_timestamp = (
+                parsed_timestamp.replace(
+                    tzinfo=timezone.utc
+                )
+            )
+
+        market_timestamp = (
+            parsed_timestamp.astimezone(
+                cls.MARKET_TIMEZONE
+            )
+        )
+
         return (
-            parsed_timestamp
+            market_timestamp
             .date()
             .isoformat()
         )
@@ -534,25 +568,32 @@ class MarketCycleJournal:
         self,
         session_date,
     ):
-        normalized_session_date = (
-            self._resolve_session_date(
-                (
-                    datetime.now(
-                        timezone.utc
-                    )
-                    .isoformat()
-                ),
-                session_date=(
-                    session_date
-                ),
+        if session_date is None:
+            normalized_session_date = (
+                datetime.now(
+                    self.MARKET_TIMEZONE
+                )
+                .date()
+                .isoformat()
             )
-        )
+
+        else:
+            normalized_session_date = (
+                self._resolve_session_date(
+                    timestamp=(
+                        datetime.now(
+                            timezone.utc
+                        )
+                        .isoformat()
+                    ),
+                    session_date=session_date,
+                )
+            )
 
         return (
             self.base_directory
             / normalized_session_date
         )
-
     def get_journal_path(
         self,
         session_date,

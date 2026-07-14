@@ -229,67 +229,126 @@ if ENFORCE_MARKET_SESSION:
                 reason,
             )
 
-    # --------------------------------------------------------
-    # STOP BEFORE ANY BROKER API CALL WHEN MARKET IS CLOSED
-    # --------------------------------------------------------
+        # ----------------------------------------------------
+        # RECORD SESSION-GATED RESEARCH CYCLE
+        # ----------------------------------------------------
 
-    if not pre_session.get(
-        "market_open",
-        False,
-    ):
-
-        print("\n================================")
-        print("FINAL STATUS")
-        print("================================")
-
-        print(
-            "Decision:",
-            pre_session.get(
-                "status",
-                "MARKET_CLOSED",
+        session_gate_result = {
+            "decision": (
+                pre_session.get(
+                    "status",
+                    "MARKET_CLOSED",
+                )
             ),
-        )
+            "market_decision": None,
+            "direction": None,
+            "market_analysis": {},
+            "setup_trigger": {},
+            "contract": {},
+            "session_status": (
+                pre_session
+            ),
+        }
 
-        if (
-            pre_session.get(
-                "status"
+        session_gate_metadata = {
+            "cycle_stage": (
+                "SESSION_PRE_CHECK"
+            ),
+            "research_capture": True,
+            "market_data_requested": False,
+            "option_chain_requested": False,
+            "contract_selected": False,
+            "trade_authorized": False,
+            "paper_trade_opened": False,
+            "blocked_by_session_gate": True,
+        }
+
+        try:
+
+            session_gate_journal = (
+                MarketCycleJournal()
             )
-            == "MARKET_HOLIDAY"
-        ):
+
+            recorded_session_entry = (
+                session_gate_journal.record_cycle(
+                    pipeline_result=(
+                        session_gate_result
+                    ),
+                    paper_trading_result=None,
+                    metadata=(
+                        session_gate_metadata
+                    ),
+                )
+            )
 
             print(
-                "The NSE holiday safety gate "
-                "blocked live analysis before any "
-                "Angel One market-data request."
+                "\nMARKET CYCLE JOURNAL"
             )
 
-        else:
+            print(
+                "===================="
+            )
+
+            print(
+                "Recorded:",
+                True,
+            )
+
+            print(
+                "Decision:",
+                recorded_session_entry.get(
+                    "decision"
+                ),
+            )
+
+            print(
+                "Session Date:",
+                recorded_session_entry.get(
+                    "session_date"
+                ),
+            )
+
+            print(
+                "Cycle Stage:",
+                recorded_session_entry.get(
+                    "metadata",
+                    {},
+                ).get(
+                    "cycle_stage"
+                ),
+            )
+
+        except Exception as exc:
+
+            print(
+                "\nMARKET CYCLE JOURNAL WARNING"
+            )
+
+            print(
+                "============================"
+            )
+
+            print(
+                "The session-gated research "
+                "cycle could not be persisted."
+            )
+
+            print(
+                "Journal Error:",
+                (
+                    f"{type(exc).__name__}: "
+                    f"{exc}"
+                ),
+            )
 
             print(
                 "The market-session safety gate "
-                "blocked live analysis before any "
-                "Angel One market-data request."
+                "remains enforced."
             )
 
-        print(
-            "No live spot data was requested."
-        )
-
-        print(
-            "No option chain was requested."
-        )
-
-        print(
-            "No option contract was selected."
-        )
-
-        print(
-            "No trade was authorized."
-        )
-
-        print(
-            "No paper trade was opened."
-        )
+            print(
+                "No trade was authorized."
+            )
 
         print(
             "\nREAD-ONLY ANALYSIS COMPLETE"
