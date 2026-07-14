@@ -57,7 +57,9 @@ from services.paper_trading_orchestrator import (
 from services.paper_trading_risk_guard import (
     PaperTradingRiskGuard,
 )
-
+from services.market_cycle_journal import (
+    MarketCycleJournal,
+)
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -751,7 +753,13 @@ except Exception as exc:
     raise SystemExit(
         1
     )
+# ============================================================
+# MARKET CYCLE JOURNAL
+# ============================================================
 
+market_cycle_journal = (
+    MarketCycleJournal()
+)
 
 # ============================================================
 # PAPER TRADING ORCHESTRATION
@@ -893,7 +901,86 @@ except Exception as exc:
             exc
         ),
     }
+# ============================================================
+# MARKET CYCLE JOURNAL
+# ============================================================
+#
+# Observability only.
+#
+# Journal persistence must never:
+#
+# - change the live pipeline decision
+# - authorize a trade
+# - reject a trade
+# - modify paper-trading state
+# - override live safety
+# - crash successful market analysis
+#
+# ============================================================
 
+market_cycle_journal_result = None
+
+try:
+
+    market_cycle_journal_result = (
+        market_cycle_journal.record_cycle(
+            pipeline_result=(
+                result
+            ),
+            paper_trading_result=(
+                paper_trading_result
+            ),
+            metadata={
+                "entry_point": (
+                    "live_option_decision_nifty.py"
+                ),
+                "underlying": "NIFTY",
+                "exchange": "NSE",
+                "symboltoken": (
+                    NIFTY_TOKEN
+                ),
+                "spot_price": (
+                    spot_price
+                ),
+                "capital": (
+                    CAPITAL
+                ),
+                "risk_per_trade": (
+                    RISK_PERCENT
+                ),
+                "paper_trading_enabled": (
+                    ENABLE_PAPER_TRADING
+                ),
+                "paper_trade_persistence": (
+                    PERSIST_PAPER_TRADES
+                ),
+                "audit_persistence": (
+                    PERSIST_AUDIT
+                ),
+            },
+        )
+    )
+
+except Exception as exc:
+
+    # --------------------------------------------------------
+    # CRITICAL OBSERVABILITY SAFETY BOUNDARY
+    # --------------------------------------------------------
+    #
+    # Journal failure is fail-open for live analysis.
+    #
+    # The already completed market decision and paper-trading
+    # result remain unchanged.
+    #
+    # --------------------------------------------------------
+
+    market_cycle_journal_result = {
+        "status": "ERROR",
+        "persisted": False,
+        "error": (
+            f"{type(exc).__name__}: {exc}"
+        ),
+    }
 
 # ============================================================
 # MARKET SESSION STATUS
