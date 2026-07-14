@@ -813,3 +813,97 @@ def test_final_stats_printed(
         "Monitoring Successes: 2"
         in output
     )
+    # ============================================================
+# UNICODE OUTPUT SAFETY
+# ============================================================
+
+
+def test_subprocess_unicode_output_does_not_fail_cycle(
+    capsys,
+):
+    """
+    Regression test for Windows console encoding failure.
+
+    The live opportunity script prints the Indian rupee symbol.
+    Unicode console rendering must never convert a successful
+    subprocess result into an opportunity-cycle failure.
+    """
+
+    def successful_unicode_cycle():
+        return {
+            "status": "COMPLETED",
+            "success": True,
+            "returncode": 0,
+            "stdout": (
+                "AI TRADING COPILOT\n"
+                "Capital: ₹10,000.00\n"
+                "PAPER TRADING ONLY"
+            ),
+            "stderr": "",
+            "error": None,
+        }
+
+    cycle = (
+        entry.create_cycle_callable(
+            successful_unicode_cycle,
+            "OPPORTUNITY",
+        )
+    )
+
+    result = (
+        cycle()
+    )
+
+    assert (
+        result["success"]
+        is True
+    )
+
+    assert (
+        result["status"]
+        == "COMPLETED"
+    )
+
+    output = (
+        capsys
+        .readouterr()
+        .out
+    )
+
+    assert (
+        "Capital:"
+        in output
+    )
+
+    assert (
+        "10,000.00"
+        in output
+    )
+
+
+def test_safe_print_text_handles_rupee_symbol(
+    capsys,
+):
+    """
+    Direct regression test for Unicode-safe parent output.
+    """
+
+    entry._safe_print_text(
+        "Capital: ₹10,000.00"
+    )
+
+    output = (
+        capsys
+        .readouterr()
+        .out
+    )
+
+    assert (
+        "Capital:"
+        in output
+    )
+
+    assert (
+        "10,000.00"
+        in output
+    )

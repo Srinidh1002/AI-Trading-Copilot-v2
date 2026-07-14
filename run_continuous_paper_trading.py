@@ -19,23 +19,26 @@ PaperTradingRuntimeHeartbeat
 
 Startup order:
 
-1. Recover persisted paper trades.
-2. Start opportunity cycle.
-3. Start monitoring cycle.
-4. Continue at configured interval.
-5. Report final runtime health when stopped.
-6. Persist final runtime heartbeat.
+1. Configure parent runtime output for UTF-8.
+2. Recover persisted paper trades.
+3. Start opportunity cycle.
+4. Start monitoring cycle.
+5. Continue at configured interval.
+6. Report final runtime health when stopped.
+7. Persist final runtime heartbeat.
 
 IMPORTANT:
 - PAPER TRADING ONLY.
 - NO REAL ORDER PLACEMENT.
 - Existing standalone scripts run in isolated subprocesses.
 - Recovery failure is fail-closed in the real continuous runtime.
+- Subprocess Unicode output must never break a runtime cycle.
 """
 
 import inspect
 import os
 from pathlib import Path
+import sys
 
 from services.continuous_paper_trading_runtime import (
     ContinuousPaperTradingRuntime,
@@ -62,6 +65,149 @@ from services.paper_trading_runtime_heartbeat import (
 
 DEFAULT_INTERVAL_SECONDS = 60.0
 DEFAULT_TIMEOUT_SECONDS = 300.0
+
+
+def _configure_utf8_output():
+    """
+    Configure parent runtime output streams for UTF-8.
+
+    PaperTradingRuntimeAdapter already captures child subprocess
+    output as UTF-8. The parent runtime must also be able to
+    safely reprint Unicode text such as the Indian rupee symbol
+    on Windows.
+
+    This configuration is best-effort and must never prevent the
+    paper-trading runtime from starting.
+    """
+
+    for stream in (
+        sys.stdout,
+        sys.stderr,
+    ):
+        reconfigure = getattr(
+            stream,
+            "reconfigure",
+            None,
+        )
+
+        if not callable(
+            reconfigure
+        ):
+            continue
+
+        try:
+            reconfigure(
+                encoding="utf-8",
+                errors="replace",
+            )
+
+        except (
+            OSError,
+            ValueError,
+            AttributeError,
+        ):
+            continue
+
+
+def _safe_print_text(
+    value,
+    *,
+    stream=None,
+):
+    """
+    Print text without allowing console encoding failures to
+    break a paper-trading runtime cycle.
+
+    Unicode output is printed normally when supported.
+
+    If the active output stream cannot encode a character, the
+    text is converted using the stream encoding with replacement
+    semantics.
+
+    Printing diagnostics must never convert an otherwise
+    successful market-analysis subprocess into an opportunity
+    failure.
+    """
+
+    if stream is None:
+        stream = sys.stdout
+
+    text = str(
+        value
+    )
+
+    try:
+        print(
+            text,
+            file=stream,
+        )
+
+        return
+
+    except UnicodeEncodeError:
+        pass
+
+    encoding = (
+        getattr(
+            stream,
+            "encoding",
+            None,
+        )
+        or "utf-8"
+    )
+
+    try:
+        safe_text = (
+            text
+            .encode(
+                encoding,
+                errors="replace",
+            )
+            .decode(
+                encoding,
+                errors="replace",
+            )
+        )
+
+    except (
+        LookupError,
+        UnicodeError,
+    ):
+        safe_text = (
+            text
+            .encode(
+                "ascii",
+                errors="replace",
+            )
+            .decode(
+                "ascii",
+                errors="replace",
+            )
+        )
+
+    try:
+        print(
+            safe_text,
+            file=stream,
+        )
+
+    except UnicodeEncodeError:
+        fallback_text = (
+            safe_text
+            .encode(
+                "ascii",
+                errors="replace",
+            )
+            .decode(
+                "ascii",
+                errors="replace",
+            )
+        )
+
+        print(
+            fallback_text,
+            file=stream,
+        )
 
 
 def _read_positive_float(
@@ -118,56 +264,57 @@ def get_runtime_config():
 def print_header(
     config,
 ):
-    print(
+    _safe_print_text(
         "\n================================"
     )
-    print(
+
+    _safe_print_text(
         "AI TRADING COPILOT"
     )
-    print(
+
+    _safe_print_text(
         "CONTINUOUS PAPER TRADING RUNTIME"
     )
-    print(
+
+    _safe_print_text(
         "================================"
     )
 
-    print(
+    _safe_print_text(
         "\nMode: PAPER TRADING ONLY"
     )
 
-    print(
+    _safe_print_text(
         "Startup Recovery: ENABLED"
     )
 
-    print(
+    _safe_print_text(
         "Runtime Health Reporting: ENABLED"
     )
 
-    print(
+    _safe_print_text(
         "Runtime Heartbeat Persistence: ENABLED"
     )
 
-    print(
-        "Cycle Interval:",
-        config[
-            "interval_seconds"
-        ],
-        "seconds",
+    _safe_print_text(
+        (
+            "Cycle Interval: "
+            f"{config['interval_seconds']} seconds"
+        )
     )
 
-    print(
-        "Script Timeout:",
-        config[
-            "timeout_seconds"
-        ],
-        "seconds",
+    _safe_print_text(
+        (
+            "Script Timeout: "
+            f"{config['timeout_seconds']} seconds"
+        )
     )
 
-    print(
+    _safe_print_text(
         "Real Order Execution: DISABLED"
     )
 
-    print(
+    _safe_print_text(
         "\nPress Ctrl+C to stop safely."
     )
 
@@ -176,20 +323,29 @@ def _print_subprocess_output(
     name,
     result,
 ):
+    """
+    Print one subprocess cycle result safely.
+
+    Captured subprocess output may contain Unicode characters.
+    Output rendering must never affect the success or failure
+    status of the underlying market-analysis operation.
+    """
+
     if not isinstance(
         result,
         dict,
     ):
-        print(
+        _safe_print_text(
             f"\n{name}: Invalid result"
         )
+
         return
 
-    print(
-        f"\n{name} STATUS:",
-        result.get(
-            "status"
-        ),
+    _safe_print_text(
+        (
+            f"\n{name} STATUS: "
+            f"{result.get('status')}"
+        )
     )
 
     stdout = (
@@ -207,21 +363,22 @@ def _print_subprocess_output(
     ).strip()
 
     if stdout:
-        print(
+        _safe_print_text(
             f"\n----- {name} OUTPUT -----"
         )
-        print(
+
+        _safe_print_text(
             stdout
         )
 
     if stderr:
-        print(
+        _safe_print_text(
             f"\n----- {name} STDERR -----"
         )
-        print(
+
+        _safe_print_text(
             stderr
         )
-
 
 def create_cycle_callable(
     cycle_function,
@@ -233,6 +390,9 @@ def create_cycle_callable(
     Non-zero exits, timeouts, and execution failures become
     exceptions so ContinuousPaperTradingRuntime records them
     as operation failures.
+
+    Console rendering failures are isolated from subprocess
+    operation status.
     """
 
     if not callable(
@@ -537,46 +697,44 @@ def print_runtime_health(
     ):
         return
 
-    print(
+    _safe_print_text(
         "\n================================"
     )
-    print(
+
+    _safe_print_text(
         "RUNTIME HEALTH"
     )
-    print(
+
+    _safe_print_text(
         "================================"
     )
 
-    print(
-        "Health Status:",
-        health_snapshot.get(
-            "health_status",
-            "UNKNOWN",
-        ),
+    _safe_print_text(
+        (
+            "Health Status: "
+            f"{health_snapshot.get('health_status', 'UNKNOWN')}"
+        )
     )
 
-    print(
-        "Paper Trading Only:",
-        health_snapshot.get(
-            "paper_trading_only",
-            True,
-        ),
+    _safe_print_text(
+        (
+            "Paper Trading Only: "
+            f"{health_snapshot.get('paper_trading_only', True)}"
+        )
     )
 
-    print(
-        "Real Order Execution:",
-        health_snapshot.get(
-            "real_order_execution",
-            False,
-        ),
+    _safe_print_text(
+        (
+            "Real Order Execution: "
+            f"{health_snapshot.get('real_order_execution', False)}"
+        )
     )
 
-    print(
-        "Total Failures:",
-        health_snapshot.get(
-            "total_failures",
-            0,
-        ),
+    _safe_print_text(
+        (
+            "Total Failures: "
+            f"{health_snapshot.get('total_failures', 0)}"
+        )
     )
 
     startup = (
@@ -586,12 +744,11 @@ def print_runtime_health(
         or {}
     )
 
-    print(
-        "Startup Health:",
-        startup.get(
-            "status",
-            "NOT_REPORTED",
-        ),
+    _safe_print_text(
+        (
+            "Startup Health: "
+            f"{startup.get('status', 'NOT_REPORTED')}"
+        )
     )
 
 
@@ -599,22 +756,23 @@ def print_final_stats(
     stats,
     health_snapshot=None,
 ):
-    print(
+    _safe_print_text(
         "\n================================"
     )
-    print(
+
+    _safe_print_text(
         "RUNTIME STOPPED"
     )
-    print(
+
+    _safe_print_text(
         "================================"
     )
 
-    print(
-        "Startup Status:",
-        stats.get(
-            "startup_status",
-            "NOT_REPORTED",
-        ),
+    _safe_print_text(
+        (
+            "Startup Status: "
+            f"{stats.get('startup_status', 'NOT_REPORTED')}"
+        )
     )
 
     startup_result = (
@@ -627,28 +785,25 @@ def print_final_stats(
         startup_result,
         dict,
     ):
-        print(
-            "Recovered Trades:",
-            startup_result.get(
-                "recovered_count",
-                0,
-            ),
+        _safe_print_text(
+            (
+                "Recovered Trades: "
+                f"{startup_result.get('recovered_count', 0)}"
+            )
         )
 
-        print(
-            "Recovered Open Trades:",
-            startup_result.get(
-                "open_count",
-                0,
-            ),
+        _safe_print_text(
+            (
+                "Recovered Open Trades: "
+                f"{startup_result.get('open_count', 0)}"
+            )
         )
 
-        print(
-            "Recovered Closed Trades:",
-            startup_result.get(
-                "closed_count",
-                0,
-            ),
+        _safe_print_text(
+            (
+                "Recovered Closed Trades: "
+                f"{startup_result.get('closed_count', 0)}"
+            )
         )
 
     startup_error = (
@@ -658,84 +813,78 @@ def print_final_stats(
     )
 
     if startup_error:
-        print(
-            "Startup Error:",
-            startup_error,
+        _safe_print_text(
+            (
+                "Startup Error: "
+                f"{startup_error}"
+            )
         )
 
-    print(
-        "Cycles Started:",
-        stats.get(
-            "cycles_started",
-            0,
-        ),
+    _safe_print_text(
+        (
+            "Cycles Started: "
+            f"{stats.get('cycles_started', 0)}"
+        )
     )
 
-    print(
-        "Cycles Completed:",
-        stats.get(
-            "cycles_completed",
-            0,
-        ),
+    _safe_print_text(
+        (
+            "Cycles Completed: "
+            f"{stats.get('cycles_completed', 0)}"
+        )
     )
 
-    print(
-        "Cycles With Errors:",
-        stats.get(
-            "cycles_with_errors",
-            0,
-        ),
+    _safe_print_text(
+        (
+            "Cycles With Errors: "
+            f"{stats.get('cycles_with_errors', 0)}"
+        )
     )
 
-    print(
-        "Opportunity Successes:",
-        stats.get(
-            "opportunity_successes",
-            0,
-        ),
+    _safe_print_text(
+        (
+            "Opportunity Successes: "
+            f"{stats.get('opportunity_successes', 0)}"
+        )
     )
 
-    print(
-        "Opportunity Failures:",
-        stats.get(
-            "opportunity_failures",
-            0,
-        ),
+    _safe_print_text(
+        (
+            "Opportunity Failures: "
+            f"{stats.get('opportunity_failures', 0)}"
+        )
     )
 
-    print(
-        "Monitoring Successes:",
-        stats.get(
-            "monitoring_successes",
-            0,
-        ),
+    _safe_print_text(
+        (
+            "Monitoring Successes: "
+            f"{stats.get('monitoring_successes', 0)}"
+        )
     )
 
-    print(
-        "Monitoring Failures:",
-        stats.get(
-            "monitoring_failures",
-            0,
-        ),
+    _safe_print_text(
+        (
+            "Monitoring Failures: "
+            f"{stats.get('monitoring_failures', 0)}"
+        )
     )
 
-    print(
-        "Interrupted:",
-        stats.get(
-            "interrupted",
-            False,
-        ),
+    _safe_print_text(
+        (
+            "Interrupted: "
+            f"{stats.get('interrupted', False)}"
+        )
     )
 
     print_runtime_health(
         health_snapshot
     )
 
-    print(
+    _safe_print_text(
         "\nPAPER TRADING ONLY"
     )
 
-    print(
+    _safe_print_text(
         "NO REAL ORDER WAS PLACED"
     )
 
@@ -753,6 +902,8 @@ def main(
     ),
     working_directory=None,
 ):
+    _configure_utf8_output()
+
     try:
         if config is None:
             config = (
@@ -813,43 +964,45 @@ def main(
         return 0
 
     except KeyboardInterrupt:
-        print(
+        _safe_print_text(
             "\nShutdown requested."
         )
 
-        print(
+        _safe_print_text(
             "PAPER TRADING ONLY"
         )
 
-        print(
+        _safe_print_text(
             "NO REAL ORDER WAS PLACED"
         )
 
         return 0
 
     except Exception as exc:
-        print(
+        _safe_print_text(
             "\n================================"
         )
-        print(
+
+        _safe_print_text(
             "RUNTIME ERROR"
         )
-        print(
+
+        _safe_print_text(
             "================================"
         )
 
-        print(
-            "Error:",
-            str(
-                exc
-            ),
+        _safe_print_text(
+            (
+                "Error: "
+                f"{str(exc)}"
+            )
         )
 
-        print(
+        _safe_print_text(
             "\nPAPER TRADING ONLY"
         )
 
-        print(
+        _safe_print_text(
             "NO REAL ORDER WAS PLACED"
         )
 
