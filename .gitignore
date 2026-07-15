@@ -7,3 +7,6 @@ venv/
 data/market_data_cache/
 data/audit/
 data/paper_trading_runtime_heartbeat.json
+logs/
+data/market_sessions/
+data/research_reports/
