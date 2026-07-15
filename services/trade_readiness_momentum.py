@@ -134,8 +134,13 @@ class TradeReadinessMomentum:
         entry,
     ):
         confidence = entry.get(
-            "confidence"
+            "direction_confidence"
         )
+
+        if confidence is None:
+            confidence = entry.get(
+                "confidence"
+            )
 
         if confidence is None:
             strategy = entry.get(
@@ -147,7 +152,10 @@ class TradeReadinessMomentum:
                 dict,
             ):
                 confidence = strategy.get(
-                    "confidence"
+                    "direction_confidence",
+                    strategy.get(
+                        "confidence"
+                    ),
                 )
 
         if isinstance(

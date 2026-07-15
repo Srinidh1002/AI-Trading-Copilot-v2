@@ -302,3 +302,52 @@ def test_negative_breakout_buffer():
             current_price=100,
             breakout_buffer_percent=-1,
         )
+
+def test_direction_confidence_takes_precedence_over_legacy_confidence():
+
+    strategy = bullish_strategy()
+
+    strategy["direction_confidence"] = 64
+    strategy["confidence"] = 100
+
+    result = evaluate_setup_trigger(
+        strategy=strategy,
+        chart={
+            "patterns": [
+                "CONSOLIDATION",
+            ]
+        },
+        candlestick={
+            "support": 100,
+            "resistance": 110,
+        },
+        current_price=105,
+    )
+
+    assert result["confidence"] == 64
+
+
+def test_legacy_confidence_remains_supported():
+
+    strategy = bullish_strategy()
+
+    assert (
+        "direction_confidence"
+        not in strategy
+    )
+
+    result = evaluate_setup_trigger(
+        strategy=strategy,
+        chart={
+            "patterns": [
+                "CONSOLIDATION",
+            ]
+        },
+        candlestick={
+            "support": 100,
+            "resistance": 110,
+        },
+        current_price=105,
+    )
+
+    assert result["confidence"] == 100

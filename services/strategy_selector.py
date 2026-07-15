@@ -292,14 +292,14 @@ def select_strategy(
         direction = "NEUTRAL"
 
     # ---------------------------------
-    # CONFIDENCE
+    # DIRECTION CONFIDENCE
     # ---------------------------------
 
     if total_directional_score == 0:
-        confidence = 0
+        direction_confidence = 0
 
     else:
-        confidence = round(
+        direction_confidence = round(
             (
                 max(
                     bullish_score,
@@ -309,6 +309,34 @@ def select_strategy(
             )
             * 100
         )
+
+    # Preserve the legacy confidence field
+    # for backward compatibility.
+    confidence = direction_confidence
+
+    # ---------------------------------
+    # EVIDENCE STRENGTH
+    # ---------------------------------
+
+    maximum_directional_score = 15
+
+    evidence_strength_score = round(
+        min(
+            total_directional_score
+            / maximum_directional_score,
+            1.0,
+        )
+        * 100
+    )
+
+    if evidence_strength_score >= 70:
+        evidence_strength_label = "HIGH"
+
+    elif evidence_strength_score >= 35:
+        evidence_strength_label = "MEDIUM"
+
+    else:
+        evidence_strength_label = "LOW"
 
     # ---------------------------------
     # BREAKOUT CONFIRMATION
@@ -546,6 +574,15 @@ def select_strategy(
         "strategy": selected_strategy,
         "direction": direction,
         "confidence": confidence,
+        "direction_confidence": (
+            direction_confidence
+        ),
+        "evidence_strength_score": (
+            evidence_strength_score
+        ),
+        "evidence_strength_label": (
+            evidence_strength_label
+        ),
         "decision": decision,
         "bullish_score": bullish_score,
         "bearish_score": bearish_score,

@@ -146,8 +146,13 @@ class DecisionEvolutionAnalyzer:
         entry,
     ):
         confidence = entry.get(
-            "confidence"
+            "direction_confidence"
         )
+
+        if confidence is None:
+            confidence = entry.get(
+                "confidence"
+            )
 
         if confidence is None:
             strategy = entry.get(
@@ -159,7 +164,10 @@ class DecisionEvolutionAnalyzer:
                 dict,
             ):
                 confidence = strategy.get(
-                    "confidence"
+                    "direction_confidence",
+                    strategy.get(
+                        "confidence"
+                    ),
                 )
 
         if isinstance(

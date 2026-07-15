@@ -414,7 +414,28 @@ class MarketCycleJournal:
             ),
             "confidence": (
                 strategy.get(
-                    "confidence"
+                    "direction_confidence",
+                    strategy.get(
+                        "confidence"
+                    ),
+                )
+            ),
+            "direction_confidence": (
+                strategy.get(
+                    "direction_confidence",
+                    strategy.get(
+                        "confidence"
+                    ),
+                )
+            ),
+            "evidence_strength_score": (
+                strategy.get(
+                    "evidence_strength_score"
+                )
+            ),
+            "evidence_strength_label": (
+                strategy.get(
+                    "evidence_strength_label"
                 )
             ),
             "risk_flags": (

@@ -616,3 +616,252 @@ def test_input_entries_not_modified():
     )
 
     assert entries == original
+
+
+def test_direction_confidence_takes_priority_over_legacy_confidence():
+
+    entry = make_entry(
+        decision="NO_TRADE",
+        confidence=20,
+    )
+
+    entry[
+        "direction_confidence"
+    ] = 88
+
+    result = make_engine().analyze(
+        [
+            entry,
+        ]
+    )
+
+    assert (
+        result[
+            "confidence_by_decision"
+        ][
+            "NO_TRADE"
+        ][
+            "average"
+        ]
+        == 88.0
+    )
+
+
+def test_legacy_confidence_fallback_remains_supported():
+
+    entry = make_entry(
+        decision="NO_TRADE",
+        confidence=73,
+    )
+
+    result = make_engine().analyze(
+        [
+            entry,
+        ]
+    )
+
+    assert (
+        result[
+            "confidence_by_decision"
+        ][
+            "NO_TRADE"
+        ][
+            "average"
+        ]
+        == 73.0
+    )
+
+
+def test_evidence_strength_by_decision_uses_top_level_score():
+
+    entry = make_entry(
+        decision="NO_TRADE",
+        confidence=80,
+    )
+
+    entry[
+        "evidence_strength_score"
+    ] = 47
+
+    result = make_engine().analyze(
+        [
+            entry,
+        ]
+    )
+
+    assert (
+        result[
+            "evidence_strength_by_decision"
+        ][
+            "NO_TRADE"
+        ]
+        == {
+            "observations": 1,
+            "average": 47.0,
+            "minimum": 47.0,
+            "maximum": 47.0,
+        }
+    )
+
+
+def test_evidence_strength_uses_nested_strategy_fallback():
+
+    entry = make_entry(
+        decision="TRADE_REJECTED",
+        confidence=90,
+    )
+
+    entry[
+        "strategy"
+    ] = {
+        "evidence_strength_score": 73,
+    }
+
+    result = make_engine().analyze(
+        [
+            entry,
+        ]
+    )
+
+    assert (
+        result[
+            "evidence_strength_by_decision"
+        ][
+            "TRADE_REJECTED"
+        ][
+            "average"
+        ]
+        == 73.0
+    )
+
+
+def test_top_level_evidence_strength_takes_priority():
+
+    entry = make_entry(
+        decision="NO_TRADE",
+        confidence=80,
+    )
+
+    entry[
+        "evidence_strength_score"
+    ] = 47
+
+    entry[
+        "strategy"
+    ] = {
+        "evidence_strength_score": 93,
+    }
+
+    result = make_engine().analyze(
+        [
+            entry,
+        ]
+    )
+
+    assert (
+        result[
+            "evidence_strength_by_decision"
+        ][
+            "NO_TRADE"
+        ][
+            "average"
+        ]
+        == 47.0
+    )
+
+
+def test_invalid_evidence_strength_is_ignored():
+
+    entries = []
+
+    for value in [
+        None,
+        True,
+        "INVALID",
+    ]:
+        entry = make_entry(
+            decision="NO_TRADE",
+            confidence=80,
+        )
+
+        entry[
+            "evidence_strength_score"
+        ] = value
+
+        entries.append(
+            entry
+        )
+
+    result = make_engine().analyze(
+        entries
+    )
+
+    assert (
+        result[
+            "evidence_strength_by_decision"
+        ]
+        == {}
+    )
+
+
+def test_evidence_strength_statistics_group_by_decision():
+
+    first = make_entry(
+        decision="NO_TRADE",
+        confidence=80,
+    )
+
+    first[
+        "evidence_strength_score"
+    ] = 40
+
+    second = make_entry(
+        decision="NO_TRADE",
+        confidence=90,
+    )
+
+    second[
+        "evidence_strength_score"
+    ] = 60
+
+    third = make_entry(
+        decision="TRADE_READY",
+        confidence=95,
+    )
+
+    third[
+        "evidence_strength_score"
+    ] = 90
+
+    result = make_engine().analyze(
+        [
+            first,
+            second,
+            third,
+        ]
+    )
+
+    assert (
+        result[
+            "evidence_strength_by_decision"
+        ][
+            "NO_TRADE"
+        ]
+        == {
+            "observations": 2,
+            "average": 50.0,
+            "minimum": 40.0,
+            "maximum": 60.0,
+        }
+    )
+
+    assert (
+        result[
+            "evidence_strength_by_decision"
+        ][
+            "TRADE_READY"
+        ][
+            "average"
+        ]
+        == 90.0
+    )

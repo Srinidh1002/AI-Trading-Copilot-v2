@@ -740,3 +740,95 @@ def test_timestamp_datetime_with_timezone_preserved(
             "2026-07-15T09:31:00+00:00"
         )
     )
+
+def test_journal_prefers_direction_confidence_and_persists_evidence_strength():
+
+    journal = MarketCycleJournal()
+
+    pipeline_result = make_pipeline_result()
+
+    strategy = (
+        pipeline_result[
+            "market_analysis"
+        ][
+            "strategy"
+        ]
+    )
+
+    strategy[
+        "confidence"
+    ] = 100
+
+    strategy[
+        "direction_confidence"
+    ] = 64
+
+    strategy[
+        "evidence_strength_score"
+    ] = 47
+
+    strategy[
+        "evidence_strength_label"
+    ] = "MEDIUM"
+
+    result = journal.build_entry(
+        pipeline_result=pipeline_result,
+        timestamp=(
+            "2026-07-15T10:00:00+05:30"
+        ),
+    )
+
+    assert result["confidence"] == 64
+
+    assert (
+        result["direction_confidence"]
+        == 64
+    )
+
+    assert (
+        result["evidence_strength_score"]
+        == 47
+    )
+
+    assert (
+        result["evidence_strength_label"]
+        == "MEDIUM"
+    )
+
+
+def test_journal_legacy_confidence_remains_supported():
+
+    journal = MarketCycleJournal()
+
+    pipeline_result = make_pipeline_result()
+
+    strategy = (
+        pipeline_result[
+            "market_analysis"
+        ][
+            "strategy"
+        ]
+    )
+
+    strategy.pop(
+        "direction_confidence",
+        None,
+    )
+
+    strategy[
+        "confidence"
+    ] = 80
+
+    result = journal.build_entry(
+        pipeline_result=pipeline_result,
+        timestamp=(
+            "2026-07-15T10:00:00+05:30"
+        ),
+    )
+
+    assert result["confidence"] == 80
+
+    assert (
+        result["direction_confidence"]
+        == 80
+    )

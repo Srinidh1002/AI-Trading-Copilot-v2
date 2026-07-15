@@ -665,3 +665,55 @@ def test_input_not_modified():
     )
 
     assert entries == original
+
+
+def test_direction_confidence_takes_priority_over_legacy_confidence():
+
+    entry = make_entry(
+        confidence=20
+    )
+
+    entry[
+        "direction_confidence"
+    ] = 88
+
+    result = make_engine().analyze(
+        [
+            entry,
+        ]
+    )
+
+    assert (
+        result[
+            "cycle_states"
+        ][
+            0
+        ][
+            "confidence"
+        ]
+        == 88.0
+    )
+
+
+def test_legacy_confidence_fallback_remains_supported():
+
+    entry = make_entry(
+        confidence=73
+    )
+
+    result = make_engine().analyze(
+        [
+            entry,
+        ]
+    )
+
+    assert (
+        result[
+            "cycle_states"
+        ][
+            0
+        ][
+            "confidence"
+        ]
+        == 73.0
+    )

@@ -327,21 +327,24 @@ def print_summary(
         ),
     )
 
-    confidence = summary.get(
-        "confidence",
-        {},
+    direction_confidence = summary.get(
+        "direction_confidence",
+        summary.get(
+            "confidence",
+            {},
+        ),
     )
 
     print(
-        "\nCONFIDENCE"
+        "\nDIRECTION CONFIDENCE"
     )
     print(
-        "----------"
+        "--------------------"
     )
 
     print(
         "Observations:",
-        confidence.get(
+        direction_confidence.get(
             "observations",
             0,
         ),
@@ -350,7 +353,7 @@ def print_summary(
     print(
         "Average:",
         _print_optional_value(
-            confidence.get(
+            direction_confidence.get(
                 "average"
             )
         ),
@@ -359,7 +362,7 @@ def print_summary(
     print(
         "Minimum:",
         _print_optional_value(
-            confidence.get(
+            direction_confidence.get(
                 "minimum"
             )
         ),
@@ -368,8 +371,80 @@ def print_summary(
     print(
         "Maximum:",
         _print_optional_value(
-            confidence.get(
+            direction_confidence.get(
                 "maximum"
+            )
+        ),
+    )
+
+    evidence_strength = summary.get(
+        "evidence_strength",
+        {},
+    )
+
+    print(
+        "\nEVIDENCE STRENGTH"
+    )
+    print(
+        "-----------------"
+    )
+
+    print(
+        "Observations:",
+        evidence_strength.get(
+            "observations",
+            0,
+        ),
+    )
+
+    print(
+        "Average:",
+        _print_optional_value(
+            evidence_strength.get(
+                "average"
+            )
+        ),
+    )
+
+    print(
+        "Minimum:",
+        _print_optional_value(
+            evidence_strength.get(
+                "minimum"
+            )
+        ),
+    )
+
+    print(
+        "Maximum:",
+        _print_optional_value(
+            evidence_strength.get(
+                "maximum"
+            )
+        ),
+    )
+
+    evidence_strength_labels = summary.get(
+        "evidence_strength_labels",
+        {},
+    )
+
+    print(
+        "Label Distribution:"
+    )
+
+    _print_distribution(
+        evidence_strength_labels.get(
+            "distribution",
+            {},
+        )
+    )
+
+    print(
+        "Dominant Label:",
+        _print_optional_value(
+            evidence_strength_labels.get(
+                "dominant"
             )
         ),
     )

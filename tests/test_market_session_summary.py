@@ -19,7 +19,7 @@ def make_entry(
     risk_flags=None,
     market_regime="TRENDING_BEARISH",
     setup_status="NO_SETUP",
-    paper_trading_status="SKIPPED",
+    paper_trade_status="SKIPPED",
     paper_trade_opened=False,
     market_session_status="SESSION_VALID",
 ):
@@ -44,8 +44,8 @@ def make_entry(
         ),
         "market_regime": market_regime,
         "setup_status": setup_status,
-        "paper_trading_status": (
-            paper_trading_status
+        "paper_trade_status": (
+            paper_trade_status
         ),
         "paper_trade_opened": (
             paper_trade_opened
@@ -516,21 +516,21 @@ def test_paper_trading_statistics():
             timestamp=(
                 "2026-07-15T09:15:00+05:30"
             ),
-            paper_trading_status="SKIPPED",
+            paper_trade_status="SKIPPED",
             paper_trade_opened=False,
         ),
         make_entry(
             timestamp=(
                 "2026-07-15T09:16:00+05:30"
             ),
-            paper_trading_status="OPENED",
+            paper_trade_status="OPENED",
             paper_trade_opened=True,
         ),
         make_entry(
             timestamp=(
                 "2026-07-15T09:17:00+05:30"
             ),
-            paper_trading_status="BLOCKED",
+            paper_trade_status="BLOCKED",
             paper_trade_opened=False,
         ),
     ]
@@ -946,4 +946,194 @@ def test_market_session_status_distribution():
             "dominant"
         ]
         == "SESSION_VALID"
+    )
+
+
+def test_direction_confidence_prefers_canonical_field():
+
+    engine = MarketSessionSummaryEngine()
+
+    entries = [
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:15:00+05:30"
+            ),
+            confidence=100,
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:16:00+05:30"
+            ),
+            confidence=100,
+        ),
+    ]
+
+    entries[0][
+        "direction_confidence"
+    ] = 60
+
+    entries[1][
+        "direction_confidence"
+    ] = 80
+
+    result = engine.summarize(
+        entries
+    )
+
+    assert (
+        result["direction_confidence"]
+        == {
+            "observations": 2,
+            "average": 70.0,
+            "minimum": 60.0,
+            "maximum": 80.0,
+        }
+    )
+
+    assert (
+        result["confidence"]
+        == result["direction_confidence"]
+    )
+
+
+def test_direction_confidence_falls_back_to_legacy_confidence():
+
+    engine = MarketSessionSummaryEngine()
+
+    entries = [
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:15:00+05:30"
+            ),
+            confidence=60,
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:16:00+05:30"
+            ),
+            confidence=80,
+        ),
+    ]
+
+    result = engine.summarize(
+        entries
+    )
+
+    assert (
+        result["direction_confidence"]
+        == {
+            "observations": 2,
+            "average": 70.0,
+            "minimum": 60.0,
+            "maximum": 80.0,
+        }
+    )
+
+
+def test_evidence_strength_statistics():
+
+    engine = MarketSessionSummaryEngine()
+
+    entries = [
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:15:00+05:30"
+            ),
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:16:00+05:30"
+            ),
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:17:00+05:30"
+            ),
+        ),
+    ]
+
+    entries[0][
+        "evidence_strength_score"
+    ] = 20
+
+    entries[1][
+        "evidence_strength_score"
+    ] = 50
+
+    entries[2][
+        "evidence_strength_score"
+    ] = 80
+
+    result = engine.summarize(
+        entries
+    )
+
+    assert (
+        result["evidence_strength"]
+        == {
+            "observations": 3,
+            "average": 50.0,
+            "minimum": 20.0,
+            "maximum": 80.0,
+        }
+    )
+
+
+def test_evidence_strength_label_distribution():
+
+    engine = MarketSessionSummaryEngine()
+
+    entries = [
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:15:00+05:30"
+            ),
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:16:00+05:30"
+            ),
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-15T09:17:00+05:30"
+            ),
+        ),
+    ]
+
+    entries[0][
+        "evidence_strength_label"
+    ] = "LOW"
+
+    entries[1][
+        "evidence_strength_label"
+    ] = "MEDIUM"
+
+    entries[2][
+        "evidence_strength_label"
+    ] = "MEDIUM"
+
+    result = engine.summarize(
+        entries
+    )
+
+    assert (
+        result[
+            "evidence_strength_labels"
+        ][
+            "distribution"
+        ]
+        == {
+            "LOW": 1,
+            "MEDIUM": 2,
+        }
+    )
+
+    assert (
+        result[
+            "evidence_strength_labels"
+        ][
+            "dominant"
+        ]
+        == "MEDIUM"
     )

@@ -184,14 +184,28 @@ class MarketSessionSummaryEngine:
     def _confidence_statistics(
         self,
         entries,
+        *,
+        field_name="confidence",
+        fallback_field_name=None,
     ):
         values = []
 
         for entry in entries:
-            value = self._safe_number(
-                entry.get(
-                    "confidence"
+            raw_value = entry.get(
+                field_name
+            )
+
+            if (
+                raw_value is None
+                and fallback_field_name
+                is not None
+            ):
+                raw_value = entry.get(
+                    fallback_field_name
                 )
+
+            value = self._safe_number(
+                raw_value
             )
 
             if value is not None:
@@ -227,6 +241,15 @@ class MarketSessionSummaryEngine:
                 values
             ),
         }
+
+    def _evidence_strength_label_distribution(
+        self,
+        entries,
+    ):
+        return self._distribution(
+            entries,
+            "evidence_strength_label",
+        )
 
     def _risk_flag_frequency(
         self,
@@ -276,7 +299,7 @@ class MarketSessionSummaryEngine:
         for entry in entries:
             status = self._normalize_label(
                 entry.get(
-                    "paper_trading_status"
+                    "paper_trade_status"
                 )
             )
 
@@ -641,9 +664,48 @@ class MarketSessionSummaryEngine:
             },
             "confidence": (
                 self._confidence_statistics(
-                    normalized_entries
+                    normalized_entries,
+                    field_name=(
+                        "direction_confidence"
+                    ),
+                    fallback_field_name=(
+                        "confidence"
+                    ),
                 )
             ),
+            "direction_confidence": (
+                self._confidence_statistics(
+                    normalized_entries,
+                    field_name=(
+                        "direction_confidence"
+                    ),
+                    fallback_field_name=(
+                        "confidence"
+                    ),
+                )
+            ),
+            "evidence_strength": (
+                self._confidence_statistics(
+                    normalized_entries,
+                    field_name=(
+                        "evidence_strength_score"
+                    ),
+                )
+            ),
+            "evidence_strength_labels": {
+                "distribution": (
+                    self._evidence_strength_label_distribution(
+                        normalized_entries
+                    )
+                ),
+                "dominant": (
+                    self._dominant_value(
+                        self._evidence_strength_label_distribution(
+                            normalized_entries
+                        )
+                    )
+                ),
+            },
             "risk_flags": (
                 self._risk_flag_frequency(
                     normalized_entries

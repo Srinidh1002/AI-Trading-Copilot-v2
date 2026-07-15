@@ -197,6 +197,8 @@ def main():
     )
 
     completed_cycles = 0
+    successful_cycles = 0
+    failed_cycles = 0
 
     try:
 
@@ -266,7 +268,11 @@ def main():
                 result.returncode,
             )
 
-            if result.returncode != 0:
+            if result.returncode == 0:
+                successful_cycles += 1
+
+            else:
+                failed_cycles += 1
 
                 print(
                     "Cycle completed with an error."
@@ -322,6 +328,14 @@ def main():
     print(
         "Completed Cycles:",
         completed_cycles,
+    )
+    print(
+        "Successful Cycles:",
+        successful_cycles,
+    )
+    print(
+        "Failed Cycles:",
+        failed_cycles,
     )
     print(
         "READ-ONLY MARKET RESEARCH"

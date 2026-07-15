@@ -130,7 +130,28 @@ def build_decision_snapshot(
         ),
         "strategy_confidence": (
             strategy.get(
-                "confidence"
+                "direction_confidence",
+                strategy.get(
+                    "confidence"
+                ),
+            )
+        ),
+        "strategy_direction_confidence": (
+            strategy.get(
+                "direction_confidence",
+                strategy.get(
+                    "confidence"
+                ),
+            )
+        ),
+        "strategy_evidence_strength_score": (
+            strategy.get(
+                "evidence_strength_score"
+            )
+        ),
+        "strategy_evidence_strength_label": (
+            strategy.get(
+                "evidence_strength_label"
             )
         ),
         "risk_flags": deepcopy(

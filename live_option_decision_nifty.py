@@ -1197,9 +1197,26 @@ print(
 )
 
 print(
-    "Confidence:",
+    "Direction Confidence:",
     strategy.get(
-        "confidence"
+        "direction_confidence",
+        strategy.get(
+            "confidence"
+        ),
+    ),
+)
+
+print(
+    "Evidence Strength:",
+    strategy.get(
+        "evidence_strength_score"
+    ),
+)
+
+print(
+    "Evidence Strength Label:",
+    strategy.get(
+        "evidence_strength_label"
     ),
 )
 

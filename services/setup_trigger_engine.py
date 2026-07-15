@@ -60,8 +60,11 @@ def evaluate_setup_trigger(
 
     confidence = float(
         strategy.get(
-            "confidence",
-            0,
+            "direction_confidence",
+            strategy.get(
+                "confidence",
+                0,
+            ),
         )
         or 0
     )

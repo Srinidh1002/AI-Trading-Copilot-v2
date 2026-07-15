@@ -195,3 +195,99 @@ def test_invalid_input_fails_closed():
         build_decision_snapshot(
             None
         )
+
+def test_snapshot_prefers_direction_confidence_and_persists_evidence_strength():
+
+    pipeline_result = full_pipeline_result()
+
+    strategy = (
+        pipeline_result[
+            "market_analysis"
+        ][
+            "strategy"
+        ]
+    )
+
+    strategy[
+        "confidence"
+    ] = 100
+
+    strategy[
+        "direction_confidence"
+    ] = 64
+
+    strategy[
+        "evidence_strength_score"
+    ] = 47
+
+    strategy[
+        "evidence_strength_label"
+    ] = "MEDIUM"
+
+    result = build_decision_snapshot(
+        pipeline_result
+    )
+
+    assert (
+        result["strategy_confidence"]
+        == 64
+    )
+
+    assert (
+        result[
+            "strategy_direction_confidence"
+        ]
+        == 64
+    )
+
+    assert (
+        result[
+            "strategy_evidence_strength_score"
+        ]
+        == 47
+    )
+
+    assert (
+        result[
+            "strategy_evidence_strength_label"
+        ]
+        == "MEDIUM"
+    )
+
+
+def test_snapshot_legacy_confidence_remains_supported():
+
+    pipeline_result = full_pipeline_result()
+
+    strategy = (
+        pipeline_result[
+            "market_analysis"
+        ][
+            "strategy"
+        ]
+    )
+
+    strategy.pop(
+        "direction_confidence",
+        None,
+    )
+
+    strategy[
+        "confidence"
+    ] = 80
+
+    result = build_decision_snapshot(
+        pipeline_result
+    )
+
+    assert (
+        result["strategy_confidence"]
+        == 80
+    )
+
+    assert (
+        result[
+            "strategy_direction_confidence"
+        ]
+        == 80
+    )

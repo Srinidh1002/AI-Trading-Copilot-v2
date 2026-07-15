@@ -145,8 +145,13 @@ class SessionJournalAnalyticsEngine:
         entry,
     ):
         confidence = entry.get(
-            "confidence"
+            "direction_confidence"
         )
+
+        if confidence is None:
+            confidence = entry.get(
+                "confidence"
+            )
 
         if confidence is None:
             strategy = entry.get(
@@ -158,7 +163,10 @@ class SessionJournalAnalyticsEngine:
                 dict,
             ):
                 confidence = strategy.get(
-                    "confidence"
+                    "direction_confidence",
+                    strategy.get(
+                        "confidence"
+                    ),
                 )
 
         if isinstance(
@@ -170,6 +178,44 @@ class SessionJournalAnalyticsEngine:
         try:
             return float(
                 confidence
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+    def _extract_evidence_strength(
+        self,
+        entry,
+    ):
+        evidence_strength = entry.get(
+            "evidence_strength_score"
+        )
+
+        if evidence_strength is None:
+            strategy = entry.get(
+                "strategy"
+            )
+
+            if isinstance(
+                strategy,
+                dict,
+            ):
+                evidence_strength = strategy.get(
+                    "evidence_strength_score"
+                )
+
+        if isinstance(
+            evidence_strength,
+            bool,
+        ):
+            return None
+
+        try:
+            return float(
+                evidence_strength
             )
 
         except (
@@ -342,6 +388,64 @@ class SessionJournalAnalyticsEngine:
             decision,
             values,
         ) in confidence_values.items():
+            result[
+                decision
+            ] = {
+                "observations": len(
+                    values
+                ),
+                "average": round(
+                    sum(
+                        values
+                    )
+                    / len(
+                        values
+                    ),
+                    2,
+                ),
+                "minimum": min(
+                    values
+                ),
+                "maximum": max(
+                    values
+                ),
+            }
+
+        return result
+
+    def _build_evidence_strength_by_decision(
+        self,
+        entries,
+    ):
+        evidence_values = {}
+
+        for entry in entries:
+            decision = self._extract_decision(
+                entry
+            )
+
+            evidence_strength = (
+                self._extract_evidence_strength(
+                    entry
+                )
+            )
+
+            if evidence_strength is None:
+                continue
+
+            evidence_values.setdefault(
+                decision,
+                [],
+            ).append(
+                evidence_strength
+            )
+
+        result = {}
+
+        for (
+            decision,
+            values,
+        ) in evidence_values.items():
             result[
                 decision
             ] = {
@@ -573,6 +677,11 @@ class SessionJournalAnalyticsEngine:
             ),
             "confidence_by_decision": (
                 self._build_confidence_by_decision(
+                    normalized_entries
+                )
+            ),
+            "evidence_strength_by_decision": (
+                self._build_evidence_strength_by_decision(
                     normalized_entries
                 )
             ),
