@@ -224,6 +224,107 @@ class SessionJournalAnalyticsEngine:
         ):
             return None
 
+    def _extract_formation_status(
+        self,
+        entry,
+    ):
+        formation_status = entry.get(
+            "formation_status"
+        )
+
+        if formation_status is None:
+            setup_trigger = entry.get(
+                "setup_trigger"
+            )
+
+            if isinstance(
+                setup_trigger,
+                dict,
+            ):
+                formation_status = setup_trigger.get(
+                    "formation_status"
+                )
+
+        return self._normalize_label(
+            formation_status
+        )
+
+    def _extract_setup_maturity(
+        self,
+        entry,
+    ):
+        setup_maturity = entry.get(
+            "setup_maturity_score"
+        )
+
+        if setup_maturity is None:
+            setup_trigger = entry.get(
+                "setup_trigger"
+            )
+
+            if isinstance(
+                setup_trigger,
+                dict,
+            ):
+                setup_maturity = setup_trigger.get(
+                    "setup_maturity_score"
+                )
+
+        if isinstance(
+            setup_maturity,
+            bool,
+        ):
+            return None
+
+        try:
+            return float(
+                setup_maturity
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+    def _extract_distance_to_trigger_percent(
+        self,
+        entry,
+    ):
+        distance_percent = entry.get(
+            "distance_to_trigger_percent"
+        )
+
+        if distance_percent is None:
+            setup_trigger = entry.get(
+                "setup_trigger"
+            )
+
+            if isinstance(
+                setup_trigger,
+                dict,
+            ):
+                distance_percent = setup_trigger.get(
+                    "distance_to_trigger_percent"
+                )
+
+        if isinstance(
+            distance_percent,
+            bool,
+        ):
+            return None
+
+        try:
+            return float(
+                distance_percent
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
     def _extract_risk_flags(
         self,
         entry,
@@ -471,6 +572,262 @@ class SessionJournalAnalyticsEngine:
 
         return result
 
+    def _build_setup_formation_research(
+        self,
+        entries,
+    ):
+        grouped = {}
+
+        for entry in entries:
+            formation_status = (
+                self._extract_formation_status(
+                    entry
+                )
+            )
+
+            evidence_strength = (
+                self._extract_evidence_strength(
+                    entry
+                )
+            )
+
+            setup_maturity = (
+                self._extract_setup_maturity(
+                    entry
+                )
+            )
+
+            distance_percent = (
+                self._extract_distance_to_trigger_percent(
+                    entry
+                )
+            )
+
+            bucket = grouped.setdefault(
+                formation_status,
+                {
+                    "observations": 0,
+                    "evidence_strength": [],
+                    "setup_maturity": [],
+                    "distance_to_trigger_percent": [],
+                },
+            )
+
+            bucket["observations"] += 1
+
+            if evidence_strength is not None:
+                bucket[
+                    "evidence_strength"
+                ].append(
+                    evidence_strength
+                )
+
+            if setup_maturity is not None:
+                bucket[
+                    "setup_maturity"
+                ].append(
+                    setup_maturity
+                )
+
+            if distance_percent is not None:
+                bucket[
+                    "distance_to_trigger_percent"
+                ].append(
+                    distance_percent
+                )
+
+        result = {}
+
+        for (
+            formation_status,
+            bucket,
+        ) in grouped.items():
+
+            evidence_values = bucket[
+                "evidence_strength"
+            ]
+
+            maturity_values = bucket[
+                "setup_maturity"
+            ]
+
+            distance_values = bucket[
+                "distance_to_trigger_percent"
+            ]
+
+            result[
+                formation_status
+            ] = {
+                "observations": bucket[
+                    "observations"
+                ],
+                "average_evidence_strength": (
+                    round(
+                        sum(evidence_values)
+                        / len(evidence_values),
+                        2,
+                    )
+                    if evidence_values
+                    else None
+                ),
+                "average_setup_maturity": (
+                    round(
+                        sum(maturity_values)
+                        / len(maturity_values),
+                        2,
+                    )
+                    if maturity_values
+                    else None
+                ),
+                "average_distance_to_trigger_percent": (
+                    round(
+                        sum(distance_values)
+                        / len(distance_values),
+                        4,
+                    )
+                    if distance_values
+                    else None
+                ),
+            }
+
+        return result
+
+    def _build_near_miss_intelligence(
+        self,
+        entries,
+    ):
+        label_distribution = Counter()
+        missing_conditions = Counter()
+
+        candidate_scores = []
+        near_miss_count = 0
+
+        peak_score = None
+        peak_timestamp = None
+        peak_label = None
+
+        near_miss_labels = {
+            "CLOSE",
+            "VERY_CLOSE",
+        }
+
+        for entry in entries:
+            candidate_label = (
+                self._normalize_label(
+                    entry.get(
+                        "candidate_label"
+                    )
+                )
+            )
+
+            candidate_score = entry.get(
+                "trade_candidate_score"
+            )
+
+            if isinstance(
+                candidate_score,
+                bool,
+            ):
+                candidate_score = None
+
+            try:
+                if candidate_score is not None:
+                    candidate_score = float(
+                        candidate_score
+                    )
+
+            except (
+                TypeError,
+                ValueError,
+            ):
+                candidate_score = None
+
+            if candidate_label != "UNKNOWN":
+                label_distribution[
+                    candidate_label
+                ] += 1
+
+            if candidate_score is not None:
+                candidate_scores.append(
+                    candidate_score
+                )
+
+                if (
+                    peak_score is None
+                    or candidate_score > peak_score
+                ):
+                    peak_score = candidate_score
+                    peak_timestamp = (
+                        self._extract_timestamp(
+                            entry
+                        )
+                    )
+                    peak_label = candidate_label
+
+            if (
+                candidate_label
+                not in near_miss_labels
+            ):
+                continue
+
+            near_miss_count += 1
+
+            conditions = entry.get(
+                "candidate_missing_conditions",
+                [],
+            )
+
+            if not isinstance(
+                conditions,
+                list,
+            ):
+                conditions = []
+
+            missing_conditions.update(
+                str(condition)
+                for condition in conditions
+                if condition
+            )
+
+        return {
+            "near_miss_count": near_miss_count,
+            "candidate_label_distribution": dict(
+                label_distribution
+            ),
+            "candidate_score": {
+                "observations": len(
+                    candidate_scores
+                ),
+                "average": (
+                    round(
+                        sum(candidate_scores)
+                        / len(candidate_scores),
+                        2,
+                    )
+                    if candidate_scores
+                    else None
+                ),
+                "minimum": (
+                    min(candidate_scores)
+                    if candidate_scores
+                    else None
+                ),
+                "maximum": (
+                    max(candidate_scores)
+                    if candidate_scores
+                    else None
+                ),
+            },
+            "top_missing_conditions": dict(
+                missing_conditions
+            ),
+            "peak_candidate": {
+                "score": peak_score,
+                "timestamp": peak_timestamp,
+                "label": peak_label,
+            },
+        }
+
     def _build_decision_transitions(
         self,
         decisions,
@@ -682,6 +1039,16 @@ class SessionJournalAnalyticsEngine:
             ),
             "evidence_strength_by_decision": (
                 self._build_evidence_strength_by_decision(
+                    normalized_entries
+                )
+            ),
+            "near_miss_intelligence": (
+                self._build_near_miss_intelligence(
+                    normalized_entries
+                )
+            ),
+            "setup_formation_research": (
+                self._build_setup_formation_research(
                     normalized_entries
                 )
             ),

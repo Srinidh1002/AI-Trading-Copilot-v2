@@ -179,6 +179,7 @@ class LiveOptionChainBuilder:
         underlying,
         spot_price,
         strikes_each_side=10,
+        option_exchange="NFO",
     ):
         """
         Find CE and PE contracts around the current
@@ -207,7 +208,8 @@ class LiveOptionChainBuilder:
         nearest_expiry = (
             self.instrument_master
             .get_nearest_expiry(
-                underlying
+                underlying,
+                exchange=option_exchange,
             )
         )
 
@@ -218,7 +220,8 @@ class LiveOptionChainBuilder:
         all_contracts = (
             self.instrument_master
             .get_option_contracts(
-                underlying
+                underlying,
+                exchange=option_exchange,
             )
         )
 
@@ -379,6 +382,7 @@ class LiveOptionChainBuilder:
         underlying,
         spot_price,
         strikes_each_side=10,
+        option_exchange="NFO",
     ):
         """
         Build a normalized and integrity-validated
@@ -400,6 +404,7 @@ class LiveOptionChainBuilder:
                 strikes_each_side=(
                     strikes_each_side
                 ),
+                option_exchange=option_exchange,
             )
         )
 
@@ -457,7 +462,7 @@ class LiveOptionChainBuilder:
             .get_market_data(
                 mode="FULL",
                 exchange_tokens={
-                    "NFO": tokens
+                    option_exchange: tokens
                 },
             )
         )

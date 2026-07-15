@@ -709,3 +709,619 @@ def test_legacy_confidence_fallback_remains_supported():
         ]
         == 73.0
     )
+def test_candidate_momentum_rising():
+
+    entries = [
+        make_entry(
+            confidence=70,
+            timestamp=(
+                "2026-07-16T09:20:00+05:30"
+            ),
+        ),
+        make_entry(
+            confidence=72,
+            timestamp=(
+                "2026-07-16T09:25:00+05:30"
+            ),
+        ),
+        make_entry(
+            confidence=75,
+            timestamp=(
+                "2026-07-16T09:30:00+05:30"
+            ),
+        ),
+        make_entry(
+            confidence=80,
+            timestamp=(
+                "2026-07-16T09:35:00+05:30"
+            ),
+        ),
+    ]
+
+    scores = [
+        60,
+        70,
+        85,
+        95,
+    ]
+
+    for entry, score in zip(
+        entries,
+        scores,
+    ):
+        entry[
+            "trade_candidate_score"
+        ] = score
+
+    result = make_analyzer().analyze(
+        entries,
+        session_date="2026-07-16",
+    )
+
+    momentum = result[
+        "candidate_momentum"
+    ]
+
+    assert momentum["observations"] == 4
+    assert momentum["trend"] == "RISING"
+    assert momentum["first"] == 60.0
+    assert momentum["final"] == 95.0
+    assert momentum["change"] == 35.0
+
+    assert (
+        momentum[
+            "longest_increase_sequence"
+        ]
+        == 3
+    )
+
+    assert (
+        momentum[
+            "longest_decrease_sequence"
+        ]
+        == 0
+    )
+
+    assert momentum["peak"] == {
+        "value": 95.0,
+        "index": 3,
+        "timestamp": (
+            "2026-07-16T09:35:00+05:30"
+        ),
+    }
+
+    assert momentum["lowest"] == {
+        "value": 60.0,
+        "index": 0,
+        "timestamp": (
+            "2026-07-16T09:20:00+05:30"
+        ),
+    }
+
+
+def test_candidate_momentum_falling():
+
+    entries = [
+        make_entry(),
+        make_entry(),
+        make_entry(),
+        make_entry(),
+    ]
+
+    scores = [
+        95,
+        85,
+        70,
+        60,
+    ]
+
+    for entry, score in zip(
+        entries,
+        scores,
+    ):
+        entry[
+            "trade_candidate_score"
+        ] = score
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    momentum = result[
+        "candidate_momentum"
+    ]
+
+    assert momentum["trend"] == "FALLING"
+    assert momentum["first"] == 95.0
+    assert momentum["final"] == 60.0
+    assert momentum["change"] == -35.0
+
+    assert (
+        momentum[
+            "longest_increase_sequence"
+        ]
+        == 0
+    )
+
+    assert (
+        momentum[
+            "longest_decrease_sequence"
+        ]
+        == 3
+    )
+
+
+def test_candidate_momentum_mixed():
+
+    entries = [
+        make_entry(),
+        make_entry(),
+        make_entry(),
+        make_entry(),
+    ]
+
+    scores = [
+        80,
+        85,
+        80,
+        85,
+    ]
+
+    for entry, score in zip(
+        entries,
+        scores,
+    ):
+        entry[
+            "trade_candidate_score"
+        ] = score
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    momentum = result[
+        "candidate_momentum"
+    ]
+
+    assert momentum["trend"] == "MIXED"
+    assert momentum["first"] == 80.0
+    assert momentum["final"] == 85.0
+    assert momentum["change"] == 5.0
+
+    assert (
+        momentum[
+            "longest_increase_sequence"
+        ]
+        == 1
+    )
+
+    assert (
+        momentum[
+            "longest_decrease_sequence"
+        ]
+        == 1
+    )
+
+
+def test_candidate_momentum_unavailable():
+
+    entries = [
+        make_entry(),
+    ]
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    momentum = result[
+        "candidate_momentum"
+    ]
+
+    assert momentum == {
+        "observations": 0,
+        "trend": "UNAVAILABLE",
+        "first": None,
+        "final": None,
+        "change": None,
+        "longest_increase_sequence": 0,
+        "longest_decrease_sequence": 0,
+        "peak": {
+            "value": None,
+            "index": None,
+            "timestamp": None,
+        },
+        "lowest": {
+            "value": None,
+            "index": None,
+            "timestamp": None,
+        },
+        "series": [],
+    }
+
+
+def test_candidate_score_nested_research_fallback():
+
+    entries = [
+        make_entry(
+            timestamp=(
+                "2026-07-16T09:20:00+05:30"
+            ),
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-16T09:25:00+05:30"
+            ),
+        ),
+    ]
+
+    entries[0][
+        "trade_candidate_research"
+    ] = {
+        "trade_candidate_score": 70,
+    }
+
+    entries[1][
+        "trade_candidate_research"
+    ] = {
+        "trade_candidate_score": 85,
+    }
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    momentum = result[
+        "candidate_momentum"
+    ]
+
+    assert momentum["observations"] == 2
+    assert momentum["trend"] == "RISING"
+    assert momentum["first"] == 70.0
+    assert momentum["final"] == 85.0
+    assert momentum["change"] == 15.0
+
+def test_trigger_approach_closing_and_accelerating():
+
+    entries = [
+        make_entry(),
+        make_entry(),
+        make_entry(),
+        make_entry(),
+    ]
+
+    distances = [
+        1.00,
+        0.80,
+        0.50,
+        0.05,
+    ]
+
+    for entry, distance in zip(
+        entries,
+        distances,
+    ):
+        entry[
+            "distance_to_trigger_percent"
+        ] = distance
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    approach = result[
+        "trigger_approach"
+    ]
+
+    assert approach["observations"] == 4
+
+    assert (
+        approach["approach_trend"]
+        == "CLOSING"
+    )
+
+    assert (
+        approach["approach_speed"]
+        == "ACCELERATING"
+    )
+
+    assert (
+        approach["first_distance_percent"]
+        == 1.0
+    )
+
+    assert (
+        approach["final_distance_percent"]
+        == 0.05
+    )
+
+    assert (
+        approach["distance_change_percent"]
+        == -0.95
+    )
+
+    assert (
+        approach[
+            "total_distance_closed_percent"
+        ]
+        == 0.95
+    )
+
+    assert approach["closing_steps"] == [
+        0.2,
+        0.3,
+        0.45,
+    ]
+
+
+def test_trigger_approach_closing_and_slowing():
+
+    entries = [
+        make_entry(),
+        make_entry(),
+        make_entry(),
+        make_entry(),
+    ]
+
+    distances = [
+        1.00,
+        0.50,
+        0.20,
+        0.05,
+    ]
+
+    for entry, distance in zip(
+        entries,
+        distances,
+    ):
+        entry[
+            "distance_to_trigger_percent"
+        ] = distance
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    approach = result[
+        "trigger_approach"
+    ]
+
+    assert (
+        approach["approach_trend"]
+        == "CLOSING"
+    )
+
+    assert (
+        approach["approach_speed"]
+        == "SLOWING"
+    )
+
+    assert approach["closing_steps"] == [
+        0.5,
+        0.3,
+        0.15,
+    ]
+
+
+def test_trigger_approach_moving_away():
+
+    entries = [
+        make_entry(),
+        make_entry(),
+        make_entry(),
+        make_entry(),
+    ]
+
+    distances = [
+        0.05,
+        0.20,
+        0.45,
+        0.80,
+    ]
+
+    for entry, distance in zip(
+        entries,
+        distances,
+    ):
+        entry[
+            "distance_to_trigger_percent"
+        ] = distance
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    approach = result[
+        "trigger_approach"
+    ]
+
+    assert (
+        approach["approach_trend"]
+        == "MOVING_AWAY"
+    )
+
+    assert (
+        approach["approach_speed"]
+        == "UNAVAILABLE"
+    )
+
+    assert approach["closing_steps"] == []
+
+    assert (
+        approach[
+            "total_distance_closed_percent"
+        ]
+        == -0.75
+    )
+
+
+def test_trigger_approach_mixed():
+
+    entries = [
+        make_entry(),
+        make_entry(),
+        make_entry(),
+        make_entry(),
+    ]
+
+    distances = [
+        0.20,
+        0.25,
+        0.18,
+        0.22,
+    ]
+
+    for entry, distance in zip(
+        entries,
+        distances,
+    ):
+        entry[
+            "distance_to_trigger_percent"
+        ] = distance
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    approach = result[
+        "trigger_approach"
+    ]
+
+    assert (
+        approach["approach_trend"]
+        == "MIXED"
+    )
+
+    assert (
+        approach["approach_speed"]
+        == "UNAVAILABLE"
+    )
+
+    assert approach["closing_steps"] == [
+        0.07,
+    ]
+
+
+def test_trigger_approach_unavailable():
+
+    entries = [
+        make_entry(),
+    ]
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    approach = result[
+        "trigger_approach"
+    ]
+
+    assert approach == {
+        "observations": 0,
+        "approach_trend": "UNAVAILABLE",
+        "approach_speed": "UNAVAILABLE",
+        "first_distance_percent": None,
+        "final_distance_percent": None,
+        "distance_change_percent": None,
+        "total_distance_closed_percent": None,
+        "closing_steps": [],
+        "series": [],
+    }
+
+
+def test_trigger_approach_nested_setup_fallback():
+
+    entries = [
+        make_entry(
+            timestamp=(
+                "2026-07-16T09:20:00+05:30"
+            ),
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-16T09:25:00+05:30"
+            ),
+        ),
+        make_entry(
+            timestamp=(
+                "2026-07-16T09:30:00+05:30"
+            ),
+        ),
+    ]
+
+    distances = [
+        0.80,
+        0.45,
+        0.20,
+    ]
+
+    for entry, distance in zip(
+        entries,
+        distances,
+    ):
+        entry["setup_trigger"] = {
+            "distance_to_trigger_percent": (
+                distance
+            ),
+        }
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    approach = result[
+        "trigger_approach"
+    ]
+
+    assert approach["observations"] == 3
+
+    assert (
+        approach["approach_trend"]
+        == "CLOSING"
+    )
+
+    assert approach["series"][0] == {
+        "index": 0,
+        "timestamp": (
+            "2026-07-16T09:20:00+05:30"
+        ),
+        "distance_to_trigger_percent": 0.8,
+    }
+
+    assert approach["series"][-1] == {
+        "index": 2,
+        "timestamp": (
+            "2026-07-16T09:30:00+05:30"
+        ),
+        "distance_to_trigger_percent": 0.2,
+    }
+
+
+def test_trigger_approach_rejects_negative_distance():
+
+    entries = [
+        make_entry(),
+        make_entry(),
+    ]
+
+    entries[0][
+        "distance_to_trigger_percent"
+    ] = -0.10
+
+    entries[1][
+        "distance_to_trigger_percent"
+    ] = 0.20
+
+    result = make_analyzer().analyze(
+        entries
+    )
+
+    approach = result[
+        "trigger_approach"
+    ]
+
+    assert approach["observations"] == 1
+
+    assert (
+        approach["approach_trend"]
+        == "UNAVAILABLE"
+    )

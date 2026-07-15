@@ -187,6 +187,91 @@ class DecisionEvolutionAnalyzer:
         ):
             return None
 
+    def _extract_candidate_score(
+        self,
+        entry,
+    ):
+        candidate_score = entry.get(
+            "trade_candidate_score"
+        )
+
+        if candidate_score is None:
+            candidate_research = entry.get(
+                "trade_candidate_research"
+            )
+
+            if isinstance(
+                candidate_research,
+                dict,
+            ):
+                candidate_score = (
+                    candidate_research.get(
+                        "trade_candidate_score"
+                    )
+                )
+
+        if isinstance(
+            candidate_score,
+            bool,
+        ):
+            return None
+
+        try:
+            return float(
+                candidate_score
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+    def _extract_distance_to_trigger_percent(
+        self,
+        entry,
+    ):
+        distance_percent = entry.get(
+            "distance_to_trigger_percent"
+        )
+
+        if distance_percent is None:
+            setup_trigger = entry.get(
+                "setup_trigger"
+            )
+
+            if isinstance(
+                setup_trigger,
+                dict,
+            ):
+                distance_percent = (
+                    setup_trigger.get(
+                        "distance_to_trigger_percent"
+                    )
+                )
+
+        if isinstance(
+            distance_percent,
+            bool,
+        ):
+            return None
+
+        try:
+            distance_percent = float(
+                distance_percent
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+        if distance_percent < 0:
+            return None
+
+        return distance_percent
+
     def _extract_timestamp(
         self,
         entry,
@@ -246,6 +331,80 @@ class DecisionEvolutionAnalyzer:
                         )
                     ),
                     "confidence": confidence,
+                }
+            )
+
+        return series
+
+    def _build_candidate_score_series(
+        self,
+        entries,
+    ):
+        series = []
+
+        for (
+            index,
+            entry,
+        ) in enumerate(
+            entries
+        ):
+            candidate_score = (
+                self._extract_candidate_score(
+                    entry
+                )
+            )
+
+            if candidate_score is None:
+                continue
+
+            series.append(
+                {
+                    "index": index,
+                    "timestamp": (
+                        self._extract_timestamp(
+                            entry
+                        )
+                    ),
+                    "candidate_score": (
+                        candidate_score
+                    ),
+                }
+            )
+
+        return series
+
+    def _build_trigger_approach_series(
+        self,
+        entries,
+    ):
+        series = []
+
+        for (
+            index,
+            entry,
+        ) in enumerate(
+            entries
+        ):
+            distance_percent = (
+                self._extract_distance_to_trigger_percent(
+                    entry
+                )
+            )
+
+            if distance_percent is None:
+                continue
+
+            series.append(
+                {
+                    "index": index,
+                    "timestamp": (
+                        self._extract_timestamp(
+                            entry
+                        )
+                    ),
+                    "distance_to_trigger_percent": (
+                        distance_percent
+                    ),
                 }
             )
 
@@ -391,6 +550,403 @@ class DecisionEvolutionAnalyzer:
                 current = 0
 
         return longest
+
+    def _build_trigger_approach_intelligence(
+        self,
+        trigger_series,
+    ):
+        values = [
+            item[
+                "distance_to_trigger_percent"
+            ]
+            for item in trigger_series
+        ]
+
+        if len(
+            values
+        ) < 2:
+            approach_trend = "UNAVAILABLE"
+
+        else:
+            differences = [
+                current - previous
+                for (
+                    previous,
+                    current,
+                ) in zip(
+                    values,
+                    values[
+                        1:
+                    ],
+                )
+            ]
+
+            closing = sum(
+                1
+                for difference in differences
+                if difference < 0
+            )
+
+            moving_away = sum(
+                1
+                for difference in differences
+                if difference > 0
+            )
+
+            if (
+                closing > 0
+                and moving_away == 0
+            ):
+                approach_trend = "CLOSING"
+
+            elif (
+                moving_away > 0
+                and closing == 0
+            ):
+                approach_trend = "MOVING_AWAY"
+
+            elif (
+                closing == 0
+                and moving_away == 0
+            ):
+                approach_trend = "FLAT"
+
+            else:
+                approach_trend = "MIXED"
+
+        closing_steps = [
+            round(
+                previous - current,
+                6,
+            )
+            for (
+                previous,
+                current,
+            ) in zip(
+                values,
+                values[
+                    1:
+                ],
+            )
+            if current < previous
+        ]
+
+        if len(
+            closing_steps
+        ) < 2:
+            approach_speed = "UNAVAILABLE"
+
+        else:
+            speed_differences = [
+                current - previous
+                for (
+                    previous,
+                    current,
+                ) in zip(
+                    closing_steps,
+                    closing_steps[
+                        1:
+                    ],
+                )
+            ]
+
+            faster = sum(
+                1
+                for difference in speed_differences
+                if difference > 0
+            )
+
+            slower = sum(
+                1
+                for difference in speed_differences
+                if difference < 0
+            )
+
+            if (
+                faster > 0
+                and slower == 0
+            ):
+                approach_speed = "ACCELERATING"
+
+            elif (
+                slower > 0
+                and faster == 0
+            ):
+                approach_speed = "SLOWING"
+
+            elif (
+                faster == 0
+                and slower == 0
+            ):
+                approach_speed = "STEADY"
+
+            else:
+                approach_speed = "MIXED"
+
+        first_distance = (
+            values[
+                0
+            ]
+            if values
+            else None
+        )
+
+        final_distance = (
+            values[
+                -1
+            ]
+            if values
+            else None
+        )
+
+        distance_change = (
+            round(
+                final_distance
+                - first_distance,
+                6,
+            )
+            if (
+                first_distance is not None
+                and final_distance is not None
+            )
+            else None
+        )
+
+        total_distance_closed = (
+            round(
+                first_distance
+                - final_distance,
+                6,
+            )
+            if (
+                first_distance is not None
+                and final_distance is not None
+            )
+            else None
+        )
+
+        return {
+            "observations": len(
+                trigger_series
+            ),
+            "approach_trend": approach_trend,
+            "approach_speed": approach_speed,
+            "first_distance_percent": (
+                first_distance
+            ),
+            "final_distance_percent": (
+                final_distance
+            ),
+            "distance_change_percent": (
+                distance_change
+            ),
+            "total_distance_closed_percent": (
+                total_distance_closed
+            ),
+            "closing_steps": closing_steps,
+            "series": deepcopy(
+                trigger_series
+            ),
+        }
+
+    def _build_candidate_momentum(
+        self,
+        candidate_series,
+    ):
+        values = [
+            item[
+                "candidate_score"
+            ]
+            for item in candidate_series
+        ]
+
+        if len(
+            values
+        ) < 2:
+            trend = self.TREND_UNAVAILABLE
+
+        else:
+            differences = [
+                current - previous
+                for (
+                    previous,
+                    current,
+                ) in zip(
+                    values,
+                    values[
+                        1:
+                    ],
+                )
+            ]
+
+            positive = sum(
+                1
+                for difference in differences
+                if difference > 0
+            )
+
+            negative = sum(
+                1
+                for difference in differences
+                if difference < 0
+            )
+
+            if (
+                positive > 0
+                and negative == 0
+            ):
+                trend = self.TREND_RISING
+
+            elif (
+                negative > 0
+                and positive == 0
+            ):
+                trend = self.TREND_FALLING
+
+            elif (
+                positive == 0
+                and negative == 0
+            ):
+                trend = self.TREND_FLAT
+
+            else:
+                trend = self.TREND_MIXED
+
+        longest_increase = 0
+        current_increase = 0
+
+        longest_decrease = 0
+        current_decrease = 0
+
+        for (
+            previous,
+            current,
+        ) in zip(
+            values,
+            values[
+                1:
+            ],
+        ):
+            if current > previous:
+                current_increase += 1
+                longest_increase = max(
+                    longest_increase,
+                    current_increase,
+                )
+
+            else:
+                current_increase = 0
+
+            if current < previous:
+                current_decrease += 1
+                longest_decrease = max(
+                    longest_decrease,
+                    current_decrease,
+                )
+
+            else:
+                current_decrease = 0
+
+        first_score = (
+            values[
+                0
+            ]
+            if values
+            else None
+        )
+
+        final_score = (
+            values[
+                -1
+            ]
+            if values
+            else None
+        )
+
+        change = (
+            round(
+                final_score - first_score,
+                2,
+            )
+            if (
+                first_score is not None
+                and final_score is not None
+            )
+            else None
+        )
+
+        if candidate_series:
+            peak = max(
+                candidate_series,
+                key=lambda item: item[
+                    "candidate_score"
+                ],
+            )
+
+            lowest = min(
+                candidate_series,
+                key=lambda item: item[
+                    "candidate_score"
+                ],
+            )
+
+            peak_result = {
+                "value": peak[
+                    "candidate_score"
+                ],
+                "index": peak[
+                    "index"
+                ],
+                "timestamp": peak[
+                    "timestamp"
+                ],
+            }
+
+            lowest_result = {
+                "value": lowest[
+                    "candidate_score"
+                ],
+                "index": lowest[
+                    "index"
+                ],
+                "timestamp": lowest[
+                    "timestamp"
+                ],
+            }
+
+        else:
+            peak_result = {
+                "value": None,
+                "index": None,
+                "timestamp": None,
+            }
+
+            lowest_result = {
+                "value": None,
+                "index": None,
+                "timestamp": None,
+            }
+
+        return {
+            "observations": len(
+                candidate_series
+            ),
+            "trend": trend,
+            "first": first_score,
+            "final": final_score,
+            "change": change,
+            "longest_increase_sequence": (
+                longest_increase
+            ),
+            "longest_decrease_sequence": (
+                longest_decrease
+            ),
+            "peak": peak_result,
+            "lowest": lowest_result,
+            "series": deepcopy(
+                candidate_series
+            ),
+        }
 
     def _build_state_stability(
         self,
@@ -572,6 +1128,30 @@ class DecisionEvolutionAnalyzer:
             for item in confidence_series
         ]
 
+        candidate_score_series = (
+            self._build_candidate_score_series(
+                normalized_entries
+            )
+        )
+
+        candidate_momentum = (
+            self._build_candidate_momentum(
+                candidate_score_series
+            )
+        )
+
+        trigger_approach_series = (
+            self._build_trigger_approach_series(
+                normalized_entries
+            )
+        )
+
+        trigger_approach = (
+            self._build_trigger_approach_intelligence(
+                trigger_approach_series
+            )
+        )
+
         first_confidence = (
             confidence_values[
                 0
@@ -678,6 +1258,12 @@ class DecisionEvolutionAnalyzer:
                 ),
                 "series": confidence_series,
             },
+            "candidate_momentum": (
+                candidate_momentum
+            ),
+            "trigger_approach": (
+                trigger_approach
+            ),
             "decision_evolution": (
                 self._build_decision_evolution(
                     decisions

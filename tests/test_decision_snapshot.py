@@ -291,3 +291,144 @@ def test_snapshot_legacy_confidence_remains_supported():
         ]
         == 80
     )
+def test_snapshot_persists_setup_formation_intelligence():
+
+    pipeline_result = full_pipeline_result()
+
+    pipeline_result[
+        "setup_trigger"
+    ].update({
+        "formation_status": "NEAR_TRIGGER",
+        "setup_maturity_score": 85,
+        "distance_to_trigger": 8.5,
+        "distance_to_trigger_percent": 0.0351,
+    })
+
+    result = build_decision_snapshot(
+        pipeline_result
+    )
+
+    assert (
+        result["formation_status"]
+        == "NEAR_TRIGGER"
+    )
+
+    assert (
+        result["setup_maturity_score"]
+        == 85
+    )
+
+    assert (
+        result["distance_to_trigger"]
+        == 8.5
+    )
+
+    assert (
+        result["distance_to_trigger_percent"]
+        == 0.0351
+    )
+
+def test_snapshot_persists_trade_candidate_research():
+
+    pipeline_result = full_pipeline_result()
+
+    pipeline_result[
+        "trade_candidate_research"
+    ] = {
+        "research_only": True,
+        "trade_authorized": False,
+        "trade_candidate_score": 85,
+        "candidate_label": "CLOSE",
+        "passed_conditions": [
+            "Directional bias established",
+            "Direction confidence",
+            "Evidence strength",
+        ],
+        "missing_conditions": [
+            "Full timeframe alignment",
+            "Resolve risk flags",
+        ],
+    }
+
+    result = build_decision_snapshot(
+        pipeline_result
+    )
+
+    assert (
+        result["trade_candidate_score"]
+        == 85
+    )
+
+    assert (
+        result["candidate_label"]
+        == "CLOSE"
+    )
+
+    assert (
+        result["candidate_passed_conditions"]
+        == [
+            "Directional bias established",
+            "Direction confidence",
+            "Evidence strength",
+        ]
+    )
+
+    assert (
+        result["candidate_missing_conditions"]
+        == [
+            "Full timeframe alignment",
+            "Resolve risk flags",
+        ]
+    )
+
+
+def test_snapshot_candidate_conditions_are_deep_copied():
+
+    pipeline_result = full_pipeline_result()
+
+    pipeline_result[
+        "trade_candidate_research"
+    ] = {
+        "trade_candidate_score": 85,
+        "candidate_label": "CLOSE",
+        "passed_conditions": [
+            "Direction confidence",
+        ],
+        "missing_conditions": [
+            "Full timeframe alignment",
+        ],
+    }
+
+    result = build_decision_snapshot(
+        pipeline_result
+    )
+
+    pipeline_result[
+        "trade_candidate_research"
+    ][
+        "passed_conditions"
+    ].append(
+        "MUTATED"
+    )
+
+    pipeline_result[
+        "trade_candidate_research"
+    ][
+        "missing_conditions"
+    ].append(
+        "MUTATED"
+    )
+
+    assert (
+        result["candidate_passed_conditions"]
+        == [
+            "Direction confidence",
+        ]
+    )
+
+    assert (
+        result["candidate_missing_conditions"]
+        == [
+            "Full timeframe alignment",
+        ]
+    )

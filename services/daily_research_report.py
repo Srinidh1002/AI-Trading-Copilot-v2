@@ -11,6 +11,7 @@ from services.market_session_summary import MarketSessionSummaryEngine
 from services.session_journal_analytics import SessionJournalAnalyticsEngine
 from services.strategy_regime_performance import StrategyRegimePerformanceEngine
 from services.trade_readiness_momentum import TradeReadinessMomentum
+from services.trade_readiness_convergence import TradeReadinessConvergence
 
 
 class DailyResearchReport:
@@ -26,6 +27,7 @@ class DailyResearchReport:
         strategy_regime_performance=None,
         market_session_summary=None,
         session_journal_analytics=None,
+        trade_readiness_convergence=None,
     ):
         self.decision_evolution_analyzer = (
             decision_evolution_analyzer or DecisionEvolutionAnalyzer()
@@ -45,6 +47,10 @@ class DailyResearchReport:
         )
         self.session_journal_analytics = (
             session_journal_analytics or SessionJournalAnalyticsEngine()
+        )
+        self.trade_readiness_convergence = (
+            trade_readiness_convergence
+            or TradeReadinessConvergence()
         )
 
     @staticmethod
@@ -346,6 +352,12 @@ class DailyResearchReport:
         decision = self._safe_call(
             lambda: self.decision_evolution_analyzer.analyze(deepcopy(safe_entries), session_date=session_date)
         )
+        convergence = self._safe_call(
+            lambda: self.trade_readiness_convergence.analyze(
+                deepcopy(decision),
+                session_date=session_date,
+            )
+        )
         readiness = self._safe_call(
             lambda: self.trade_readiness_momentum.analyze(deepcopy(safe_entries), session_date=session_date)
         )
@@ -359,7 +371,16 @@ class DailyResearchReport:
             lambda: self.strategy_regime_performance.analyze(deepcopy(safe_trades))
         )
 
-        components = (session_summary, journal_analytics, decision, readiness, blocker, historical, regime)
+        components = (
+            session_summary,
+            journal_analytics,
+            decision,
+            convergence,
+            readiness,
+            blocker,
+            historical,
+            regime,
+        )
         status = "COMPLETED_WITH_ERRORS" if any(item.get("status") == "ERROR" for item in components) else "COMPLETED"
 
         return {
@@ -374,6 +395,7 @@ class DailyResearchReport:
                 "journal_analytics": deepcopy(journal_analytics),
             },
             "decision_intelligence": deepcopy(decision),
+            "trade_readiness_convergence": deepcopy(convergence),
             "readiness_intelligence": deepcopy(readiness),
             "blocker_intelligence": deepcopy(blocker),
             "historical_performance": deepcopy(historical),

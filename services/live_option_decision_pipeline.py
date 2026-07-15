@@ -40,6 +40,10 @@ from services.setup_trigger_engine import (
     evaluate_setup_trigger,
 )
 
+from services.trade_candidate_research import (
+    evaluate_trade_candidate,
+)
+
 from services.breakout_confirmation_engine import (
     confirm_breakout,
 )
@@ -742,6 +746,7 @@ class LiveOptionDecisionPipeline:
         symboltoken,
         underlying,
         spot_price,
+        option_exchange="NFO",
         strikes_each_side=5,
         end_time=None,
         capital=None,
@@ -769,6 +774,7 @@ class LiveOptionDecisionPipeline:
             symboltoken=symboltoken,
             underlying=underlying,
             spot_price=spot_price,
+            option_exchange=option_exchange,
             strikes_each_side=strikes_each_side,
             end_time=end_time,
             capital=capital,
@@ -832,6 +838,7 @@ class LiveOptionDecisionPipeline:
         symboltoken,
         underlying,
         spot_price,
+        option_exchange="NFO",
         strikes_each_side=5,
         end_time=None,
         capital=None,
@@ -1032,6 +1039,17 @@ class LiveOptionDecisionPipeline:
                 )
             )
 
+            trade_candidate_research = (
+                evaluate_trade_candidate(
+                    strategy=strategy,
+                    setup_trigger=setup_trigger,
+                    timeframe=market_result.get(
+                        "timeframe",
+                        {},
+                    ) or {},
+                )
+            )
+
             setup_status = str(
                 setup_trigger.get(
                     "status",
@@ -1067,6 +1085,9 @@ class LiveOptionDecisionPipeline:
                     "session_status": session_status,
                     "market_session": session_status,
                     "setup_trigger": setup_trigger,
+                    "trade_candidate_research": (
+                        trade_candidate_research
+                    ),
                     "completed_candle": None,
                     "breakout_confirmation": None,
                     "option_chain": None,
@@ -1305,6 +1326,7 @@ class LiveOptionDecisionPipeline:
                 strikes_each_side=(
                     strikes_each_side
                 ),
+                option_exchange=option_exchange,
             )
         )
 

@@ -832,3 +832,171 @@ def test_journal_legacy_confidence_remains_supported():
         result["direction_confidence"]
         == 80
     )
+def test_journal_persists_setup_formation_intelligence(
+    tmp_path,
+):
+
+    journal = MarketCycleJournal(
+        base_directory=tmp_path
+    )
+
+    pipeline_result = make_pipeline_result()
+
+    pipeline_result[
+        "setup_trigger"
+    ].update({
+        "formation_status": "DEVELOPING",
+        "setup_maturity_score": 70,
+        "distance_to_trigger": 25.5,
+        "distance_to_trigger_percent": 0.105,
+    })
+
+    entry = journal.build_entry(
+        pipeline_result=pipeline_result,
+        timestamp=(
+            "2026-07-16T09:30:00+05:30"
+        ),
+    )
+
+    assert (
+        entry["formation_status"]
+        == "DEVELOPING"
+    )
+
+    assert (
+        entry["setup_maturity_score"]
+        == 70
+    )
+
+    assert (
+        entry["distance_to_trigger"]
+        == 25.5
+    )
+
+    assert (
+        entry["distance_to_trigger_percent"]
+        == 0.105
+    )
+
+def test_journal_persists_trade_candidate_research(
+    tmp_path,
+):
+
+    journal = MarketCycleJournal(
+        base_directory=tmp_path
+    )
+
+    pipeline_result = make_pipeline_result()
+
+    pipeline_result[
+        "trade_candidate_research"
+    ] = {
+        "research_only": True,
+        "trade_authorized": False,
+        "trade_candidate_score": 85,
+        "candidate_label": "CLOSE",
+        "passed_conditions": [
+            "Directional bias established",
+            "Direction confidence",
+            "Evidence strength",
+        ],
+        "missing_conditions": [
+            "Full timeframe alignment",
+            "Resolve risk flags",
+        ],
+    }
+
+    entry = journal.build_entry(
+        pipeline_result=pipeline_result,
+        timestamp=(
+            "2026-07-16T09:30:00+05:30"
+        ),
+    )
+
+    assert (
+        entry["trade_candidate_score"]
+        == 85
+    )
+
+    assert (
+        entry["candidate_label"]
+        == "CLOSE"
+    )
+
+    assert (
+        entry["candidate_passed_conditions"]
+        == [
+            "Directional bias established",
+            "Direction confidence",
+            "Evidence strength",
+        ]
+    )
+
+    assert (
+        entry["candidate_missing_conditions"]
+        == [
+            "Full timeframe alignment",
+            "Resolve risk flags",
+        ]
+    )
+
+
+def test_journal_candidate_conditions_are_copied(
+    tmp_path,
+):
+
+    journal = MarketCycleJournal(
+        base_directory=tmp_path
+    )
+
+    pipeline_result = make_pipeline_result()
+
+    pipeline_result[
+        "trade_candidate_research"
+    ] = {
+        "trade_candidate_score": 70,
+        "candidate_label": "DEVELOPING",
+        "passed_conditions": [
+            "Direction confidence",
+        ],
+        "missing_conditions": [
+            "Setup maturity >= 80",
+        ],
+    }
+
+    entry = journal.build_entry(
+        pipeline_result=pipeline_result,
+        timestamp=(
+            "2026-07-16T09:30:00+05:30"
+        ),
+    )
+
+    pipeline_result[
+        "trade_candidate_research"
+    ][
+        "passed_conditions"
+    ].append(
+        "MUTATED"
+    )
+
+    pipeline_result[
+        "trade_candidate_research"
+    ][
+        "missing_conditions"
+    ].append(
+        "MUTATED"
+    )
+
+    assert (
+        entry["candidate_passed_conditions"]
+        == [
+            "Direction confidence",
+        ]
+    )
+
+    assert (
+        entry["candidate_missing_conditions"]
+        == [
+            "Setup maturity >= 80",
+        ]
+    )

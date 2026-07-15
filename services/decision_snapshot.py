@@ -95,6 +95,12 @@ def build_decision_snapshot(
         )
     )
 
+    trade_candidate_research = _safe_dict(
+        pipeline_result.get(
+            "trade_candidate_research"
+        )
+    )
+
     contract = _safe_dict(
         pipeline_result.get(
             "contract"
@@ -315,6 +321,50 @@ def build_decision_snapshot(
             setup_trigger.get(
                 "trigger_price"
             )
+        ),
+        "formation_status": (
+            setup_trigger.get(
+                "formation_status"
+            )
+        ),
+        "setup_maturity_score": (
+            setup_trigger.get(
+                "setup_maturity_score"
+            )
+        ),
+        "distance_to_trigger": (
+            setup_trigger.get(
+                "distance_to_trigger"
+            )
+        ),
+        "distance_to_trigger_percent": (
+            setup_trigger.get(
+                "distance_to_trigger_percent"
+            )
+        ),
+        "trade_candidate_score": (
+            trade_candidate_research.get(
+                "trade_candidate_score"
+            )
+        ),
+        "candidate_label": (
+            trade_candidate_research.get(
+                "candidate_label"
+            )
+        ),
+        "candidate_passed_conditions": deepcopy(
+            trade_candidate_research.get(
+                "passed_conditions",
+                [],
+            )
+            or []
+        ),
+        "candidate_missing_conditions": deepcopy(
+            trade_candidate_research.get(
+                "missing_conditions",
+                [],
+            )
+            or []
         ),
 
         "option_symbol": (

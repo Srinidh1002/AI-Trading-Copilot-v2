@@ -60,6 +60,10 @@ from services.paper_trading_risk_guard import (
 from services.market_cycle_journal import (
     MarketCycleJournal,
 )
+
+from services.underlying_registry import (
+    UnderlyingRegistry,
+)
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -72,7 +76,28 @@ PAPER_MAX_DAILY_REALIZED_LOSS = 500.0
 PAPER_BLOCK_DUPLICATE_POSITIONS = True
 
 PAPER_TRADING_KILL_SWITCH = False
-NIFTY_TOKEN = "99926000"
+
+UNDERLYING_CONFIGURATION = (
+    UnderlyingRegistry.get(
+        "NIFTY"
+    )
+)
+
+UNDERLYING = (
+    UNDERLYING_CONFIGURATION.underlying
+)
+
+SPOT_EXCHANGE = (
+    UNDERLYING_CONFIGURATION.exchange
+)
+
+SPOT_SYMBOLTOKEN = (
+    UNDERLYING_CONFIGURATION.symboltoken
+)
+
+OPTION_EXCHANGE = (
+    UNDERLYING_CONFIGURATION.option_exchange
+)
 
 CAPITAL = 10_000
 
@@ -498,8 +523,8 @@ try:
         client.get_market_data(
             mode="LTP",
             exchange_tokens={
-                "NSE": [
-                    NIFTY_TOKEN
+                SPOT_EXCHANGE: [
+                    SPOT_SYMBOLTOKEN
                 ]
             },
         )
@@ -715,11 +740,12 @@ try:
 
     result = (
         pipeline.analyse(
-            exchange="NSE",
+            exchange=SPOT_EXCHANGE,
             symboltoken=(
-                NIFTY_TOKEN
+                SPOT_SYMBOLTOKEN
             ),
-            underlying="NIFTY",
+            underlying=UNDERLYING,
+            option_exchange=OPTION_EXCHANGE,
             spot_price=(
                 spot_price
             ),
@@ -883,9 +909,9 @@ try:
     )
 
     source_decision_id = (
-        f"NSE:"
-        f"NIFTY:"
-        f"{NIFTY_TOKEN}:"
+        f"{SPOT_EXCHANGE}:"
+        f"{UNDERLYING}:"
+        f"{SPOT_SYMBOLTOKEN}:"
         f"{source_timestamp}:"
         f"{source_sequence}:"
         f"{final_pipeline_decision}"
@@ -904,10 +930,10 @@ try:
             pipeline_result=(
                 result
             ),
-            underlying="NIFTY",
-            exchange="NSE",
+            underlying=UNDERLYING,
+            exchange=SPOT_EXCHANGE,
             symboltoken=(
-                NIFTY_TOKEN
+                SPOT_SYMBOLTOKEN
             ),
             source_decision_id=(
                 source_decision_id
@@ -993,10 +1019,14 @@ try:
                 "entry_point": (
                     "live_option_decision_nifty.py"
                 ),
-                "underlying": "NIFTY",
-                "exchange": "NSE",
+                "underlying": (
+                    UNDERLYING
+                ),
+                "exchange": (
+                    SPOT_EXCHANGE
+                ),
                 "symboltoken": (
-                    NIFTY_TOKEN
+                    SPOT_SYMBOLTOKEN
                 ),
                 "spot_price": (
                     spot_price

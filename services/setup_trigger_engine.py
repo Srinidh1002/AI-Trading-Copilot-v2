@@ -1,11 +1,8 @@
 """
 Setup and trigger engine.
 
-Classifies a market condition as:
-- NO_SETUP
-- WAITING_FOR_BREAKOUT
-- WAITING_FOR_BREAKDOWN
-- TRIGGERED
+Classifies the actionable trigger state while also exposing
+research-only setup formation intelligence.
 
 This module does not place orders.
 """
@@ -21,6 +18,9 @@ def evaluate_setup_trigger(
     """
     Evaluate whether a valid directional setup is waiting
     for confirmation or has already triggered.
+
+    Setup formation fields are research-only and do not
+    authorize trades.
     """
 
     if current_price <= 0:
@@ -51,22 +51,16 @@ def evaluate_setup_trigger(
         )
     ).upper()
 
-    selected_strategy = str(
+    confidence = strategy.get(
+        "direction_confidence",
         strategy.get(
-            "strategy",
-            "NO_TRADE",
-        )
-    ).upper()
+            "confidence",
+            0,
+        ),
+    )
 
-    confidence = float(
-        strategy.get(
-            "direction_confidence",
-            strategy.get(
-                "confidence",
-                0,
-            ),
-        )
-        or 0
+    evidence_strength_score = strategy.get(
+        "evidence_strength_score"
     )
 
     risk_flags = list(
@@ -79,9 +73,23 @@ def evaluate_setup_trigger(
 
     chart_patterns = {
         str(pattern).upper()
-        for pattern in chart.get(
-            "patterns",
-            [],
+        for pattern in (
+            chart.get(
+                "patterns",
+                [],
+            )
+            or []
+        )
+    }
+
+    candlestick_patterns = {
+        str(pattern).upper()
+        for pattern in (
+            candlestick.get(
+                "patterns",
+                [],
+            )
+            or []
         )
     }
 
@@ -117,8 +125,111 @@ def evaluate_setup_trigger(
         "support": support,
         "resistance": resistance,
         "confidence": confidence,
+        "formation_status": "NO_SETUP",
+        "setup_maturity_score": 0,
+        "distance_to_trigger": None,
+        "distance_to_trigger_percent": None,
         "reasons": [],
     }
+
+    def apply_formation_intelligence(
+        trigger_price,
+        setup_evidence,
+    ):
+        distance = abs(
+            float(trigger_price)
+            - float(current_price)
+        )
+
+        distance_percent = (
+            distance
+            / float(trigger_price)
+            * 100
+        )
+
+        maturity_score = 0
+
+        if direction in {
+            "BULLISH",
+            "BEARISH",
+        }:
+            maturity_score += 20
+
+        if setup_evidence:
+            maturity_score += 30
+
+        try:
+            numeric_confidence = float(
+                confidence
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            numeric_confidence = 0
+
+        if numeric_confidence >= 70:
+            maturity_score += 15
+        elif numeric_confidence >= 40:
+            maturity_score += 10
+
+        try:
+            numeric_evidence = float(
+                evidence_strength_score
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
+            numeric_evidence = None
+
+        if numeric_evidence is not None:
+            if numeric_evidence >= 70:
+                maturity_score += 15
+            elif numeric_evidence >= 35:
+                maturity_score += 10
+            elif numeric_evidence > 0:
+                maturity_score += 5
+
+        if distance_percent <= 0.10:
+            maturity_score += 20
+        elif distance_percent <= 0.25:
+            maturity_score += 15
+        elif distance_percent <= 0.50:
+            maturity_score += 10
+        elif distance_percent <= 1.00:
+            maturity_score += 5
+
+        maturity_score = min(
+            maturity_score,
+            100,
+        )
+
+        if maturity_score >= 80:
+            formation_status = "NEAR_TRIGGER"
+        elif maturity_score >= 55:
+            formation_status = "DEVELOPING"
+        elif maturity_score > 0:
+            formation_status = "EARLY_FORMATION"
+        else:
+            formation_status = "NO_SETUP"
+
+        base_result.update({
+            "formation_status": (
+                formation_status
+            ),
+            "setup_maturity_score": (
+                maturity_score
+            ),
+            "distance_to_trigger": round(
+                distance,
+                2,
+            ),
+            "distance_to_trigger_percent": round(
+                distance_percent,
+                4,
+            ),
+        })
 
     # ---------------------------------
     # INVALID DIRECTION
@@ -139,6 +250,10 @@ def evaluate_setup_trigger(
     # ---------------------------------
 
     if risk_flags:
+        base_result.update({
+            "formation_status": "BLOCKED",
+        })
+
         base_result["reasons"].append(
             "Setup contains unresolved risk flags."
         )
@@ -159,6 +274,8 @@ def evaluate_setup_trigger(
                 if direction == "BULLISH"
                 else "BREAKDOWN"
             ),
+            "formation_status": "TRIGGERED",
+            "setup_maturity_score": 100,
             "reasons": [
                 "Strategy engine has already authorized the trade."
             ],
@@ -199,20 +316,6 @@ def evaluate_setup_trigger(
             2,
         )
 
-        if (
-            current_price
-            > trigger_price
-        ):
-            base_result.update({
-                "status": "TRIGGERED",
-                "triggered": True,
-                "reasons": [
-                    "Price has moved above the breakout trigger."
-                ],
-            })
-
-            return base_result
-
         bullish_setup_evidence = bool(
             chart_patterns
             & {
@@ -222,6 +325,27 @@ def evaluate_setup_trigger(
                 "PRICE_COMPRESSION",
             }
         )
+
+        apply_formation_intelligence(
+            trigger_price,
+            bullish_setup_evidence,
+        )
+
+        if (
+            current_price
+            > trigger_price
+        ):
+            base_result.update({
+                "status": "TRIGGERED",
+                "triggered": True,
+                "formation_status": "TRIGGERED",
+                "setup_maturity_score": 100,
+                "reasons": [
+                    "Price has moved above the breakout trigger."
+                ],
+            })
+
+            return base_result
 
         if bullish_setup_evidence:
             base_result.update({
@@ -267,20 +391,6 @@ def evaluate_setup_trigger(
             2,
         )
 
-        if (
-            current_price
-            < trigger_price
-        ):
-            base_result.update({
-                "status": "TRIGGERED",
-                "triggered": True,
-                "reasons": [
-                    "Price has moved below the breakdown trigger."
-                ],
-            })
-
-            return base_result
-
         bearish_setup_evidence = bool(
             chart_patterns
             & {
@@ -290,6 +400,27 @@ def evaluate_setup_trigger(
                 "PRICE_COMPRESSION",
             }
         )
+
+        apply_formation_intelligence(
+            trigger_price,
+            bearish_setup_evidence,
+        )
+
+        if (
+            current_price
+            < trigger_price
+        ):
+            base_result.update({
+                "status": "TRIGGERED",
+                "triggered": True,
+                "formation_status": "TRIGGERED",
+                "setup_maturity_score": 100,
+                "reasons": [
+                    "Price has moved below the breakdown trigger."
+                ],
+            })
+
+            return base_result
 
         if bearish_setup_evidence:
             base_result.update({

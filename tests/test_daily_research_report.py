@@ -376,3 +376,171 @@ def test_empty_session_does_not_claim_no_trade_ready_observation():
             "research_observations"
         ]
     )
+
+
+def test_daily_report_exposes_strong_trade_readiness_convergence():
+    entries = [
+        {
+            "timestamp": (
+                "2026-07-16T09:20:00+05:30"
+            ),
+            "decision": "WAIT",
+            "direction": "BULLISH",
+            "confidence": 60.0,
+            "trade_candidate_score": 60.0,
+            "distance_to_trigger_percent": 1.0,
+        },
+        {
+            "timestamp": (
+                "2026-07-16T09:25:00+05:30"
+            ),
+            "decision": "WAIT",
+            "direction": "BULLISH",
+            "confidence": 70.0,
+            "trade_candidate_score": 70.0,
+            "distance_to_trigger_percent": 0.8,
+        },
+        {
+            "timestamp": (
+                "2026-07-16T09:30:00+05:30"
+            ),
+            "decision": "WAIT",
+            "direction": "BULLISH",
+            "confidence": 85.0,
+            "trade_candidate_score": 85.0,
+            "distance_to_trigger_percent": 0.5,
+        },
+        {
+            "timestamp": (
+                "2026-07-16T09:35:00+05:30"
+            ),
+            "decision": "TRADE_READY",
+            "direction": "BULLISH",
+            "confidence": 95.0,
+            "trade_candidate_score": 95.0,
+            "distance_to_trigger_percent": 0.05,
+        },
+    ]
+
+    report = DailyResearchReport().build_report(
+        entries,
+        trades=[],
+        session_date="2026-07-16",
+    )
+
+    assert report["status"] == "COMPLETED"
+
+    decision = report[
+        "decision_intelligence"
+    ]
+
+    assert (
+        decision[
+            "candidate_momentum"
+        ][
+            "trend"
+        ]
+        == "RISING"
+    )
+
+    assert (
+        decision[
+            "candidate_momentum"
+        ][
+            "change"
+        ]
+        == 35.0
+    )
+
+    assert (
+        decision[
+            "trigger_approach"
+        ][
+            "approach_trend"
+        ]
+        == "CLOSING"
+    )
+
+    assert (
+        decision[
+            "trigger_approach"
+        ][
+            "approach_speed"
+        ]
+        == "ACCELERATING"
+    )
+
+    convergence = report[
+        "trade_readiness_convergence"
+    ]
+
+    assert (
+        convergence[
+            "convergence"
+        ]
+        == "STRONG"
+    )
+
+    assert (
+        convergence[
+            "candidate_signal"
+        ][
+            "persistent_rise"
+        ]
+        is True
+    )
+
+    assert (
+        convergence[
+            "trigger_signal"
+        ][
+            "closing"
+        ]
+        is True
+    )
+
+    assert (
+        convergence[
+            "trigger_signal"
+        ][
+            "accelerating"
+        ]
+        is True
+    )
+
+
+def test_daily_report_marks_convergence_engine_error():
+    class FailingConvergence:
+        def analyze(
+            self,
+            evolution_analysis,
+            *,
+            session_date=None,
+        ):
+            raise RuntimeError(
+                "convergence failure"
+            )
+
+    report = DailyResearchReport(
+        trade_readiness_convergence=(
+            FailingConvergence()
+        ),
+    ).build_report(
+        [],
+        trades=[],
+        session_date="2026-07-16",
+    )
+
+    assert (
+        report["status"]
+        == "COMPLETED_WITH_ERRORS"
+    )
+
+    assert (
+        report[
+            "trade_readiness_convergence"
+        ][
+            "status"
+        ]
+        == "ERROR"
+    )
