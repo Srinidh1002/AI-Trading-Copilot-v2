@@ -18,6 +18,9 @@ IMPORTANT:
 - Paper-trading failures cannot change the pipeline decision.
 """
 
+import argparse
+
+
 from services.broker.angel_client import (
     AngelMarketDataClient,
 )
@@ -39,8 +42,12 @@ from services.market_data_validator import (
     validate_live_price,
 )
 
-from services.nse_holiday_calendar import (
-    get_nse_holiday_calendar,
+from services.market_identity_guard import (
+    validate_market_identity,
+)
+
+from services.market_session_configuration import (
+    resolve_market_session_configuration,
 )
 
 from services.paper_trade_repository import (
@@ -61,9 +68,49 @@ from services.market_cycle_journal import (
     MarketCycleJournal,
 )
 
-from services.underlying_registry import (
-    UnderlyingRegistry,
+from services.live_market_configuration import (
+    resolve_live_market_configuration,
 )
+# ============================================================
+# LIVE MARKET RUNTIME SELECTION
+# ============================================================
+
+
+def parse_live_underlying(
+    argv=None,
+):
+    parser = argparse.ArgumentParser(
+        add_help=False,
+    )
+
+    parser.add_argument(
+        "--underlying",
+        default=None,
+    )
+
+    arguments, _ = (
+        parser.parse_known_args(
+            argv
+        )
+    )
+
+    return arguments.underlying
+
+
+def resolve_runtime_market_configuration(
+    argv=None,
+):
+    requested_underlying = (
+        parse_live_underlying(
+            argv
+        )
+    )
+
+    return resolve_live_market_configuration(
+        requested_underlying
+    )
+
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -78,9 +125,7 @@ PAPER_BLOCK_DUPLICATE_POSITIONS = True
 PAPER_TRADING_KILL_SWITCH = False
 
 UNDERLYING_CONFIGURATION = (
-    UnderlyingRegistry.get(
-        "NIFTY"
-    )
+    resolve_runtime_market_configuration()
 )
 
 UNDERLYING = (
@@ -117,8 +162,22 @@ ENABLE_PAPER_TRADING = True
 
 PERSIST_PAPER_TRADES = True
 
-NSE_HOLIDAY_CALENDAR = (
-    get_nse_holiday_calendar()
+MARKET_SESSION_CONFIGURATION = (
+    resolve_market_session_configuration(
+        UNDERLYING
+    )
+)
+
+MARKET_HOLIDAY_CALENDAR = (
+    MARKET_SESSION_CONFIGURATION
+    .holiday_calendar
+)
+
+MARKET_IDENTITY_VALIDATION = (
+    validate_market_identity(
+        UNDERLYING_CONFIGURATION,
+        MARKET_SESSION_CONFIGURATION,
+    )
 )
 
 
@@ -179,7 +238,7 @@ if ENFORCE_MARKET_SESSION:
                 MAXIMUM_CANDLE_AGE_MINUTES
             ),
             holiday_calendar=(
-                NSE_HOLIDAY_CALENDAR
+                MARKET_HOLIDAY_CALENDAR
             ),
         )
     )

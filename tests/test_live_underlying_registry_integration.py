@@ -18,21 +18,21 @@ def read_live_source():
     )
 
 
-def test_live_entry_point_imports_underlying_registry():
+def test_live_entry_point_imports_live_market_configuration():
     source = read_live_source()
 
     assert (
-        "from services.underlying_registry import ("
+        "from services.live_market_configuration import ("
         in source
     )
 
     assert (
-        "UnderlyingRegistry,"
+        "resolve_live_market_configuration,"
         in source
     )
 
 
-def test_live_entry_point_resolves_canonical_underlying():
+def test_live_entry_point_resolves_runtime_market_configuration():
     source = read_live_source()
 
     assert (
@@ -41,12 +41,17 @@ def test_live_entry_point_resolves_canonical_underlying():
     )
 
     assert (
-        "UnderlyingRegistry.get("
+        "resolve_runtime_market_configuration()"
         in source
     )
 
     assert (
-        '"NIFTY"'
+        "resolve_live_market_configuration("
+        in source
+    )
+
+    assert (
+        "parse_live_underlying("
         in source
     )
 
@@ -235,7 +240,6 @@ def test_registry_configuration_matches_current_nifty_identity():
 @pytest.mark.parametrize(
     "underlying",
     [
-        "SENSEX",
         "BANKNIFTY",
         "FINNIFTY",
     ],

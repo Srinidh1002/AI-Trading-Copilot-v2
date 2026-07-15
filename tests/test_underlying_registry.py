@@ -80,16 +80,49 @@ def test_configuration_is_immutable():
         configuration.exchange = "BSE"
 
 
+def test_sensex_configuration_is_registered():
+    configuration = (
+        UnderlyingRegistry.get(
+            "SENSEX"
+        )
+    )
+
+    assert isinstance(
+        configuration,
+        UnderlyingConfiguration,
+    )
+
+    assert (
+        configuration.underlying
+        == "SENSEX"
+    )
+
+    assert (
+        configuration.exchange
+        == "BSE"
+    )
+
+    assert (
+        configuration.symboltoken
+        == "99919000"
+    )
+
+    assert (
+        configuration.option_exchange
+        == "BFO"
+    )
+
+
 def test_unsupported_underlying_fails_closed():
     with pytest.raises(
         ValueError,
         match=(
             "Unsupported underlying: "
-            "SENSEX."
+            "BANKNIFTY."
         ),
     ):
         UnderlyingRegistry.get(
-            "SENSEX"
+            "BANKNIFTY"
         )
 
 
@@ -143,6 +176,7 @@ def test_supported_underlyings_are_returned():
         .supported_underlyings()
         == (
             "NIFTY",
+            "SENSEX",
         )
     )
 
@@ -156,10 +190,18 @@ def test_is_supported_returns_true_for_nifty():
     )
 
 
+def test_is_supported_returns_true_for_sensex():
+    assert (
+        UnderlyingRegistry.is_supported(
+            "sensex"
+        )
+        is True
+    )
+
+
 @pytest.mark.parametrize(
     "underlying",
     [
-        "SENSEX",
         "",
         None,
         123,

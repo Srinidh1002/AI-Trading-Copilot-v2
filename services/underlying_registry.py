@@ -48,6 +48,12 @@ class UnderlyingRegistry:
             symboltoken="99926000",
             option_exchange="NFO",
         ),
+        "SENSEX": UnderlyingConfiguration(
+            underlying="SENSEX",
+            exchange="BSE",
+            symboltoken="99919000",
+            option_exchange="BFO",
+        ),
     }
 
     @classmethod
