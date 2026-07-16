@@ -88,7 +88,9 @@ from services.live_dashboard_repository import (
 from services.paper_trade_monitor import (
     PaperTradeMonitor,
 )
-
+from services.decision_explanation import (
+    DecisionExplanation,
+)
 def configure_utf8_output():
     """Use UTF-8 for interactive and redirected runner output when supported."""
 
@@ -867,6 +869,10 @@ try:
                 MAXIMUM_CANDLE_AGE_MINUTES
             ),
         )
+    )
+    decision_explanation = (
+    DecisionExplanation()
+    .build(result)
     )
     dashboard = (
       LiveDashboardService()

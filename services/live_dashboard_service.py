@@ -37,5 +37,8 @@ class LiveDashboardService:
                 "session_status": pipeline_result.get(
                     "session_status"
                 ),
+                "decision_explanation": pipeline_result.get(
+                     "decision_explanation"
+                ),
             }
         )
