@@ -72,6 +72,9 @@ from services.market_cycle_journal import (
 from services.live_market_configuration import (
     resolve_live_market_configuration,
 )
+from services.decision_snapshot import (
+    persist_live_decision_snapshot,
+)
 
 
 def configure_utf8_output():
@@ -2318,6 +2321,35 @@ else:
 
     print(
         "No paper-trading result."
+    )
+
+
+# ============================================================
+# DECISION SNAPSHOT
+# ============================================================
+#
+# Diagnostic persistence only. It runs after the pipeline and paper-trading
+# status are final, and its fail-open result cannot change either outcome.
+# ============================================================
+
+decision_snapshot_result = (
+    persist_live_decision_snapshot(
+        result,
+        underlying=UNDERLYING,
+        spot_price=spot_price,
+        paper_trading_result=paper_trading_result,
+    )
+)
+
+if decision_snapshot_result.get("saved"):
+    print(
+        "Decision Snapshot:",
+        decision_snapshot_result.get("path"),
+    )
+else:
+    print(
+        "Decision Snapshot: FAILED (non-blocking)",
+        decision_snapshot_result.get("error"),
     )
 
 

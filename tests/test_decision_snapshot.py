@@ -1,9 +1,14 @@
+import json
 from copy import deepcopy
+from datetime import datetime
 
 import pytest
 
 from services.decision_snapshot import (
     build_decision_snapshot,
+    build_live_decision_snapshot,
+    persist_live_decision_snapshot,
+    save_live_decision_snapshot,
 )
 
 
@@ -432,3 +437,84 @@ def test_snapshot_candidate_conditions_are_deep_copied():
             "Full timeframe alignment",
         ]
     )
+
+
+def test_build_live_snapshot_contains_required_runtime_fields():
+
+    pipeline_result = full_pipeline_result()
+    pipeline_result["session_status"] = {
+        "status": "SESSION_VALID",
+        "candle_timestamp": "2026-07-16T10:25:00+05:30",
+        "candle_age_minutes": 6.0,
+        "candle_fresh": True,
+    }
+    pipeline_result["completed_candle"] = {
+        "timestamp": "2026-07-16T10:25:00+05:30",
+        "open": 24100.0,
+        "high": 24130.0,
+        "low": 24090.0,
+        "close": 24120.0,
+        "volume": 0.0,
+    }
+    pipeline_result["market_analysis"]["regime"]["volatility"] = "LOW"
+
+    snapshot = build_live_decision_snapshot(
+        pipeline_result,
+        underlying="NIFTY",
+        spot_price=24120.0,
+        paper_trading_result={"status": "SKIPPED"},
+        timestamp=datetime.fromisoformat("2026-07-16T10:31:00+05:30"),
+    )
+
+    required_fields = {
+        "timestamp", "underlying", "spot_price", "market_session",
+        "candle_timestamp", "candle_age_minutes", "candle_fresh",
+        "decision", "direction", "confidence", "evidence_strength",
+        "evidence_strength_label", "strategy", "primary_regime", "trend",
+        "volatility", "regime_confidence", "support", "resistance",
+        "volume_bias", "relative_volume", "volume_spike", "setup_status",
+        "trigger_type", "risk_flags", "relevant_signals",
+        "paper_trade_status", "selected_option_contract", "completed_candle",
+    }
+
+    assert required_fields <= set(snapshot)
+    assert snapshot["paper_trade_status"] == "SKIPPED"
+    assert snapshot["completed_candle"]["close"] == 24120.0
+    assert snapshot["selected_option_contract"]["symbol"] == "NIFTY_TEST_CE"
+
+
+def test_save_live_snapshot_uses_date_and_time_path(tmp_path):
+
+    snapshot = build_live_decision_snapshot(
+        full_pipeline_result(),
+        underlying="NIFTY",
+        spot_price=24120.0,
+        timestamp=datetime.fromisoformat("2026-07-16T10:31:00+05:30"),
+    )
+
+    result = save_live_decision_snapshot(snapshot, base_path=tmp_path)
+
+    destination = tmp_path / "2026-07-16" / "10-31.json"
+    assert result == {
+        "saved": True,
+        "path": str(destination),
+        "error": None,
+    }
+    assert json.loads(destination.read_text(encoding="utf-8")) == snapshot
+
+
+def test_snapshot_persistence_failure_is_non_blocking(tmp_path):
+
+    blocked_path = tmp_path / "not-a-directory"
+    blocked_path.write_text("blocked", encoding="utf-8")
+
+    result = persist_live_decision_snapshot(
+        full_pipeline_result(),
+        underlying="NIFTY",
+        spot_price=24120.0,
+        base_path=blocked_path,
+    )
+
+    assert result["saved"] is False
+    assert result["path"] is None
+    assert "FileExistsError" in result["error"]
