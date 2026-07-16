@@ -627,6 +627,70 @@ def build_live_decision_snapshot(
 ).get(
     "distance_to_trigger_percent"
 ),
+"trade_candidate": deepcopy(
+    _safe_dict(
+        pipeline_result.get(
+            "trade_candidate_research"
+        )
+    )
+),
+"market_decision": pipeline_result.get(
+    "market_decision"
+),
+
+"decision_reason": deepcopy(
+    pipeline_result.get(
+        "decision_reason"
+    )
+),
+
+"trade_authorized": pipeline_result.get(
+    "trade_authorized"
+),
+"strategy_analysis": deepcopy(
+    _safe_dict(
+        pipeline_result.get(
+            "market_analysis"
+        )
+    ).get(
+        "strategy"
+    )
+),
+"technical_analysis": deepcopy(
+    _safe_dict(
+        _safe_dict(
+            pipeline_result.get(
+                "market_analysis"
+            )
+        ).get(
+            "technical"
+        )
+    )
+),
+
+"regime_analysis": deepcopy(
+    _safe_dict(
+        _safe_dict(
+            pipeline_result.get(
+                "market_analysis"
+            )
+        ).get(
+            "regime"
+        )
+    )
+),
+
+"volume_analysis": deepcopy(
+    _safe_dict(
+        _safe_dict(
+            pipeline_result.get(
+                "market_analysis"
+            )
+        ).get(
+            "volume"
+        )
+    )
+),
         "indicator_snapshot": deepcopy(
             indicator_snapshot
         ),
