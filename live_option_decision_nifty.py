@@ -85,7 +85,9 @@ from services.live_dashboard_service import (
 from services.live_dashboard_repository import (
     LiveDashboardRepository,
 )
-
+from services.paper_trade_monitor import (
+    PaperTradeMonitor,
+)
 
 def configure_utf8_output():
     """Use UTF-8 for interactive and redirected runner output when supported."""
@@ -1063,6 +1065,9 @@ try:
                 ),
             },
         )
+    )
+    PaperTradeMonitor().save(
+        paper_trading_result
     )
 
 except Exception as exc:
