@@ -627,12 +627,76 @@ def build_live_decision_snapshot(
 ).get(
     "distance_to_trigger_percent"
 ),
+"estimated_candles_to_trigger": _safe_dict(
+    pipeline_result.get(
+        "setup_trigger"
+    )
+).get(
+    "estimated_candles_to_trigger"
+),
+
+"readiness_score": _safe_dict(
+    pipeline_result.get(
+        "setup_trigger"
+    )
+).get(
+        "readiness_score"
+),
 "trade_candidate": deepcopy(
     _safe_dict(
         pipeline_result.get(
             "trade_candidate_research"
         )
     )
+),
+"candidate_score": _safe_dict(
+    pipeline_result.get(
+        "trade_candidate_research"
+    )
+).get(
+    "candidate_score"
+),
+
+"candidate_status": _safe_dict(
+    pipeline_result.get(
+        "trade_candidate_research"
+    )
+).get(
+    "status"
+),
+
+"candidate_reason": deepcopy(
+    _safe_dict(
+        pipeline_result.get(
+            "trade_candidate_research"
+        )
+    ).get(
+        "reasons",
+        [],
+    )
+),
+"opportunity_score": _safe_dict(
+    pipeline_result.get(
+        "trade_candidate_research"
+    )
+).get(
+    "opportunity_score"
+),
+
+"opportunity_state": _safe_dict(
+    pipeline_result.get(
+        "trade_candidate_research"
+    )
+).get(
+    "state"
+),
+
+"opportunity_trend": _safe_dict(
+    pipeline_result.get(
+        "trade_candidate_research"
+    )
+).get(
+    "trend"
 ),
 "market_decision": pipeline_result.get(
     "market_decision"
