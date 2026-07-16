@@ -78,6 +78,14 @@ from services.decision_snapshot import (
 from services.session_manifest import (
     create_session_manifest,
 )
+from services.live_dashboard_service import (
+    LiveDashboardService,
+)
+
+from services.live_dashboard_repository import (
+    LiveDashboardRepository,
+)
+
 
 def configure_utf8_output():
     """Use UTF-8 for interactive and redirected runner output when supported."""
@@ -857,6 +865,14 @@ try:
                 MAXIMUM_CANDLE_AGE_MINUTES
             ),
         )
+    )
+    dashboard = (
+      LiveDashboardService()
+      .build(result)
+    )
+
+    LiveDashboardRepository().save(
+        dashboard
     )
 
 except MarketDataValidationError as exc:

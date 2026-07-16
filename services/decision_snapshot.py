@@ -809,7 +809,16 @@ def save_live_decision_snapshot(
             except OSError:
                 pass
             raise
+        try:
 
+            update_snapshot(
+                      session_date=(
+                          destination.parent.name
+                ),
+               snapshot_path=str(destination),
+            )
+        except Exception:
+           pass
         return {
             "saved": True,
             "path": str(destination),
