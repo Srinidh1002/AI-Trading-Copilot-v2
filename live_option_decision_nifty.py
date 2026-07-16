@@ -25,7 +25,9 @@ import sys
 from services.broker.angel_client import (
     AngelMarketDataClient,
 )
-
+from services.pipeline_performance import (
+    PipelinePerformance,
+)
 from services.decision_audit_logger import (
     DecisionAuditLogger,
 )
@@ -81,7 +83,9 @@ from services.session_manifest import (
 from services.live_dashboard_service import (
     LiveDashboardService,
 )
-
+from services.confidence_breakdown import (
+    ConfidenceBreakdown,
+)
 from services.live_dashboard_repository import (
     LiveDashboardRepository,
 )
@@ -835,7 +839,9 @@ print(
     "\nRunning complete "
     "risk-controlled pipeline..."
 )
-
+performance = (
+    PipelinePerformance()
+)
 try:
 
     result = (
@@ -871,8 +877,16 @@ try:
         )
     )
     decision_explanation = (
-    DecisionExplanation()
-    .build(result)
+     DecisionExplanation()
+       .build(result)
+    )
+    ConfidenceBreakdown().build(
+      result
+    )
+    result[
+        "pipeline_performance"
+    ] = (
+       performance.finish()
     )
     dashboard = (
       LiveDashboardService()
