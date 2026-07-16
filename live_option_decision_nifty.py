@@ -75,7 +75,9 @@ from services.live_market_configuration import (
 from services.decision_snapshot import (
     persist_live_decision_snapshot,
 )
-
+from services.session_manifest import (
+    create_session_manifest,
+)
 
 def configure_utf8_output():
     """Use UTF-8 for interactive and redirected runner output when supported."""
@@ -245,7 +247,12 @@ print(
 # ============================================================
 # PRE-CHECK MARKET SESSION
 # ============================================================
+from datetime import date
 
+create_session_manifest(
+    session_date=date.today().isoformat(),
+    underlying=UNDERLYING,
+)
 pre_session = None
 
 if ENFORCE_MARKET_SESSION:
