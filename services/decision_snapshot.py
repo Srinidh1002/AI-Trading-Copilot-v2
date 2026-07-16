@@ -585,6 +585,48 @@ def build_live_decision_snapshot(
         #
         # NEW
         #
+        "chart_patterns": deepcopy(
+    _safe_dict(
+        pipeline_result.get(
+            "setup_trigger"
+        )
+    ).get(
+        "chart_patterns",
+        [],
+    )
+),
+
+"formation_status": _safe_dict(
+    pipeline_result.get(
+        "setup_trigger"
+    )
+).get(
+    "formation_status"
+),
+
+"setup_maturity_score": _safe_dict(
+    pipeline_result.get(
+        "setup_trigger"
+    )
+).get(
+    "setup_maturity_score"
+),
+
+"distance_to_trigger": _safe_dict(
+    pipeline_result.get(
+        "setup_trigger"
+    )
+).get(
+    "distance_to_trigger"
+),
+
+"distance_to_trigger_percent": _safe_dict(
+    pipeline_result.get(
+        "setup_trigger"
+    )
+).get(
+    "distance_to_trigger_percent"
+),
         "indicator_snapshot": deepcopy(
             indicator_snapshot
         ),
