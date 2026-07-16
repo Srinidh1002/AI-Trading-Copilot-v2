@@ -56,11 +56,15 @@ from services.market_session_configuration import (
 from services.paper_trade_repository import (
     PaperTradeRepository,
 )
-
+from services.daily_performance_summary import (
+    DailyPerformanceSummary,
+)
 from services.paper_trading_engine import (
     PaperTradingEngine,
 )
-
+from services.trade_history import (
+    TradeHistory,
+)
 from services.paper_trading_orchestrator import (
     PaperTradingOrchestrator,
 )
@@ -70,7 +74,9 @@ from services.paper_trading_risk_guard import (
 from services.market_cycle_journal import (
     MarketCycleJournal,
 )
-
+from services.active_trade_dashboard import (
+    ActiveTradeDashboard,
+)
 from services.live_market_configuration import (
     resolve_live_market_configuration,
 )
@@ -1088,6 +1094,15 @@ try:
     )
     PaperTradeMonitor().save(
         paper_trading_result
+    )
+    ActiveTradeDashboard().build(
+        paper_trading_result
+    )
+    TradeHistory().build(
+       paper_trading_result
+    )
+    DailyPerformanceSummary().build(
+       paper_trading_result
     )
 
 except Exception as exc:
