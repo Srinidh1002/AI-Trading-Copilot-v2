@@ -74,6 +74,18 @@ from services.decision_audit_trail import (
 )
 
 
+_TIMEFRAME_BY_CONFIRMATION_INTERVAL = {
+    "ONE_MINUTE": None,
+    "THREE_MINUTE": None,
+    "FIVE_MINUTE": "5m",
+    "TEN_MINUTE": None,
+    "FIFTEEN_MINUTE": "15m",
+    "THIRTY_MINUTE": None,
+    "ONE_HOUR": "1h",
+    "ONE_DAY": "1d",
+}
+
+
 class LiveOptionDecisionPipeline:
     """
     Complete safety-gated live option decision pipeline.
@@ -249,6 +261,57 @@ class LiveOptionDecisionPipeline:
             )
             or {}
         )
+
+    def _completed_candle_from_analysis_timeframes(
+        self,
+        market_result,
+        confirmation_interval,
+        now,
+    ):
+        """Return a completed candle from already-fetched analysis data.
+
+        This is intentionally read-only: it avoids an extra historical-data
+        request when the analysis pipeline has the matching timeframe.
+        """
+
+        timeframe = (
+            _TIMEFRAME_BY_CONFIRMATION_INTERVAL.get(
+                str(confirmation_interval).upper()
+            )
+        )
+
+        if timeframe is None:
+            return None
+
+        dataframe = (
+            market_result.get(
+                "timeframes",
+                {},
+            )
+            .get(timeframe)
+        )
+
+        if dataframe is None:
+            return None
+
+        try:
+            return (
+                self.completed_candle_service
+                .get_latest_completed_candle_from_dataframe(
+                    dataframe=dataframe,
+                    interval=confirmation_interval,
+                    now=now,
+                )
+            )
+        except (
+            RuntimeError,
+            ValueError,
+            MarketDataValidationError,
+        ):
+            # The existing confirmation path retains its broker fallback when
+            # reused data is unavailable. Reporting must not make a no-trade
+            # analysis fail merely because no completed candle can be derived.
+            return None
 
     def _build_audit_trail(
         self,
@@ -1014,7 +1077,37 @@ class LiveOptionDecisionPipeline:
 
         setup_trigger = None
         breakout_confirmation = None
-        completed_candle = None
+        completed_candle = (
+            self._completed_candle_from_analysis_timeframes(
+                market_result=market_result,
+                confirmation_interval=confirmation_interval,
+                now=session_now,
+            )
+        )
+
+        # Refresh reporting with the completed candle already used by market
+        # analysis. This is informational here; existing decision gates remain
+        # in their original confirmation path below.
+        if (
+            enforce_market_session
+            and completed_candle is not None
+        ):
+            session_status = (
+                evaluate_market_session(
+                    now=session_now,
+                    candle_timestamp=(
+                        completed_candle.get(
+                            "timestamp"
+                        )
+                    ),
+                    maximum_candle_age_minutes=(
+                        maximum_candle_age_minutes
+                    ),
+                    holiday_calendar=(
+                        self.holiday_calendar
+                    ),
+                )
+            )
 
         trade_authorized = (
             market_decision == "TRADE"
@@ -1088,7 +1181,7 @@ class LiveOptionDecisionPipeline:
                     "trade_candidate_research": (
                         trade_candidate_research
                     ),
-                    "completed_candle": None,
+                    "completed_candle": completed_candle,
                     "breakout_confirmation": None,
                     "option_chain": None,
                     "contract": self._no_contract(
@@ -1102,38 +1195,7 @@ class LiveOptionDecisionPipeline:
             # FETCH LATEST COMPLETED CANDLE
             # ---------------------------------
 
-            reusable_timeframe = None
-
-            if (
-                confirmation_interval
-                == "FIVE_MINUTE"
-            ):
-                reusable_timeframe = (
-                    market_result
-                    .get(
-                        "timeframes",
-                        {},
-                    )
-                    .get(
-                        "5m"
-                    )
-                )
-
-            if reusable_timeframe is not None:
-                completed_candle = (
-                    self.completed_candle_service
-                    .get_latest_completed_candle_from_dataframe(
-                        dataframe=(
-                            reusable_timeframe
-                        ),
-                        interval=(
-                            confirmation_interval
-                        ),
-                        now=session_now,
-                    )
-                )
-
-            else:
+            if completed_candle is None:
                 completed_candle = (
                     self.completed_candle_service
                     .get_latest_completed_candle(

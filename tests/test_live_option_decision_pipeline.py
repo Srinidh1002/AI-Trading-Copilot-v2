@@ -1,10 +1,14 @@
 from datetime import datetime
 from unittest.mock import MagicMock
 
+import pandas as pd
 import pytest
 
 from services.live_option_decision_pipeline import (
     LiveOptionDecisionPipeline,
+)
+from services.completed_candle_service import (
+    CompletedCandleService,
 )
 
 from services.market_session_guard import (
@@ -569,6 +573,59 @@ def test_valid_market_session_allows_pipeline_to_continue():
     analysis_pipeline.analyse.assert_called_once()
 
     option_builder.build_chain.assert_called_once()
+
+
+def test_completed_analysis_candle_populates_session_reporting():
+
+    analysis_pipeline = MagicMock()
+
+    analysis_pipeline.analyse.return_value = {
+        "strategy": {
+            "decision": "NO_TRADE",
+            "direction": "NEUTRAL",
+        },
+        "timeframes": {
+            "5m": pd.DataFrame({
+                "timestamp": pd.to_datetime([
+                    "2026-07-10 10:20:00+05:30",
+                    "2026-07-10 10:25:00+05:30",
+                ]),
+                "Open": [24200, 24205],
+                "High": [24210, 24215],
+                "Low": [24195, 24200],
+                "Close": [24205, 24210],
+                "Volume": [100, 120],
+            }),
+        },
+    }
+
+    option_builder = MagicMock()
+    candle_service = CompletedCandleService(
+        market_client=MagicMock()
+    )
+
+    pipeline = LiveOptionDecisionPipeline(
+        analysis_pipeline=analysis_pipeline,
+        option_chain_builder=option_builder,
+        completed_candle_service=candle_service,
+    )
+
+    result = pipeline.analyse(
+        exchange="NSE",
+        symboltoken="99926000",
+        underlying="NIFTY",
+        spot_price=24206.9,
+        enforce_market_session=True,
+        session_now=india_datetime(2026, 7, 10, 10, 30),
+    )
+
+    assert result["completed_candle"]["timestamp"] == pd.Timestamp(
+        "2026-07-10 10:25:00+05:30"
+    )
+    assert result["session_status"]["candle_timestamp"] is not None
+    assert result["session_status"]["candle_age_minutes"] == 5.0
+    assert result["session_status"]["candle_fresh"] is True
+    candle_service.market_client.get_historical_data.assert_not_called()
 
 
 def test_stale_completed_candle_blocks_option_chain():

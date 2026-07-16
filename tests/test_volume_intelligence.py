@@ -41,6 +41,19 @@ def test_detects_volume_spike():
     assert result["relative_volume"] == 2.0
 
 
+def test_reports_relative_volume_for_zero_volume_history():
+
+    df = make_data(
+        [100, 101, 102],
+        [0, 0, 0],
+    )
+
+    result = analyse_volume_intelligence(df)
+
+    assert result["relative_volume"] == 0.0
+    assert result["volume_spike"] is False
+
+
 def test_detects_rising_price_falling_volume():
 
     df = make_data(

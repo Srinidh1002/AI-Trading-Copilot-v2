@@ -177,6 +177,12 @@ def analyse_volume_intelligence(
                 >= spike_threshold
             )
 
+        elif average_volume == 0:
+            # Index feeds can legitimately contain an all-zero volume series.
+            # Keep the report numeric whenever historical candles exist while
+            # preserving the existing non-spike behaviour.
+            relative_volume = 0.0
+
     # ---------------------------------
     # PRICE / VOLUME TREND
     # ---------------------------------

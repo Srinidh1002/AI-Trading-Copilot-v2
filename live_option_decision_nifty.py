@@ -19,6 +19,7 @@ IMPORTANT:
 """
 
 import argparse
+import sys
 
 
 from services.broker.angel_client import (
@@ -71,6 +72,29 @@ from services.market_cycle_journal import (
 from services.live_market_configuration import (
     resolve_live_market_configuration,
 )
+
+
+def configure_utf8_output():
+    """Use UTF-8 for interactive and redirected runner output when supported."""
+
+    for stream in (
+        sys.stdout,
+        sys.stderr,
+    ):
+        reconfigure = getattr(
+            stream,
+            "reconfigure",
+            None,
+        )
+
+        if reconfigure is not None:
+            reconfigure(
+                encoding="utf-8",
+                errors="backslashreplace",
+            )
+
+
+configure_utf8_output()
 # ============================================================
 # LIVE MARKET RUNTIME SELECTION
 # ============================================================

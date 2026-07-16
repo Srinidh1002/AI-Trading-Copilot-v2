@@ -1,0 +1,141 @@
+
+================================
+AI TRADING COPILOT
+LIVE NIFTY TRADE PLAN
+================================
+
+Capital: ₹10,000.00
+Risk per trade: 1.0%
+Market session enforcement: True
+Maximum candle age: 10 minutes
+Paper trading: True
+Paper trade persistence: True
+
+Checking Indian market session...
+
+MARKET SESSION PRE-CHECK
+========================
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-16T10:31:06.751731+05:30
+
+PAPER TRADING STARTUP
+=====================
+Enabled: True
+Persistence: True
+Recovered Trades: 0
+Open Trades: 0
+Closed Trades: 0
+
+Fetching live NIFTY spot...
+[I 260716 10:31:06 smartConnect:124] in pool
+NIFTY Spot: 24117.65
+Live spot integrity validation: PASSED
+
+Running complete risk-controlled pipeline...
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-16T10:31:09.420660+05:30
+Candle Timestamp: 2026-07-16T10:25:00+05:30
+Candle Age: 6.16 minutes
+Candle Fresh: True
+
+MARKET DECISION
+================
+Market Decision: NO_TRADE
+Direction: BEARISH
+Strategy: BREAKDOWN
+Direction Confidence: 100
+Evidence Strength: 47
+Evidence Strength Label: MEDIUM
+Risk Flags: ['Conflicting timeframe signals', 'No meaningful volume expansion confirms a volatility breakout.']
+
+MARKET REGIME
+=============
+Primary Regime: COMPRESSION
+Trend: NEUTRAL
+Volatility: LOW
+Confidence: 70
+ADX: 22.574339985018977
+ATR %: 0.09
+Bollinger Band Width %: 0.4
+
+REGIME REASONS
+- EMA structure does not show a clear trend.
+- ADX 22.57 indicates weak trend strength.
+- ATR is only 0.09% of price.
+- Bollinger Band width indicates price compression.
+
+VOLUME INTELLIGENCE
+===================
+Bias: NEUTRAL
+Relative Volume: 0.0
+Volume Spike: False
+
+REGIME-AWARE EVIDENCE
+=====================
+Regime: COMPRESSION
+Contextual Bias: NEUTRAL
+
+WARNINGS
+- No meaningful volume expansion confirms a volatility breakout.
+
+RELEVANT SIGNALS
+- VOLUME_EXPANSION
+- BREAKOUT_CONFIRMATION
+- BREAKDOWN_CONFIRMATION
+
+SETUP STATUS
+============
+Status: NO_SETUP
+Direction: BEARISH
+Trigger Type: None
+Support: 24068.25
+Resistance: 24167.4
+
+SETUP REASONS
+- Setup contains unresolved risk flags.
+
+COMPLETED CANDLE
+================
+Timestamp: 2026-07-16 10:25:00+05:30
+Open: 24130.7
+High: 24130.7
+Low: 24108.35
+Close: 24108.35
+Volume: 0.0
+
+OPTION CONTRACT
+===============
+No contract selected.
+- Market analysis did not authorize a trade.
+
+================================
+FINAL STATUS
+================================
+Decision: NO_TRADE
+The current market analysis did not authorize a trade.
+
+PAPER TRADING
+=============
+Enabled: True
+Persistence: True
+Status: SKIPPED
+Opened: False
+Trade ID: None
+Reason: DECISION_NOT_TRADE_ALLOWED
+
+READ-ONLY MARKET ANALYSIS COMPLETE
+PAPER TRADING MAY BE ENABLED
+NO REAL ORDER WAS PLACED
