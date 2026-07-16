@@ -17,7 +17,9 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from services.indicator_snapshot import IndicatorSnapshot
-
+from services.session_manifest_updater import (
+    update_snapshot,
+)
 INDIA_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
 
