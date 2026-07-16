@@ -1,0 +1,74 @@
+{
+  "candle_age_minutes": 5.07,
+  "candle_fresh": true,
+  "candle_timestamp": "2026-07-16T13:35:00+05:30",
+  "completed_candle": {
+    "close": 24087.4,
+    "high": 24092.9,
+    "low": 24085.15,
+    "open": 24092.9,
+    "timestamp": "2026-07-16T13:35:00+05:30",
+    "volume": 0.0
+  },
+  "confidence": 57,
+  "decision": "NO_TRADE",
+  "direction": "BEARISH",
+  "evidence_strength": 47,
+  "evidence_strength_label": "MEDIUM",
+  "market_session": {
+    "allowed": true,
+    "candle_age_minutes": 5.07,
+    "candle_fresh": true,
+    "candle_timestamp": "2026-07-16T13:35:00+05:30",
+    "current_time": "2026-07-16T13:40:04.092659+05:30",
+    "is_market_holiday": false,
+    "is_weekday": true,
+    "market_close_time": "15:30",
+    "market_open": true,
+    "market_open_time": "09:15",
+    "maximum_candle_age_minutes": 10,
+    "reasons": [],
+    "status": "SESSION_VALID",
+    "within_market_hours": true
+  },
+  "paper_trade_status": "SKIPPED",
+  "primary_regime": "COMPRESSION",
+  "regime_confidence": 70,
+  "relative_volume": 0.0,
+  "relevant_signals": [
+    "VOLUME_EXPANSION",
+    "BREAKOUT_CONFIRMATION",
+    "BREAKDOWN_CONFIRMATION"
+  ],
+  "resistance": 24163.45,
+  "risk_flags": [
+    "Conflicting timeframe signals",
+    "Bullish and bearish evidence is closely balanced",
+    "No meaningful volume expansion confirms a volatility breakout."
+  ],
+  "selected_option_contract": {
+    "decision": "NO_CONTRACT",
+    "expiry": null,
+    "lot_size": 0,
+    "option_type": null,
+    "premium": null,
+    "reasons": [
+      "Market analysis did not authorize a trade."
+    ],
+    "score": 0,
+    "selected": false,
+    "strike": null,
+    "symbol": null
+  },
+  "setup_status": "NO_SETUP",
+  "spot_price": 24067.75,
+  "strategy": "NO_TRADE",
+  "support": 24079.65,
+  "timestamp": "2026-07-16T13:40:04.098133+05:30",
+  "trend": "BEARISH",
+  "trigger_type": null,
+  "underlying": "NIFTY",
+  "volatility": "LOW",
+  "volume_bias": "NEUTRAL",
+  "volume_spike": false
+}

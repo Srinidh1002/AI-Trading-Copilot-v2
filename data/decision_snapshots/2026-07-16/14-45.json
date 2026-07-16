@@ -1,0 +1,74 @@
+{
+  "candle_age_minutes": 6.0,
+  "candle_fresh": true,
+  "candle_timestamp": "2026-07-16T14:40:00+05:30",
+  "completed_candle": {
+    "close": 24096.0,
+    "high": 24101.95,
+    "low": 24083.25,
+    "open": 24097.7,
+    "timestamp": "2026-07-16T14:40:00+05:30",
+    "volume": 0.0
+  },
+  "confidence": 100,
+  "decision": "NO_TRADE",
+  "direction": "BEARISH",
+  "evidence_strength": 47,
+  "evidence_strength_label": "MEDIUM",
+  "indicator_snapshot": {},
+  "market_session": {
+    "allowed": true,
+    "candle_age_minutes": 6.0,
+    "candle_fresh": true,
+    "candle_timestamp": "2026-07-16T14:40:00+05:30",
+    "current_time": "2026-07-16T14:45:59.703258+05:30",
+    "is_market_holiday": false,
+    "is_weekday": true,
+    "market_close_time": "15:30",
+    "market_open": true,
+    "market_open_time": "09:15",
+    "maximum_candle_age_minutes": 10,
+    "reasons": [],
+    "status": "SESSION_VALID",
+    "within_market_hours": true
+  },
+  "paper_trade_status": "SKIPPED",
+  "primary_regime": "COMPRESSION",
+  "regime_confidence": 70,
+  "relative_volume": 0.0,
+  "relevant_signals": [
+    "VOLUME_EXPANSION",
+    "BREAKOUT_CONFIRMATION",
+    "BREAKDOWN_CONFIRMATION"
+  ],
+  "resistance": 24128.25,
+  "risk_flags": [
+    "Conflicting timeframe signals",
+    "No meaningful volume expansion confirms a volatility breakout."
+  ],
+  "selected_option_contract": {
+    "decision": "NO_CONTRACT",
+    "expiry": null,
+    "lot_size": 0,
+    "option_type": null,
+    "premium": null,
+    "reasons": [
+      "Market analysis did not authorize a trade."
+    ],
+    "score": 0,
+    "selected": false,
+    "strike": null,
+    "symbol": null
+  },
+  "setup_status": "NO_SETUP",
+  "spot_price": 24094.85,
+  "strategy": "NO_TRADE",
+  "support": 24051.65,
+  "timestamp": "2026-07-16T14:45:59.708877+05:30",
+  "trend": "BEARISH",
+  "trigger_type": null,
+  "underlying": "NIFTY",
+  "volatility": "LOW",
+  "volume_bias": "NEUTRAL",
+  "volume_spike": false
+}

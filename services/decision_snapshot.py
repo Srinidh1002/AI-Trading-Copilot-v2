@@ -16,7 +16,7 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-
+from services.indicator_snapshot import IndicatorSnapshot
 
 INDIA_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
@@ -434,54 +434,158 @@ def build_live_decision_snapshot(
     )
 
     base_snapshot = build_decision_snapshot(pipeline_result)
-    market_analysis = _safe_dict(pipeline_result.get("market_analysis"))
-    strategy = _safe_dict(market_analysis.get("strategy"))
-    regime = _safe_dict(market_analysis.get("regime"))
+
+    market_analysis = _safe_dict(
+        pipeline_result.get("market_analysis")
+    )
+
+    regime = _safe_dict(
+        market_analysis.get("regime")
+    )
+
     session = _safe_dict(
         pipeline_result.get("session_status")
         or pipeline_result.get("market_session")
     )
-    completed_candle = _safe_dict(pipeline_result.get("completed_candle"))
-    paper_result = _safe_dict(paper_trading_result)
+
+    completed_candle = _safe_dict(
+        pipeline_result.get("completed_candle")
+    )
+
+    paper_result = _safe_dict(
+        paper_trading_result
+    )
+
+    #
+    # Read-only indicator snapshot
+    #
+    try:
+        indicator_snapshot = (
+            IndicatorSnapshot()
+            .build(pipeline_result)
+        )
+    except Exception:
+        indicator_snapshot = {}
 
     return {
         "timestamp": timestamp.isoformat(),
         "underlying": underlying,
         "spot_price": spot_price,
         "market_session": deepcopy(session),
-        "candle_timestamp": session.get("candle_timestamp"),
-        "candle_age_minutes": session.get("candle_age_minutes"),
-        "candle_fresh": session.get("candle_fresh"),
-        "decision": pipeline_result.get("decision"),
-        "direction": pipeline_result.get("direction"),
-        "confidence": base_snapshot.get("strategy_confidence"),
+
+        "candle_timestamp": session.get(
+            "candle_timestamp"
+        ),
+        "candle_age_minutes": session.get(
+            "candle_age_minutes"
+        ),
+        "candle_fresh": session.get(
+            "candle_fresh"
+        ),
+
+        "decision": pipeline_result.get(
+            "decision"
+        ),
+        "direction": pipeline_result.get(
+            "direction"
+        ),
+
+        "confidence": base_snapshot.get(
+            "strategy_confidence"
+        ),
+
         "evidence_strength": base_snapshot.get(
             "strategy_evidence_strength_score"
         ),
+
         "evidence_strength_label": base_snapshot.get(
             "strategy_evidence_strength_label"
         ),
-        "strategy": base_snapshot.get("strategy"),
-        "primary_regime": regime.get("primary_regime"),
-        "trend": regime.get("trend"),
-        "volatility": regime.get("volatility"),
-        "regime_confidence": regime.get("confidence"),
-        "support": base_snapshot.get("support"),
-        "resistance": base_snapshot.get("resistance"),
-        "volume_bias": base_snapshot.get("volume_bias"),
-        "relative_volume": base_snapshot.get("relative_volume"),
-        "volume_spike": base_snapshot.get("volume_spike"),
-        "setup_status": base_snapshot.get("setup_status"),
-        "trigger_type": base_snapshot.get("trigger_type"),
-        "risk_flags": deepcopy(base_snapshot.get("risk_flags", [])),
+
+        "strategy": base_snapshot.get(
+            "strategy"
+        ),
+
+        "primary_regime": regime.get(
+            "primary_regime"
+        ),
+
+        "trend": regime.get(
+            "trend"
+        ),
+
+        "volatility": regime.get(
+            "volatility"
+        ),
+
+        "regime_confidence": regime.get(
+            "confidence"
+        ),
+
+        "support": base_snapshot.get(
+            "support"
+        ),
+
+        "resistance": base_snapshot.get(
+            "resistance"
+        ),
+
+        "volume_bias": base_snapshot.get(
+            "volume_bias"
+        ),
+
+        "relative_volume": base_snapshot.get(
+            "relative_volume"
+        ),
+
+        "volume_spike": base_snapshot.get(
+            "volume_spike"
+        ),
+
+        "setup_status": base_snapshot.get(
+            "setup_status"
+        ),
+
+        "trigger_type": base_snapshot.get(
+            "trigger_type"
+        ),
+
+        "risk_flags": deepcopy(
+            base_snapshot.get(
+                "risk_flags",
+                [],
+            )
+        ),
+
         "relevant_signals": deepcopy(
-            base_snapshot.get("relevant_signals", [])
+            base_snapshot.get(
+                "relevant_signals",
+                [],
+            )
         ),
-        "paper_trade_status": paper_result.get("status"),
+
+        "paper_trade_status": paper_result.get(
+            "status"
+        ),
+
         "selected_option_contract": deepcopy(
-            _safe_dict(pipeline_result.get("contract"))
+            _safe_dict(
+                pipeline_result.get(
+                    "contract"
+                )
+            )
         ),
-        "completed_candle": deepcopy(completed_candle),
+
+        "completed_candle": deepcopy(
+            completed_candle
+        ),
+
+        #
+        # NEW
+        #
+        "indicator_snapshot": deepcopy(
+            indicator_snapshot
+        ),
     }
 
 
