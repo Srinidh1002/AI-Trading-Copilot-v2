@@ -1,26 +1,25 @@
 class IndicatorSnapshot:
 
-    def build(
-        self,
-        pipeline_result,
-    ):
-        """
-        Build a read-only indicator snapshot.
+    def build(self, pipeline_result):
 
-        Never modify pipeline_result.
-        Never calculate indicators.
-        Never fetch broker data.
-        """
+        market = pipeline_result.get("market_analysis", {})
+
+        technical = market.get("technical", {})
+        regime = market.get("regime", {})
+        volume = market.get("volume", {})
+
         return {
-    "ema20": pipeline_result["technical"]["ema20"],
-    "ema50": pipeline_result["technical"]["ema50"],
-    "ema200": pipeline_result["technical"]["ema200"],
-    "rsi": pipeline_result["technical"]["rsi"],
-    "macd": pipeline_result["technical"]["macd"],
-    "trend": pipeline_result["technical"]["trend"],
-    "primary_regime": pipeline_result["regime"]["primary_regime"],
-    "regime_trend": pipeline_result["regime"]["trend"],
-    "regime_confidence": pipeline_result["regime"]["confidence"],
-    "relative_volume": pipeline_result["volume"]["relative_volume"],
-    "volume_spike": pipeline_result["volume"]["volume_spike"],
-}
+            "ema20": technical.get("ema20"),
+            "ema50": technical.get("ema50"),
+            "ema200": technical.get("ema200"),
+            "rsi": technical.get("rsi"),
+            "macd": technical.get("macd"),
+            "trend": technical.get("trend"),
+
+            "primary_regime": regime.get("primary_regime"),
+            "regime_trend": regime.get("trend"),
+            "regime_confidence": regime.get("confidence"),
+
+            "relative_volume": volume.get("relative_volume"),
+            "volume_spike": volume.get("volume_spike"),
+        }

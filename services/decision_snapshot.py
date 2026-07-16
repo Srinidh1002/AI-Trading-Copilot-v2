@@ -463,9 +463,11 @@ def build_live_decision_snapshot(
         indicator_snapshot = (
             IndicatorSnapshot()
             .build(pipeline_result)
-        )
-    except Exception:
-        indicator_snapshot = {}
+    )
+    except Exception as e:
+            indicator_snapshot = {
+            "error": str(e),
+    }
 
     return {
         "timestamp": timestamp.isoformat(),

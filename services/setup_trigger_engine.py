@@ -325,7 +325,7 @@ def evaluate_setup_trigger(
                 "PRICE_COMPRESSION",
             }
         )
-
+        base_result["chart_patterns"] = sorted(chart_patterns)
         apply_formation_intelligence(
             trigger_price,
             bullish_setup_evidence,
@@ -400,7 +400,7 @@ def evaluate_setup_trigger(
                 "PRICE_COMPRESSION",
             }
         )
-
+        base_result["chart_patterns"] = sorted(chart_patterns)
         apply_formation_intelligence(
             trigger_price,
             bearish_setup_evidence,
