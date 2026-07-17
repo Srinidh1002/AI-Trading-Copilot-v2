@@ -6,7 +6,7 @@ from services.rsi_engine import calculate_rsi
 from services.macd_engine import calculate_macd
 from services.adx_engine import calculate_adx
 from services.atr_engine import calculate_atr
-
+from services.vwap_engine import calculate_vwap
 
 # -----------------------------------------
 # CHANGE ONLY IF REQUIRED
@@ -33,6 +33,7 @@ def get_market_snapshot():
     macd = calculate_macd(df)
     adx = calculate_adx(df)
     atr = calculate_atr(df)
+    vwap = calculate_vwap(df)
 
 
     current_time = datetime.now()
@@ -80,5 +81,7 @@ def get_market_snapshot():
             "ADX_STRENGTH": adx["Strength"],
             "ATR": atr["ATR"],
             "VOLATILITY": atr["Volatility"],
+            "VWAP": vwap["VWAP"],
+            "VWAP_TREND": vwap["Trend"],
         }
     }

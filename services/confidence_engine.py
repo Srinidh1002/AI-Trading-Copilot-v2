@@ -34,9 +34,17 @@ def calculate_confidence(snapshot):
         reasons.append("Strong Trend")
     # ATR
 
+    # ATR
+
     if indicators["VOLATILITY"] != "High":
-        score += 5
-        reasons.append("Healthy Volatility")
+            score += 5
+            reasons.append("Healthy Volatility")
+
+        # VWAP
+
+    if indicators["VWAP_TREND"] == "Bullish":
+            score += 5
+            reasons.append("Above VWAP")
     return {
         "confidence": score,
         "reasons": reasons
