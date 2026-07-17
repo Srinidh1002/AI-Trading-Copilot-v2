@@ -3,7 +3,7 @@ import streamlit as st
 from services.market_snapshot import get_market_snapshot
 from services.trend_engine import analyze_trend
 from services.trade_engine import analyze_trade
-
+from services.confidence_engine import calculate_confidence
 
 def live_market_test():
 
@@ -13,6 +13,7 @@ def live_market_test():
 
     trend = analyze_trend(snapshot)
     trade = analyze_trade(snapshot)
+    confidence = calculate_confidence(snapshot)
 
     st.divider()
 
@@ -126,3 +127,14 @@ def live_market_test():
 
     with d3:
         st.metric("Strength", trade["strength"])
+        st.subheader("AI Confidence")
+
+        st.metric(
+            "Confidence",
+            f"{confidence['confidence']}%"
+        )
+
+        st.write("Reasons")
+
+        for reason in confidence["reasons"]:
+            st.success(reason)
