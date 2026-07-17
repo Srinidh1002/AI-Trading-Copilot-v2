@@ -1,50 +1,61 @@
 """
-Trend Engine V1
+Trend Engine V0.6
 """
 
-def analyze_trend(technical):
 
-    ema20 = technical["EMA20"]
-    ema50 = technical["EMA50"]
-    ema200 = technical["EMA200"]
+def analyze_trend(snapshot):
 
-    rsi = technical["RSI"]
-    adx = technical["ADX"]
+    price = snapshot["ltp"]
 
-    # ----------------------------------
-    # Trend
-    # ----------------------------------
+    indicators = snapshot["indicators"]
 
-    if ema20 > ema50 > ema200:
+    ema20 = indicators["EMA20"]
+    ema50 = indicators["EMA50"]
+    ema200 = indicators["EMA200"]
+    rsi = indicators["RSI"]
+
+    # ==========================================
+    # Trend Direction
+    # ==========================================
+
+    if price > ema20 > ema50 > ema200:
         trend = "Bullish"
 
-    elif ema20 < ema50 < ema200:
+    elif price < ema20 < ema50 < ema200:
         trend = "Bearish"
 
     else:
         trend = "Sideways"
 
-    # ----------------------------------
-    # Bias
-    # ----------------------------------
+    # ==========================================
+    # Momentum
+    # ==========================================
 
-    if trend == "Bullish" and rsi > 55:
-        bias = "BUY"
+    if rsi >= 70:
+        momentum = "Overbought"
 
-    elif trend == "Bearish" and rsi < 45:
-        bias = "SELL"
+    elif rsi <= 30:
+        momentum = "Oversold"
+
+    elif rsi >= 55:
+        momentum = "Bullish"
+
+    elif rsi <= 45:
+        momentum = "Bearish"
 
     else:
-        bias = "WAIT"
+        momentum = "Neutral"
 
-    # ----------------------------------
-    # Strength
-    # ----------------------------------
+    # ==========================================
+    # Trend Strength
+    # ==========================================
 
-    if adx >= 30:
+    distance = abs(price - ema20)
+
+    if distance > 100:
         strength = "Strong"
 
-    elif adx >= 20:
+    elif distance > 40:
         strength = "Moderate"
 
     else:
@@ -52,6 +63,7 @@ def analyze_trend(technical):
 
     return {
         "trend": trend,
-        "bias": bias,
+        "momentum": momentum,
         "strength": strength,
+        "rsi": round(rsi, 2),
     }

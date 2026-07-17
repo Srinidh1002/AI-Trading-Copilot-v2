@@ -9,15 +9,6 @@ st.set_page_config(
     layout="wide",
 )
 
-page = st.sidebar.selectbox(
-    "Select Page",
-    [
-        "Dashboard",
-        "Live Market Test",
-    ]
-)
+# Temporary during development
 
-if page == "Dashboard":
-    home()
-else:
-    live_market_test()
+live_market_test()

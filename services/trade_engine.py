@@ -1,65 +1,46 @@
 """
-Trade Recommendation Engine
+Trade Engine V0.5
 """
 
+from services.trend_engine import analyze_trend
 
-def trade_recommendation(price, decision):
 
-    signal = decision["signal"]
-    confidence = decision["confidence"]
+def analyze_trade(snapshot):
 
-    if signal == "BUY":
+    trend_data = analyze_trend(snapshot)
 
-        entry = round(price, 2)
+    trend = trend_data["trend"]
+    strength = trend_data["strength"]
+    momentum = trend_data["momentum"]
 
-        stop_loss = round(price * 0.985, 2)
+    if trend == "Bullish" and momentum == "Bullish":
+        decision = "BUY"
 
-        target1 = round(price * 1.015, 2)
-
-        target2 = round(price * 1.03, 2)
-
-    elif signal == "SELL":
-
-        entry = round(price, 2)
-
-        stop_loss = round(price * 1.015, 2)
-
-        target1 = round(price * 0.985, 2)
-
-        target2 = round(price * 0.97, 2)
+    elif trend == "Bearish" and momentum == "Bearish":
+        decision = "SELL"
 
     else:
-
-        entry = None
-        stop_loss = None
-        target1 = None
-        target2 = None
-
-    if entry and stop_loss and target1:
-
-        risk = abs(entry - stop_loss)
-
-        reward = abs(target1 - entry)
-
-        rr = round(reward / risk, 2)
-
-    else:
-
-        rr = 0
+        decision = "WAIT"
 
     return {
+        "decision": decision,
+        "trend": trend,
+        "strength": strength,
+        "momentum": momentum,
+    }
 
-        "signal": signal,
 
-        "confidence": confidence,
+# =====================================================
+# Backward Compatibility
+# =====================================================
 
-        "entry": entry,
-
-        "stop_loss": stop_loss,
-
-        "target1": target1,
-
-        "target2": target2,
-
-        "risk_reward": rr,
+def trade_recommendation(*args, **kwargs):
+    """
+    Temporary compatibility function for the old dashboard.
+    We'll replace it completely later.
+    """
+    return {
+        "signal": "WAIT",
+        "confidence": 0,
+        "reason": "Legacy trade engine placeholder"
     }
