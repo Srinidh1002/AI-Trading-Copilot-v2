@@ -42,13 +42,11 @@ def market_overview():
 
     return {
 
-        "NIFTY": get_index("^NSEI"),
+    "NIFTY": get_index("^NSEI"),
 
-        "BANKNIFTY": get_index("^NSEBANK"),
+    "BANKNIFTY": get_index("^NSEBANK"),
 
-        "SENSEX": get_index("^BSESN"),
+    "SENSEX": get_index("^BSESN"),
 
-        "FINNIFTY": get_index("^NSEFIN"),
-
-        "VIX": get_index("^INDIAVIX"),
-    }
+    "VIX": get_index("^INDIAVIX"),
+}

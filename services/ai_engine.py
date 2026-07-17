@@ -23,22 +23,11 @@ def ai_engine(technical):
         sentiment=sentiment,
     )
 
-    trade = trade_recommendation(
-    market["price"],
-    decision
-)
-
     return {
-
-    "technical": technical,
-
-    "market": market,
-
-    "sentiment": sentiment,
-
-    "option": option,
-
-    "decision": decision,
-
-    "trade": trade,
+        "technical": technical,
+        "market": market,
+        "sentiment": sentiment,
+        "option": option,
+        "decision": decision,
 }
+

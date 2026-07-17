@@ -100,24 +100,19 @@ def trade_card(trade):
     )
 def market_overview_card(data):
     """
-    Displays Indian market indices.
+    Displays available Indian market indices.
+    Automatically adapts to whatever indices are returned.
     """
 
     st.subheader("🇮🇳 Indian Market")
 
-    cols = st.columns(5)
+    if not data:
+        st.warning("No market overview data available.")
+        return
 
-    names = [
-        "NIFTY",
-        "BANKNIFTY",
-        "SENSEX",
-        "FINNIFTY",
-        "VIX",
-    ]
+    cols = st.columns(len(data))
 
-    for col, name in zip(cols, names):
-
-        item = data[name]
+    for col, (name, item) in zip(cols, data.items()):
 
         delta = f"{item['change']} ({item['percent']}%)"
 
@@ -125,4 +120,4 @@ def market_overview_card(data):
             label=name,
             value=item["price"],
             delta=delta,
-        )    
+        )  

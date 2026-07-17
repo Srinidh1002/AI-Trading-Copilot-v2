@@ -864,6 +864,20 @@ class AngelMarketDataClient:
             "todate": todate,
         }
 
+        # ==========================================
+        # TEMPORARY DEBUG LOGGING
+        # ==========================================
+
+        print("\n" + "=" * 70)
+        print("HISTORICAL API REQUEST")
+        print("=" * 70)
+        print(f"Exchange    : {exchange}")
+        print(f"Token       : {symboltoken}")
+        print(f"Interval    : {interval}")
+        print(f"From        : {fromdate}")
+        print(f"To          : {todate}")
+        print("=" * 70)
+
         return self._execute_request(
             request_callable=lambda: (
                 self.api.getCandleData(
@@ -872,7 +886,12 @@ class AngelMarketDataClient:
             ),
             request_name="historical-data",
             cache_key=(
-                "historical-data", exchange, symboltoken, interval, fromdate, todate
+                "historical-data",
+                exchange,
+                symboltoken,
+                interval,
+                fromdate,
+                todate,
             ),
         )
 
