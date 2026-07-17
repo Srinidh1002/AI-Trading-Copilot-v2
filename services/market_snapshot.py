@@ -5,6 +5,8 @@ from services.indicator_engine import calculate_indicators
 from services.rsi_engine import calculate_rsi
 from services.macd_engine import calculate_macd
 from services.adx_engine import calculate_adx
+from services.atr_engine import calculate_atr
+
 
 # -----------------------------------------
 # CHANGE ONLY IF REQUIRED
@@ -30,6 +32,8 @@ def get_market_snapshot():
     rsi = calculate_rsi(df)
     macd = calculate_macd(df)
     adx = calculate_adx(df)
+    atr = calculate_atr(df)
+
 
     current_time = datetime.now()
 
@@ -74,5 +78,7 @@ def get_market_snapshot():
             "MACD_TREND": macd["Trend"],
             "ADX": adx["ADX"],
             "ADX_STRENGTH": adx["Strength"],
+            "ATR": atr["ATR"],
+            "VOLATILITY": atr["Volatility"],
         }
     }

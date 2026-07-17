@@ -32,7 +32,11 @@ def calculate_confidence(snapshot):
     if indicators["ADX"] >= 25:
         score += 15
         reasons.append("Strong Trend")
+    # ATR
 
+    if indicators["VOLATILITY"] != "High":
+        score += 5
+        reasons.append("Healthy Volatility")
     return {
         "confidence": score,
         "reasons": reasons
