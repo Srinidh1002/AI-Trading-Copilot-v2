@@ -114,11 +114,35 @@ def analyse_technical(df: pd.DataFrame) -> TechnicalAnalysis:
 
     if not isinstance(df, pd.DataFrame):
         raise TypeError("df must be a pandas DataFrame")
+    # Accept both legacy (Open/High/Low/Close/Volume)
+    # and internal (open/high/low/close/volume) schemas.
+    rename_map = {
+        "Open": "open",
+        "High": "high",
+        "Low": "low",
+        "Close": "close",
+        "Volume": "volume",
+    }
 
+    df = df.rename(columns=rename_map)
     missing_columns = _REQUIRED_COLUMNS.difference(df.columns)
     if missing_columns:
-        missing = ", ".join(sorted(missing_columns))
-        raise ValueError(f"Missing required OHLCV columns: {missing}")
+        display_names = {
+        "open": "Open",
+        "high": "High",
+        "low": "Low",
+        "close": "Close",
+        "volume": "Volume",
+        }
+
+        missing = ", ".join(
+            display_names.get(column, column)
+            for column in sorted(missing_columns)
+        )
+
+        raise ValueError(
+            f"Missing required OHLCV columns: {missing}"
+        )
     if df.empty:
         return _empty_analysis("No OHLCV data is available.")
 

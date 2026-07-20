@@ -44,6 +44,17 @@ def analyse_market_regime(data: pd.DataFrame) -> dict:
             f"Missing required columns: {sorted(missing)}"
         )
 
+    # -------------------------------------------------
+    # Compatibility Layer
+    # Accept legacy OHLC schema while keeping the
+    # internal implementation on lowercase.
+    # -------------------------------------------------
+    data = data.rename(
+        columns={
+            "Close": "close",
+        }
+    )
+
     latest = data.iloc[-1]
 
     close = float(latest["close"])

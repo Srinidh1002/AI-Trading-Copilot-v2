@@ -24,6 +24,16 @@ def add_regime_indicators(data: pd.DataFrame) -> pd.DataFrame:
 
     df = data.copy()
 
+    # Accept legacy OHLC schema while keeping the rest of the
+    # implementation on the internal lowercase convention.
+    df = df.rename(
+        columns={
+            "High": "high",
+            "Low": "low",
+            "Close": "close",
+        }
+    )
+
     high = df["high"].astype(float)
     low = df["low"].astype(float)
     close = df["close"].astype(float)

@@ -5,13 +5,14 @@ Normalize broker market data into a standard OHLCV DataFrame.
 import pandas as pd
 
 
+# Public OHLCV schema expected by tests and external callers.
 CANDLE_COLUMNS = [
     "timestamp",
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
+    "Open",
+    "High",
+    "Low",
+    "Close",
+    "Volume",
 ]
 
 
@@ -33,12 +34,13 @@ def normalize_angel_candles(candles):
         errors="coerce",
     )
 
+    # Convert OHLCV columns to numeric.
     numeric_columns = [
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
     ]
 
     for column in numeric_columns:
@@ -47,16 +49,18 @@ def normalize_angel_candles(candles):
             errors="coerce",
         )
 
+    # Remove invalid rows.
     df = df.dropna(
         subset=[
             "timestamp",
-            "open",
-            "high",
-            "low",
-            "close",
+            "Open",
+            "High",
+            "Low",
+            "Close",
         ]
     )
 
+    # Keep the latest candle for duplicate timestamps.
     df = (
         df.sort_values("timestamp")
         .drop_duplicates(
