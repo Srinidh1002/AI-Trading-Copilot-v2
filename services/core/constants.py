@@ -1,0 +1,15 @@
+"""
+Project-wide constants.
+"""
+
+EXCHANGE = "NSE"
+
+SYMBOL_TOKEN = "99926000"
+
+DEFAULT_TIMEFRAME = "5m"
+
+MARKET_OPEN = "09:15"
+
+MARKET_CLOSE = "15:30"
+
+VERSION = "2.0.0"

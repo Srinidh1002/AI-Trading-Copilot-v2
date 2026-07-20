@@ -17,7 +17,7 @@ def get_index(symbol):
 
         last = float(info["lastPrice"])
 
-        prev = float(history["Close"].iloc[-2])
+        prev = float(history["close"].iloc[-2])
 
         change = round(last - prev, 2)
 

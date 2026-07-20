@@ -3,7 +3,7 @@ Option AI Service
 Analyzes option chain data and converts it into bull/bear scores.
 """
 
-from services.option_chain import get_option_chain
+from services.analysis.option_chain import get_option_chain
 
 
 def option_score(symbol="NIFTY"):

@@ -1,21 +1,15 @@
+"""
+Market Snapshot Service V2
+"""
+
 from datetime import datetime
 
-from services.live_multi_timeframe_data import LiveMultiTimeframeData
+from services.market.live_multi_timeframe_data import LiveMultiTimeframeData
 from services.indicator_engine import calculate_indicators
-from services.rsi_engine import calculate_rsi
-from services.macd_engine import calculate_macd
-from services.adx_engine import calculate_adx
-from services.atr_engine import calculate_atr
-from services.vwap_engine import calculate_vwap
 
-# -----------------------------------------
-# CHANGE ONLY IF REQUIRED
-# -----------------------------------------
 
 EXCHANGE = "NSE"
-SYMBOL_TOKEN = "99926000"   # NIFTY 50
-
-# -----------------------------------------
+SYMBOL_TOKEN = "99926000"
 
 
 def get_market_snapshot():
@@ -27,61 +21,59 @@ def get_market_snapshot():
         symboltoken=SYMBOL_TOKEN,
         timeframe="5m",
     )
-    indicators = calculate_indicators(df)
-    latest = df.iloc[-1]
-    rsi = calculate_rsi(df)
-    macd = calculate_macd(df)
-    adx = calculate_adx(df)
-    atr = calculate_atr(df)
-    vwap = calculate_vwap(df)
 
+    if df.empty:
+        raise ValueError("No market data received.")
 
-    current_time = datetime.now()
+    df.columns = [c.lower() for c in df.columns]
+
+    data, indicators = calculate_indicators(df)
+
+    latest = data.iloc[-1]
+
+    now = datetime.now()
 
     market_open = (
-        current_time.weekday() < 5 and
-        (
-            current_time.hour > 9 or
-            (current_time.hour == 9 and current_time.minute >= 15)
-        ) and
-        (
-            current_time.hour < 15 or
-            (current_time.hour == 15 and current_time.minute <= 30)
+        now.weekday() < 5
+        and (
+            now.hour > 9
+            or (now.hour == 9 and now.minute >= 15)
+        )
+        and (
+            now.hour < 15
+            or (now.hour == 15 and now.minute <= 30)
         )
     )
 
     return {
 
-        "ltp": float(latest["Close"]),
+        "symbol": "NIFTY",
 
-        "open": float(latest["Open"]),
+        "history": data,
 
-        "high": float(latest["High"]),
+        "ltp": float(latest["close"]),
 
-        "low": float(latest["Low"]),
+        "open": float(latest["open"]),
 
-        "close": float(latest["Close"]),
+        "high": float(latest["high"]),
 
-        "volume": int(latest["Volume"]),
+        "low": float(latest["low"]),
 
-        "candle_time": str(latest["timestamp"]),
+        "close": float(latest["close"]),
 
-        "market_status": "OPEN" if market_open else "CLOSED",
+        "volume": float(latest["volume"]),
 
-        "refresh_time": current_time.strftime("%H:%M:%S"),
+        "timestamp": str(
+            latest.name
+        ),
 
-        "indicators": {
-            **indicators,
-            "RSI": rsi,
-            "MACD": macd["MACD"],
-            "MACD_SIGNAL": macd["Signal"],
-            "MACD_HISTOGRAM": macd["Histogram"],
-            "MACD_TREND": macd["Trend"],
-            "ADX": adx["ADX"],
-            "ADX_STRENGTH": adx["Strength"],
-            "ATR": atr["ATR"],
-            "VOLATILITY": atr["Volatility"],
-            "VWAP": vwap["VWAP"],
-            "VWAP_TREND": vwap["Trend"],
-        }
+        "refresh_time": now.strftime("%H:%M:%S"),
+
+        "market_status":
+            "OPEN"
+            if market_open
+            else "CLOSED",
+
+        "indicators": indicators,
+
     }

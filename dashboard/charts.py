@@ -8,10 +8,10 @@ def price_chart(df):
     fig.add_trace(
         go.Candlestick(
             x=df.index,
-            open=df["Open"],
-            high=df["High"],
-            low=df["Low"],
-            close=df["Close"],
+            open=df["open"],
+            high=df["high"],
+            low=df["low"],
+            close=df["close"],
             name="Price"
         )
     )

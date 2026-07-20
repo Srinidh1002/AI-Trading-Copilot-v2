@@ -1,116 +1,100 @@
-"""Technical indicator calculations for OHLCV market data."""
+"""
+Technical AI Score Engine
+"""
 
-from collections.abc import Callable
-
-import pandas as pd
-from ta.momentum import RSIIndicator
-from ta.trend import ADXIndicator, EMAIndicator, MACD
-from ta.volatility import AverageTrueRange, BollingerBands
-from ta.volume import VolumeWeightedAveragePrice
+from services.market_snapshot import get_market_snapshot
 
 
-def _empty_indicator(index: pd.Index) -> pd.Series:
-    """Create an all-NaN indicator series aligned to *index*."""
-    return pd.Series(float("nan"), index=index, dtype="float64")
+def technical_score():
 
+    snapshot = get_market_snapshot()
 
-def _safe_indicator(
-    calculation: Callable[[], pd.Series], index: pd.Index
-) -> pd.Series:
-    """Run an indicator calculation, returning NaNs when history is insufficient."""
-    try:
-        return calculation().reindex(index)
-    except Exception:
-        # Some ta indicators require a minimum number of rows before calculating.
-        return _empty_indicator(index)
+    indicators = snapshot["indicators"]
 
+    bull = 0
+    bear = 0
+    reasons = []
 
-def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """Add common technical indicators to an OHLCV data frame.
+    # EMA
+    if indicators["EMA20"] > indicators["EMA50"] > indicators["EMA200"]:
+        bull += 30
+        reasons.append("EMA Bullish")
 
-    The input index is preserved.  Indicators that cannot be calculated because
-    the history is too short are returned as ``NaN`` instead of raising errors.
+    elif indicators["EMA20"] < indicators["EMA50"] < indicators["EMA200"]:
+        bear += 30
+        reasons.append("EMA Bearish")
 
-    Args:
-        df: Data frame containing Open, High, Low, Close, and Volume columns.
+    # RSI
+    rsi = indicators.get("RSI")
 
-    Returns:
-        A copy of ``df`` with technical-indicator columns added.
+    if rsi is not None:
 
-    Raises:
-        ValueError: If one or more required OHLCV columns are missing.
-    """
-    required_columns = {"Open", "High", "Low", "Close", "Volume"}
-    missing_columns = required_columns.difference(df.columns)
-    if missing_columns:
-        missing = ", ".join(sorted(missing_columns))
-        raise ValueError(f"Missing required OHLCV columns: {missing}")
+        if rsi >= 60:
+            bull += 20
+            reasons.append("Strong RSI")
 
-    result = df.copy()
-    index = result.index
+        elif rsi <= 40:
+            bear += 20
+            reasons.append("Weak RSI")
 
-    high = pd.to_numeric(result["High"], errors="coerce")
-    low = pd.to_numeric(result["Low"], errors="coerce")
-    close = pd.to_numeric(result["Close"], errors="coerce")
-    volume = pd.to_numeric(result["Volume"], errors="coerce")
+    # ADX
+    adx = indicators.get("ADX")
 
-    result["EMA20"] = _safe_indicator(
-        lambda: EMAIndicator(close=close, window=20).ema_indicator(), index
-    )
-    result["EMA50"] = _safe_indicator(
-        lambda: EMAIndicator(close=close, window=50).ema_indicator(), index
-    )
-    result["EMA200"] = _safe_indicator(
-        lambda: EMAIndicator(close=close, window=200).ema_indicator(), index
-    )
-    result["RSI"] = _safe_indicator(
-        lambda: RSIIndicator(close=close, window=14).rsi(), index
-    )
+    if adx is not None and adx >= 25:
 
-    result["MACD"] = _safe_indicator(
-        lambda: MACD(close=close).macd(), index
-    )
-    result["MACD_SIGNAL"] = _safe_indicator(
-        lambda: MACD(close=close).macd_signal(), index
-    )
-    result["MACD_HIST"] = _safe_indicator(
-        lambda: MACD(close=close).macd_diff(), index
-    )
+        if bull > bear:
+            bull += 20
+            reasons.append("Strong Trend")
 
-    result["ADX"] = _safe_indicator(
-        lambda: ADXIndicator(high=high, low=low, close=close, window=14).adx(),
-        index,
-    )
-    result["ATR"] = _safe_indicator(
-        lambda: AverageTrueRange(
-            high=high, low=low, close=close, window=14
-        ).average_true_range(),
-        index,
-    )
-    result["VWAP"] = _safe_indicator(
-        lambda: VolumeWeightedAveragePrice(
-            high=high, low=low, close=close, volume=volume, window=14
-        ).volume_weighted_average_price(),
-        index,
-    )
+        elif bear > bull:
+            bear += 20
+            reasons.append("Strong Down Trend")
 
-    result["BB_UPPER"] = _safe_indicator(
-        lambda: BollingerBands(
-            close=close, window=20, window_dev=2
-        ).bollinger_hband(),
-        index,
-    )
-    result["BB_MIDDLE"] = _safe_indicator(
-        lambda: BollingerBands(
-            close=close, window=20, window_dev=2
-        ).bollinger_mavg(),
-        index,
-    )
-    result["BB_LOWER"] = _safe_indicator(
-        lambda: BollingerBands(
-            close=close, window=20, window_dev=2
-        ).bollinger_lband(),
-        index,
-    )
+    # MACD
+    macd = indicators.get("MACD")
+    signal = indicators.get("MACD_SIGNAL")
 
-    return result
+    if macd is not None and signal is not None:
+
+        if macd > signal:
+            bull += 20
+            reasons.append("MACD Bullish")
+
+        else:
+            bear += 20
+            reasons.append("MACD Bearish")
+
+    # VWAP
+    price = indicators.get("CURRENT_PRICE")
+    vwap = indicators.get("VWAP")
+
+    if (
+        price is not None
+        and vwap is not None
+    ):
+
+        if price > vwap:
+            bull += 10
+            reasons.append("Above VWAP")
+
+        else:
+            bear += 10
+            reasons.append("Below VWAP")
+
+    else:
+
+        reasons.append("VWAP Unavailable")
+
+    return {
+
+        "bull_score": bull,
+
+        "bear_score": bear,
+
+        "reasons": reasons,
+
+        "snapshot": snapshot,
+
+        "indicators": indicators,
+
+    }

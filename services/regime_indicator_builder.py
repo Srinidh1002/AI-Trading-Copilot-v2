@@ -24,9 +24,9 @@ def add_regime_indicators(data: pd.DataFrame) -> pd.DataFrame:
 
     df = data.copy()
 
-    high = df["High"].astype(float)
-    low = df["Low"].astype(float)
-    close = df["Close"].astype(float)
+    high = df["high"].astype(float)
+    low = df["low"].astype(float)
+    close = df["close"].astype(float)
 
     # EMA
     df["EMA20"] = close.ewm(

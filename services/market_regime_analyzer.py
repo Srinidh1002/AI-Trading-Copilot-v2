@@ -46,7 +46,7 @@ def analyse_market_regime(data: pd.DataFrame) -> dict:
 
     latest = data.iloc[-1]
 
-    close = float(latest["Close"])
+    close = float(latest["close"])
     ema20 = float(latest["EMA20"])
     ema50 = float(latest["EMA50"])
     atr = float(latest["ATR"])

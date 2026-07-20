@@ -39,7 +39,7 @@ def test_normalize_angel_candles():
     ]
 
     assert len(df) == 2
-    assert df.iloc[0]["Close"] == 24162.7
+    assert df.iloc[0]["close"] == 24162.7
 
 
 def test_empty_candles():

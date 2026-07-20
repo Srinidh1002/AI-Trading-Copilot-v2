@@ -19,8 +19,8 @@ Read-only. No orders are placed.
 from services.live_analysis_pipeline import (
     LiveAnalysisPipeline,
 )
-
-from services.live_multi_timeframe_data import (
+from services.market_data_validator import MarketDataValidationError
+from services.market.live_multi_timeframe_data import (
     LiveMultiTimeframeData,
 )
 

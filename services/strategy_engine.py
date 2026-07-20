@@ -1,55 +1,48 @@
 """
-Strategy Engine
-Combines all AI modules into one final decision.
+Phase 3 Strategy Engine
 """
 
 
-def _score(data, key, default=0):
-    try:
-        return int(data.get(key, default))
-    except (AttributeError, TypeError, ValueError):
-        return default
-
-
-def strategy_engine(technical, market, option, sentiment):
-
-    technical = technical if isinstance(technical, dict) else {}
-    market = market if isinstance(market, dict) else {}
-    option = option if isinstance(option, dict) else {}
-    sentiment = sentiment if isinstance(sentiment, dict) else {}
+def strategy_engine(
+    technical,
+    market,
+    option,
+    sentiment,
+):
 
     bull = (
-        _score(technical, "bull")
-        + _score(option, "bull")
+        technical.get("bull_score", 0)
+        + market.get("bull_score", 0)
+        + option.get("bull", option.get("bull_score", 0))
+        + sentiment.get("bull", sentiment.get("bull_score", 0))
     )
 
     bear = (
-        _score(technical, "bear")
-        + _score(option, "bear")
+        technical.get("bear_score", 0)
+        + market.get("bear_score", 0)
+        + option.get("bear", option.get("bear_score", 0))
+        + sentiment.get("bear", sentiment.get("bear_score", 0))
     )
 
-    confidence = _score(market, "confidence")
+    confidence = abs(bull - bear)
 
-    if market.get("trend") == "Bullish":
-        bull += confidence
-    elif market.get("trend") == "Bearish":
-        bear += confidence
-
-    sentiment_points = _score(sentiment, "score", 50)
-
-    bull += sentiment_points
-    bear += (100 - sentiment_points)
-
-    if bull > bear:
+    if bull >= bear + 20:
         signal = "BUY"
-    elif bear > bull:
+
+    elif bear >= bull + 20:
         signal = "SELL"
+
     else:
         signal = "HOLD"
 
     return {
+
         "signal": signal,
+
         "bull": bull,
+
         "bear": bear,
-        "confidence": abs(bull - bear)
+
+        "confidence": confidence,
+
     }

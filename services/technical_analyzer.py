@@ -39,7 +39,7 @@ class TechnicalAnalysis(TypedDict):
     reasons: list[str]
 
 
-_REQUIRED_COLUMNS = {"Open", "High", "Low", "Close", "Volume"}
+_REQUIRED_COLUMNS = {"open", "high", "low", "close", "volume"}
 
 
 def _clamp(value: float) -> int:
@@ -123,10 +123,10 @@ def analyse_technical(df: pd.DataFrame) -> TechnicalAnalysis:
         return _empty_analysis("No OHLCV data is available.")
 
     index = df.index
-    high = pd.to_numeric(df["High"], errors="coerce")
-    low = pd.to_numeric(df["Low"], errors="coerce")
-    close = pd.to_numeric(df["Close"], errors="coerce")
-    volume = pd.to_numeric(df["Volume"], errors="coerce")
+    high = pd.to_numeric(df["high"], errors="coerce")
+    low = pd.to_numeric(df["low"], errors="coerce")
+    close = pd.to_numeric(df["close"], errors="coerce")
+    volume = pd.to_numeric(df["volume"], errors="coerce")
 
     ema20 = _calculate(lambda: EMAIndicator(close, window=20).ema_indicator(), index)
     ema50 = _calculate(lambda: EMAIndicator(close, window=50).ema_indicator(), index)

@@ -57,20 +57,30 @@ def score_card(title, bull, bear):
 
 def trade_card(trade):
     """
-    Displays the recommended trade setup.
+    Displays the AI Trade Plan.
     """
 
-    st.subheader("🎯 Trade Setup")
+    st.subheader("🎯 AI Trade Plan")
 
-    signal = trade["signal"]
+    decision = trade["decision"]
 
-    if signal == "HOLD":
-        st.info("No trade recommended.")
-        return
+    if decision == "BUY":
+        st.success("🟢 BUY")
+
+    elif decision == "SELL":
+        st.error("🔴 SELL")
+
+    else:
+        st.warning("🟡 HOLD")
 
     col1, col2 = st.columns(2)
 
     with col1:
+
+        st.metric(
+            "Current Price",
+            trade["current_price"]
+        )
 
         st.metric(
             "Entry",
@@ -80,6 +90,11 @@ def trade_card(trade):
         st.metric(
             "Stop Loss",
             trade["stop_loss"]
+        )
+
+        st.metric(
+            "Support",
+            trade["support"]
         )
 
     with col2:
@@ -94,10 +109,22 @@ def trade_card(trade):
             trade["target2"]
         )
 
-    st.metric(
-        "Risk : Reward",
-        f'{trade["risk_reward"]} : 1'
-    )
+        st.metric(
+            "Risk : Reward",
+            f'1 : {trade["risk_reward"]}'
+        )
+
+        st.metric(
+            "Resistance",
+            trade["resistance"]
+        )
+
+    st.divider()
+
+    st.subheader("🧠 AI Reasons")
+
+    for reason in trade["reasons"]:
+        st.write(f"✅ {reason}")
 def market_overview_card(data):
     """
     Displays available Indian market indices.

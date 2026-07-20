@@ -11,7 +11,7 @@ Read-only:
 It does not place orders.
 """
 
-from services.live_multi_timeframe_data import (
+from services.market.live_multi_timeframe_data import (
     LiveMultiTimeframeData,
 )
 

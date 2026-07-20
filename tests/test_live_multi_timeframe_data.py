@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from services.live_multi_timeframe_data import (
+from services.market.live_multi_timeframe_data import (
     LiveMultiTimeframeData,
 )
 

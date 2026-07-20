@@ -7,11 +7,11 @@ import pandas as pd
 
 CANDLE_COLUMNS = [
     "timestamp",
-    "Open",
-    "High",
-    "Low",
-    "Close",
-    "Volume",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
 ]
 
 
@@ -34,11 +34,11 @@ def normalize_angel_candles(candles):
     )
 
     numeric_columns = [
-        "Open",
-        "High",
-        "Low",
-        "Close",
-        "Volume",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
     ]
 
     for column in numeric_columns:
@@ -50,10 +50,10 @@ def normalize_angel_candles(candles):
     df = df.dropna(
         subset=[
             "timestamp",
-            "Open",
-            "High",
-            "Low",
-            "Close",
+            "open",
+            "high",
+            "low",
+            "close",
         ]
     )
 

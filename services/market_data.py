@@ -66,3 +66,18 @@ def get_chart_data(symbol, period="6mo", interval="1d"):
         raise ValueError(
             f"Unable to retrieve historical data for symbol: {symbol}"
         ) from exc
+
+
+def get_historical_data(symbol=None, period="6mo", interval="1d"):
+    """Backward-compatible historical-data entry point.
+
+    Older diagnostic scripts call this function without a symbol.  Preserve
+    their non-network collection behavior while delegating explicit requests
+    to the current chart-data API.
+    """
+    if symbol is None:
+        return pd.DataFrame(
+            columns=["Open", "High", "Low", "Close", "Volume"]
+        )
+
+    return get_chart_data(symbol, period=period, interval=interval)
