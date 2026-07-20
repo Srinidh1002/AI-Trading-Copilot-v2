@@ -1,0 +1,2802 @@
+........................................................................ [  2%]
+........................................................................ [  5%]
+........................................................................ [  8%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+......FFFF..........FFFFFFFFFF............F............................. [ 19%]
+................................................................F....... [ 22%]
+.................................................F............FFFFFFF... [ 24%]
+................................FFFFFFFF................................ [ 27%]
+.........................................................FFFFFFFFFF..... [ 30%]
+.....................................................................FFF [ 33%]
+F....................................................................... [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 41%]
+........................................................................ [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+.....................................................................F.. [ 66%]
+........................................................................ [ 68%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 82%]
+........................................................................ [ 85%]
+........................................................................ [ 88%]
+........................................................................ [ 90%]
+...................................................FFFFF................ [ 93%]
+........................................................................ [ 96%]
+........................................................................ [ 99%]
+.....................                                                    [100%]
+================================== FAILURES ===================================
+_________ test_cli_prints_read_only_summary_unicode_and_correct_exit __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABD0501480>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF38D94D0>
+
+    def test_cli_prints_read_only_summary_unicode_and_correct_exit(monkeypatch, capsys):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:186: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+________________ test_cli_exit_codes[COMPLETED_WITH_ERRORS-0] _________________
+
+status = 'COMPLETED_WITH_ERRORS', exit_code = 0
+
+    @pytest.mark.parametrize("status, exit_code", [("COMPLETED_WITH_ERRORS", 0), ("FAILED", 1)])
+    def test_cli_exit_codes(status, exit_code):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:197: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+________________________ test_cli_exit_codes[FAILED-1] ________________________
+
+status = 'FAILED', exit_code = 1
+
+    @pytest.mark.parametrize("status, exit_code", [("COMPLETED_WITH_ERRORS", 0), ("FAILED", 1)])
+    def test_cli_exit_codes(status, exit_code):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:197: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_________ test_runner_modules_have_no_execution_or_deletion_authority _________
+
+    def test_runner_modules_have_no_execution_or_deletion_authority():
+>       source = (Path("services/daily_research_report_runner.py").read_text(encoding="utf-8") + Path("daily_research_report_runner.py").read_text(encoding="utf-8")).lower()
+                                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:204: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('daily_research_report_runner.py'), mode = 'r'
+buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'daily_research_report_runner.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+__ test_cli_contains_each_required_compact_output_line[Research Only: True] ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF3721260>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF39422D0>
+fragment = 'Research Only: True'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_ test_cli_contains_each_required_compact_output_line[Session Date: 2026-07-15] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF38A8250>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF38824D0>
+fragment = 'Session Date: 2026-07-15'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_ test_cli_contains_each_required_compact_output_line[Journal Entries Loaded: 1] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF38A9450>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF3881ED0>
+fragment = 'Journal Entries Loaded: 1'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_ test_cli_contains_each_required_compact_output_line[Paper Trades Loaded: 2] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF38ACC80>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF3B18350>
+fragment = 'Paper Trades Loaded: 2'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_ test_cli_contains_each_required_compact_output_line[Report Status: COMPLETED] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF38AF980>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF3B1BDD0>
+fragment = 'Report Status: COMPLETED'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_ test_cli_contains_each_required_compact_output_line[Archive Status: SAVED] __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF30E60B0>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF3B1BED0>
+fragment = 'Archive Status: SAVED'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_ test_cli_contains_each_required_compact_output_line[Archive Path: /a.json] __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF2EC6A50>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF3B183D0>
+fragment = 'Archive Path: /a.json'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_ test_cli_contains_each_required_compact_output_line[Research Observations:] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF3A17790>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF3B192D0>
+fragment = 'Research Observations:'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+___ test_cli_contains_each_required_compact_output_line[Research Snapshot:] ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF3667D10>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF3B18FD0>
+fragment = 'Research Snapshot:'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+_ test_cli_contains_each_required_compact_output_line[READ-ONLY MARKET RESEARCH] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF3667E90>
+capsys = <_pytest.capture.CaptureFixture object at 0x000002ABF3B19550>
+fragment = 'READ-ONLY MARKET RESEARCH'
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "Research Only: True",
+            "Session Date: 2026-07-15",
+            "Journal Entries Loaded: 1",
+            "Paper Trades Loaded: 2",
+            "Report Status: COMPLETED",
+            "Archive Status: SAVED",
+            "Archive Path: /a.json",
+            "Research Observations:",
+            "Research Snapshot:",
+            "READ-ONLY MARKET RESEARCH",
+        ],
+    )
+    def test_cli_contains_each_required_compact_output_line(monkeypatch, capsys, fragment):
+>       cli = importlib.import_module("daily_research_report_runner")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_daily_research_report_runner.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1398: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1371: in _find_and_load
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+name = 'daily_research_report_runner'
+import_ = <function _gcd_import at 0x000002ABCC47BE20>
+
+>   ???
+E   ModuleNotFoundError: No module named 'daily_research_report_runner'
+
+<frozen importlib._bootstrap>:1335: ModuleNotFoundError
+________________________ test_normalize_angel_candles _________________________
+
+    def test_normalize_angel_candles():
+    
+        candles = [
+            [
+                "2026-07-10T09:15:00+05:30",
+                24124.7,
+                24187.9,
+                24120.35,
+                24162.7,
+                0,
+            ],
+            [
+                "2026-07-10T09:20:00+05:30",
+                24165.85,
+                24178.2,
+                24154.3,
+                24174.75,
+                0,
+            ],
+        ]
+    
+        df = normalize_angel_candles(candles)
+    
+        assert isinstance(df, pd.DataFrame)
+    
+>       assert list(df.columns) == [
+            "timestamp",
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume",
+        ]
+E       AssertionError: assert ['timestamp',...se', 'volume'] == ['timestamp',...se', 'Volume']
+E         
+E         At index 1 diff: 'open' != 'Open'
+E         Use -v to get more diff
+
+tests\test_data_normalizer.py:32: AssertionError
+___________________ test_live_runner_routes_option_exchange ___________________
+
+    def test_live_runner_routes_option_exchange():
+        source = Path(
+            "live_option_decision_nifty.py"
+>       ).read_text(
+            encoding="utf-8"
+        )
+
+tests\test_derivative_exchange_routing.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_________________________ test_live_analysis_pipeline _________________________
+
+self = Index(['timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'], dtype='str')
+key = 'high'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+>           return self._engine.get_loc(casted_key)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3641: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pandas/_libs/index.pyx:168: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/index.pyx:197: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/hashtable_class_helper.pxi:7668: in pandas._libs.hashtable.PyObjectHashTable.get_item
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   KeyError: 'high'
+
+pandas/_libs/hashtable_class_helper.pxi:7676: KeyError
+
+The above exception was the direct cause of the following exception:
+
+mock_technical = <MagicMock name='analyse_technical' id='2937546693264'>
+mock_timeframe = <MagicMock name='analyse_multi_timeframe' id='2937546690912'>
+mock_regime = <MagicMock name='analyse_market_regime' id='2937546694944'>
+mock_patterns = <MagicMock name='analyse_patterns' id='2937546695952'>
+mock_volume = <MagicMock name='analyse_volume_intelligence' id='2937546691920'>
+mock_chart = <MagicMock name='analyse_chart_patterns' id='2937546695280'>
+mock_strategy = <MagicMock name='select_strategy' id='2937546695616'>
+mock_regime_evidence = <MagicMock name='evaluate_regime_aware_evidence' id='2937546693936'>
+
+    @patch(
+        "services.live_analysis_pipeline."
+        "evaluate_regime_aware_evidence"
+    )
+    @patch(
+        "services.live_analysis_pipeline."
+        "select_strategy"
+    )
+    @patch(
+        "services.live_analysis_pipeline."
+        "analyse_chart_patterns"
+    )
+    @patch(
+        "services.live_analysis_pipeline."
+        "analyse_volume_intelligence"
+    )
+    @patch(
+        "services.live_analysis_pipeline."
+        "analyse_patterns"
+    )
+    @patch(
+        "services.live_analysis_pipeline."
+        "analyse_market_regime"
+    )
+    @patch(
+        "services.live_analysis_pipeline."
+        "analyse_multi_timeframe"
+    )
+    @patch(
+        "services.live_analysis_pipeline."
+        "analyse_technical"
+    )
+    def test_live_analysis_pipeline(
+        mock_technical,
+        mock_timeframe,
+        mock_regime,
+        mock_patterns,
+        mock_volume,
+        mock_chart,
+        mock_strategy,
+        mock_regime_evidence,
+    ):
+    
+        mock_service = MagicMock()
+    
+        df = market_data()
+    
+        mock_service.fetch_all.return_value = {
+            "5m": df.copy(),
+            "15m": df.copy(),
+            "1h": df.copy(),
+            "1d": df.copy(),
+        }
+    
+        mock_technical.return_value = {
+            "trend": "BULLISH"
+        }
+    
+        mock_timeframe.return_value = {
+            "overall_trend": "BULLISH",
+            "alignment": "FULL",
+        }
+    
+        mock_regime.return_value = {
+            "primary_regime": (
+                "TRENDING_BULLISH"
+            ),
+            "trend": "BULLISH",
+        }
+    
+        mock_patterns.return_value = {
+            "patterns": [
+                "BULLISH_ENGULFING"
+            ],
+            "signal": "BULLISH",
+            "support": 100.0,
+            "resistance": 400.0,
+        }
+    
+        mock_volume.return_value = {
+            "bias": "BULLISH",
+            "relative_volume": 1.8,
+            "volume_spike": True,
+            "signals": [
+                "VOLUME_SPIKE"
+            ],
+        }
+    
+        mock_chart.return_value = {
+            "patterns": [
+                "UPTREND_STRUCTURE"
+            ],
+            "signal": "BULLISH",
+            "volume_confirmation": True,
+        }
+    
+        mock_regime_evidence.return_value = {
+            "regime": "TRENDING_BULLISH",
+            "contextual_bias": "BULLISH",
+            "bullish_evidence": [
+                "Multi-timeframe trend is bullish."
+            ],
+            "bearish_evidence": [],
+            "confirmations": [],
+            "warnings": [],
+            "relevant_signals": [
+                "MULTI_TIMEFRAME_TREND"
+            ],
+        }
+    
+        mock_strategy.return_value = {
+            "strategy": (
+                "TREND_CONTINUATION"
+            ),
+            "direction": "BULLISH",
+            "confidence": 90,
+            "decision": "TRADE",
+        }
+    
+        pipeline = LiveAnalysisPipeline(
+            data_service=mock_service
+        )
+    
+>       result = pipeline.analyse(
+            exchange="NSE",
+            symboltoken="99926000",
+        )
+
+tests\test_live_analysis_pipeline.py:169: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+services\live_analysis_pipeline.py:125: in analyse
+    add_regime_indicators(
+services\regime_indicator_builder.py:27: in add_regime_indicators
+    high = df["high"].astype(float)
+           ^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\frame.py:4378: in __getitem__
+    indexer = self.columns.get_loc(key)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Index(['timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'], dtype='str')
+key = 'high'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+            return self._engine.get_loc(casted_key)
+        except KeyError as err:
+            if isinstance(casted_key, slice) or (
+                isinstance(casted_key, abc.Iterable)
+                and any(isinstance(x, slice) for x in casted_key)
+            ):
+                raise InvalidIndexError(key) from err
+>           raise KeyError(key) from err
+E           KeyError: 'high'
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3648: KeyError
+_______________ test_live_runner_imports_market_identity_guard ________________
+
+    def test_live_runner_imports_market_identity_guard():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_identity_integration.py:16: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_identity_integration.py:10: in _runner_content
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_________________ test_live_runner_validates_market_identity __________________
+
+    def test_live_runner_validates_market_identity():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_identity_integration.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_identity_integration.py:10: in _runner_content
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_____ test_market_identity_validation_occurs_after_session_configuration ______
+
+    def test_market_identity_validation_occurs_after_session_configuration():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_identity_integration.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_identity_integration.py:10: in _runner_content
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+____ test_market_identity_validation_occurs_before_market_session_precheck ____
+
+    def test_market_identity_validation_occurs_before_market_session_precheck():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_identity_integration.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_identity_integration.py:10: in _runner_content
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+________ test_market_identity_validation_occurs_before_live_spot_fetch ________
+
+    def test_market_identity_validation_occurs_before_live_spot_fetch():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_identity_integration.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_identity_integration.py:10: in _runner_content
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+________ test_market_identity_validation_uses_canonical_configurations ________
+
+    def test_market_identity_validation_uses_canonical_configurations():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_identity_integration.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_identity_integration.py:10: in _runner_content
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+___ test_live_runner_does_not_construct_identity_guard_from_market_literals ___
+
+    def test_live_runner_does_not_construct_identity_guard_from_market_literals():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_identity_integration.py:109: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_identity_integration.py:10: in _runner_content
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_____________ test_live_runner_uses_market_session_configuration ______________
+
+    def test_live_runner_uses_market_session_configuration():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_session_routing.py:16: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_session_routing.py:10: in _runner_content
+    return RUNNER_PATH.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_____________ test_live_runner_has_no_direct_nse_calendar_getter ______________
+
+    def test_live_runner_has_no_direct_nse_calendar_getter():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_session_routing.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_session_routing.py:10: in _runner_content
+    return RUNNER_PATH.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+________ test_live_runner_has_no_direct_nse_holiday_calendar_variable _________
+
+    def test_live_runner_has_no_direct_nse_holiday_calendar_variable():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_session_routing.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_session_routing.py:10: in _runner_content
+    return RUNNER_PATH.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_________ test_live_runner_passes_resolved_calendar_to_session_guard __________
+
+    def test_live_runner_passes_resolved_calendar_to_session_guard():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_session_routing.py:53: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_session_routing.py:10: in _runner_content
+    return RUNNER_PATH.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_______ test_live_runner_session_configuration_uses_selected_underlying _______
+
+    def test_live_runner_session_configuration_uses_selected_underlying():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_session_routing.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_session_routing.py:10: in _runner_content
+    return RUNNER_PATH.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_____________ test_live_runner_preserves_option_exchange_routing ______________
+
+    def test_live_runner_preserves_option_exchange_routing():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_session_routing.py:79: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_session_routing.py:10: in _runner_content
+    return RUNNER_PATH.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+______________ test_live_runner_preserves_spot_exchange_routing _______________
+
+    def test_live_runner_preserves_spot_exchange_routing():
+>       content = _runner_content()
+                  ^^^^^^^^^^^^^^^^^
+
+tests\test_live_market_session_routing.py:88: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_market_session_routing.py:10: in _runner_content
+    return RUNNER_PATH.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_________________________ test_fetch_single_timeframe _________________________
+
+    def test_fetch_single_timeframe():
+    
+        mock_client = MagicMock()
+    
+        mock_client.get_historical_data.return_value = (
+            candle_data()
+        )
+    
+        cache = make_cache()
+    
+        service = LiveMultiTimeframeData(
+            client=mock_client,
+            cache=cache,
+        )
+    
+        result = service.fetch_timeframe(
+            exchange="NSE",
+            symboltoken="99926000",
+            timeframe="5m",
+            end_time=datetime(
+                2026,
+                7,
+                10,
+                15,
+                30,
+            ),
+        )
+    
+        assert isinstance(
+            result,
+            pd.DataFrame,
+        )
+    
+        assert len(result) == 2
+    
+>       assert list(result.columns) == [
+            "timestamp",
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume",
+        ]
+E       AssertionError: assert ['timestamp',...se', 'volume'] == ['timestamp',...se', 'Volume']
+E         
+E         At index 1 diff: 'open' != 'Open'
+E         Use -v to get more diff
+
+tests\test_live_multi_timeframe_data.py:79: AssertionError
+___________ test_live_entry_point_imports_live_market_configuration ___________
+
+    def test_live_entry_point_imports_live_market_configuration():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_________ test_live_entry_point_resolves_runtime_market_configuration _________
+
+    def test_live_entry_point_resolves_runtime_market_configuration():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+________________ test_live_entry_point_derives_market_identity ________________
+
+    def test_live_entry_point_derives_market_identity():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:60: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_______________ test_hardcoded_nifty_token_constant_is_removed ________________
+
+    def test_hardcoded_nifty_token_constant_is_removed():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:74: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+________________ test_spot_fetch_uses_resolved_market_identity ________________
+
+    def test_spot_fetch_uses_resolved_market_identity():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:88: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_________________ test_pipeline_uses_resolved_market_identity _________________
+
+    def test_pipeline_uses_resolved_market_identity():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+__________________ test_source_decision_identity_is_dynamic ___________________
+
+    def test_source_decision_identity_is_dynamic():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+______________ test_paper_trading_uses_resolved_market_identity _______________
+
+    def test_paper_trading_uses_resolved_market_identity():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:138: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+_____________ test_journal_metadata_uses_resolved_market_identity _____________
+
+    def test_journal_metadata_uses_resolved_market_identity():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+________________ test_execution_identity_literals_are_removed _________________
+
+    def test_execution_identity_literals_are_removed():
+>       source = read_live_source()
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\test_live_underlying_registry_integration.py:197: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_live_underlying_registry_integration.py:16: in read_live_source
+    return LIVE_ENTRY_POINT.read_text(
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:792: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WindowsPath('live_option_decision_nifty.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'live_option_decision_nifty.py'
+
+..\..\..\..\AppData\Local\Programs\Python\Python314\Lib\pathlib\__init__.py:776: FileNotFoundError
+____________________________ test_trending_bullish ____________________________
+
+self = Index(['Close', 'EMA20', 'EMA50', 'ATR', 'ADX', 'BB_UPPER', 'BB_LOWER'], dtype='str')
+key = 'close'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+>           return self._engine.get_loc(casted_key)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3641: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pandas/_libs/index.pyx:168: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/index.pyx:197: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/hashtable_class_helper.pxi:7668: in pandas._libs.hashtable.PyObjectHashTable.get_item
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   KeyError: 'close'
+
+pandas/_libs/hashtable_class_helper.pxi:7676: KeyError
+
+The above exception was the direct cause of the following exception:
+
+    def test_trending_bullish():
+    
+        data = make_data(
+            100,
+            95,
+            90,
+            1,
+            35,
+            110,
+            90,
+        )
+    
+>       result = analyse_market_regime(data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_market_regime_analyzer.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+services\market_regime_analyzer.py:49: in analyse_market_regime
+    close = float(latest["close"])
+                  ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\series.py:959: in __getitem__
+    return self._get_value(key)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\series.py:1046: in _get_value
+    loc = self.index.get_loc(label)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Index(['Close', 'EMA20', 'EMA50', 'ATR', 'ADX', 'BB_UPPER', 'BB_LOWER'], dtype='str')
+key = 'close'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+            return self._engine.get_loc(casted_key)
+        except KeyError as err:
+            if isinstance(casted_key, slice) or (
+                isinstance(casted_key, abc.Iterable)
+                and any(isinstance(x, slice) for x in casted_key)
+            ):
+                raise InvalidIndexError(key) from err
+>           raise KeyError(key) from err
+E           KeyError: 'close'
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3648: KeyError
+____________________________ test_trending_bearish ____________________________
+
+self = Index(['Close', 'EMA20', 'EMA50', 'ATR', 'ADX', 'BB_UPPER', 'BB_LOWER'], dtype='str')
+key = 'close'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+>           return self._engine.get_loc(casted_key)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3641: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pandas/_libs/index.pyx:168: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/index.pyx:197: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/hashtable_class_helper.pxi:7668: in pandas._libs.hashtable.PyObjectHashTable.get_item
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   KeyError: 'close'
+
+pandas/_libs/hashtable_class_helper.pxi:7676: KeyError
+
+The above exception was the direct cause of the following exception:
+
+    def test_trending_bearish():
+    
+        data = make_data(
+            90,
+            95,
+            100,
+            1,
+            35,
+            105,
+            80,
+        )
+    
+>       result = analyse_market_regime(data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_market_regime_analyzer.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+services\market_regime_analyzer.py:49: in analyse_market_regime
+    close = float(latest["close"])
+                  ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\series.py:959: in __getitem__
+    return self._get_value(key)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\series.py:1046: in _get_value
+    loc = self.index.get_loc(label)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Index(['Close', 'EMA20', 'EMA50', 'ATR', 'ADX', 'BB_UPPER', 'BB_LOWER'], dtype='str')
+key = 'close'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+            return self._engine.get_loc(casted_key)
+        except KeyError as err:
+            if isinstance(casted_key, slice) or (
+                isinstance(casted_key, abc.Iterable)
+                and any(isinstance(x, slice) for x in casted_key)
+            ):
+                raise InvalidIndexError(key) from err
+>           raise KeyError(key) from err
+E           KeyError: 'close'
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3648: KeyError
+____________________________ test_high_volatility _____________________________
+
+self = Index(['Close', 'EMA20', 'EMA50', 'ATR', 'ADX', 'BB_UPPER', 'BB_LOWER'], dtype='str')
+key = 'close'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+>           return self._engine.get_loc(casted_key)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3641: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pandas/_libs/index.pyx:168: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/index.pyx:197: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/hashtable_class_helper.pxi:7668: in pandas._libs.hashtable.PyObjectHashTable.get_item
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   KeyError: 'close'
+
+pandas/_libs/hashtable_class_helper.pxi:7676: KeyError
+
+The above exception was the direct cause of the following exception:
+
+    def test_high_volatility():
+    
+        data = make_data(
+            100,
+            101,
+            99,
+            3,
+            22,
+            115,
+            85,
+        )
+    
+>       result = analyse_market_regime(data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_market_regime_analyzer.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+services\market_regime_analyzer.py:49: in analyse_market_regime
+    close = float(latest["close"])
+                  ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\series.py:959: in __getitem__
+    return self._get_value(key)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\series.py:1046: in _get_value
+    loc = self.index.get_loc(label)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Index(['Close', 'EMA20', 'EMA50', 'ATR', 'ADX', 'BB_UPPER', 'BB_LOWER'], dtype='str')
+key = 'close'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+            return self._engine.get_loc(casted_key)
+        except KeyError as err:
+            if isinstance(casted_key, slice) or (
+                isinstance(casted_key, abc.Iterable)
+                and any(isinstance(x, slice) for x in casted_key)
+            ):
+                raise InvalidIndexError(key) from err
+>           raise KeyError(key) from err
+E           KeyError: 'close'
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3648: KeyError
+______________________________ test_compression _______________________________
+
+self = Index(['Close', 'EMA20', 'EMA50', 'ATR', 'ADX', 'BB_UPPER', 'BB_LOWER'], dtype='str')
+key = 'close'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+>           return self._engine.get_loc(casted_key)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3641: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pandas/_libs/index.pyx:168: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/index.pyx:197: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/hashtable_class_helper.pxi:7668: in pandas._libs.hashtable.PyObjectHashTable.get_item
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   KeyError: 'close'
+
+pandas/_libs/hashtable_class_helper.pxi:7676: KeyError
+
+The above exception was the direct cause of the following exception:
+
+    def test_compression():
+    
+        data = make_data(
+            100,
+            100,
+            100,
+            0.4,
+            15,
+            100.8,
+            99.2,
+        )
+    
+>       result = analyse_market_regime(data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_market_regime_analyzer.py:105: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+services\market_regime_analyzer.py:49: in analyse_market_regime
+    close = float(latest["close"])
+                  ^^^^^^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\series.py:959: in __getitem__
+    return self._get_value(key)
+           ^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\series.py:1046: in _get_value
+    loc = self.index.get_loc(label)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Index(['Close', 'EMA20', 'EMA50', 'ATR', 'ADX', 'BB_UPPER', 'BB_LOWER'], dtype='str')
+key = 'close'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+            return self._engine.get_loc(casted_key)
+        except KeyError as err:
+            if isinstance(casted_key, slice) or (
+                isinstance(casted_key, abc.Iterable)
+                and any(isinstance(x, slice) for x in casted_key)
+            ):
+                raise InvalidIndexError(key) from err
+>           raise KeyError(key) from err
+E           KeyError: 'close'
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3648: KeyError
+____________________ test_adds_required_regime_indicators _____________________
+
+self = Index(['High', 'Low', 'Close'], dtype='str'), key = 'high'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+>           return self._engine.get_loc(casted_key)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3641: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+pandas/_libs/index.pyx:168: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/index.pyx:197: in pandas._libs.index.IndexEngine.get_loc
+    ???
+pandas/_libs/hashtable_class_helper.pxi:7668: in pandas._libs.hashtable.PyObjectHashTable.get_item
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   KeyError: 'high'
+
+pandas/_libs/hashtable_class_helper.pxi:7676: KeyError
+
+The above exception was the direct cause of the following exception:
+
+    def test_adds_required_regime_indicators():
+    
+        data = pd.DataFrame({
+            "High": range(110, 170),
+            "Low": range(90, 150),
+            "Close": range(100, 160),
+        })
+    
+>       result = add_regime_indicators(data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_regime_indicator_builder.py:16: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+services\regime_indicator_builder.py:27: in add_regime_indicators
+    high = df["high"].astype(float)
+           ^^^^^^^^^^
+venv\Lib\site-packages\pandas\core\frame.py:4378: in __getitem__
+    indexer = self.columns.get_loc(key)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Index(['High', 'Low', 'Close'], dtype='str'), key = 'high'
+
+    def get_loc(self, key):
+        """
+        Get integer location, slice or boolean mask for requested label.
+    
+        Parameters
+        ----------
+        key : label
+            The key to check its location if it is present in the index.
+    
+        Returns
+        -------
+        int if unique index, slice if monotonic index, else mask
+            Integer location, slice or boolean mask.
+    
+        See Also
+        --------
+        Index.get_slice_bound : Calculate slice bound that corresponds to
+            given label.
+        Index.get_indexer : Computes indexer and mask for new index given
+            the current index.
+        Index.get_non_unique : Returns indexer and masks for new index given
+            the current index.
+        Index.get_indexer_for : Returns an indexer even when non-unique.
+    
+        Examples
+        --------
+        >>> unique_index = pd.Index(list("abc"))
+        >>> unique_index.get_loc("b")
+        1
+    
+        >>> monotonic_index = pd.Index(list("abbc"))
+        >>> monotonic_index.get_loc("b")
+        slice(1, 3, None)
+    
+        >>> non_monotonic_index = pd.Index(list("abcb"))
+        >>> non_monotonic_index.get_loc("b")
+        array([False,  True, False,  True])
+        """
+        casted_key = self._maybe_cast_indexer(key)
+        try:
+            return self._engine.get_loc(casted_key)
+        except KeyError as err:
+            if isinstance(casted_key, slice) or (
+                isinstance(casted_key, abc.Iterable)
+                and any(isinstance(x, slice) for x in casted_key)
+            ):
+                raise InvalidIndexError(key) from err
+>           raise KeyError(key) from err
+E           KeyError: 'high'
+
+venv\Lib\site-packages\pandas\core\indexes\base.py:3648: KeyError
+___________ test_analyse_technical_classifies_trend[bullish_trend] ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF36CC0C0>
+ohlcv_data =    Open   High   Low  Close  Volume
+0  99.0  101.0  98.0  100.0    1000
+indicator_values = [99.0, 98.0, 97.0, 60.0, 2.0, 1.0, ...]
+expected_trend = 'BULLISH', expected_score = 100
+
+    @pytest.mark.parametrize(
+        ("indicator_values", "expected_trend", "expected_score"),
+        [
+            (
+                [99.0, 98.0, 97.0, 60.0, 2.0, 1.0, 99.0, 3.0],
+                "BULLISH",
+                100,
+            ),
+            (
+                [101.0, 102.0, 103.0, 40.0, 1.0, 2.0, 101.0, 3.0],
+                "BEARISH",
+                0,
+            ),
+            (
+                [99.0, 101.0, 100.0, 60.0, 1.0, 2.0, 101.0, 3.0],
+                "SIDEWAYS",
+                50,
+            ),
+        ],
+        ids=("bullish_trend", "bearish_trend", "sideways_market"),
+    )
+    def test_analyse_technical_classifies_trend(
+        monkeypatch: pytest.MonkeyPatch,
+        ohlcv_data: pd.DataFrame,
+        indicator_values: list[float],
+        expected_trend: str,
+        expected_score: int,
+    ) -> None:
+        """Mocked indicators should deterministically drive trend classification."""
+    
+        _mock_indicators(monkeypatch, indicator_values)
+    
+>       result = analyse_technical(ohlcv_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_technical_analyzer.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+df =    Open   High   Low  Close  Volume
+0  99.0  101.0  98.0  100.0    1000
+
+    def analyse_technical(df: pd.DataFrame) -> TechnicalAnalysis:
+        """Analyse the latest OHLCV bar using EMA, momentum, and volatility data.
+    
+        ``score`` is a 0--100 directional score, where 50 is neutral.  Confidence
+        reflects the absolute directional score, discounted when requested
+        indicators are unavailable because the input history is too short.
+    
+        Args:
+            df: A pandas DataFrame containing Open, High, Low, Close, and Volume.
+    
+        Returns:
+            A technical regime, indicator values from the latest row, and the
+            signals that contributed to it.
+    
+        Raises:
+            TypeError: If ``df`` is not a pandas DataFrame.
+            ValueError: If required OHLCV columns are absent.
+        """
+    
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError("df must be a pandas DataFrame")
+    
+        missing_columns = _REQUIRED_COLUMNS.difference(df.columns)
+        if missing_columns:
+            missing = ", ".join(sorted(missing_columns))
+>           raise ValueError(f"Missing required OHLCV columns: {missing}")
+E           ValueError: Missing required OHLCV columns: close, high, low, open, volume
+
+services\technical_analyzer.py:121: ValueError
+___________ test_analyse_technical_classifies_trend[bearish_trend] ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF35F4050>
+ohlcv_data =    Open   High   Low  Close  Volume
+0  99.0  101.0  98.0  100.0    1000
+indicator_values = [101.0, 102.0, 103.0, 40.0, 1.0, 2.0, ...]
+expected_trend = 'BEARISH', expected_score = 0
+
+    @pytest.mark.parametrize(
+        ("indicator_values", "expected_trend", "expected_score"),
+        [
+            (
+                [99.0, 98.0, 97.0, 60.0, 2.0, 1.0, 99.0, 3.0],
+                "BULLISH",
+                100,
+            ),
+            (
+                [101.0, 102.0, 103.0, 40.0, 1.0, 2.0, 101.0, 3.0],
+                "BEARISH",
+                0,
+            ),
+            (
+                [99.0, 101.0, 100.0, 60.0, 1.0, 2.0, 101.0, 3.0],
+                "SIDEWAYS",
+                50,
+            ),
+        ],
+        ids=("bullish_trend", "bearish_trend", "sideways_market"),
+    )
+    def test_analyse_technical_classifies_trend(
+        monkeypatch: pytest.MonkeyPatch,
+        ohlcv_data: pd.DataFrame,
+        indicator_values: list[float],
+        expected_trend: str,
+        expected_score: int,
+    ) -> None:
+        """Mocked indicators should deterministically drive trend classification."""
+    
+        _mock_indicators(monkeypatch, indicator_values)
+    
+>       result = analyse_technical(ohlcv_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_technical_analyzer.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+df =    Open   High   Low  Close  Volume
+0  99.0  101.0  98.0  100.0    1000
+
+    def analyse_technical(df: pd.DataFrame) -> TechnicalAnalysis:
+        """Analyse the latest OHLCV bar using EMA, momentum, and volatility data.
+    
+        ``score`` is a 0--100 directional score, where 50 is neutral.  Confidence
+        reflects the absolute directional score, discounted when requested
+        indicators are unavailable because the input history is too short.
+    
+        Args:
+            df: A pandas DataFrame containing Open, High, Low, Close, and Volume.
+    
+        Returns:
+            A technical regime, indicator values from the latest row, and the
+            signals that contributed to it.
+    
+        Raises:
+            TypeError: If ``df`` is not a pandas DataFrame.
+            ValueError: If required OHLCV columns are absent.
+        """
+    
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError("df must be a pandas DataFrame")
+    
+        missing_columns = _REQUIRED_COLUMNS.difference(df.columns)
+        if missing_columns:
+            missing = ", ".join(sorted(missing_columns))
+>           raise ValueError(f"Missing required OHLCV columns: {missing}")
+E           ValueError: Missing required OHLCV columns: close, high, low, open, volume
+
+services\technical_analyzer.py:121: ValueError
+__________ test_analyse_technical_classifies_trend[sideways_market] ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002ABF35B5780>
+ohlcv_data =    Open   High   Low  Close  Volume
+0  99.0  101.0  98.0  100.0    1000
+indicator_values = [99.0, 101.0, 100.0, 60.0, 1.0, 2.0, ...]
+expected_trend = 'SIDEWAYS', expected_score = 50
+
+    @pytest.mark.parametrize(
+        ("indicator_values", "expected_trend", "expected_score"),
+        [
+            (
+                [99.0, 98.0, 97.0, 60.0, 2.0, 1.0, 99.0, 3.0],
+                "BULLISH",
+                100,
+            ),
+            (
+                [101.0, 102.0, 103.0, 40.0, 1.0, 2.0, 101.0, 3.0],
+                "BEARISH",
+                0,
+            ),
+            (
+                [99.0, 101.0, 100.0, 60.0, 1.0, 2.0, 101.0, 3.0],
+                "SIDEWAYS",
+                50,
+            ),
+        ],
+        ids=("bullish_trend", "bearish_trend", "sideways_market"),
+    )
+    def test_analyse_technical_classifies_trend(
+        monkeypatch: pytest.MonkeyPatch,
+        ohlcv_data: pd.DataFrame,
+        indicator_values: list[float],
+        expected_trend: str,
+        expected_score: int,
+    ) -> None:
+        """Mocked indicators should deterministically drive trend classification."""
+    
+        _mock_indicators(monkeypatch, indicator_values)
+    
+>       result = analyse_technical(ohlcv_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_technical_analyzer.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+df =    Open   High   Low  Close  Volume
+0  99.0  101.0  98.0  100.0    1000
+
+    def analyse_technical(df: pd.DataFrame) -> TechnicalAnalysis:
+        """Analyse the latest OHLCV bar using EMA, momentum, and volatility data.
+    
+        ``score`` is a 0--100 directional score, where 50 is neutral.  Confidence
+        reflects the absolute directional score, discounted when requested
+        indicators are unavailable because the input history is too short.
+    
+        Args:
+            df: A pandas DataFrame containing Open, High, Low, Close, and Volume.
+    
+        Returns:
+            A technical regime, indicator values from the latest row, and the
+            signals that contributed to it.
+    
+        Raises:
+            TypeError: If ``df`` is not a pandas DataFrame.
+            ValueError: If required OHLCV columns are absent.
+        """
+    
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError("df must be a pandas DataFrame")
+    
+        missing_columns = _REQUIRED_COLUMNS.difference(df.columns)
+        if missing_columns:
+            missing = ", ".join(sorted(missing_columns))
+>           raise ValueError(f"Missing required OHLCV columns: {missing}")
+E           ValueError: Missing required OHLCV columns: close, high, low, open, volume
+
+services\technical_analyzer.py:121: ValueError
+_______________ test_analyse_technical_rejects_missing_columns ________________
+
+    def test_analyse_technical_rejects_missing_columns() -> None:
+        """A useful error is raised when the OHLCV schema is incomplete."""
+    
+        incomplete_data = pd.DataFrame(
+            {"Open": [1.0], "High": [2.0], "Low": [0.5], "Close": [1.5]}
+        )
+    
+>       with pytest.raises(ValueError, match="Volume"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'Volume'
+E         Actual message: 'Missing required OHLCV columns: close, high, low, open, volume'
+
+tests\test_technical_analyzer.py:86: AssertionError
+_______________ test_analyse_technical_handles_empty_dataframe ________________
+
+    def test_analyse_technical_handles_empty_dataframe() -> None:
+        """An empty but valid OHLCV frame returns a neutral, safe result."""
+    
+        empty_data = pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"])
+    
+>       result = analyse_technical(empty_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_technical_analyzer.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+df = Empty DataFrame
+Columns: [Open, High, Low, Close, Volume]
+Index: []
+
+    def analyse_technical(df: pd.DataFrame) -> TechnicalAnalysis:
+        """Analyse the latest OHLCV bar using EMA, momentum, and volatility data.
+    
+        ``score`` is a 0--100 directional score, where 50 is neutral.  Confidence
+        reflects the absolute directional score, discounted when requested
+        indicators are unavailable because the input history is too short.
+    
+        Args:
+            df: A pandas DataFrame containing Open, High, Low, Close, and Volume.
+    
+        Returns:
+            A technical regime, indicator values from the latest row, and the
+            signals that contributed to it.
+    
+        Raises:
+            TypeError: If ``df`` is not a pandas DataFrame.
+            ValueError: If required OHLCV columns are absent.
+        """
+    
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError("df must be a pandas DataFrame")
+    
+        missing_columns = _REQUIRED_COLUMNS.difference(df.columns)
+        if missing_columns:
+            missing = ", ".join(sorted(missing_columns))
+>           raise ValueError(f"Missing required OHLCV columns: {missing}")
+E           ValueError: Missing required OHLCV columns: close, high, low, open, volume
+
+services\technical_analyzer.py:121: ValueError
+============================== warnings summary ===============================
+tests/test_live_entry_point_audit_config.py: 3 warnings
+tests/test_live_option_decision_pipeline.py: 8 warnings
+  C:\Users\sreen\OneDrive\Documents\GitHub\AI-Trading-Copilot-v2\venv\Lib\site-packages\SmartApi\smartConnect.py:110: DeprecationWarning: ssl.OP_NO_SSL*/ssl.OP_NO_TLS* options are deprecated
+    self.ssl_context.options |= ssl.OP_NO_TLSv1  # Disable TLS 1.0
+
+tests/test_live_entry_point_audit_config.py: 3 warnings
+tests/test_live_option_decision_pipeline.py: 8 warnings
+  C:\Users\sreen\OneDrive\Documents\GitHub\AI-Trading-Copilot-v2\venv\Lib\site-packages\SmartApi\smartConnect.py:111: DeprecationWarning: ssl.OP_NO_SSL*/ssl.OP_NO_TLS* options are deprecated
+    self.ssl_context.options |= ssl.OP_NO_TLSv1_1  # Disable TLS 1.1
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_daily_research_report_runner.py::test_cli_prints_read_only_summary_unicode_and_correct_exit
+FAILED tests/test_daily_research_report_runner.py::test_cli_exit_codes[COMPLETED_WITH_ERRORS-0]
+FAILED tests/test_daily_research_report_runner.py::test_cli_exit_codes[FAILED-1]
+FAILED tests/test_daily_research_report_runner.py::test_runner_modules_have_no_execution_or_deletion_authority
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Research Only: True]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Session Date: 2026-07-15]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Journal Entries Loaded: 1]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Paper Trades Loaded: 2]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Report Status: COMPLETED]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Archive Status: SAVED]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Archive Path: /a.json]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Research Observations:]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[Research Snapshot:]
+FAILED tests/test_daily_research_report_runner.py::test_cli_contains_each_required_compact_output_line[READ-ONLY MARKET RESEARCH]
+FAILED tests/test_data_normalizer.py::test_normalize_angel_candles - Assertio...
+FAILED tests/test_derivative_exchange_routing.py::test_live_runner_routes_option_exchange
+FAILED tests/test_live_analysis_pipeline.py::test_live_analysis_pipeline - Ke...
+FAILED tests/test_live_market_identity_integration.py::test_live_runner_imports_market_identity_guard
+FAILED tests/test_live_market_identity_integration.py::test_live_runner_validates_market_identity
+FAILED tests/test_live_market_identity_integration.py::test_market_identity_validation_occurs_after_session_configuration
+FAILED tests/test_live_market_identity_integration.py::test_market_identity_validation_occurs_before_market_session_precheck
+FAILED tests/test_live_market_identity_integration.py::test_market_identity_validation_occurs_before_live_spot_fetch
+FAILED tests/test_live_market_identity_integration.py::test_market_identity_validation_uses_canonical_configurations
+FAILED tests/test_live_market_identity_integration.py::test_live_runner_does_not_construct_identity_guard_from_market_literals
+FAILED tests/test_live_market_session_routing.py::test_live_runner_uses_market_session_configuration
+FAILED tests/test_live_market_session_routing.py::test_live_runner_has_no_direct_nse_calendar_getter
+FAILED tests/test_live_market_session_routing.py::test_live_runner_has_no_direct_nse_holiday_calendar_variable
+FAILED tests/test_live_market_session_routing.py::test_live_runner_passes_resolved_calendar_to_session_guard
+FAILED tests/test_live_market_session_routing.py::test_live_runner_session_configuration_uses_selected_underlying
+FAILED tests/test_live_market_session_routing.py::test_live_runner_preserves_option_exchange_routing
+FAILED tests/test_live_market_session_routing.py::test_live_runner_preserves_spot_exchange_routing
+FAILED tests/test_live_multi_timeframe_data.py::test_fetch_single_timeframe
+FAILED tests/test_live_underlying_registry_integration.py::test_live_entry_point_imports_live_market_configuration
+FAILED tests/test_live_underlying_registry_integration.py::test_live_entry_point_resolves_runtime_market_configuration
+FAILED tests/test_live_underlying_registry_integration.py::test_live_entry_point_derives_market_identity
+FAILED tests/test_live_underlying_registry_integration.py::test_hardcoded_nifty_token_constant_is_removed
+FAILED tests/test_live_underlying_registry_integration.py::test_spot_fetch_uses_resolved_market_identity
+FAILED tests/test_live_underlying_registry_integration.py::test_pipeline_uses_resolved_market_identity
+FAILED tests/test_live_underlying_registry_integration.py::test_source_decision_identity_is_dynamic
+FAILED tests/test_live_underlying_registry_integration.py::test_paper_trading_uses_resolved_market_identity
+FAILED tests/test_live_underlying_registry_integration.py::test_journal_metadata_uses_resolved_market_identity
+FAILED tests/test_live_underlying_registry_integration.py::test_execution_identity_literals_are_removed
+FAILED tests/test_market_regime_analyzer.py::test_trending_bullish - KeyError...
+FAILED tests/test_market_regime_analyzer.py::test_trending_bearish - KeyError...
+FAILED tests/test_market_regime_analyzer.py::test_high_volatility - KeyError:...
+FAILED tests/test_market_regime_analyzer.py::test_compression - KeyError: 'cl...
+FAILED tests/test_regime_indicator_builder.py::test_adds_required_regime_indicators
+FAILED tests/test_technical_analyzer.py::test_analyse_technical_classifies_trend[bullish_trend]
+FAILED tests/test_technical_analyzer.py::test_analyse_technical_classifies_trend[bearish_trend]
+FAILED tests/test_technical_analyzer.py::test_analyse_technical_classifies_trend[sideways_market]
+FAILED tests/test_technical_analyzer.py::test_analyse_technical_rejects_missing_columns
+FAILED tests/test_technical_analyzer.py::test_analyse_technical_handles_empty_dataframe
+52 failed, 2561 passed, 22 warnings in 12.50s
