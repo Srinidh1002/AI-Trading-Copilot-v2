@@ -1,57 +1,90 @@
-"""
-Trend Engine
-
-Determines the overall market trend using multiple indicators.
-"""
-
-
 def analyze_trend(snapshot):
     """
-    Analyze market trend from indicator outputs.
-
-    Returns
-    -------
-    dict
+    Analyze overall market trend using the latest indicator values.
     """
 
     indicators = snapshot["indicators"]
 
-    ema = indicators["ema"]
-    macd = indicators["macd"]
-    adx = indicators["adx"]
-    vwap = indicators["vwap"]
+    ema20 = float(indicators["EMA20"])
+    ema50 = float(indicators["EMA50"])
+    ema200 = float(indicators["EMA200"])
+
+    macd = float(indicators["MACD"])
+    macd_signal = float(indicators["MACD_SIGNAL"])
+
+    adx = float(indicators["ADX"])
+
+    vwap = float(indicators["VWAP"])
+    close = float(indicators["CLOSE"])
 
     bull_score = 0
     bear_score = 0
     reasons = []
 
-    if ema["trend"] == "BULLISH":
-        bull_score += 2
+    # EMA
+
+    if ema20 > ema50 > ema200:
+        bull_score += 3
         reasons.append("EMA Bullish")
-    elif ema["trend"] == "BEARISH":
-        bear_score += 2
+
+    elif ema20 < ema50 < ema200:
+        bear_score += 3
         reasons.append("EMA Bearish")
 
-    if macd["trend"] == "BULLISH":
+    # MACD
+
+    if macd > macd_signal:
         bull_score += 2
         reasons.append("MACD Bullish")
-    elif macd["trend"] == "BEARISH":
+
+    elif macd < macd_signal:
         bear_score += 2
         reasons.append("MACD Bearish")
 
-    if vwap["trend"] == "ABOVE_VWAP":
-        bull_score += 1
-        reasons.append("Above VWAP")
-    elif vwap["trend"] == "BELOW_VWAP":
-        bear_score += 1
-        reasons.append("Below VWAP")
+    # VWAP
 
-    confidence = min(100, adx["adx"] * 2)
+    if vwap == vwap:
 
-    if bull_score > bear_score:
+        if close > vwap:
+            bull_score += 1
+            reasons.append("Above VWAP")
+
+        elif close < vwap:
+            bear_score += 1
+            reasons.append("Below VWAP")
+
+    # ADX
+
+    if adx >= 30:
+
+        if bull_score > bear_score:
+            bull_score += 1
+
+        elif bear_score > bull_score:
+            bear_score += 1
+
+        reasons.append("Strong Trend")
+
+    elif adx < 20:
+        reasons.append("Weak Trend")
+
+    # Confidence
+
+    dominance = abs(bull_score - bear_score)
+
+    confidence = min(
+        100,
+        round((adx * 1.5) + (dominance * 8), 2),
+    )
+
+    # Signal
+
+    if bull_score >= bear_score + 2:
         signal = "BULLISH"
-    elif bear_score > bull_score:
+
+    elif bear_score >= bull_score + 2:
         signal = "BEARISH"
+
     else:
         signal = "SIDEWAYS"
 
@@ -59,6 +92,6 @@ def analyze_trend(snapshot):
         "signal": signal,
         "bull_score": bull_score,
         "bear_score": bear_score,
-        "confidence": round(confidence, 2),
+        "confidence": confidence,
         "reason": ", ".join(reasons),
     }

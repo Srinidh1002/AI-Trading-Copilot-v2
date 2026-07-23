@@ -3,9 +3,9 @@ Confidence Engine V2
 """
 
 from services.analysis.candlestick_engine import detect_pattern
-from services.analysis.pattern_score import pattern_score
-from services.analysis.pattern_score import pattern_score
-from services.analysis.pattern_score import pattern_score
+from archive.pattern_score import pattern_score
+from archive.pattern_score import pattern_score
+from archive.pattern_score import pattern_score
 
 def calculate_confidence(snapshot, trend):
 

@@ -19,8 +19,7 @@ class OIChangeEngine:
             elif price_change < 0:
                 return "Short Build-up"
 
-            else:
-                return "OI Build-up"
+            return "OI Build-up"
 
         elif oi_change < 0:
 
@@ -30,8 +29,7 @@ class OIChangeEngine:
             elif price_change < 0:
                 return "Long Unwinding"
 
-            else:
-                return "OI Unwinding"
+            return "OI Unwinding"
 
         return "Neutral"
 
@@ -54,6 +52,14 @@ class OIChangeEngine:
 
         output = {}
 
+        bullish = 0
+        bearish = 0
+
+        long_build = 0
+        short_build = 0
+        short_cover = 0
+        long_unwind = 0
+
         for strike in current:
 
             if strike not in previous:
@@ -61,7 +67,7 @@ class OIChangeEngine:
 
             output[strike] = {}
 
-            for side in ["CE", "PE"]:
+            for side in ("CE", "PE"):
 
                 old = previous[strike].get(side)
                 new = current[strike].get(side)
@@ -108,17 +114,41 @@ class OIChangeEngine:
 
                     if state == "Short Build-up":
                         state = "Fresh Call Writing"
+                        bearish += 1
+                        short_build += 1
 
                     elif state == "Long Unwinding":
                         state = "Call Unwinding"
+                        bullish += 1
+                        long_unwind += 1
+
+                    elif state == "Long Build-up":
+                        bullish += 1
+                        long_build += 1
+
+                    elif state == "Short Covering":
+                        bullish += 1
+                        short_cover += 1
 
                 else:
 
                     if state == "Long Build-up":
                         state = "Fresh Put Writing"
+                        bullish += 1
+                        long_build += 1
 
                     elif state == "Long Unwinding":
                         state = "Put Unwinding"
+                        bearish += 1
+                        long_unwind += 1
+
+                    elif state == "Short Build-up":
+                        bearish += 1
+                        short_build += 1
+
+                    elif state == "Short Covering":
+                        bullish += 1
+                        short_cover += 1
 
                 output[strike][side] = {
 
@@ -139,4 +169,30 @@ class OIChangeEngine:
                     "Current Volume": new["tradeVolume"],
                 }
 
-        return output
+        return {
+
+            "Chain": output,
+
+            "Summary": {
+
+                "BullScore": bullish,
+
+                "BearScore": bearish,
+
+                "LongBuildUp": long_build,
+
+                "ShortBuildUp": short_build,
+
+                "ShortCovering": short_cover,
+
+                "LongUnwinding": long_unwind,
+
+                "Bias": (
+                    "Bullish"
+                    if bullish > bearish
+                    else "Bearish"
+                    if bearish > bullish
+                    else "Neutral"
+                ),
+            },
+        }

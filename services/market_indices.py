@@ -4,6 +4,13 @@ Live Indian Market Indices
 
 import yfinance as yf
 
+_SYMBOLS = {
+    "nifty": "^NSEI",
+    "banknifty": "^NSEBANK",
+    "sensex": "^BSESN",
+    "vix": "^INDIAVIX",
+}
+
 
 def _get_index(symbol):
     """
@@ -11,36 +18,28 @@ def _get_index(symbol):
     """
 
     try:
-
         ticker = yf.Ticker(symbol)
 
-        info = ticker.info
+        info = ticker.fast_info
 
-        price = info.get(
-            "regularMarketPrice",
-            0
-        )
+        price = info.get("lastPrice", 0)
 
-        previous = info.get(
-            "regularMarketPreviousClose",
-            price
-        )
+        previous = info.get("previousClose", price)
 
         change = round(
             price - previous,
-            2
+            2,
         )
 
         return {
             "price": price,
-            "change": change
+            "change": change,
         }
 
     except Exception:
-
         return {
             "price": 0,
-            "change": 0
+            "change": 0,
         }
 
 
@@ -50,13 +49,6 @@ def market_indices():
     """
 
     return {
-
-        "nifty": _get_index("^NSEI"),
-
-        "banknifty": _get_index("^NSEBANK"),
-
-        "sensex": _get_index("^BSESN"),
-
-        "vix": _get_index("^INDIAVIX")
-
+        name: _get_index(symbol)
+        for name, symbol in _SYMBOLS.items()
     }

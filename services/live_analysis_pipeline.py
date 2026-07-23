@@ -11,8 +11,8 @@ Read-only:
 It does not place orders.
 """
 
-from services.market.live_multi_timeframe_data import (
-    LiveMultiTimeframeData,
+from services.market.market_data_manager import (
+    market_data_manager,
 )
 
 from services.market_data_adapter import (
@@ -55,16 +55,22 @@ from services.regime_aware_evidence import (
 from services.strategy_selector import (
     select_strategy,
 )
+from services.analysis.price_market_structure_engine import (
+    PriceMarketStructureEngine,
+)
+
+TIMEFRAMES = (
+    "5m",
+    "15m",
+    "1h",
+    "1d",
+)
 
 
 class LiveAnalysisPipeline:
 
-    def __init__(self, data_service=None):
-        self.data_service = (
-            data_service
-            if data_service is not None
-            else LiveMultiTimeframeData()
-        )
+    def __init__(self):
+        pass
 
     def analyse(
         self,
@@ -73,23 +79,29 @@ class LiveAnalysisPipeline:
         option_analysis=None,
         end_time=None,
     ):
+
         # ---------------------------------
         # FETCH ALL TIMEFRAMES
         # ---------------------------------
 
-        timeframes = (
-            self.data_service.fetch_all(
-                exchange=exchange,
-                symboltoken=symboltoken,
-                end_time=end_time,
-            )
+        timeframes = market_data_manager.get_multiple(
+            exchange=exchange,
+            symboltoken=symboltoken,
+            timeframes=TIMEFRAMES,
         )
 
         uppercase_timeframes = {
             timeframe: to_uppercase_ohlcv(df)
-            for timeframe, df
-            in timeframes.items()
+            for timeframe, df in timeframes.items()
+            if df is not None and not df.empty
         }
+
+        base_data = uppercase_timeframes.get("5m")
+
+        if base_data is None:
+            raise ValueError(
+                "5m timeframe unavailable."
+            )
 
         # ---------------------------------
         # MULTI-TIMEFRAME ANALYSIS
@@ -99,12 +111,6 @@ class LiveAnalysisPipeline:
             analyse_multi_timeframe(
                 uppercase_timeframes
             )
-        )
-
-        # Use 5-minute timeframe for
-        # immediate setup analysis.
-        base_data = (
-            uppercase_timeframes["5m"]
         )
 
         # ---------------------------------
@@ -134,7 +140,7 @@ class LiveAnalysisPipeline:
         )
 
         # ---------------------------------
-        # LOWERCASE DATA ADAPTER
+        # LOWERCASE DATA
         # ---------------------------------
 
         lowercase_data = (
@@ -144,7 +150,7 @@ class LiveAnalysisPipeline:
         )
 
         # ---------------------------------
-        # CANDLESTICK / PRICE PATTERNS
+        # CANDLESTICK
         # ---------------------------------
 
         candlestick_analysis = (
@@ -154,27 +160,23 @@ class LiveAnalysisPipeline:
         )
 
         # ---------------------------------
-        # VOLUME INTELLIGENCE
+        # VOLUME
         # ---------------------------------
 
         volume_analysis = (
             analyse_volume_intelligence(
                 lowercase_data,
-                support=(
-                    candlestick_analysis.get(
-                        "support"
-                    )
+                support=candlestick_analysis.get(
+                    "support"
                 ),
-                resistance=(
-                    candlestick_analysis.get(
-                        "resistance"
-                    )
+                resistance=candlestick_analysis.get(
+                    "resistance"
                 ),
             )
         )
 
         # ---------------------------------
-        # CHART PATTERN ANALYSIS
+        # CHART
         # ---------------------------------
 
         chart_analysis = (
@@ -182,13 +184,20 @@ class LiveAnalysisPipeline:
                 lowercase_data
             )
         )
+        # ---------------------------------
+        # MARKET STRUCTURE
+        # ---------------------------------
+
+        market_structure_analysis = (
+            PriceMarketStructureEngine.analyze(
+                {
+                    "history": lowercase_data,
+                }
+            )
+        )
 
         # ---------------------------------
-        # REGIME-AWARE EVIDENCE
-        #
-        # Observational only at this stage.
-        # It does not yet alter strategy
-        # selection or authorize a trade.
+        # EVIDENCE
         # ---------------------------------
 
         regime_aware_evidence = (
@@ -196,20 +205,14 @@ class LiveAnalysisPipeline:
                 regime=regime_analysis,
                 timeframe=timeframe_analysis,
                 technical=technical_analysis,
-                candlestick=(
-                    candlestick_analysis
-                ),
+                candlestick=candlestick_analysis,
                 chart=chart_analysis,
                 volume=volume_analysis,
             )
         )
 
         # ---------------------------------
-        # STRATEGY SELECTION
-        #
-        # Existing behaviour is intentionally
-        # preserved. Regime-aware evidence
-        # is not passed into the selector yet.
+        # STRATEGY
         # ---------------------------------
 
         strategy_analysis = (
@@ -217,14 +220,10 @@ class LiveAnalysisPipeline:
                 regime=regime_analysis,
                 timeframe=timeframe_analysis,
                 technical=technical_analysis,
-                candlestick=(
-                    candlestick_analysis
-                ),
+                candlestick=candlestick_analysis,
                 chart=chart_analysis,
                 option=option_analysis,
-                regime_aware_evidence=(
-                    regime_aware_evidence
-                ),
+                regime_aware_evidence=regime_aware_evidence,
             )
         )
 
@@ -233,9 +232,10 @@ class LiveAnalysisPipeline:
             "technical": technical_analysis,
             "timeframe": timeframe_analysis,
             "regime": regime_analysis,
-            "candlestick":candlestick_analysis,
+            "candlestick": candlestick_analysis,
             "chart": chart_analysis,
             "volume": volume_analysis,
             "regime_aware_evidence": regime_aware_evidence,
             "strategy": strategy_analysis,
+            "market_structure": market_structure_analysis,
         }

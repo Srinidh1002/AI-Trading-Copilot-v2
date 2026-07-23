@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from services.broker.base_broker import BaseBroker
-from services.broker.dhan_client import DhanClient
+from archive.brokers.dhan_client import DhanClient
 
 
 class DhanMarketData(BaseBroker):

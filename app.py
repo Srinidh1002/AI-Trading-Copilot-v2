@@ -3,6 +3,7 @@ import streamlit as st
 from dashboard.dashboard_v2 import home
 
 from services.database import initialize_database
+import services.market.live_multi_timeframe_data as lmtd
 
 # Initialize Database
 initialize_database()

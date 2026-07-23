@@ -1,17 +1,17 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class Score:
 
-    trend = "NEUTRAL"
+    trend: str = "NEUTRAL"
 
-    strength = 0
+    strength: int = 0
 
-    momentum = 0
+    momentum: int = 0
 
-    volatility = 0
+    volatility: int = 0
 
-    confidence = 0
+    confidence: int = 0
 
-    reasons = []
+    reasons: list[str] = field(default_factory=list)

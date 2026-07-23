@@ -6,6 +6,7 @@ Uses the centralized Broker Session Manager.
 
 from services.broker.session_manager import SessionManager
 from services.market.instrument_registry import InstrumentMaster
+from services.options.option_chain_engine import OptionChainEngine
 
 
 class OptionMarket:
@@ -15,6 +16,8 @@ class OptionMarket:
         self.session = SessionManager()
 
         self.registry = InstrumentMaster()
+
+        self.option_engine = OptionChainEngine()
 
         self.registry.load()
 
@@ -222,3 +225,24 @@ class OptionMarket:
             "token_to_strike": token_to_strike,
 
         }
+
+    # -------------------------------------------------
+
+    def analyze(
+        self,
+        underlying,
+        spot,
+    ):
+        """
+        Returns complete institutional option analysis.
+        """
+
+        expiry = self.current_expiry(
+            underlying,
+        )
+
+        return self.option_engine.analyze(
+                underlying,
+                expiry,
+                spot,
+        )

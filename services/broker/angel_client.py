@@ -19,6 +19,7 @@ import logging
 import time
 
 import pyotp
+from utils.debug import debug_print
 from SmartApi import SmartConnect
 
 from config import (
@@ -54,6 +55,7 @@ class AngelMarketDataClient:
         rate_limit_cooldown_seconds=None,
         max_rate_limit_retries=None,
         request_controller=None,
+        
     ):
         if not ANGEL_API_KEY:
             raise ValueError(
@@ -113,9 +115,11 @@ class AngelMarketDataClient:
                 rate_limit_cooldown_seconds=(
                     rate_limit_cooldown_seconds
                 ),
+                
             )
+            
         )
-
+        debug_print(f"AngelMarketDataClient created: {id(self)}")
         self.authenticated = False
 
         self.session = None
@@ -123,11 +127,13 @@ class AngelMarketDataClient:
     # ---------------------------------
     # AUTHENTICATION
     # ---------------------------------
-
+    
     def login(
+            
         self,
         force=False,
     ):
+        debug_print(f"LOGIN -> instance={id(self)} authenticated={self.authenticated}")
         """
         Authenticate with Angel One using
         Client ID, PIN and TOTP.
@@ -195,7 +201,11 @@ class AngelMarketDataClient:
                 "Angel One login request failed: "
                 f"{exc}"
             ) from exc
-
+        debug_print(
+            f"LOGIN: "
+            f"status={response.get('status')} "
+            f"message={response.get('message', '')}"
+        )
         if self._is_rate_limit_error(
             response=response,
         ):
@@ -271,89 +281,82 @@ class AngelMarketDataClient:
     # ---------------------------------
 
     @staticmethod
-    def _is_authentication_error(
-        response=None,
-        exception=None,
-    ):
-        """
-        Detect errors that may indicate an
-        expired or invalid authentication session.
-        """
-
-        messages = []
-
-        if isinstance(
-            response,
-            dict,
-        ):
-            messages.extend(
-                [
-                    str(
-                        response.get(
-                            "message",
-                            "",
-                        )
-                    ),
-                    str(
-                        response.get(
-                            "errorcode",
-                            "",
-                        )
-                    ),
-                ]
-            )
-
-        if exception is not None:
-            messages.append(
-                str(
-                    exception
-                )
-            )
-
-        combined = " ".join(
-            messages
-        ).lower()
-
-        authentication_terms = (
-            "token expired",
-            "invalid token",
-            "invalid jwt",
-            "jwt",
-            "session expired",
-            "unauthorized",
-            "authentication failed",
-            "access denied",
-        )
-
-        return any(
-            term in combined
-            for term
-            in authentication_terms
-        )
-
-    @staticmethod
     def _is_rate_limit_error(
         response=None,
         exception=None,
     ):
-        """Classify broker access-rate denials before auth recovery."""
+        """
+        Detect only genuine broker rate-limit errors.
+        """
+
+        if isinstance(response, dict):
+
+            #
+            # SUCCESS responses are NEVER rate limited
+            #
+            if response.get("status") is True:
+                return False
+
         messages = []
+
+        if isinstance(response, dict):
+            messages.extend(
+                [
+                    str(response.get("message", "")),
+                    str(response.get("errorcode", "")),
+                ]
+            )
+
+        if exception is not None:
+            messages.append(str(exception))
+
+        combined = " ".join(messages).lower()
+
+        rate_limit_terms = (
+            "exceeding access rate",
+            "access rate exceeded",
+            "rate limit exceeded",
+            "too many requests",
+            "too many request",
+            "429",
+        )
+
+        return any(
+            term in combined
+            for term in rate_limit_terms
+        )
+    @staticmethod
+    def _is_authentication_error(
+        response=None,
+        exception=None,
+    ):
+        messages = []
+
         if isinstance(response, dict):
             messages.extend([
                 str(response.get("message", "")),
                 str(response.get("errorcode", "")),
             ])
+
         if exception is not None:
             messages.append(str(exception))
-        combined = " ".join(messages).lower()
-        return any(term in combined for term in (
-            "exceeding access rate",
-            "access rate",
-            "rate limit",
-            "too many requests",
-            "too many request",
-        ))
 
+        combined = " ".join(messages).lower()
+
+        auth_terms = (
+            "session expired",
+            "invalid session",
+            "invalid token",
+            "token expired",
+            "jwt",
+            "unauthorized",
+            "authentication failed",
+        )
+
+        return any(
+            term in combined
+            for term in auth_terms
+        )
     @staticmethod
     def _is_retryable_exception(
         exception,
@@ -515,6 +518,7 @@ class AngelMarketDataClient:
         request_name,
         cache_key=None,
     ):
+        debug_print(f"REQUEST -> instance={id(self)} request={request_name}")
         """
         Execute a read-only SmartAPI request
         with retry and authentication recovery.
@@ -565,24 +569,46 @@ class AngelMarketDataClient:
                     attempt,
                 )
 
-                response = (
-                    request_callable()
-                )
-
-                if self._is_rate_limit_error(response=response):
+                try:
+                    response = request_callable()
+                    debug_print("\n========== BROKER RESPONSE ==========")
+                    debug_print(
+                        f"{request_name}: "
+                        f"status={response.get('status')} "
+                        f"message={response.get('message', '')}"
+                    )
+                    debug_print("=====================================\n")
+                finally:
+                    self.request_controller.mark_request_complete(
+                        request_name
+                    )
+                if (
+                    self._is_rate_limit_error(
+                        response=response,
+                    )
+                ):
                     rate_limit_attempts += 1
-                    if rate_limit_attempts > self.max_rate_limit_retries:
+
+                    if (
+                        rate_limit_attempts
+                        > self.max_rate_limit_retries
+                    ):
                         raise BrokerMarketDataRequestError(
                             request_name,
                             rate_limit_attempts,
                             "rate_limited",
-                            response.get("message", "Unknown rate-limit error"),
+                            response.get(
+                                "message",
+                                "Unknown rate-limit error",
+                            ),
                         )
+
                     self.request_controller.record_rate_limit(
                         request_name,
                         rate_limit_attempts,
                         self.retry_backoff_multiplier,
                     )
+
                     continue
 
                 # -------------------------
@@ -643,13 +669,28 @@ class AngelMarketDataClient:
                 # NORMAL RESPONSE
                 # -------------------------
 
-                validated = self._validate_response(response, request_name)
+                validated = self._validate_response(
+                        response,
+                        request_name,
+                    )
+
+                self.request_controller.record_success(
+                        request_name,
+                    )
+
                 if cache_key is not None:
-                    self.request_controller.cache(cache_key, validated)
+                        self.request_controller.cache(
+                            cache_key,
+                            validated,
+                        )
+
                 return validated
 
             except Exception as exc:
-
+                debug_print(
+                    f"RATE LIMIT EXCEPTION: "
+                    f"{type(exc).__name__}: {exc}"
+                )
                 last_exception = exc
 
                 if isinstance(
@@ -864,36 +905,18 @@ class AngelMarketDataClient:
             "todate": todate,
         }
 
-        # ==========================================
-        # TEMPORARY DEBUG LOGGING
-        # ==========================================
-
-        print("\n" + "=" * 70)
-        print("HISTORICAL API REQUEST")
-        print("=" * 70)
-        print(f"Exchange    : {exchange}")
-        print(f"Token       : {symboltoken}")
-        print(f"Interval    : {interval}")
-        print(f"From        : {fromdate}")
-        print(f"To          : {todate}")
-        print("=" * 70)
-
+       
         return self._execute_request(
-            request_callable=lambda: (
-                self.api.getCandleData(
-                    params
-                )
-            ),
-            request_name="historical-data",
-            cache_key=(
-                "historical-data",
-                exchange,
-                symboltoken,
-                interval,
-                fromdate,
-                todate,
-            ),
+    request_callable=lambda: (
+        self.api.getCandleData(
+            params
         )
+        
+    ),
+    
+    request_name="historical-data",
+    cache_key=None,
+)
 
     # ---------------------------------
     # OPTION GREEKS
@@ -944,4 +967,43 @@ class AngelMarketDataClient:
             ),
             request_name="Option Greeks",
             cache_key=("option-greeks", params["name"], expiry_date),
+        )
+    # ---------------------------------
+    # OPTION CHAIN (LIVE)
+    # ---------------------------------
+
+    def get_option_chain(
+        self,
+        exchange_tokens,
+    ):
+        """
+        Fetch live option chain quotes.
+
+        Parameters
+        ----------
+        exchange_tokens : dict
+
+        Example
+        -------
+        {
+            "NFO": [
+                "12345",
+                "12346",
+                ...
+            ]
+        }
+
+        Returns
+        -------
+        SmartAPI FULL market data response.
+        """
+
+        if not exchange_tokens:
+            raise ValueError(
+                "exchange_tokens cannot be empty."
+            )
+
+        return self.get_market_data(
+            "FULL",
+            exchange_tokens,
         )

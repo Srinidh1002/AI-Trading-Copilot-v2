@@ -1,3 +1,6 @@
+from utils.debug import debug_print
+
+debug_print("FVG ENGINE RUNNING")
 """
 Fair Value Gap Engine V1
 """

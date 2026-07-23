@@ -100,7 +100,7 @@ def home():
 
         st.plotly_chart(
             price_chart(history),
-            use_container_width=True,
+            width="stretch",
         )
 
     with ai_col:

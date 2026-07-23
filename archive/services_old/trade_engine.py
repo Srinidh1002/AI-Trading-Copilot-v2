@@ -1,6 +1,6 @@
 from services.decision.risk_management import calculate_trade_levels
 from services.analysis.candlestick_engine import detect_pattern
-from services.analysis.pattern_score import pattern_score
+from archive.pattern_score import pattern_score
 from services.decision.confidence_engine import calculate_confidence
 from services.analysis.trend_engine import analyze_trend
 from services.analysis.support_resistance_engine import calculate_support_resistance

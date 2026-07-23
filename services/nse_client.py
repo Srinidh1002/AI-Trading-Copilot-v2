@@ -36,8 +36,20 @@ class NSEClient:
 
         response = self.session.get(
             url,
-            timeout=15
+            timeout=15,
         )
+
+        if response.status_code == 401:
+            # Refresh NSE cookies and retry once
+            self.session.get(
+                BASE_URL,
+                timeout=10,
+            )
+
+            response = self.session.get(
+                url,
+                timeout=15,
+            )
 
         response.raise_for_status()
 

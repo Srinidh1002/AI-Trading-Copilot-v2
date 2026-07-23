@@ -1,4 +1,4 @@
-from services.analysis.pattern_score import pattern_score
+from archive.pattern_score import pattern_score
 
 print("=" * 30)
 print("PATTERN SCORE TEST")

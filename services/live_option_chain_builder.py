@@ -15,8 +15,8 @@ from services.angel_instrument_master import (
     AngelInstrumentMaster,
 )
 
-from services.broker.angel_client import (
-    AngelMarketDataClient,
+from services.broker.shared_client import (
+    get_market_client,
 )
 
 from services.option_chain_validator import (
@@ -54,7 +54,7 @@ class LiveOptionChainBuilder:
         self.market_client = (
             market_client
             if market_client is not None
-            else AngelMarketDataClient()
+            else get_market_client()
         )
 
     @staticmethod

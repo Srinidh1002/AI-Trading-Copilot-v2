@@ -1,7 +1,5 @@
 """
-Candlestick Pattern Engine
-
-Recognizes common candlestick patterns.
+Candlestick Pattern Analysis Engine
 """
 
 import pandas as pd
@@ -11,45 +9,23 @@ from services.candlestick_engine import detect_pattern
 
 def analyze_candlestick(snapshot):
     """
-    Detect candlestick patterns.
-
-    Returns
-    -------
-    dict
+    Analyze latest candlestick using Pattern Engine V2.
     """
 
     df: pd.DataFrame = snapshot["history"]
 
-    candle = df.iloc[-1]
+    result = detect_pattern(df)
 
-    open_price = float(candle["open"])
-    close_price = float(candle["close"])
-    high = float(candle["high"])
-    low = float(candle["low"])
-
-    body = abs(close_price - open_price)
-    upper = high - max(open_price, close_price)
-    lower = min(open_price, close_price) - low
-
-    pattern = "NONE"
-
-    if body < (high - low) * 0.1:
-        pattern = "DOJI"
-
-    elif lower > body * 2:
-        pattern = "HAMMER"
-
-    elif upper > body * 2:
-        pattern = "SHOOTING_STAR"
-
-    elif close_price > open_price:
-        pattern = "BULLISH"
-
-    elif close_price < open_price:
-        pattern = "BEARISH"
+    signal_map = {
+        "BUY": "BULLISH",
+        "SELL": "BEARISH",
+        "HOLD": "NEUTRAL",
+    }
 
     return {
-        "signal": pattern,
-        "confidence": 70,
-        "reason": f"Detected {pattern} candlestick.",
+        "signal": signal_map.get(result["signal"], "NEUTRAL"),
+        "pattern": result["pattern"],
+        "score": result["score"],
+        "confidence": result["confidence"],
+        "reason": result["reason"],
     }

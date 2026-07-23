@@ -1,12 +1,13 @@
 """
 Market Snapshot
 
-Provides a single snapshot of the market
-for the AI Engine.
+Provides a unified market snapshot
+for the Decision Engine and AI Engine.
 """
 
 from services.market.live_index_price import LiveIndexPrice
 from services.market.option_market import OptionMarket
+from services.options.option_chain_engine import OptionChainEngine
 
 
 class MarketSnapshot:
@@ -17,11 +18,14 @@ class MarketSnapshot:
 
         self.option = OptionMarket()
 
+        
+
     # -----------------------------------------------------
 
     def snapshot(
         self,
         underlying="NIFTY",
+        expiry=None,
         levels=5,
     ):
 
@@ -35,10 +39,34 @@ class MarketSnapshot:
             levels,
         )
 
+        option_analysis = {}
+
+        if expiry is not None:
+
+            try:
+
+                option_analysis = self.option.analyze(
+                    underlying,
+                    index_data["LTP"],
+                )
+
+            except Exception as e:
+
+                import traceback
+
+                traceback.print_exc()
+
+                option_analysis = {
+                    "Status": "Error",
+                    "Error": str(e),
+                }
+
         return {
 
             "index": index_data,
 
             "options": option_chain,
+
+            "option_analysis": option_analysis,
 
         }

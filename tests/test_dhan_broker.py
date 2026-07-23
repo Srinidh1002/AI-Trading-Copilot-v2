@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from services.broker.dhan_client import DhanAuthenticationError, DhanClient, DhanConfigurationError
-from services.broker.dhan_market_data import DhanMarketData
+from archive.brokers.dhan_client import DhanAuthenticationError, DhanClient, DhanConfigurationError
+from archive.brokers.dhan_market_data import DhanMarketData
 from services.broker.instrument_registry import InstrumentRegistry
 
 

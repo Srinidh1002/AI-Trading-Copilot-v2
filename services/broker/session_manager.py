@@ -3,14 +3,14 @@
 Session Manager
 ==============================================================
 
+Singleton wrapper around the shared AngelMarketDataClient.
+
 Responsibilities
 ----------------
-✓ Own the SmartAPI client
-✓ Ensure only one authenticated session exists
-✓ Monitor session health
-✓ Automatically reconnect when required
-✓ Retry broker calls on failure
-✓ Central access point for all services
+✓ Own the shared AngelMarketDataClient instance
+✓ Provide backward-compatible API access
+✓ Execute broker requests
+✓ Re-authenticate automatically when required
 ==============================================================
 """
 
@@ -19,7 +19,9 @@ from __future__ import annotations
 import time
 from typing import Any, Callable
 
-from services.broker.smart_api_client import SmartAPIClient
+from services.broker.shared_client import (
+    get_market_client,
+)
 
 
 class SessionManager:
@@ -44,7 +46,8 @@ class SessionManager:
 
         self._initialized = True
 
-        self.client = SmartAPIClient()
+        # Use the ONE shared market client
+        self.client = get_market_client()
 
         self.last_login = time.time()
 
@@ -54,19 +57,20 @@ class SessionManager:
 
     @property
     def api(self):
-        return self.client.get_api()
+
+        self.client.login()
+
+        return self.client.api
 
     # -----------------------------------------------------
 
     def reconnect(self):
 
-        print("\n[SessionManager] Reconnecting...")
-
-        self.client.reconnect()
+        self.client.login(
+            force=True,
+        )
 
         self.last_login = time.time()
-
-        print("[SessionManager] Connected.\n")
 
     # -----------------------------------------------------
 
@@ -74,9 +78,9 @@ class SessionManager:
 
         try:
 
-            profile = self.client.get_profile()
+            self.client.login()
 
-            return bool(profile)
+            return True
 
         except Exception:
 
@@ -86,9 +90,7 @@ class SessionManager:
 
     def ensure_session(self):
 
-        if not self.is_alive():
-
-            self.reconnect()
+        self.client.login()
 
     # -----------------------------------------------------
 
@@ -107,16 +109,14 @@ class SessionManager:
 
                 self.ensure_session()
 
-                return func(*args, **kwargs)
+                return func(
+                    *args,
+                    **kwargs,
+                )
 
-            except Exception as exc:
+            except Exception:
 
                 attempt += 1
-
-                print(
-                    f"[SessionManager] Attempt "
-                    f"{attempt} failed: {exc}"
-                )
 
                 if attempt > self.max_retries:
                     raise
@@ -130,10 +130,6 @@ class SessionManager:
         return {
 
             "Connected": self.is_alive(),
-
-            "Client": self.client.get_profile().get("Client ID"),
-
-            "User": self.client.get_profile().get("Name"),
 
             "Last Login": self.last_login,
 

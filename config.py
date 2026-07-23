@@ -18,7 +18,7 @@ APP_NAME = "AI Trading Copilot"
 
 VERSION = "2.0"
 
-DEBUG = True
+DEBUG_MODE = False
 
 TIMEZONE = "Asia/Kolkata"
 

@@ -20,9 +20,6 @@ from services.live_analysis_pipeline import (
     LiveAnalysisPipeline,
 )
 from services.market_data_validator import MarketDataValidationError
-from services.market.live_multi_timeframe_data import (
-    LiveMultiTimeframeData,
-)
 
 from services.nse_holiday_calendar import (
     get_nse_holiday_calendar,
@@ -61,9 +58,10 @@ from services.market_data_validator import (
     validate_live_price,
 )
 
-from services.broker.angel_client import (
-    AngelMarketDataClient,
+from services.broker.shared_client import (
+    get_market_client,
 )
+
 
 from services.trade_plan_engine import (
     build_trade_plan,
@@ -116,26 +114,16 @@ class LiveOptionDecisionPipeline:
         audit_logger=None,
         persist_audit=False,
     ):
-        shared_market_client = market_client
-
-        if (
-            shared_market_client is None
-            and (
-                analysis_pipeline is None
-                or option_chain_builder is None
-                or completed_candle_service is None
-            )
-        ):
-            shared_market_client = AngelMarketDataClient()
+        shared_market_client = (
+            market_client
+            if market_client is not None
+            else get_market_client()
+        )
 
         self.analysis_pipeline = (
             analysis_pipeline
             if analysis_pipeline is not None
-            else LiveAnalysisPipeline(
-                data_service=LiveMultiTimeframeData(
-                    client=shared_market_client
-                )
-            )
+            else LiveAnalysisPipeline()
         )
 
         self.option_chain_builder = (
