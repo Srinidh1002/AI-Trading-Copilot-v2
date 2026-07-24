@@ -855,7 +855,30 @@ class AngelMarketDataClient:
             request_name="market-data",
             cache_key=self._market_data_cache_key(mode, exchange_tokens),
         )
+    def get_ltp(
+        self,
+        exchange,
+        tradingsymbol,
+        symboltoken,
+    ):
+        response = self.get_market_data(
+            "LTP",
+            {
+                exchange: [symboltoken],
+            },
+        )
 
+        data = response["data"]["fetched"][0]
+
+        return {
+            "status": True,
+            "data": {
+                "ltp": float(data["ltp"]),
+                "tradingsymbol": tradingsymbol,
+                "symboltoken": symboltoken,
+                "exchange": exchange,
+            },
+        }
     # ---------------------------------
     # HISTORICAL CANDLE DATA
     # ---------------------------------

@@ -8,25 +8,96 @@ from services.core.market_snapshot import get_market_snapshot
 from services.decision.master_decision_engine import make_decision
 from services.risk.risk_engine import calculate_risk
 from services.trade.trade_score_engine import TradeScoreEngine
-
+from services.trade.paper_trade_engine import (
+    process_trade,
+)
+from services.refresh import refresh_state
+from services.performance import performance_monitor
+from services.confidence_engine import (
+    calculate_confidence,
+)
+from services.decision.master_decision_engine import (
+    make_master_decision,
+)
+from services.trade.trade_response_builder import (
+    build_trade_response,
+)
 
 trade_score_engine = TradeScoreEngine()
 
 
 def generate_trade():
 
-    snapshot = get_market_snapshot()
+    return analyze_trade()
+def _strength_label(confidence: float) -> str:
 
-    return analyze_trade(snapshot)
+    if confidence >= 90:
+        return "Very Strong"
 
+    if confidence >= 75:
+        return "Strong"
+
+    if confidence >= 60:
+        return "Moderate"
+
+    return "Weak"
+def _targets(
+    signal: str,
+    entry: float,
+    stop_loss: float,
+):
+
+    risk_distance = abs(entry - stop_loss)
+
+    if signal == "BUY":
+
+        return (
+            round(entry + risk_distance, 2),
+            round(entry + (risk_distance * 1.5), 2),
+            round(entry + (risk_distance * 2.0), 2),
+        )
+
+    elif signal == "SELL":
+
+        return (
+            round(entry - risk_distance, 2),
+            round(entry - (risk_distance * 1.5), 2),
+            round(entry - (risk_distance * 2.0), 2),
+        )
+
+    return (
+        entry,
+        entry,
+        entry,
+    )
+def _momentum_label(
+    bull: float,
+    bear: float,
+) -> str:
+
+    if bull > bear:
+        return "Bullish"
+
+    if bear > bull:
+        return "Bearish"
+
+    return "Neutral"
 
 def analyze_trade(snapshot=None):
-
+    performance_monitor.start("decision_engine")
     if snapshot is None:
 
         snapshot = get_market_snapshot()
 
-    decision = make_decision(snapshot)
+    if refresh_state.decision is None:
+
+        decision = make_decision(snapshot)
+
+        refresh_state.decision = decision
+
+    else:
+
+        decision = refresh_state.decision
 
     risk = calculate_risk(
         snapshot,
@@ -37,32 +108,146 @@ def analyze_trade(snapshot=None):
         snapshot,
         decision,
     )
+    confidence_result = calculate_confidence(
+        technical={
+            "bull_score": decision.get("bull_score", 0),
+            "bear_score": decision.get("bear_score", 0),
+            "indicators": snapshot.get("indicators", {}),
+        },
+        market={
+            "trend": decision.get(
+                "signal",
+                "HOLD",
+            ),
+            "market_regime": snapshot.get(
+                "market_regime",
+                "UNKNOWN",
+            ),
+        },
+        option=snapshot.get(
+            "option_analysis",
+            {},
+        ),
+        sentiment=snapshot.get(
+            "sentiment",
+            {},
+        ),
+        strategy={
+            "signal": decision.get(
+                "signal",
+                "HOLD",
+            ),
+        },
+        smart_money=snapshot.get(
+            "smart_money",
+            {},
+        ),
+        risk={
+            "risk_reward": risk.get(
+                "risk_reward",
+            ),
+        },
+    )
+    bull = round(
+    decision.get("bull_score", 0),
+    2,
+    )
+
+    bear = round(
+        decision.get("bear_score", 0),
+        2,
+    )
 
     signal = decision.get(
         "signal",
         "HOLD",
     )
-
-    bull = round(
-        decision.get(
-            "bull_score",
+    master_decision = make_master_decision(
+    technical={
+        "bull_score": bull,
+        "bear_score": bear,
+    },
+    market={
+        "trend": signal,
+    },
+    option=snapshot.get(
+        "option_analysis",
+        {},
+    ),
+    sentiment=snapshot.get(
+        "sentiment",
+        {},
+    ),
+    strategy={
+        "signal": signal,
+    },
+    confidence=confidence_result,
+    market_regime={
+        "regime": snapshot.get(
+            "market_regime",
+            "UNKNOWN",
+        ),
+    },
+    decision_validator=snapshot.get(
+        "decision_validator",
+        {},
+    ),
+    multi_timeframe=snapshot.get(
+        "multi_timeframe",
+        {},
+    ),
+    trade_quality={
+        "overall_score": trade_score.get(
+            "Score",
             0,
         ),
-        2,
-    )
-
-    bear = round(
-        decision.get(
-            "bear_score",
-            0,
+        "grade": trade_score.get(
+            "Grade",
+            "",
         ),
-        2,
-    )
+        "risk_level": trade_score.get(
+            "RiskLevel",
+            "",
+        ),
+        "should_trade": signal in {
+            "BUY",
+            "SELL",
+        },
+    },
+    evidence=snapshot.get(
+        "evidence",
+        {},
+    ),
+)
+    master_signal = master_decision.get(
+    "final_decision",
+    "NO_TRADE",
+)
+
+    if master_signal == "BUY":
+
+        signal = "BUY"
+
+    elif master_signal == "SELL":
+
+        signal = "SELL"
+
+    else:
+
+        signal = "HOLD"
+    
+    display_signal = {
+        "BUY": "BUY CE",
+        "SELL": "BUY PE",
+    }.get(signal, "WAIT")
 
     confidence = round(
-        decision.get(
+        confidence_result.get(
             "confidence",
-            0,
+            decision.get(
+                "confidence",
+                0,
+            ),
         ),
         2,
     )
@@ -71,37 +256,12 @@ def analyze_trade(snapshot=None):
 
         "trend": signal,
 
-        "momentum": (
-
-            "Bullish"
-
-            if bull > bear
-
-            else "Bearish"
-
-            if bear > bull
-
-            else "Neutral"
-
+        "momentum": _momentum_label(
+            bull,
+            bear,
         ),
 
-        "strength": (
-
-            "Very Strong"
-
-            if confidence >= 90
-
-            else "Strong"
-
-            if confidence >= 75
-
-            else "Moderate"
-
-            if confidence >= 60
-
-            else "Weak"
-
-        ),
+        "strength": _strength_label(confidence),
 
         "score": confidence,
 
@@ -137,47 +297,11 @@ def analyze_trade(snapshot=None):
 
     stop_loss = risk["stop_loss"]
 
-    target = risk["target"]
-
-    if signal == "BUY":
-
-        target1 = round(
-            entry + (target - entry) * 0.33,
-            2,
-        )
-
-        target2 = round(
-            entry + (target - entry) * 0.66,
-            2,
-        )
-
-        target3 = round(
-            target,
-            2,
-        )
-
-    elif signal == "SELL":
-
-        target1 = round(
-            entry - (entry - target) * 0.33,
-            2,
-        )
-
-        target2 = round(
-            entry - (entry - target) * 0.66,
-            2,
-        )
-
-        target3 = round(
-            target,
-            2,
-        )
-
-    else:
-
-        target1 = entry
-        target2 = entry
-        target3 = entry
+    target1, target2, target3 = _targets(
+        signal,
+        entry,
+        stop_loss,
+    )
 
     risk_dashboard = {
 
@@ -209,117 +333,71 @@ def analyze_trade(snapshot=None):
     ai_reason = []
 
     if trend["momentum"] != "Neutral":
-
-        ai_reason.append(
-            f"Trend {trend['momentum']}"
-        )
-
-    if decision.get("option_flow"):
-
-        ai_reason.append(
-            decision["option_flow"]
-        )
+        ai_reason.append(f"Trend: {trend['momentum']}")
 
     if decision.get("option_bias"):
-
-        ai_reason.append(
-            decision["option_bias"]
-        )
+        ai_reason.append(f"Options: {decision['option_bias']}")
 
     if decision.get("greeks_bias"):
-
-        ai_reason.append(
-            f"Greeks {decision['greeks_bias']}"
-        )
+        ai_reason.append(f"Greeks: {decision['greeks_bias']}")
 
     if decision.get("pcr") is not None:
+        ai_reason.append(f"PCR: {decision['pcr']}")
 
-        ai_reason.append(
-            f"PCR {decision['pcr']}"
-        )
+    if decision.get("option_flow"):
+        ai_reason.append(f"Flow: {decision['option_flow']}")
 
-    if decision.get("max_pain"):
-
-        ai_reason.append(
-            f"Max Pain {decision['max_pain']}"
-        )
-
-    ai_reason.extend(
-        trade_score["Reasons"]
-    )
+    ai_reason.extend(trade_score["Reasons"])
 
     if signal == "BUY":
-
-        ai_reason.append(
-            "BUY Conditions Met"
-        )
-
+        ai_reason.append("BUY conditions satisfied")
     elif signal == "SELL":
-
-        ai_reason.append(
-            "SELL Conditions Met"
-        )
-
+        ai_reason.append("SELL conditions satisfied")
     else:
+        ai_reason.append("Awaiting confirmation")
 
-        ai_reason.append(
-            "Waiting for Confirmation"
-        )
 
-    return {
+    reason = confidence_result.get(
+        "reason",
+        " | ".join(
+            dict.fromkeys(ai_reason)
+        ),
+    )
 
-        "snapshot": snapshot,
-
+    paper_trade = {
+        "timestamp": snapshot["timestamp"],
         "decision": signal,
-
-        "confidence": confidence,
-
-        "bull_score": bull,
-
-        "bear_score": bear,
-
-        "neutral_score": max(
-            0,
-            round(
-                10 - bull - bear,
-                2,
-            ),
-        ),
-
-        "trend": trend,
-
-        "pattern": pattern,
-
-        "support_resistance": support_resistance,
-
-        "entry": entry,
-
-        "stop_loss": stop_loss,
-
-        "target1": target1,
-
-        "target2": target2,
-
-        "risk": risk_dashboard,
-
-        "institutional_score": trade_score["Score"],
-
-        "trade_grade": trade_score["Grade"],
-
         "trade_action": trade_score["Action"],
-
-        "risk_level": trade_score["RiskLevel"],
-
-        "reason": " | ".join(
-            dict.fromkeys(
-                ai_reason
-            )
-        ),
-
-        "decision_data": decision,
-
-        "risk_data": risk,
-
-        "trade_score_data": trade_score,
-
+        "entry": entry,
+        "stop_loss": stop_loss,
+        "target1": target1,
+        "target2": target2,
+        "confidence": confidence,
+        "reason": reason,
+        "current_price": snapshot["ltp"],
     }
+
+    process_trade(paper_trade)
+    performance_monitor.stop("decision_engine")
+    return build_trade_response(
+        display_signal=display_signal,
+        master_decision=master_decision,
+        confidence=confidence,
+        reason=reason,
+        entry=entry,
+        stop_loss=stop_loss,
+        target1=target1,
+        target2=target2,
+        target3=target3,
+        bull=bull,
+        bear=bear,
+        trend=trend,
+        pattern=pattern,
+        support_resistance=support_resistance,
+        trade_score=trade_score,
+        confidence_result=confidence_result,
+        risk_dashboard=risk_dashboard,
+        snapshot=snapshot,
+        decision=decision,
+        risk=risk,
+    )

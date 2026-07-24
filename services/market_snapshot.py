@@ -1,63 +1,82 @@
 """
-Market Snapshot Service V3
+Market Snapshot Service V3.11
 
-Uses the centralized MarketDataManager so historical data is
-loaded once and shared across the application.
+Uses the centralized MarketDataManager and Refresh Manager.
 """
 
 from datetime import datetime
-
+from services.refresh import snapshot_cache
 from services.market.market_data_manager import (
     market_data_manager,
 )
-
+from services.utils import safe_execute
 from services.indicator_engine import (
     calculate_indicators,
 )
+
 from services.analysis.smart_money_pipeline import (
     analyze as analyze_smart_money_pipeline,
 )
+
 from services.market.option_market import (
     OptionMarket,
 )
+
+from services.market.live_ltp import (
+    live_ltp,
+)
+
+from services.refresh.refresh_manager import (
+    refresh_manager,
+)
+
+from services.refresh.refresh_intervals import (
+    OPTION_CHAIN,
+)
+from services.performance import performance_monitor
 from utils.debug import debug_print
 
 EXCHANGE = "NSE"
 SYMBOL_TOKEN = "99926000"
 UNDERLYING = "NIFTY"
 
+_option_market = OptionMarket()
 
-def get_market_snapshot():
+_cached_option_analysis = {
+    "Status": "Loading"
+}
 
-    option_market = OptionMarket()
 
-    # -----------------------------------------------------
-    # Centralized Market Data
-    # -----------------------------------------------------
+def _build_market_snapshot():
+
+    performance_monitor.start("market_snapshot")
+    global _cached_option_analysis
 
     df = market_data_manager.get_timeframe(
         exchange=EXCHANGE,
         symboltoken=SYMBOL_TOKEN,
         timeframe="5m",
+        force_refresh=True,
     )
 
     if df.empty:
-        raise ValueError(
-            "No market data received."
-        )
+        raise ValueError("No market data received.")
 
-    df.columns = [
-        c.lower()
-        for c in df.columns
-    ]
+    df.columns = [c.lower() for c in df.columns]
 
-    data, indicators = calculate_indicators(
-        df
+    result = safe_execute(
+        calculate_indicators,
+        default=(df, {}),
+        df=df,
     )
-    smart_money = analyze_smart_money_pipeline(
-    data
+
+    data, indicators = result
+
+    smart_money = safe_execute(
+        analyze_smart_money_pipeline,
+        default={},
+        data=data,
     )
-    
 
     debug_print(
         "SMART MONEY:",
@@ -82,11 +101,29 @@ def get_market_snapshot():
             ),
         },
     )
+
     latest = data.iloc[-1]
 
-    ltp = float(
-        latest["close"]
-    )
+    try:
+        ltp = live_ltp.get_ltp(
+            exchange=EXCHANGE,
+            tradingsymbol=UNDERLYING,
+            symboltoken=SYMBOL_TOKEN,
+        )
+    except Exception:
+        ltp = float(latest["close"])
+
+    if refresh_manager.should_refresh(
+        "option_chain",
+        OPTION_CHAIN,
+    ):
+        try:
+            _cached_option_analysis = _option_market.analyze(
+                UNDERLYING,
+                ltp,
+            )
+        except Exception:
+            pass
 
     now = datetime.now()
 
@@ -107,28 +144,7 @@ def get_market_snapshot():
             )
         )
     )
-
-    try:
-
-        option_analysis = option_market.analyze(
-            UNDERLYING,
-            ltp,
-        )
-
-    except Exception as e:
-
-        import traceback
-
-        traceback.print_exc()
-
-        option_analysis = {
-
-            "Status": "Error",
-
-            "Error": str(e),
-
-        }
-
+    performance_monitor.stop("market_snapshot")
     return {
 
         "symbol": UNDERLYING,
@@ -137,33 +153,19 @@ def get_market_snapshot():
 
         "ltp": ltp,
 
-        "open": float(
-            latest["open"]
-        ),
+        "open": float(latest["open"]),
 
-        "high": float(
-            latest["high"]
-        ),
+        "high": float(latest["high"]),
 
-        "low": float(
-            latest["low"]
-        ),
+        "low": float(latest["low"]),
 
-        "close": float(
-            latest["close"]
-        ),
+        "close": float(latest["close"]),
 
-        "volume": float(
-            latest["volume"]
-        ),
+        "volume": float(latest["volume"]),
 
-        "timestamp": str(
-            latest.name
-        ),
+        "timestamp": str(latest.name),
 
-        "refresh_time": now.strftime(
-            "%H:%M:%S"
-        ),
+        "refresh_time": now.strftime("%H:%M:%S"),
 
         "market_status": (
             "OPEN"
@@ -173,6 +175,12 @@ def get_market_snapshot():
 
         "indicators": indicators,
 
-        "option_analysis": option_analysis,
+        "option_analysis": _cached_option_analysis,
+
         "smart_money": smart_money,
     }
+def get_market_snapshot():
+
+    return snapshot_cache.get(
+        _build_market_snapshot
+    )

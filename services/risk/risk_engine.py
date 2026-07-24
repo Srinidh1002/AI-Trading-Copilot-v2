@@ -19,13 +19,21 @@ def calculate_risk(snapshot, decision):
 
     if signal == "BUY":
 
-        stop_loss = price - (1.5 * atr)
-        target = price + (3.0 * atr)
+        stop_loss = min(
+            decision.get("support", price - (1.5 * atr)),
+            price - (1.5 * atr),
+        )
+
+        target = price + ((price - stop_loss) * 2)
 
     elif signal == "SELL":
 
-        stop_loss = price + (1.5 * atr)
-        target = price - (3.0 * atr)
+        stop_loss = max(
+            decision.get("resistance", price + (1.5 * atr)),
+            price + (1.5 * atr),
+        )
+
+        target = price - ((stop_loss - price) * 2)
 
     else:
 

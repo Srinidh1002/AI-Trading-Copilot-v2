@@ -4,7 +4,7 @@ Paper Trade Manager V1
 
 import sqlite3
 from datetime import datetime
-
+from database import db_manager
 DB = "database/ai_trading.db"
 
 
@@ -14,8 +14,9 @@ DB = "database/ai_trading.db"
 
 def save_trade(trade):
 
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
+    with db_manager.session() as conn:
+
+        cursor = conn.cursor()
 
     cursor.execute("""
 
@@ -98,9 +99,7 @@ def save_trade(trade):
 
     ))
 
-    conn.commit()
 
-    conn.close()
 
 
 # ==========================================================
@@ -109,9 +108,8 @@ def save_trade(trade):
 
 def update_open_trade(current_price):
 
-    conn = sqlite3.connect(DB)
-
-    cursor = conn.cursor()
+    with db_manager.session() as conn:
+       cursor = conn.cursor()
 
     cursor.execute("""
 
@@ -237,10 +235,6 @@ def update_open_trade(current_price):
 
         ))
 
-        conn.commit()
-
-    conn.close()
-
 
 # ==========================================================
 # GET OPEN TRADE
@@ -248,7 +242,7 @@ def update_open_trade(current_price):
 
 def get_open_trade():
 
-    conn = sqlite3.connect(DB)
+    conn = db_manager.connect()
 
     conn.row_factory = sqlite3.Row
 
@@ -283,9 +277,8 @@ def get_open_trade():
 
 def get_trade_statistics():
 
-    conn = sqlite3.connect(DB)
-
-    cursor = conn.cursor()
+    with db_manager.session() as conn:
+        cursor = conn.cursor()
 
     cursor.execute("""
 

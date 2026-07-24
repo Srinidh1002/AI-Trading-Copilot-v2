@@ -23,10 +23,26 @@ class GreeksEngine:
         expiry,
     ):
 
-        response = self.client.get_option_greeks(
-            underlying,
-            expiry,
-        )
+        try:
+            response = self.client.get_option_greeks(
+                underlying,
+                expiry,
+            )
+        except Exception:
+            return {
+                "Status": "Unavailable",
+                "Contracts": [],
+                "ATM": {},
+                "Summary": {
+                    "AverageDelta": 0,
+                    "AverageGamma": 0,
+                    "AverageTheta": 0,
+                    "AverageVega": 0,
+                    "AverageIV": 0,
+                    "Bias": "Neutral",
+                    "Confidence": 0,
+                },
+            }
 
         contracts = response.get(
             "data",

@@ -2,15 +2,27 @@ import sqlite3
 
 import pandas as pd
 import streamlit as st
-
 from services.market_snapshot import get_market_snapshot
 from services.trade.trade_engine import analyze_trade
 from services.trade.paper_trade_manager import (
     get_trade_statistics,
 )
+from services.refresh.refresh_intervals import (
+    MARKET_SNAPSHOT,
+)
+from services.performance import performance_monitor
+from services.refresh import history_cache
+from services.utils import safe_execute
+from services.health import health_check
+from config import (
+    APP_NAME,
+    VERSION,
+    PHASE,
+    BUILD,
+)
+
 
 DB = "database/ai_trading.db"
-
 
 def load_history(limit=25):
 
@@ -46,16 +58,47 @@ def load_validation_stats():
 
     return get_trade_statistics()
 
-
+@st.fragment(run_every=MARKET_SNAPSHOT)
 def home():
 
-    snapshot = get_market_snapshot()
+    snapshot = safe_execute(
+        get_market_snapshot,
+        default=None,
+    )
 
-    trade = analyze_trade(snapshot)
+    if snapshot is None:
+
+        st.error(
+            "Unable to load market snapshot. Please try again."
+        )
+
+        st.stop()
+
+    trade = safe_execute(
+        analyze_trade,
+        default=None,
+        snapshot=snapshot,
+    )
+
+    if trade is None:
+
+        st.error(
+            "Unable to generate trade analysis."
+        )
+
+        st.stop()
 
     indicators = snapshot["indicators"]
 
-    stats = load_validation_stats()
+    stats = safe_execute(
+        load_validation_stats,
+        default={
+            "total_trades": 0,
+            "winning_trades": 0,
+            "losing_trades": 0,
+            "net_pnl": 0,
+        },
+    )
 
     option = snapshot.get("option_analysis", {})
 
@@ -112,10 +155,14 @@ def home():
 
     a, b, c, d = st.columns(4)
 
-    a.metric("Bull Score", trade["bull_score"])
-    b.metric("Bear Score", trade["bear_score"])
-    c.metric("Neutral", trade["neutral_score"])
-    d.metric("RSI", round(indicators["RSI"], 2))
+    try:
+        a.metric("Bull Score", trade["bull_score"])
+        b.metric("Bear Score", trade["bear_score"])
+        c.metric("Neutral", trade["neutral_score"])
+        d.metric("RSI", round(indicators["RSI"], 2))
+    except Exception as e:
+            st.exception(e)
+            st.stop()
 
     st.divider()
 
@@ -483,12 +530,70 @@ def home():
     st.divider()
 
     # =====================================================
+    # PERFORMANCE METRICS
+    # =====================================================
+
+    with st.expander("⚡ Performance Metrics", expanded=False):
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.metric(
+                "Market Snapshot",
+                f"{performance_monitor.elapsed('market_snapshot')} sec",
+            )
+
+        with col2:
+
+            st.metric(
+                "Decision Engine",
+                f"{performance_monitor.elapsed('decision_engine')} sec",
+            )
+
+    st.divider()
+    # =====================================================
+    # SYSTEM HEALTH
+    # =====================================================
+
+    health = health_check.run()
+
+    with st.expander("🟢 System Health", expanded=False):
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        c1.metric(
+            "Market",
+            health["market_snapshot"],
+        )
+
+        c2.metric(
+            "Database",
+            health["database"],
+        )
+
+        c3.metric(
+            "Paper Trade",
+            health["paper_trade"],
+        )
+
+        c4.metric(
+            "Option Chain",
+            health["option_chain"],
+        )
+
+    st.divider()
+    # =====================================================
     # DECISION HISTORY
     # =====================================================
 
     st.subheader("📜 Decision History")
 
-    history = load_history()
+    history = safe_execute(
+        history_cache.get,
+        default=pd.DataFrame(),
+        loader=load_history,
+    )
 
     if history.empty:
 
@@ -502,4 +607,13 @@ def home():
             history,
             width="stretch",
             hide_index=True,
+        )
+
+        st.divider()
+
+        st.caption(
+            f"{APP_NAME} | "
+            f"Version {VERSION} | "
+            f"{PHASE} | "
+            f"Build {BUILD}"
         )

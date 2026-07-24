@@ -3,7 +3,15 @@ Master Decision Engine
 
 Institutional Decision Engine V5
 """
+# TODO(V1): Replace archive dependency with active analysis module.
+from archive.market_structure_engine import (
+    analyze_market_structure,
+)
 
+# TODO(V1): Replace archive dependency with active analysis module.
+from archive.smart_money_engine import (
+    analyze_smart_money,
+)
 from services.analysis.trend_engine import analyze_trend
 from archive.market_structure_engine import (
     analyze_market_structure,
@@ -577,23 +585,18 @@ def make_decision(snapshot):
     # Confidence
     # --------------------------------------------------
 
+    confidence_inputs = [
+        trend["confidence"],
+        structure["confidence"],
+        candle["confidence"],
+        volume["confidence"],
+        fii_dii["confidence"],
+        vix["confidence"],
+    ]
+
     confidence = (
-
-        trend["confidence"]
-
-        + structure["confidence"]
-
-        + candle["confidence"]
-
-        + volume["confidence"]
-
-        + fii_dii["confidence"]
-
-        + vix["confidence"]
-
-        + confidence_bonus
-
-    ) / 6
+        sum(confidence_inputs) / len(confidence_inputs)
+    ) + confidence_bonus
 
     for engine in (
 
@@ -646,127 +649,83 @@ def make_decision(snapshot):
         )
     return {
 
-        "signal": signal,
+    # ==============================
+    # CORE DECISION CONTRACT
+    # ==============================
 
-        "bull_score": round(
-            bull,
-            2,
-        ),
+    "signal": signal,
+    "confidence": confidence,
+    "reason": ", ".join(dict.fromkeys(reasons)),
 
-        "bear_score": round(
-            bear,
-            2,
-        ),
+    # ==============================
+    # SCORES
+    # ==============================
 
-        "confidence": confidence,
+    "bull_score": round(bull, 2),
+    "bear_score": round(bear, 2),
 
-        "reason": ", ".join(
-            dict.fromkeys(reasons)
-        ),
+    # ==============================
+    # TECHNICAL LEVELS
+    # ==============================
 
-        # ---------------------------------
-        # Technical Levels
-        # ---------------------------------
+    "support": levels["support"],
+    "resistance": levels["resistance"],
 
-        "support": levels["support"],
+    # ==============================
+    # OPTION DATA
+    # ==============================
 
-        "resistance": levels["resistance"],
+    "option_bias": flow.get(
+        "Bias",
+        oi.get("Bias", "Neutral"),
+    ),
 
-        # ---------------------------------
-        # Option Chain
-        # ---------------------------------
+    "option_flow": flow.get(
+        "Flow",
+        "Unknown",
+    ),
 
-        "option_bias": flow.get(
-            "Bias",
-            oi.get(
-                "Bias",
-                "Neutral",
-            ),
-        ),
+    "greeks_bias": greeks.get(
+        "Summary",
+        {},
+    ).get(
+        "Bias",
+        "Neutral",
+    ),
 
-        "option_flow": flow.get(
-            "Flow",
-            "Unknown",
-        ),
+    "pcr": pcr.get("PCR"),
 
-        "greeks_bias": greeks.get(
-            "Summary",
-            {},
-        ).get(
-            "Bias",
-            "Neutral",
-        ),
+    "max_pain": max_pain.get("MaxPain"),
 
-        "pcr": pcr.get("PCR"),
+    "option_support": max_pain.get("Support"),
 
-        "max_pain": max_pain.get(
-            "MaxPain"
-        ),
+    "option_resistance": max_pain.get("Resistance"),
 
-        "option_support": max_pain.get(
-            "Support"
-        ),
+    # ==============================
+    # MULTI TIMEFRAME
+    # ==============================
 
-        "option_resistance": max_pain.get(
-            "Resistance"
-        ),
+    "multi_timeframe": {
+        "bias": mtf["Bias"],
+        "confidence": mtf["Confidence"],
+        "confirmations": mtf["Confirmations"],
+    },
 
-        # ---------------------------------
-        # Multi Timeframe
-        # ---------------------------------
+    # ==============================
+    # ANALYSIS ENGINES
+    # ==============================
 
-        "multi_timeframe_bias": mtf["Bias"],
+    "trend": trend,
+    "market_structure": structure,
+    "candlestick": candle,
+    "volume": volume,
+    "fii_dii": fii_dii,
+    "vix": vix,
+    "smart_money": smart_money,
 
-        "multi_timeframe_confidence": mtf[
-            "Confidence"
-        ],
+    # ==============================
+    # VOTES
+    # ==============================
 
-        "multi_timeframe_confirmations": mtf[
-            "Confirmations"
-        ],
-
-        # ---------------------------------
-        # Volume
-        # ---------------------------------
-
-        "volume_signal": volume["signal"],
-
-        "volume_confidence": volume[
-            "confidence"
-        ],
-
-        "volume_metrics": volume[
-            "metrics"
-        ],
-
-        # ---------------------------------
-        # FII / DII
-        # ---------------------------------
-
-        "institutional_signal": fii_dii[
-            "signal"
-        ],
-
-        "institutional_confidence": fii_dii[
-            "confidence"
-        ],
-
-        "institutional_metrics": fii_dii[
-            "metrics"
-        ],
-
-        # ---------------------------------
-        # India VIX
-        # ---------------------------------
-
-        "vix_signal": vix["signal"],
-
-        "vix_confidence": vix[
-            "confidence"
-        ],
-
-        "vix_metrics": vix[
-            "metrics"
-        ],
-
-    }
+    "votes": votes,
+}
