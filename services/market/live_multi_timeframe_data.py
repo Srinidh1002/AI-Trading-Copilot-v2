@@ -4,11 +4,11 @@ Live multi-timeframe market-data service.
 Fetches historical candles from Angel One and converts them into
 standard OHLCV DataFrames.
 
-Read-only.
-No caching is performed here.
-Caching is handled exclusively by MarketDataManager.
+Read-only. A supplied or default historical-data cache may be used to avoid
+repeating fresh broker requests.
 """
 
+import os
 from datetime import datetime, timedelta
 
 from services.broker.shared_client import (
@@ -18,6 +18,7 @@ from services.broker.shared_client import (
 from services.data_normalizer import (
     normalize_angel_candles,
 )
+from services.historical_data_cache import HistoricalDataCache
 
 
 TIMEFRAME_CONFIG = {
@@ -44,18 +45,49 @@ class LiveMultiTimeframeData:
     """
     Fetch and normalize historical candles.
 
-    No caching is performed inside this class.
+    The cache dependency is optional for backwards-compatible deterministic
+    construction. New callers should prefer explicit dependency injection.
     """
 
     def __init__(
         self,
         client=None,
+        cache=None,
+        *,
+        cache_enabled=None,
     ):
         self.client = (
             client
             if client is not None
             else get_market_client()
         )
+        self.cache = (
+            cache
+            if cache is not None
+            else HistoricalDataCache()
+        )
+
+        if cache_enabled is None:
+            cache_enabled = (
+                str(
+                    os.getenv(
+                        "HISTORICAL_DATA_CACHE_ENABLED",
+                        "true",
+                    )
+                ).strip().lower()
+                in {"1", "true", "yes", "on"}
+            )
+
+        self.cache_enabled = bool(cache_enabled)
+
+    @staticmethod
+    def _cache_ttl_seconds(timeframe):
+        return {
+            "5m": 240.0,
+            "15m": 600.0,
+            "1h": 2700.0,
+            "1d": 21600.0,
+        }[timeframe]
 
     def _request_historical(
         self,
@@ -80,6 +112,18 @@ class LiveMultiTimeframeData:
             days=config["lookback_days"]
         )
 
+        if self.cache_enabled:
+            cached_response = self.cache.get(
+                exchange,
+                symboltoken,
+                timeframe,
+                max_age_seconds=self._cache_ttl_seconds(timeframe),
+            )
+            if cached_response is not None:
+                candles = cached_response.get("data", [])
+                if candles:
+                    return cached_response
+
         response = self.client.get_historical_data(
             exchange=exchange,
             symboltoken=symboltoken,
@@ -100,6 +144,14 @@ class LiveMultiTimeframeData:
         if not candles:
             raise ValueError(
                 f"No candle data returned for {timeframe}."
+            )
+
+        if self.cache_enabled:
+            self.cache.set(
+                exchange,
+                symboltoken,
+                timeframe,
+                response,
             )
 
         return response

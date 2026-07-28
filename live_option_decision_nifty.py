@@ -19,6 +19,7 @@ IMPORTANT:
 """
 
 import argparse
+import os
 import sys
 
 
@@ -101,6 +102,19 @@ from services.paper_trade_monitor import (
 from services.decision_explanation import (
     DecisionExplanation,
 )
+
+# P2-7 canonical CLI migration.  Direct execution defaults to the explicit
+# canonical command service.  The historical monolithic path remains available
+# only when the temporary non-secret rollback mode is requested.
+if (
+    __name__ == "__main__"
+    and os.getenv("CLI_ANALYSIS_MODE", "canonical").strip().lower()
+    != "legacy"
+):
+    from services.canonical.live_option_cli_service import main as canonical_main
+
+    raise SystemExit(canonical_main())
+
 def configure_utf8_output():
     """Use UTF-8 for interactive and redirected runner output when supported."""
 

@@ -257,6 +257,18 @@ def test_empty_response_is_rejected():
         )
 
 
+@pytest.mark.parametrize("response", [{}, []])
+def test_empty_or_malformed_market_data_response_is_rejected(response):
+    client, api = make_client()
+    api.getMarketData.return_value = response
+
+    with pytest.raises(RuntimeError, match="empty market-data response"):
+        client.get_market_data(
+            mode="LTP",
+            exchange_tokens={"NSE": ["99926000"]},
+        )
+
+
 def test_failed_api_response_is_rejected():
 
     client, api = make_client()

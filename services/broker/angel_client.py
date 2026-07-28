@@ -572,11 +572,17 @@ class AngelMarketDataClient:
                 try:
                     response = request_callable()
                     debug_print("\n========== BROKER RESPONSE ==========")
-                    debug_print(
-                        f"{request_name}: "
-                        f"status={response.get('status')} "
-                        f"message={response.get('message', '')}"
-                    )
+                    if isinstance(response, dict):
+                        debug_print(
+                            f"{request_name}: "
+                            f"status={response.get('status')} "
+                            f"message={response.get('message', '')}"
+                        )
+                    else:
+                        debug_print(
+                            f"{request_name}: "
+                            f"invalid response type={type(response).__name__}"
+                        )
                     debug_print("=====================================\n")
                 finally:
                     self.request_controller.mark_request_complete(
@@ -670,9 +676,9 @@ class AngelMarketDataClient:
                 # -------------------------
 
                 validated = self._validate_response(
-                        response,
-                        request_name,
-                    )
+                    response,
+                    request_name,
+                )
 
                 self.request_controller.record_success(
                         request_name,

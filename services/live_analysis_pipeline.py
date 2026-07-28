@@ -11,8 +11,8 @@ Read-only:
 It does not place orders.
 """
 
-from services.market.market_data_manager import (
-    market_data_manager,
+from services.market.live_multi_timeframe_data import (
+    LiveMultiTimeframeData,
 )
 
 from services.market_data_adapter import (
@@ -69,8 +69,12 @@ TIMEFRAMES = (
 
 class LiveAnalysisPipeline:
 
-    def __init__(self):
-        pass
+    def __init__(self, data_service=None):
+        self.data_service = (
+            data_service
+            if data_service is not None
+            else LiveMultiTimeframeData()
+        )
 
     def analyse(
         self,
@@ -84,10 +88,10 @@ class LiveAnalysisPipeline:
         # FETCH ALL TIMEFRAMES
         # ---------------------------------
 
-        timeframes = market_data_manager.get_multiple(
+        timeframes = self.data_service.fetch_all(
             exchange=exchange,
             symboltoken=symboltoken,
-            timeframes=TIMEFRAMES,
+            end_time=end_time,
         )
 
         uppercase_timeframes = {

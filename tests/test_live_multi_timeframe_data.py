@@ -56,6 +56,9 @@ def test_fetch_single_timeframe():
         cache=cache,
     )
 
+    assert service.cache is cache
+    mock_client.get_historical_data.assert_not_called()
+
     result = service.fetch_timeframe(
         exchange="NSE",
         symboltoken="99926000",

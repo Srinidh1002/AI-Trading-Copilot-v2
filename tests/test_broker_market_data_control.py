@@ -197,6 +197,19 @@ def test_controller_logs_request_timing_and_cache_outcome(caplog):
     assert "cache=hit" in messages
 
 
+def test_controller_discards_stale_cache_entries():
+    clock = FakeClock()
+    controller = MarketDataRequestController(
+        cache_ttl_seconds=1,
+        monotonic_function=clock.monotonic,
+        sleep_function=clock.sleep,
+    )
+    controller.cache(("safe-key",), _response())
+    clock.value = 1.01
+
+    assert controller.get_cached(("safe-key",), "market-data") is None
+
+
 def test_completed_authentication_becomes_the_next_request_pacing_boundary():
     clock = FakeClock()
     controller = MarketDataRequestController(

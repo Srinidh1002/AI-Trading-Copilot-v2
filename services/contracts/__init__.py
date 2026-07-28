@@ -1,0 +1,48 @@
+"""Stable, versioned contracts shared across runtime boundaries.
+
+Exports are resolved lazily so a consumer of a small contract does not load
+unrelated legacy contracts or their optional runtime dependencies.
+"""
+from __future__ import annotations
+from importlib import import_module
+
+_EXPORTS = {
+ "market_snapshot_v1":("DataStatus","MarketSnapshotV1","OHLCVBar","OHLCVSeries","SnapshotValidationError","from_core_snapshot","from_dashboard_snapshot","from_live_analysis_inputs","normalise_ohlcv","to_legacy_dashboard_dict","to_lowercase_ohlcv","to_uppercase_ohlcv"),
+ "analysis_result_v1":("AlignmentStatus","AnalysisResultV1","AnalysisValidationError","DirectionalBias","EvidenceSection","EvidenceSignal","EvidenceStatus","MarketRegime","MultiTimeframeSummary","TimeframeState"),
+ "final_decision_v1":("Action","AuthorizationStatus","DataHealthSummary","DecisionValidationError","ExecutionStatus","FinalDecisionV1","RiskSummary","TradePlanV1","from_live_option_pipeline_response","from_master_decision_response","from_trade_engine_response"),
+ "runtime_adapters":("build_dashboard_decision_v1","build_dashboard_shadow_contracts","build_dashboard_snapshot_v1","build_live_option_decision_v1","build_live_option_shadow_contracts","build_live_option_snapshot_v1","compare_shadow_contracts","serialize_shadow_contracts","validate_shadow_contracts"),
+ "paper_trade_candidate_v1":("PaperCandidateValidationError","PaperTradeCandidateV1"),"replay_fixture_v1":("ReplayExpectationsV1","ReplayFixtureV1","ReplayFixtureValidationError"),"audit_event_v1":("AuditEventV1",),"paper_execution_request_v1":("PaperExecutionRequestV1",),"paper_execution_result_v1":("PaperExecutionResultV1",),"paper_order_state_v1":("PaperOrderStateV1",),"paper_execution_authorization_v1":("PaperExecutionAuthorizationV1",),"paper_authorization_result_v1":("PaperAuthorizationResultV1",),"canonical_paper_execution_result_v1":("CanonicalPaperExecutionResultV1",),"paper_execution_observation_v1":("PaperExecutionObservationV1",),"paper_execution_replay_result_v1":("PaperExecutionReplayResultV1",),
+ "market_instrument_v1":("MarketInstrumentV1",),"market_universe_v1":("MarketUniverseV1",),"provider_market_mapping_v1":("ProviderMarketMappingV1",),"market_data_provenance_v1":("MarketDataProvenanceV1",),"market_quote_v1":("MarketQuoteV1",),"market_candle_v1":("MarketCandleV1",),"market_candle_series_v1":("MarketCandleSeriesV1",),"market_data_quality_result_v1":("MarketDataQualityResultV1",),"market_data_freshness_policy_v1":("MarketDataFreshnessPolicyV1",),"timeframe_evidence_v1":("TimeframeEvidenceV1",),"multi_timeframe_snapshot_v1":("MultiTimeframeSnapshotV1",),"multi_timeframe_quality_result_v1":("MultiTimeframeQualityResultV1",),"multi_timeframe_policy_v1":("MultiTimeframePolicyV1",),"technical_indicator_value_v1":("TechnicalIndicatorValueV1",),"timeframe_technical_evidence_v1":("TimeframeTechnicalEvidenceV1",),"technical_intelligence_result_v1":("TechnicalIntelligenceResultV1",),"technical_intelligence_policy_v1":("TechnicalIntelligencePolicyV1","DEFAULT_TECHNICAL_INTELLIGENCE_POLICY"),"market_session_validation_v1":("MarketSessionValidationV1",),"option_quote_v1":("OptionQuoteV1",),"option_strike_row_v1":("OptionStrikeRowV1",),"option_chain_snapshot_v1":("OptionChainSnapshotV1",),"option_chain_quality_result_v1":("OptionChainQualityResultV1",),"option_chain_policy_v1":("OptionChainPolicyV1","DEFAULT_OPTION_CHAIN_POLICY"),"option_chain_metric_v1":("OptionChainMetricV1",),"option_chain_intelligence_policy_v1":("OptionChainIntelligencePolicyV1","DEFAULT_OPTION_CHAIN_INTELLIGENCE_POLICY"),"option_chain_intelligence_result_v1":("OptionChainIntelligenceResultV1",),"option_contract_v1":("OptionContractV1",),"option_contract_universe_v1":("OptionContractUniverseV1",),"selected_option_contract_v1":("SelectedOptionContractV1",),"trade_plan_v1":("TradePlanV1",),"canonical_trade_plan_result_v1":("CanonicalTradePlanResultV1",),"risk_policy_v1":("RiskPolicyV1",),"position_size_result_v1":("PositionSizeResultV1",),"canonical_risk_result_v1":("CanonicalRiskResultV1",),
+ "services.options.policies":("OptionSelectionPolicy","TradePlanPolicy"),
+ "option_contract_candidate_v1": (
+    "OptionContractCandidateV1",
+),
+"option_contract_ranking_policy_v1": (
+    "OptionContractRankingPolicyV1",
+    "DEFAULT_OPTION_CONTRACT_RANKING_POLICY",
+),
+"option_contract_ranking_result_v1": (
+    "OptionContractRankingResultV1",
+),
+"trade_opportunity_v1": (
+    "TradeOpportunityV1",
+),
+"trade_opportunity_policy_v1": (
+    "TradeOpportunityPolicyV1",
+    "DEFAULT_TRADE_OPPORTUNITY_POLICY",
+),
+}
+_ALIASES={"decision_to_legacy_dashboard_dict":("final_decision_v1","to_legacy_dashboard_dict")}
+__all__=[name for names in _EXPORTS.values() for name in names]+list(_ALIASES)
+
+def __getattr__(name: str):
+    for module,names in _EXPORTS.items():
+        if name in names:
+            value=getattr(import_module(module if module.startswith("services.") else f"{__name__}.{module}"),name)
+            globals()[name]=value
+            return value
+    if name in _ALIASES:
+        module,attribute=_ALIASES[name];value=getattr(import_module(f"{__name__}.{module}"),attribute);globals()[name]=value;return value
+    raise AttributeError(name)
+
+def __dir__(): return sorted(set(globals())|set(__all__))

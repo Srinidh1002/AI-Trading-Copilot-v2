@@ -3,7 +3,10 @@ import sqlite3
 import pandas as pd
 import streamlit as st
 from services.market_snapshot import get_market_snapshot
-from services.trade.trade_engine import analyze_trade
+from services.dashboard.dashboard_analysis_service import (
+    DashboardAnalysisService,
+    dashboard_trade_presentation,
+)
 from services.trade.paper_trade_manager import (
     get_trade_statistics,
 )
@@ -23,6 +26,11 @@ from config import (
 
 
 DB = "database/ai_trading.db"
+dashboard_analysis_service = DashboardAnalysisService()
+
+
+def _metric_number(value):
+    return round(value, 2) if isinstance(value, (int, float)) else "—"
 
 def load_history(limit=25):
 
@@ -74,16 +82,18 @@ def home():
 
         st.stop()
 
-    trade = safe_execute(
-        analyze_trade,
+    analysis_result = safe_execute(
+        dashboard_analysis_service.analyse,
         default=None,
-        snapshot=snapshot,
+        legacy_snapshot=snapshot,
     )
+
+    trade = dashboard_trade_presentation(analysis_result) if analysis_result else None
 
     if trade is None:
 
         st.error(
-            "Unable to generate trade analysis."
+            "Canonical dashboard analysis was unavailable; no trade is authorized."
         )
 
         st.stop()
@@ -226,18 +236,12 @@ def home():
 
     s1.metric(
         "Support",
-        round(
-            trade["support_resistance"]["Support"],
-            2,
-        ),
+        _metric_number(trade["support_resistance"]["Support"]),
     )
 
     s2.metric(
         "Resistance",
-        round(
-            trade["support_resistance"]["Resistance"],
-            2,
-        ),
+        _metric_number(trade["support_resistance"]["Resistance"]),
     )
 
     st.divider()
@@ -491,6 +495,13 @@ def home():
     st.success(
         trade["reason"]
     )
+
+    if analysis_result and analysis_result.comparison:
+        with st.expander("Canonical vs legacy diagnostics", expanded=False):
+            st.caption(
+                f"{len(analysis_result.comparison.differences)} semantic differences; "
+                "diagnostic only."
+            )
 
     st.divider()
 

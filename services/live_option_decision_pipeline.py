@@ -19,6 +19,9 @@ Read-only. No orders are placed.
 from services.live_analysis_pipeline import (
     LiveAnalysisPipeline,
 )
+from services.market.live_multi_timeframe_data import (
+    LiveMultiTimeframeData,
+)
 from services.market_data_validator import MarketDataValidationError
 
 from services.nse_holiday_calendar import (
@@ -123,7 +126,11 @@ class LiveOptionDecisionPipeline:
         self.analysis_pipeline = (
             analysis_pipeline
             if analysis_pipeline is not None
-            else LiveAnalysisPipeline()
+            else LiveAnalysisPipeline(
+                data_service=LiveMultiTimeframeData(
+                    client=shared_market_client
+                )
+            )
         )
 
         self.option_chain_builder = (
