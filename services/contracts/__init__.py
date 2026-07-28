@@ -57,6 +57,9 @@ _EXPORTS = {
 "broader_market_regime_component_result_v1": ("BroaderMarketRegimeComponentResultV1",),
 "external_context_regime_component_result_v1": ("ExternalContextRegimeComponentResultV1",),
 "market_regime_input_v1": ("MarketRegimeInputV1",),
+"market_opportunity_candidate_v1": ("MarketOpportunityCandidateV1",),
+"four_market_ranking_policy_v1": ("FourMarketRankingPolicyV1","DEFAULT_FOUR_MARKET_RANKING_POLICY"),
+"four_market_opportunity_ranking_result_v1": ("FourMarketOpportunityRankingResultV1",),
 }
 _ALIASES={"decision_to_legacy_dashboard_dict":("final_decision_v1","to_legacy_dashboard_dict")}
 __all__=[name for names in _EXPORTS.values() for name in names]+list(_ALIASES)
