@@ -31,6 +31,32 @@ _EXPORTS = {
     "TradeOpportunityPolicyV1",
     "DEFAULT_TRADE_OPPORTUNITY_POLICY",
 ),
+"cross_market_evidence_v1": ("CrossMarketEvidenceV1",),
+"market_breadth_evidence_v1": ("MarketBreadthEvidenceV1",),
+"volatility_context_v1": ("VolatilityContextV1",),
+"broader_market_intelligence_result_v1": (
+    "BroaderMarketIntelligenceResultV1",
+),
+"broader_market_intelligence_policy_v1": (
+    "BroaderMarketIntelligencePolicyV1",
+    "DEFAULT_BROADER_MARKET_INTELLIGENCE_POLICY",
+),
+"market_breadth_snapshot_v1": ("MarketBreadthSnapshotV1",),
+"volatility_snapshot_v1": ("VolatilitySnapshotV1",),
+"external_market_observation_v1": ("ExternalMarketObservationV1",),
+"institutional_flow_snapshot_v1": ("InstitutionalFlowSnapshotV1",),
+"scheduled_market_event_v1": ("ScheduledMarketEventV1",),
+"external_context_policy_v1": ("ExternalContextPolicyV1", "DEFAULT_EXTERNAL_CONTEXT_POLICY"),
+"global_market_context_result_v1": ("GlobalMarketContextResultV1",),
+"institutional_flow_context_result_v1": ("InstitutionalFlowContextResultV1",),
+"event_risk_context_result_v1": ("EventRiskContextResultV1",),
+"external_market_context_result_v1": ("ExternalMarketContextResultV1",),
+"canonical_market_regime_result_v1": ("CanonicalMarketRegimeResultV1",),
+"market_regime_policy_v1": ("MarketRegimePolicyV1","DEFAULT_MARKET_REGIME_POLICY"),
+"technical_regime_component_result_v1": ("TechnicalRegimeComponentResultV1",),
+"broader_market_regime_component_result_v1": ("BroaderMarketRegimeComponentResultV1",),
+"external_context_regime_component_result_v1": ("ExternalContextRegimeComponentResultV1",),
+"market_regime_input_v1": ("MarketRegimeInputV1",),
 }
 _ALIASES={"decision_to_legacy_dashboard_dict":("final_decision_v1","to_legacy_dashboard_dict")}
 __all__=[name for names in _EXPORTS.values() for name in names]+list(_ALIASES)

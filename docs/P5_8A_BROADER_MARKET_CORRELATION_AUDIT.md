@@ -168,3 +168,104 @@ P5-8A creates no Python engine, provider integration, network/cache/UI behavior,
 6. Which later P5-7 decision/ranking contract owns an additive broader-result link without changing `TradeOpportunityV1` semantics?
 7. Should high VIX or strong divergence ever block, or remain context-only after replay evidence?
 
+## P5-8B implementation status
+
+P5-8B added the immutable, provider-neutral paper-only contracts
+CrossMarketEvidenceV1, MarketBreadthEvidenceV1, VolatilityContextV1, and
+BroaderMarketIntelligenceResultV1, along with lazy contract-package exports.
+The added tests are test_cross_market_evidence_v1.py,
+test_market_breadth_evidence_v1.py, test_volatility_context_v1.py,
+test_broader_market_intelligence_result_v1.py,
+test_p5_8b_four_index_compatibility.py, and
+test_p5_8b_contract_isolation.py. No policy, evaluator, provider adapter,
+runtime integration, or decision/execution behavior was added.
+
+## P5-8C implementation status
+
+P5-8C added services/contracts/broader_market_intelligence_policy_v1.py with
+BroaderMarketIntelligencePolicyV1 and the paper-only default policy. The default
+makes the two canonical cross-market pairs mandatory, keeps breadth and
+volatility optional, requires one available component, and blocks stale,
+future, and misaligned mandatory evidence. Tests are
+test_broader_market_intelligence_policy_v1.py, test_p5_8c_default_policy.py,
+and test_p5_8c_policy_isolation.py. VIX numeric regimes/thresholds are
+deliberately deferred pending provider-normalized semantics. No evaluator,
+provider adapter, or runtime behavior exists yet.
+
+## P5-8D implementation status
+
+P5-8D added services/broader_market_intelligence/correlation.py and exports
+evaluate_cross_market_correlation from its package. It intersects completed
+candles by start timestamp, computes simple close-to-close returns and Pearson
+correlation with the standard library, and classifies supplied evidence without
+causal claims. Cumulative aligned return uses a documented 0.1% neutral band.
+It blocks stale/future/skewed/misaligned/partial inputs and reports insufficient
+samples or zero variance as unavailable evidence. Tests are
+test_cross_market_correlation_evaluator.py,
+test_p5_8d_four_index_relationships.py, and
+test_p5_8d_correlation_isolation.py. Breadth, VIX, aggregation, providers, and
+runtime integration remain deferred.
+
+## P5-8E implementation status
+
+P5-8E added the minimal normalized MarketBreadthSnapshotV1 input contract and
+services/broader_market_intelligence/breadth.py. The evaluator computes
+A/D as advances divided by declines when declines are positive; zero declines
+retain a None ratio and classify positive advances as bullish to remain
+compatible with the evidence contract. Strength is coverage times a small
+participation floor plus directional distance, bounded to one; participation is
+BROAD at 90% coverage, MODERATE at policy minimum, otherwise unavailable.
+Heavyweight state is supplied categorical evidence only. Tests are
+test_market_breadth_snapshot_v1.py, test_market_breadth_evaluator.py,
+test_p5_8e_four_index_breadth.py, and test_p5_8e_breadth_isolation.py.
+Provider data, VIX, aggregation, and runtime integration remain deferred.
+
+## P5-8F0 implementation status
+
+P5-8F0 resolves the volatility boundary with provider-normalized canonical
+regimes in VolatilitySnapshotV1 and the pure
+services/broader_market_intelligence/volatility.py evaluator. Regime is passed
+through unchanged; no numeric India VIX thresholds are calculated. Direction
+uses a local ±0.1% change tolerance and strength is
+min(abs(change_percent)/10, 1). Stale, future, partial, blocked, and missing
+input becomes explicit unavailable/blocked context. Tests are
+test_volatility_snapshot_v1.py, test_volatility_context_evaluator.py,
+test_p5_8f_four_index_volatility.py, and test_p5_8f_volatility_isolation.py.
+Provider adapters, numeric regime thresholds, aggregate evaluation, and runtime
+integration remain deferred.
+
+## P5-8H implementation status
+
+P5-8H added services/broader_market_intelligence/integration.py with
+build_broader_market_intelligence. It validates canonical inputs, calls
+correlation exactly once, calls breadth/volatility at most once when their
+snapshots are present, and calls aggregate exactly once with the child results.
+Evaluator dependencies are injectable and no fallback/retry path exists. Tests
+are test_broader_market_intelligence_integration.py,
+test_p5_8h_four_index_integration.py, test_p5_8h_call_counts.py, and
+test_p5_8h_integration_isolation.py. Provider, runtime, decision, and
+execution integration remain deferred.
+
+## P5-8I implementation status
+
+P5-8I added fixed-time deterministic builders in
+tests/fixtures/broader_market_intelligence.py and confirmation, divergence,
+quality, breadth/volatility edge, four-index matrix, determinism, and isolation
+scenario tests. The fixture matrix covers every canonical relationship
+direction; return-driven prices avoid raw-level correlation assumptions.
+Replay asserts result identity/status/confirmation, source timestamps,
+PAPER-only state, semantic stability, and import isolation. P5-8J remains for
+the user-run full certification and compatibility review.
+
+## P5-8G implementation status
+
+P5-8G added services/broader_market_intelligence/evaluator.py with
+evaluate_broader_market_intelligence. Available cross-market, breadth, and
+volatility evidence are weighted then renormalized over available components;
+confirmation bonus and divergence/missing penalties are clamped to one.
+Volatility has no directional vote. Mandatory failures and minimum-count
+failures block; usable disagreement conflicts; optional absence warns. Tests are
+test_broader_market_intelligence_evaluator.py,
+test_p5_8g_four_index_aggregation.py, and
+test_p5_8g_aggregate_isolation.py. Provider work and all runtime integrations
+remain deferred.

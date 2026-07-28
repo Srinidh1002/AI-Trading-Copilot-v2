@@ -1,0 +1,1 @@
+def test_integration_module_is_importable():import services.external_context.integration
