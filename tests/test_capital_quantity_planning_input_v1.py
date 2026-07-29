@@ -1,0 +1,2 @@
+from services.contracts import CapitalQuantityPlanningInputV1
+def test_public_export():assert CapitalQuantityPlanningInputV1.__name__=='CapitalQuantityPlanningInputV1'
