@@ -91,6 +91,12 @@ _EXPORTS = {
 "market_opportunity_candidate_v1": ("MarketOpportunityCandidateV1",),
 "four_market_ranking_policy_v1": ("FourMarketRankingPolicyV1","DEFAULT_FOUR_MARKET_RANKING_POLICY"),
 "four_market_opportunity_ranking_result_v1": ("FourMarketOpportunityRankingResultV1",),
+"paper_orchestration_policy_v1":("PaperOrchestrationPolicyV1",),
+"paper_orchestration_failure_v1":("PaperOrchestrationFailureV1",),
+"paper_orchestration_stage_result_v1":("PaperOrchestrationStageResultV1",),
+"paper_orchestration_cycle_input_v1":("PaperOrchestrationCycleInputV1",),
+"paper_orchestration_cycle_result_v1":("PaperOrchestrationCycleResultV1",),
+"paper_orchestration_journal_record_v1":("PaperOrchestrationJournalRecordV1",),
 }
 _ALIASES={"decision_to_legacy_dashboard_dict":("final_decision_v1","to_legacy_dashboard_dict")}
 __all__=[name for names in _EXPORTS.values() for name in names]+list(_ALIASES)
