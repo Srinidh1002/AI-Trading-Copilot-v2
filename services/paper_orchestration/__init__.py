@@ -40,7 +40,52 @@ from services.paper_orchestration.new_entry_paper_lifecycle_executor import (
     NewEntryPaperLifecycleResultV1,
 )
 
+from services.paper_orchestration.complete_cycle_execution_context import (
+    CompleteCycleAuthoritySetV1,
+    PaperOrchestrationExecutionContextV1,
+)
+from services.paper_orchestration.stage_result_factory import (
+    build_completed_stage_result,
+    build_failed_stage_result,
+)
+
+from services.paper_orchestration.complete_cycle_executor import (
+    CompletePaperOrchestrationCycleExecutor,
+)
+
+from services.paper_orchestration.existing_position_monitoring_executor import (
+    ExistingPositionMonitoringExecutor,
+    ExistingPositionMonitoringInputV1,
+    ExistingPositionMonitoringResultV1,
+)
+
+from services.paper_orchestration.existing_position_monitoring_cycle_executor import (
+    ExistingPositionMonitoringCycleExecutor,
+)
+
+from services.paper_orchestration.continuous_runtime_adapter import (
+    ContinuousPaperOrchestrationRuntimeAdapter,
+    ContinuousPaperOrchestrationRuntimeConfigV1,
+)
+from services.paper_orchestration.restart_recovery_operation import (
+    RestartRecoveryOperation,
+    RestartRecoveryTargetV1,
+)
+
 __all__ = [
+    "ContinuousPaperOrchestrationRuntimeAdapter",
+    "ContinuousPaperOrchestrationRuntimeConfigV1",
+    "RestartRecoveryOperation",
+    "RestartRecoveryTargetV1",
+    "ExistingPositionMonitoringCycleExecutor",
+    "ExistingPositionMonitoringExecutor",
+    "ExistingPositionMonitoringInputV1",
+    "ExistingPositionMonitoringResultV1",
+    "CompletePaperOrchestrationCycleExecutor",
+    "CompleteCycleAuthoritySetV1",
+    "PaperOrchestrationExecutionContextV1",
+    "build_completed_stage_result",
+    "build_failed_stage_result",
     "NewEntryPaperLifecycleExecutor",
     "NewEntryPaperLifecycleInputV1",
     "NewEntryPaperLifecycleResultV1",
