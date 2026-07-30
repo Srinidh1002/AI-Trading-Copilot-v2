@@ -3,6 +3,9 @@ import sqlite3
 import pandas as pd
 import streamlit as st
 from dashboard.dashboard_read_model_state import get_plan_position_views
+from dashboard.dashboard_publication_sync import (
+    synchronize_registered_dashboard_publication,
+)
 from dashboard.plan_position_components import render_plan_and_position_dashboard
 from services.market_snapshot import get_market_snapshot
 from services.dashboard.dashboard_analysis_service import (
@@ -422,6 +425,10 @@ def home():
     # =====================================================
     # CERTIFIED P6/P7 PLAN AND POSITION
     # =====================================================
+
+    synchronize_registered_dashboard_publication(
+        st.session_state
+    )
 
     (
         opportunity_view,

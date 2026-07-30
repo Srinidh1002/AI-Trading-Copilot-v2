@@ -16,6 +16,15 @@ from services.contracts.paper_orchestration_cycle_result_v1 import (
 from services.paper_orchestration.deterministic_cycle_coordinator import (
     DeterministicPaperOrchestrationCycleCoordinator,
 )
+from services.dashboard_publication.dashboard_runtime_publication_producer import (
+    DashboardRuntimePublicationProducer,
+)
+from services.dashboard_publication.dashboard_publication_store import (
+    DashboardPublicationStore,
+)
+from services.dashboard_publication.dashboard_publication_registry import (
+    register_dashboard_publication_store,
+)
 
 
 CycleInputFactory = Callable[[], PaperOrchestrationCycleInputV1]
@@ -69,6 +78,12 @@ class ContinuousPaperOrchestrationRuntimeAdapter:
         startup_operation: StartupOperation | None = None,
         sleep_function: Callable[[float], Any] | None = None,
         monotonic_function: Callable[[], float] | None = None,
+        dashboard_publication_producer: (
+            DashboardRuntimePublicationProducer | None
+        ) = None,
+        dashboard_publication_store: (
+            DashboardPublicationStore | None
+        ) = None,
     ) -> None:
         if (
             type(opportunity_coordinator)
@@ -96,7 +111,39 @@ class ContinuousPaperOrchestrationRuntimeAdapter:
         self.monitoring_coordinator = monitoring_coordinator
         self.monitoring_input_factory = monitoring_input_factory
         self.config = config
+        if (
+            dashboard_publication_producer is None
+        ) != (
+            dashboard_publication_store is None
+        ):
+            raise ValueError(
+                "dashboard publication producer and store "
+                "must be configured together"
+            )
+        if (
+            dashboard_publication_producer is not None
+            and type(dashboard_publication_producer)
+            is not DashboardRuntimePublicationProducer
+        ):
+            raise TypeError("dashboard_publication_producer")
+        if (
+            dashboard_publication_store is not None
+            and type(dashboard_publication_store)
+            is not DashboardPublicationStore
+        ):
+            raise TypeError("dashboard_publication_store")
+
         self.startup_operation = startup_operation
+        self.dashboard_publication_producer = (
+            dashboard_publication_producer
+        )
+        self.dashboard_publication_store = (
+            dashboard_publication_store
+        )
+        if dashboard_publication_store is not None:
+            register_dashboard_publication_store(
+                dashboard_publication_store
+            )
 
         runtime_kwargs = {
             "startup_operation": startup_operation,
@@ -149,10 +196,16 @@ class ContinuousPaperOrchestrationRuntimeAdapter:
             "opportunity_input_factory",
         )
         result = self.opportunity_coordinator.run(cycle_input)
-        return self._require_cycle_result(
+        result = self._require_cycle_result(
             result,
             "opportunity_coordinator",
         )
+        self._publish_cycle_result(
+            cycle_input=cycle_input,
+            cycle_result=result,
+            source="OPPORTUNITY",
+        )
+        return result
 
     def _run_monitoring_cycle(
         self,
@@ -162,10 +215,36 @@ class ContinuousPaperOrchestrationRuntimeAdapter:
             "monitoring_input_factory",
         )
         result = self.monitoring_coordinator.run(cycle_input)
-        return self._require_cycle_result(
+        result = self._require_cycle_result(
             result,
             "monitoring_coordinator",
         )
+        self._publish_cycle_result(
+            cycle_input=cycle_input,
+            cycle_result=result,
+            source="MONITORING",
+        )
+        return result
+
+    def _publish_cycle_result(
+        self,
+        *,
+        cycle_input: PaperOrchestrationCycleInputV1,
+        cycle_result: PaperOrchestrationCycleResultV1,
+        source: str,
+    ) -> None:
+        if self.dashboard_publication_producer is None:
+            return
+        self.dashboard_publication_producer.publish_cycle(
+            cycle_input=cycle_input,
+            cycle_result=cycle_result,
+            source=source,
+        )
+
+    def get_dashboard_publication_snapshot(self):
+        if self.dashboard_publication_store is None:
+            return None
+        return self.dashboard_publication_store.get_snapshot()
 
     def run_cycle(self) -> dict[str, object]:
         return self.runtime.run_cycle()
