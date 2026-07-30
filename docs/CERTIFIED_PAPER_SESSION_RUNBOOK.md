@@ -7,58 +7,71 @@ Completed:
 - Batch 1: fail-closed runtime safety boundary
 - Batch 2: deterministic typed cycle identities and exact cycle input
 - Batch 3: read-only DATA, SESSION, ANALYSIS, and OPPORTUNITY authorities
-- Batch 4: concrete NIFTY/SENSEX provider readers and exact P6 bundle boundary
+- Batch 4: concrete NIFTY/SENSEX readers and exact P6 boundary
+- Batch 5: typed P5 selection and exact P7/P8 new-entry composition
+- Batch 6: existing-position monitoring, orchestration journals, and restart
+  recovery composition
 
-The executable launcher is not yet enabled.
+The executable launcher is still disabled.
 
-## Batch 4 market identities
+## Existing-position monitoring
 
-- NIFTY / NSE / token `99926000` / options exchange `NFO`
-- SENSEX / BSE / token `99919000` / options exchange `BFO`
+The certified monitoring factory requires:
 
-No other market identity is accepted by the certified provider reader.
+- one exact persisted `PaperTradePersistenceSnapshotV1`
+- an existing position inside that snapshot
+- one exact `PaperPortfolioPolicyV1`
+- one exact `PaperTradePositionEvaluationInputV1`
+- matching P7 position identity
+- evaluation timestamp equal to the monitoring cycle request timestamp
 
-## Live provider rules
+The cycle-owned P8 update event and idempotency identities are reused. The
+resulting P8 snapshot ID is deterministic.
 
-The composition root injects:
+## Journal layout
 
-- one read-only quote reader
-- `LiveAnalysisPipeline`
-- `LiveOptionDecisionPipeline`
+Opportunity and monitoring cycles use separate atomic journals:
 
-The provider reader calls only `analyse()` and quote-read interfaces. It has
-no broker order method, credential access, or live execution switch.
+```text
+data/paper_trading/certified_runtime/
+  opportunity_orchestration_journal.json
+  monitoring_orchestration_journal.json
+```
 
-Every normalized payload states:
+Both journals remain under the certified PAPER data root. Sharing one journal
+between opportunity and monitoring coordinators is rejected.
 
+The existing deterministic coordinator provides:
+
+- new-cycle classification
+- duplicate-same-payload handling
+- payload-conflict rejection
+- exact result validation
+- atomic journal persistence
+
+## Restart recovery
+
+Startup recovery accepts exact caller-supplied P7 trade IDs and P8 portfolio
+IDs. Each target is recovered through its certified recovery authority.
+
+The startup result succeeds only when every target reports `RECOVERED`.
+Failure prevents continuous runtime cycles.
+
+## Safety guarantees
+
+- no broker order methods
+- no credential access
+- no live execution switches
+- no arbitrary dictionary conversion into P7/P8 monitoring contracts
+- separate opportunity and monitoring journals
+- atomic journal writes
+- fail-closed restart recovery
 - `execution_mode=PAPER`
 - `live_execution_eligible=False`
-- `broker_order_submission=False`
-
-## P6 boundary rules
-
-The P6 input factory does not convert arbitrary legacy dictionaries into
-certified contracts.
-
-An injected typed builder must return an exact `CertifiedP6InputBundleV1`
-containing:
-
-- `TradePlanningPolicyV1`
-- `OptionContractSelectionInputV1`
-- `EntryZoneEvaluationInputV1`
-- `StopLossEvaluationInputV1`
-- `ThreeTargetEvaluationInputV1`
-- `CapitalQuantityPlanningInputV1`
-
-The factory then creates the exact `P6PlanningStageInputV1` using the
-cycle-owned `p6_integration_id` and verifies cycle/canonical market identity.
 
 ## Remaining implementation
 
-- typed P5 opportunity/ranking normalization builder
-- new-entry P7/P8 input composition
-- existing-position monitoring input composition
-- journals and persistence recovery
-- dashboard publication composition
+- dashboard runtime publication composition
 - executable launcher and structured logging
-- graceful shutdown certification
+- observe-only and emergency-halt launcher controls
+- graceful shutdown and session certification
