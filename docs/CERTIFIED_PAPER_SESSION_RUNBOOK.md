@@ -2,11 +2,17 @@
 
 ## Current status
 
-The certified P9 orchestration engine and P10 publication path exist, but the
+The certified P9 orchestration engine and P10 publication path exist. The
 production composition root is being added in staged batches.
 
-Batch 1 establishes fail-closed runtime safety only. It does not yet start the
-live-read orchestration loop.
+Completed:
+
+- Batch 1: fail-closed runtime safety boundary
+- Batch 2: deterministic typed cycle identities and exact
+  `PaperOrchestrationCycleInputV1` construction
+
+The launcher does not start yet. Live-read authorities and typed P6/P7/P8
+adapters remain to be composed.
 
 ## Mandatory safety state
 
@@ -17,6 +23,31 @@ live-read orchestration loop.
 - `live_execution_eligible is False`
 - `broker_order_submission is False`
 - supported instruments are restricted to `NIFTY` and `SENSEX`
+
+## Cycle identity rules
+
+Certified opportunity and monitoring cycles use separate deterministic
+identity namespaces.
+
+Identity inputs are:
+
+- cycle kind
+- observation ID
+- underlying symbol
+- exchange
+- trading day
+- exact market timestamp
+
+The factory generates independent identities for:
+
+- P9 cycle and idempotency key
+- P6 integration
+- P8 admission request, idempotency, and event
+- P7 transition, position, and entry fill
+- P8 update idempotency and event
+
+The factory never uses `object.__new__`, random fixture identities, broker
+order methods, credentials, or legacy trading engines.
 
 ## Operating modes
 
@@ -41,9 +72,10 @@ present. It must never print their values.
 
 ## Remaining implementation
 
-- live typed cycle-input factory
-- opportunity authority composition
-- existing-position monitoring composition
+- live-read observation and analysis authority adapters
+- exact typed P6 planning input factory
+- exact new-entry P7/P8 input factory
+- existing-position monitoring input factory
 - journals and persistence recovery
 - dashboard publication composition
 - executable launcher
