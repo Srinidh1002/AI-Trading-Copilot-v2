@@ -2,10 +2,7 @@ import streamlit as st
 
 from dashboard.dashboard_v2 import home
 
-import services.market.live_multi_timeframe_data as lmtd
 
-
-# Initialize Session State
 if "validation_started" not in st.session_state:
     st.session_state.validation_started = True
 

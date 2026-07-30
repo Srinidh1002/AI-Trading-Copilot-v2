@@ -12,6 +12,12 @@ from services.dashboard_read_models import (
     DashboardPaperPositionDetailViewV1,
     DashboardTradePlanViewV1,
 )
+from services.dashboard_read_models.dashboard_option_intelligence_view_v1 import (
+    DashboardOptionIntelligenceViewV1,
+)
+from services.dashboard_read_models.dashboard_runtime_operations_view_v1 import (
+    DashboardRuntimeOperationsViewV1,
+)
 
 
 _PUBLICATION_STATUSES = frozenset(
@@ -63,6 +69,8 @@ class DashboardPublicationEnvelopeV1:
     opportunity: DashboardOpportunityViewV1 | None = None
     trade_plan: DashboardTradePlanViewV1 | None = None
     paper_position: DashboardPaperPositionDetailViewV1 | None = None
+    option_intelligence: DashboardOptionIntelligenceViewV1 | None = None
+    runtime_operations: DashboardRuntimeOperationsViewV1 | None = None
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
@@ -137,6 +145,16 @@ class DashboardPublicationEnvelopeV1:
                 self.paper_position,
                 DashboardPaperPositionDetailViewV1,
                 "paper_position",
+            ),
+            (
+                self.option_intelligence,
+                DashboardOptionIntelligenceViewV1,
+                "option_intelligence",
+            ),
+            (
+                self.runtime_operations,
+                DashboardRuntimeOperationsViewV1,
+                "runtime_operations",
             ),
         )
         for value, expected, name in exact_optional:
@@ -218,6 +236,16 @@ class DashboardPublicationEnvelopeV1:
             "paper_position": (
                 self.paper_position.to_dict()
                 if self.paper_position is not None
+                else None
+            ),
+            "option_intelligence": (
+                self.option_intelligence.to_dict()
+                if self.option_intelligence is not None
+                else None
+            ),
+            "runtime_operations": (
+                self.runtime_operations.to_dict()
+                if self.runtime_operations is not None
                 else None
             ),
             "blockers": list(self.blockers),

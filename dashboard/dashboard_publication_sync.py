@@ -33,6 +33,12 @@ PUBLICATION_ATTEMPT_ERROR_STATE_KEY = (
 PUBLICATION_FAILED_ATTEMPT_COUNT_STATE_KEY = (
     "dashboard_publication_failed_attempt_count"
 )
+OPTION_INTELLIGENCE_STATE_KEY = (
+    "dashboard_option_intelligence_view_v1"
+)
+RUNTIME_OPERATIONS_STATE_KEY = (
+    "dashboard_runtime_operations_view_v1"
+)
 
 
 def synchronize_dashboard_publication(
@@ -81,6 +87,12 @@ def synchronize_dashboard_publication(
     state[OPPORTUNITY_STATE_KEY] = envelope.opportunity
     state[TRADE_PLAN_STATE_KEY] = envelope.trade_plan
     state[PAPER_POSITION_STATE_KEY] = envelope.paper_position
+    state[OPTION_INTELLIGENCE_STATE_KEY] = (
+        envelope.option_intelligence
+    )
+    state[RUNTIME_OPERATIONS_STATE_KEY] = (
+        envelope.runtime_operations
+    )
 
     state[PUBLICATION_ID_STATE_KEY] = envelope.publication_id
     state[PUBLICATION_SEQUENCE_STATE_KEY] = envelope.publication_sequence

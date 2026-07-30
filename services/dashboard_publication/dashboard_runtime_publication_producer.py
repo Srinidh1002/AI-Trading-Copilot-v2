@@ -23,6 +23,12 @@ from services.dashboard_read_models import (
     project_paper_trade_position_detail,
     project_trade_opportunity,
 )
+from services.dashboard_read_models.dashboard_option_intelligence_projection import (
+    project_option_intelligence,
+)
+from services.dashboard_read_models.dashboard_runtime_operations_projection import (
+    project_runtime_operations,
+)
 
 from .dashboard_publication_envelope_v1 import (
     DashboardPublicationEnvelopeV1,
@@ -100,6 +106,13 @@ class DashboardRuntimePublicationProducer:
             opportunity_source = cycle_input.trade_opportunity
             integrated_source = cycle_input.integrated_trade_plan_result
             p7_source = cycle_input.p7_persistence_snapshot
+            option_source = None
+            if integrated_source is not None:
+                option_source = getattr(
+                    integrated_source.canonical_trade_plan_input,
+                    "option_chain_intelligence",
+                    None,
+                )
 
             if (
                 opportunity_source is not None
@@ -151,6 +164,14 @@ class DashboardRuntimePublicationProducer:
                 project_paper_trade_position_detail(p7_source)
                 if p7_source is not None
                 else None
+            )
+            option_intelligence = (
+                project_option_intelligence(option_source)
+                if option_source is not None
+                else None
+            )
+            runtime_operations = project_runtime_operations(
+                cycle_result
             )
 
             if publication_status == "NO_ACTION":
@@ -211,6 +232,8 @@ class DashboardRuntimePublicationProducer:
                 opportunity=opportunity,
                 trade_plan=trade_plan,
                 paper_position=paper_position,
+                option_intelligence=option_intelligence,
+                runtime_operations=runtime_operations,
                 blockers=blockers,
                 warnings=warnings,
                 errors=errors,

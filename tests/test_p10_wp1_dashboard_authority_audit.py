@@ -57,11 +57,14 @@ def test_empty_dashboard_modules_have_no_authority():
         assert source(DASHBOARD / name).strip() == ""
 
 
-def test_audit_records_current_active_dashboard_debt():
-    active = source(DASHBOARD / "dashboard_v2.py")
+def test_active_dashboard_legacy_authority_debt_is_removed():
+    active_path = DASHBOARD / "dashboard_v2.py"
+    active = source(active_path)
+    modules = imported_modules(active_path)
 
-    required_current_dependencies = {
+    forbidden_dependencies = {
         "sqlite3",
+        "pandas",
         "services.market_snapshot",
         "services.dashboard.dashboard_analysis_service",
         "services.trade.paper_trade_manager",
@@ -70,15 +73,20 @@ def test_audit_records_current_active_dashboard_debt():
         "services.health",
     }
 
-    assert required_current_dependencies.issubset(
-        imported_modules(DASHBOARD / "dashboard_v2.py")
-    )
-    assert "get_market_snapshot" in active
-    assert "dashboard_analysis_service.analyse" in active
-    assert "sqlite3.connect" in active
-    assert "get_trade_statistics" in active
-    assert "health_check.run" in active
+    assert forbidden_dependencies.isdisjoint(modules)
 
+    for token in (
+        "get_market_snapshot",
+        "DashboardAnalysisService",
+        "dashboard_trade_presentation",
+        "get_trade_statistics",
+        "history_cache",
+        "health_check",
+        "performance_monitor",
+        "database/ai_trading.db",
+        "FROM decision_log",
+    ):
+        assert token not in active
 
 def test_legacy_dashboard_pages_are_not_the_active_entrypoint():
     app_source = source(ROOT / "app.py")
