@@ -1,18 +1,16 @@
 # Certified PAPER Session Runbook
 
-## Current status
-
-The certified P9 orchestration engine and P10 publication path exist. The
-production composition root is being added in staged batches.
+## Current implementation status
 
 Completed:
 
 - Batch 1: fail-closed runtime safety boundary
-- Batch 2: deterministic typed cycle identities and exact
-  `PaperOrchestrationCycleInputV1` construction
+- Batch 2: deterministic typed cycle identities and exact cycle input
+- Batch 3: read-only DATA, SESSION, ANALYSIS, and OPPORTUNITY adapters
 
-The launcher does not start yet. Live-read authorities and typed P6/P7/P8
-adapters remain to be composed.
+The launcher does not start yet. Batch 3 deliberately uses injected read
+boundaries so live provider construction remains outside the certified
+authority module.
 
 ## Mandatory safety state
 
@@ -22,32 +20,30 @@ adapters remain to be composed.
 - `execution_mode == "PAPER"`
 - `live_execution_eligible is False`
 - `broker_order_submission is False`
-- supported instruments are restricted to `NIFTY` and `SENSEX`
+- instruments are restricted to `NIFTY` and `SENSEX`
 
-## Cycle identity rules
+## Batch 3 authority flow
 
-Certified opportunity and monitoring cycles use separate deterministic
-identity namespaces.
+1. DATA invokes one injected read-only market reader.
+2. SESSION reuses the exact immutable session validation carried by the cycle.
+3. ANALYSIS invokes one injected read-only analysis reader only when the
+   session permits analysis.
+4. OPPORTUNITY invokes one injected read-only evaluator and normalizes its
+   result into P9 statuses:
+   - `READY`
+   - `NO_ACTION`
+   - `BLOCKED`
+   - `CONFLICTING`
+   - `FAILED`
 
-Identity inputs are:
+Every result explicitly carries:
 
-- cycle kind
-- observation ID
-- underlying symbol
-- exchange
-- trading day
-- exact market timestamp
+- `execution_mode=PAPER`
+- `live_execution_eligible=False`
+- `broker_order_submission=False`
 
-The factory generates independent identities for:
-
-- P9 cycle and idempotency key
-- P6 integration
-- P8 admission request, idempotency, and event
-- P7 transition, position, and entry fill
-- P8 update idempotency and event
-
-The factory never uses `object.__new__`, random fixture identities, broker
-order methods, credentials, or legacy trading engines.
+The module has no broker imports, order methods, credential access, P6
+planning calls, P7 lifecycle calls, or P8 portfolio calls.
 
 ## Operating modes
 
@@ -58,26 +54,20 @@ disabled.
 
 ### Entry-enabled PAPER
 
-New PAPER entries may proceed only through certified P6, P8, and P7 decisions.
-This mode still has no broker order submission.
+New PAPER entries may proceed only after later batches compose certified P6,
+P8, and P7 inputs. No broker order submission is permitted.
 
 ### Emergency halt
 
 New PAPER actions are blocked. Existing-position monitoring remains enabled.
 
-## Credential handling
-
-The runtime may validate that required Angel One credential variables are
-present. It must never print their values.
-
 ## Remaining implementation
 
-- live-read observation and analysis authority adapters
+- concrete live provider readers for NIFTY and SENSEX
 - exact typed P6 planning input factory
 - exact new-entry P7/P8 input factory
 - existing-position monitoring input factory
 - journals and persistence recovery
 - dashboard publication composition
-- executable launcher
-- structured cycle logging
+- executable launcher and structured logging
 - graceful shutdown certification
