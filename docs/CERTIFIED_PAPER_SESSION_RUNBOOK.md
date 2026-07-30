@@ -9,69 +9,83 @@ Completed:
 - Batch 3: read-only DATA, SESSION, ANALYSIS, and OPPORTUNITY authorities
 - Batch 4: concrete NIFTY/SENSEX readers and exact P6 boundary
 - Batch 5: typed P5 selection and exact P7/P8 new-entry composition
-- Batch 6: existing-position monitoring, orchestration journals, and restart
-  recovery composition
+- Batch 6: monitoring, journals, and restart recovery
+- Batch 7: dashboard publication composition, operator controls, JSON logging,
+  executable launcher, and graceful shutdown handling
 
-The executable launcher is still disabled.
+## Dashboard publication
 
-## Existing-position monitoring
+Batch 7 constructs one exact `DashboardPublicationStore` and one exact
+`DashboardRuntimePublicationProducer` sharing that store.
 
-The certified monitoring factory requires:
+The continuous runtime adapter registers the store and publishes both
+opportunity and monitoring cycle results. Failed publications retain the
+last-known-good dashboard snapshot.
 
-- one exact persisted `PaperTradePersistenceSnapshotV1`
-- an existing position inside that snapshot
-- one exact `PaperPortfolioPolicyV1`
-- one exact `PaperTradePositionEvaluationInputV1`
-- matching P7 position identity
-- evaluation timestamp equal to the monitoring cycle request timestamp
+## Operator modes
 
-The cycle-owned P8 update event and idempotency identities are reused. The
-resulting P8 snapshot ID is deterministic.
+### Observe-only
 
-## Journal layout
+- analysis continues
+- opportunity cycles continue
+- new PAPER entries are fail-closed
+- existing-position monitoring continues
 
-Opportunity and monitoring cycles use separate atomic journals:
+### Entry-enabled PAPER
+
+- new PAPER entries may proceed through certified P6/P8/P7 only
+- broker order submission remains unavailable
+
+### Emergency PAPER halt
+
+- new PAPER entries are fail-closed
+- existing-position monitoring continues
+- operator state remains visible in structured logs
+
+## Structured logs
+
+Default recommended location:
 
 ```text
-data/paper_trading/certified_runtime/
-  opportunity_orchestration_journal.json
-  monitoring_orchestration_journal.json
+data/paper_trading/certified_runtime/runtime.jsonl
 ```
 
-Both journals remain under the certified PAPER data root. Sharing one journal
-between opportunity and monitoring coordinators is rejected.
+Every log record includes:
 
-The existing deterministic coordinator provides:
-
-- new-cycle classification
-- duplicate-same-payload handling
-- payload-conflict rejection
-- exact result validation
-- atomic journal persistence
-
-## Restart recovery
-
-Startup recovery accepts exact caller-supplied P7 trade IDs and P8 portfolio
-IDs. Each target is recovered through its certified recovery authority.
-
-The startup result succeeds only when every target reports `RECOVERED`.
-Failure prevents continuous runtime cycles.
-
-## Safety guarantees
-
-- no broker order methods
-- no credential access
-- no live execution switches
-- no arbitrary dictionary conversion into P7/P8 monitoring contracts
-- separate opportunity and monitoring journals
-- atomic journal writes
-- fail-closed restart recovery
+- timezone-aware event time
 - `execution_mode=PAPER`
-- `live_execution_eligible=False`
+- `live_execution_eligible=false`
+- event-specific fields
+- recursive secret redaction for PIN, password, secret, token, API key, and
+  TOTP-shaped field names
 
-## Remaining implementation
+## Executable launcher
 
-- dashboard runtime publication composition
-- executable launcher and structured logging
-- observe-only and emergency-halt launcher controls
-- graceful shutdown and session certification
+The launcher accepts a repository-owned composition factory:
+
+```powershell
+venv\Scripts\python.exe -m `
+services.paper_orchestration.certified_runtime_launcher `
+--factory your_module:build_certified_launcher `
+--observe-only `
+--max-cycles 1
+```
+
+The factory must return exact `CertifiedLauncherCompositionV1`. This keeps
+provider credentials and repository-specific construction outside the generic
+launcher while still requiring the certified runtime adapter.
+
+## Graceful shutdown
+
+SIGINT, SIGTERM, and KeyboardInterrupt request runtime stop. Signal handlers
+are restored after execution. Completion, interruption, and failure are
+written to the JSON-line log.
+
+## Remaining certification before a live market session
+
+- repository-owned final composition factory
+- one-cycle observe-only smoke run
+- journal/database backup
+- final safety-limit review
+- full test suite
+- API-key revocation confirmation for any previously exposed key
