@@ -2,6 +2,8 @@ import sqlite3
 
 import pandas as pd
 import streamlit as st
+from dashboard.dashboard_read_model_state import get_plan_position_views
+from dashboard.plan_position_components import render_plan_and_position_dashboard
 from services.market_snapshot import get_market_snapshot
 from services.dashboard.dashboard_analysis_service import (
     DashboardAnalysisService,
@@ -418,41 +420,20 @@ def home():
     st.divider()
 
     # =====================================================
-    # TRADE PLAN
+    # CERTIFIED P6/P7 PLAN AND POSITION
     # =====================================================
 
-    st.subheader("💰 Trade Plan")
+    (
+        opportunity_view,
+        trade_plan_view,
+        paper_position_view,
+    ) = get_plan_position_views(st.session_state)
 
-    p1, p2, p3 = st.columns(3)
-
-    p1.metric(
-        "Entry",
-        trade["entry"],
-    )
-
-    p1.metric(
-        "Stop Loss",
-        trade["stop_loss"],
-    )
-
-    p2.metric(
-        "Target 1",
-        trade["target1"],
-    )
-
-    p2.metric(
-        "Target 2",
-        trade["target2"],
-    )
-
-    p3.metric(
-        "Target 3",
-        trade["risk"]["TARGET3"],
-    )
-
-    p3.metric(
-        "Risk : Reward",
-        trade["risk"]["RR"],
+    render_plan_and_position_dashboard(
+        st,
+        opportunity=opportunity_view,
+        plan=trade_plan_view,
+        position=paper_position_view,
     )
 
     st.divider()
