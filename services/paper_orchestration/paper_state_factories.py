@@ -166,6 +166,18 @@ def build_entry_paper_trade_persistence_snapshot(
     persisted_at = _aware(persisted_at, "persisted_at")
     next_state_name = entry_result.resulting_lifecycle_state
 
+    previous_state = source.current_state
+    transition_sequence = source.transition_sequence + 1
+
+    # A qualifying entry can be evaluated immediately from PLANNED.
+    # Persist the canonical implicit PLANNED -> WAITING_FOR_ENTRY -> OPEN path.
+    if (
+        source.current_state == "PLANNED"
+        and next_state_name == "OPEN"
+    ):
+        previous_state = "WAITING_FOR_ENTRY"
+        transition_sequence = source.transition_sequence + 2
+
     terminal = next_state_name in {
         "CLOSED_INVALIDATED",
         "CLOSED_SESSION",
@@ -184,8 +196,8 @@ def build_entry_paper_trade_persistence_snapshot(
         "lifecycle_policy_id": source.lifecycle_policy_id,
         "current_state": next_state_name,
         "lifecycle_created_at": source.lifecycle_created_at,
-        "previous_state": source.current_state,
-        "transition_sequence": source.transition_sequence + 1,
+        "previous_state": previous_state,
+        "transition_sequence": transition_sequence,
         "last_transition_code": entry_input.requested_transition_id,
         "last_observation_id": entry_input.observation.observation_id,
         "last_observation_timestamp": entry_input.observation.observed_at,

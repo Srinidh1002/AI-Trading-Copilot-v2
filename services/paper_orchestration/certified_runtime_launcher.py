@@ -27,8 +27,10 @@ class CertifiedLauncherCompositionV1:
     runtime_adapter: ContinuousPaperOrchestrationRuntimeAdapter
     controls: CertifiedOperatorControls
     logger: CertifiedJsonLineLogger
+    automated_paper: bool = False
     execution_mode: str = "PAPER"
     live_execution_eligible: bool = False
+    broker_order_submission: bool = False
     schema_version: str = "certified_launcher_composition.v1"
 
     def __post_init__(self) -> None:
@@ -45,6 +47,10 @@ class CertifiedLauncherCompositionV1:
             raise ValueError("execution_mode must be PAPER")
         if self.live_execution_eligible:
             raise ValueError("live execution is not eligible")
+        if self.broker_order_submission:
+            raise ValueError("broker order submission must remain disabled")
+        if type(self.automated_paper) is not bool:
+            raise TypeError("automated_paper")
         if self.schema_version != "certified_launcher_composition.v1":
             raise ValueError("unsupported schema_version")
 
@@ -106,6 +112,7 @@ class CertifiedPaperRuntimeLauncher:
             event="RUNTIME_STARTING",
             occurred_at=self._now(),
             fields={
+                "automated_paper": self.composition.automated_paper,
                 "observe_only": snapshot.observe_only,
                 "emergency_halt": snapshot.emergency_halt,
                 "new_entries_allowed": snapshot.new_entries_allowed,
@@ -113,6 +120,11 @@ class CertifiedPaperRuntimeLauncher:
                     snapshot.position_monitoring_allowed
                 ),
                 "max_cycles": max_cycles,
+                "execution_mode": self.composition.execution_mode,
+                "live_execution_eligible": (
+                    self.composition.live_execution_eligible
+                ),
+                "broker_order_submission": False,
             },
         )
 
@@ -186,10 +198,9 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=None,
     )
-    parser.add_argument(
-        "--observe-only",
-        action="store_true",
-    )
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--observe-only", action="store_true")
+    mode.add_argument("--automated-paper", action="store_true")
     parser.add_argument(
         "--emergency-halt",
         action="store_true",
@@ -197,7 +208,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     factory = _load_factory(args.factory)
-    composition = factory()
+    try:
+        composition = factory(automated_paper=args.automated_paper)
+    except TypeError as exc:
+        if args.automated_paper:
+            raise TypeError(
+                "automated-paper factory must accept automated_paper=True"
+            ) from exc
+        composition = factory()
     if type(composition) is not CertifiedLauncherCompositionV1:
         raise TypeError(
             "factory must return exact CertifiedLauncherCompositionV1"

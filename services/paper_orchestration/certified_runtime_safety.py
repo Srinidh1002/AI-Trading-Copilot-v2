@@ -6,6 +6,12 @@ from typing import Mapping
 
 
 SUPPORTED_INSTRUMENTS = ("NIFTY", "SENSEX")
+FORBIDDEN_BROKER_ORDER_METHODS = (
+    "place_order",
+    "submit_order",
+    "modify_order",
+    "cancel_order",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +82,18 @@ def validate_repository_paper_safety(
         raise RuntimeError("ENABLE_PAPER_TRADING must be True")
     if enable_live_trading is not False:
         raise RuntimeError("ENABLE_LIVE_TRADING must be False")
+
+
+def validate_no_broker_submission_guard(
+    *,
+    broker_order_submission: object,
+) -> None:
+    """Explicit automated-PAPER barrier: order APIs are outside this runtime."""
+    if broker_order_submission is not False:
+        raise RuntimeError(
+            "automated PAPER mode cannot enable broker order submission "
+            f"({', '.join(FORBIDDEN_BROKER_ORDER_METHODS)})"
+        )
 
 
 def validate_required_angel_credentials(

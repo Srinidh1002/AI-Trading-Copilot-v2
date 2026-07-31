@@ -14,6 +14,15 @@ from services.broker.shared_client import get_market_client
 from services.contracts.paper_orchestration_policy_v1 import (
     PaperOrchestrationPolicyV1,
 )
+from services.contracts.paper_market_observation_v1 import (
+    PaperMarketObservationV1,
+)
+from services.contracts.paper_portfolio_policy_v1 import (
+    PaperPortfolioPolicyV1,
+)
+from services.contracts.paper_trade_lifecycle_policy_v1 import (
+    PaperTradeLifecyclePolicyV1,
+)
 from services.live_analysis_pipeline import LiveAnalysisPipeline
 from services.live_option_decision_pipeline import (
     LiveOptionDecisionPipeline,
@@ -44,6 +53,13 @@ from services.paper_orchestration.certified_operator_controls import (
     CertifiedOperatorControls,
     ControlledOpportunityInputFactory,
 )
+from services.paper_orchestration.certified_new_entry_input_factory import (
+    CertifiedNewEntryInputFactory,
+)
+from services.paper_orchestration.certified_p6_input_factory import (
+    CertifiedP6InputBundleV1,
+    CertifiedP6InputFactory,
+)
 from services.paper_orchestration.certified_persistence_composition import (
     build_certified_coordinators,
     build_certified_persistence_paths,
@@ -56,6 +72,7 @@ from services.paper_orchestration.certified_runtime_logging import (
 )
 from services.paper_orchestration.certified_runtime_safety import (
     CertifiedPaperRuntimeSafetyConfigV1,
+    validate_no_broker_submission_guard,
     validate_repository_paper_safety,
     validate_runtime_paths,
 )
@@ -203,6 +220,8 @@ class CertifiedRuntimeCompositionSettingsV1:
     primary_exchange: str = "NSE"
     observe_only: bool = True
     emergency_halt: bool = False
+    automated_paper: bool = False
+    automated_authorities: object | None = None
     execution_mode: str = "PAPER"
     live_execution_eligible: bool = False
     schema_version: str = (
@@ -255,10 +274,21 @@ class CertifiedRuntimeCompositionSettingsV1:
             self.primary_exchange,
         )
 
-        if self.observe_only is not True:
-            raise ValueError(
-                "certified composition must start observe-only"
-            )
+        if type(self.observe_only) is not bool:
+            raise TypeError("observe_only")
+        if type(self.emergency_halt) is not bool:
+            raise TypeError("emergency_halt")
+        if type(self.automated_paper) is not bool:
+            raise TypeError("automated_paper")
+        if self.automated_paper:
+            if self.observe_only:
+                raise ValueError("automated PAPER cannot be observe-only")
+            if type(self.automated_authorities) is not AutomatedPaperAuthorityBundleV1:
+                raise TypeError("automated_authorities")
+        elif self.observe_only is not True:
+            raise ValueError("certified composition must start observe-only")
+        elif self.automated_authorities is not None:
+            raise ValueError("automated authorities require automated PAPER mode")
 
         if self.execution_mode != "PAPER":
             raise ValueError(
@@ -274,6 +304,151 @@ class CertifiedRuntimeCompositionSettingsV1:
             "certified_runtime_composition_settings.v1"
         ):
             raise ValueError("unsupported schema_version")
+
+
+@dataclass(frozen=True, slots=True)
+class AutomatedPaperAuthorityBundleV1:
+    """Exact, PAPER-only factories supplied by the existing P6 and P7/P8 layers."""
+
+    p6_input_factory: CertifiedP6InputFactory
+    new_entry_input_factory: CertifiedNewEntryInputFactory
+    execution_mode: str = "PAPER"
+    live_execution_eligible: bool = False
+    broker_order_submission: bool = False
+
+    def __post_init__(self) -> None:
+        if type(self.p6_input_factory) is not CertifiedP6InputFactory:
+            raise TypeError("p6_input_factory")
+        if type(self.new_entry_input_factory) is not CertifiedNewEntryInputFactory:
+            raise TypeError("new_entry_input_factory")
+        if self.execution_mode != "PAPER":
+            raise ValueError("execution_mode must be PAPER")
+        if self.live_execution_eligible:
+            raise ValueError("live execution is not eligible")
+        if self.broker_order_submission:
+            raise ValueError("broker order submission must remain disabled")
+
+
+def _p6_bundle_from_opportunity(
+    cycle_input: object,
+    analysis_result: object,
+    opportunity_result: object,
+) -> CertifiedP6InputBundleV1:
+    """Consume only a real, upstream-certified P6 bundle; never invent one."""
+    evidence = getattr(opportunity_result, "evidence", None)
+    if not isinstance(evidence, Mapping):
+        raise TypeError("opportunity result must carry P6 evidence")
+    bundle = evidence.get("certified_p6_input_bundle")
+    if type(bundle) is not CertifiedP6InputBundleV1:
+        raise TypeError(
+            "opportunity evidence must contain exact "
+            "CertifiedP6InputBundleV1"
+        )
+    return bundle
+
+
+def build_default_automated_paper_authorities(
+    *,
+    portfolio_id: str,
+    available_capital: float,
+) -> AutomatedPaperAuthorityBundleV1:
+    """Compose the repository's typed P6 and PAPER lifecycle factories.
+
+    P6 inputs are accepted only when the live opportunity authority has
+    already supplied an exact certified bundle.  This is deliberately not a
+    mapping adapter and does not fabricate a trade plan or signal.
+    """
+    capital = _positive_float(available_capital, "available_capital")
+
+    def portfolio_policy(
+        cycle_input,
+        integrated_trade_plan_result,
+    ) -> PaperPortfolioPolicyV1:
+        return PaperPortfolioPolicyV1(
+            portfolio_policy_id=(
+                f"certified-paper-portfolio-policy:{cycle_input.trading_day_id}"
+            ),
+            policy_timestamp=cycle_input.cycle_requested_at,
+            maximum_concurrent_trades=3,
+            maximum_total_deployed_capital=capital,
+            maximum_total_portfolio_risk_amount=capital * 0.10,
+            maximum_daily_loss_amount=capital * 0.02,
+            maximum_daily_drawdown_amount=capital * 0.03,
+            maximum_instrument_risk_fraction=0.75,
+            maximum_direction_risk_fraction=0.75,
+            maximum_correlated_index_risk_fraction=0.60,
+            maximum_expiry_risk_fraction=0.60,
+            minimum_available_cash_reserve=0.0,
+            metadata={"authority": "DEFAULT_AUTOMATED_PAPER"},
+        )
+
+    def lifecycle_policy(
+        cycle_input,
+        integrated_trade_plan_result,
+    ) -> PaperTradeLifecyclePolicyV1:
+        timestamp = cycle_input.cycle_requested_at
+        return PaperTradeLifecyclePolicyV1(
+            lifecycle_policy_id=(
+                f"certified-paper-lifecycle-policy:{cycle_input.trading_day_id}"
+            ),
+            policy_timestamp=timestamp,
+            policy_source="DEFAULT_AUTOMATED_PAPER",
+            entry_timeout_seconds=300,
+            maximum_observation_age_seconds=120,
+            maximum_holding_seconds=21600,
+            source_timestamps={"cycle_requested_at": timestamp},
+        )
+
+    def observation(
+        cycle_input,
+        integrated_trade_plan_result,
+    ) -> PaperMarketObservationV1:
+        selection = integrated_trade_plan_result.option_contract_selection_result
+        candidate = selection.selected_contract
+        if candidate is None:
+            raise ValueError("READY P6 plan must select an option contract")
+        contract = candidate.contract
+        timestamp = cycle_input.cycle_requested_at
+        spot_price = _extract_spot_price(cycle_input.metadata)
+        option_price = contract.last_price
+        if option_price is None:
+            raise ValueError("selected option contract must contain last_price")
+        return PaperMarketObservationV1(
+            observation_id=f"{cycle_input.cycle_id}:entry-observation",
+            trade_plan_id=integrated_trade_plan_result.capital_quantity_result.trade_plan_id,
+            integrated_trade_plan_result_id=integrated_trade_plan_result.integration_id,
+            selected_option_contract_id=contract.contract_id,
+            observed_at=timestamp,
+            received_at=timestamp,
+            market_session_date=timestamp.astimezone(IST).date(),
+            underlying_symbol=cycle_input.underlying_symbol,
+            underlying_last_price=spot_price,
+            option_symbol=contract.trading_symbol,
+            option_last_price=option_price,
+            market=cycle_input.underlying_symbol,
+            exchange=cycle_input.exchange,
+            session_state="OPEN",
+            is_market_open=True,
+            is_expiry_session=False,
+            data_quality_status="FRESH",
+            source="CERTIFIED_CYCLE_INPUT_AND_P6",
+            bid_price=contract.bid_price,
+            ask_price=contract.ask_price,
+            source_timestamps={"cycle_requested_at": timestamp},
+        )
+
+    return AutomatedPaperAuthorityBundleV1(
+        p6_input_factory=CertifiedP6InputFactory(
+            typed_input_builder=_p6_bundle_from_opportunity,
+        ),
+        new_entry_input_factory=CertifiedNewEntryInputFactory(
+            portfolio_id=portfolio_id,
+            starting_capital=capital,
+            portfolio_policy_provider=portfolio_policy,
+            lifecycle_policy_provider=lifecycle_policy,
+            observation_provider=observation,
+        ),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -545,11 +720,25 @@ def build_certified_launcher(
     providers: (
         CertifiedRuntimeProviderBundleV1 | None
     ) = None,
+    automated_paper: bool = False,
 ) -> CertifiedLauncherCompositionV1:
     value = (
         settings
         if settings is not None
-        else CertifiedRuntimeCompositionSettingsV1()
+        else (
+            CertifiedRuntimeCompositionSettingsV1(
+                observe_only=False,
+                automated_paper=True,
+                automated_authorities=(
+                    build_default_automated_paper_authorities(
+                        portfolio_id="certified-paper-portfolio",
+                        available_capital=10000.0,
+                    )
+                ),
+            )
+            if automated_paper
+            else CertifiedRuntimeCompositionSettingsV1()
+        )
     )
 
     if (
@@ -561,11 +750,26 @@ def build_certified_launcher(
             "CertifiedRuntimeCompositionSettingsV1"
         )
 
+    if type(automated_paper) is not bool:
+        raise TypeError("automated_paper")
+
+    if (
+        settings is not None
+        and automated_paper != value.automated_paper
+    ):
+        raise ValueError(
+            "automated_paper must match the explicit composition settings"
+        )
+
     validate_repository_paper_safety(
         broker=config.BROKER,
         enable_paper_trading=config.ENABLE_PAPER_TRADING,
         enable_live_trading=config.ENABLE_LIVE_TRADING,
     )
+    if value.automated_paper:
+        validate_no_broker_submission_guard(
+            broker_order_submission=False,
+        )
 
     validate_runtime_paths(
         journal_directory=value.data_root,
@@ -575,13 +779,13 @@ def build_certified_launcher(
     safety = CertifiedPaperRuntimeSafetyConfigV1(
         instruments=("NIFTY", "SENSEX"),
         interval_seconds=value.interval_seconds,
-        observe_only=True,
+        observe_only=value.observe_only,
         emergency_halt=value.emergency_halt,
     )
 
-    if safety.observe_only is not True:
+    if safety.observe_only is not value.observe_only:
         raise ValueError(
-            "observe-only safety invariant failed"
+            "operator control safety invariant failed"
         )
 
     provider_bundle = (
@@ -644,18 +848,24 @@ def build_certified_launcher(
             portfolio_persistence
         ),
         trade_persistence_service=trade_persistence,
+        broker_order_submission=False,
     )
 
+    automated_authorities = value.automated_authorities
     authorities = CompleteCycleAuthoritySetV1(
         data_authority=data_authority,
         session_authority=session_authority,
         analysis_authority=analysis_authority,
         opportunity_authority=opportunity_authority,
         p6_input_factory=(
-            _observe_only_p6_input_factory
+            automated_authorities.p6_input_factory
+            if value.automated_paper
+            else _observe_only_p6_input_factory
         ),
         new_entry_input_factory=(
-            _observe_only_new_entry_input_factory
+            automated_authorities.new_entry_input_factory
+            if value.automated_paper
+            else _observe_only_new_entry_input_factory
         ),
     )
 
@@ -714,7 +924,7 @@ def build_certified_launcher(
     )
 
     controls = CertifiedOperatorControls(
-        observe_only=True,
+        observe_only=value.observe_only,
         emergency_halt=value.emergency_halt,
     )
 
@@ -760,4 +970,22 @@ def build_certified_launcher(
         logger=CertifiedJsonLineLogger(
             file_path=value.log_path,
         ),
+        automated_paper=value.automated_paper,
+    )
+
+
+def build_automated_paper_launcher(
+    *,
+    settings: CertifiedRuntimeCompositionSettingsV1,
+    providers: CertifiedRuntimeProviderBundleV1 | None = None,
+) -> CertifiedLauncherCompositionV1:
+    """Build the explicit automated PAPER composition, never a live one."""
+    if type(settings) is not CertifiedRuntimeCompositionSettingsV1:
+        raise TypeError("settings")
+    if settings.automated_paper is not True:
+        raise ValueError("settings must explicitly enable automated_paper")
+    return build_certified_launcher(
+        settings=settings,
+        providers=providers,
+        automated_paper=True,
     )

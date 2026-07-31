@@ -185,7 +185,7 @@ class PaperTradeEntryEvaluationInputV1:
     def semantic_dict(self) -> dict[str, Any]:
         return {
             "integrated_trade_plan_result": (
-                self.integrated_trade_plan_result.semantic_dict()
+                self.integrated_trade_plan_result.to_dict()
             ),
             "lifecycle_policy": self.lifecycle_policy.semantic_dict(),
             "lifecycle_state": self.lifecycle_state.semantic_dict(),

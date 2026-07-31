@@ -145,6 +145,10 @@ class NewEntryPaperLifecycleInputV1:
             )
         if self.integrated_trade_plan_result.status != "READY":
             raise ValueError("integrated trade plan must be READY")
+        if self.integrated_trade_plan_result.execution_mode != "PAPER":
+            raise ValueError("integrated trade plan must be PAPER-only")
+        if self.integrated_trade_plan_result.live_execution_eligible is not False:
+            raise ValueError("integrated trade plan cannot be live eligible")
 
         object.__setattr__(
             self,
@@ -238,16 +242,20 @@ class NewEntryPaperLifecycleExecutor:
         *,
         portfolio_persistence_service: PaperPortfolioPersistenceService,
         trade_persistence_service: PaperTradePersistenceService,
+        broker_order_submission: bool = False,
     ) -> None:
         if type(portfolio_persistence_service) is not PaperPortfolioPersistenceService:
             raise TypeError("portfolio_persistence_service")
         if type(trade_persistence_service) is not PaperTradePersistenceService:
             raise TypeError("trade_persistence_service")
+        if broker_order_submission is not False:
+            raise ValueError("broker order submission must remain disabled")
 
         self.portfolio_persistence_service = (
             portfolio_persistence_service
         )
         self.trade_persistence_service = trade_persistence_service
+        self.broker_order_submission = broker_order_submission
         self.portfolio_lifecycle_coordinator = (
             PaperPortfolioLifecycleCoordinator(
                 portfolio_persistence_service

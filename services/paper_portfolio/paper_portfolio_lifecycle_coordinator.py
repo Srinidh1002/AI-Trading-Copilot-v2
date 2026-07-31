@@ -180,7 +180,7 @@ class PaperPortfolioLifecycleCoordinator:
         if len(matches) != 1:
             raise ValueError("matching reservation must be unique")
         reservation = matches[0]
-        sequence = p7_snapshot.lifecycle_state.transition_sequence
+        sequence = p7_snapshot.event_sequence
 
         if reservation.reservation_status == "PENDING_HOLD":
             if position.lifecycle_state != "OPEN":
