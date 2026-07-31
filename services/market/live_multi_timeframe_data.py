@@ -7,7 +7,7 @@ standard OHLCV DataFrames.
 Read-only. A supplied or default historical-data cache may be used to avoid
 repeating fresh broker requests.
 """
-
+import time
 import os
 from datetime import datetime, timedelta
 
@@ -194,12 +194,21 @@ class LiveMultiTimeframeData:
         symboltoken,
         end_time=None,
     ):
-        return {
-            timeframe: self.fetch_timeframe(
+        results = {}
+        timeframes = tuple(TIMEFRAME_CONFIG)
+
+        for index, timeframe in enumerate(timeframes):
+            results[timeframe] = self.fetch_timeframe(
                 exchange=exchange,
                 symboltoken=symboltoken,
                 timeframe=timeframe,
                 end_time=end_time,
             )
-            for timeframe in TIMEFRAME_CONFIG
-        }
+
+            # Angel One can reject multiple historical-data requests
+            # issued almost simultaneously. Cached responses return
+            # immediately, while uncached startup requests are paced.
+            if index < len(timeframes) - 1:
+                time.sleep(1.25)
+
+        return results

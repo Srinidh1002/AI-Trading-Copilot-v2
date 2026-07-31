@@ -217,4 +217,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    canonical_module = importlib.import_module(
+        "services.paper_orchestration.certified_runtime_launcher"
+    )
+    raise SystemExit(canonical_module.main())
