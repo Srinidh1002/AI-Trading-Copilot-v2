@@ -10,8 +10,22 @@ if (-not (Test-Path -LiteralPath $python)) { throw 'Project virtual-environment 
 New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
 $logPath = Join-Path $runtimeDir 'paper_canary_stdout.log'
 
-& $python -m services.paper_orchestration.certified_runtime_launcher --factory services.paper_orchestration.certified_runtime_composition:build_certified_launcher --automated-paper --max-cycles 1 *> $logPath
-$exitCode = $LASTEXITCODE
+$previousErrorActionPreference = $ErrorActionPreference
+
+try {
+    $ErrorActionPreference = 'Continue'
+
+    & $python -m services.paper_orchestration.certified_runtime_launcher `
+        --factory services.paper_orchestration.certified_runtime_composition:build_certified_launcher `
+        --automated-paper `
+        --max-cycles 1 `
+        *> $logPath
+
+    $exitCode = $LASTEXITCODE
+}
+finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+}
 Write-Host "Launcher exit code: $exitCode"
 Write-Host "Preserved launcher output: $logPath"
 $runtimeLog = Join-Path $runtimeDir 'runtime.jsonl'
