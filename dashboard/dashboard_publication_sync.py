@@ -17,6 +17,7 @@ from .dashboard_read_model_state import (
     PAPER_POSITION_STATE_KEY,
     TRADE_PLAN_STATE_KEY,
 )
+from dashboard.operator_dashboard import render_operator_dashboard
 
 
 PUBLICATION_ID_STATE_KEY = "dashboard_publication_id"
@@ -155,7 +156,24 @@ def synchronize_operator_view_model_publication(
         OPERATOR_APPLICATION_VIEW_MODEL_SEQUENCE_STATE_KEY
     ] = publication_sequence
     return True
+def get_operator_application_view_model(
+    state: MutableMapping[str, object],
+) -> OperatorApplicationViewModelV1 | None:
+    """Read and validate the published operator view model."""
 
+    if not isinstance(state, MutableMapping):
+        raise TypeError("state must be a mutable mapping")
+
+    value = state.get(
+        OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY
+    )
+    if value is None:
+        return None
+    if type(value) is not OperatorApplicationViewModelV1:
+        raise TypeError(
+            OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY
+        )
+    return value
 
 def synchronize_registered_dashboard_publication(
     state: MutableMapping[str, object],

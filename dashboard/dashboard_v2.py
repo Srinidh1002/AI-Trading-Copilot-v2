@@ -5,22 +5,21 @@ from dashboard.dashboard_operational_read_model_state import (
     get_operational_views,
 )
 from dashboard.dashboard_publication_sync import (
+    OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY,
+    get_operator_application_view_model,
+    render_operator_dashboard,
     synchronize_registered_dashboard_publication,
 )
 from dashboard.dashboard_read_model_state import get_plan_position_views
 from dashboard.operational_components import (
     render_operational_dashboard,
 )
-from dashboard.operator_dashboard import render_operator_dashboard
-from dashboard.plan_position_components import (
-    render_plan_and_position_dashboard,
-)
-from services.contracts.operator_application_view_model_v1 import (
-    OperatorApplicationViewModelV1,
-)
+from dashboard.plan_position_components import render_plan_and_position_dashboard
 
 
-_OPERATOR_VIEW_MODEL_KEY = "operator_application_view_model_v1"
+_OPERATOR_VIEW_MODEL_KEY = (
+    OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY
+)
 
 
 def _render_unavailable_sections() -> None:
@@ -46,21 +45,16 @@ def _render_unavailable_sections() -> None:
     )
 
 
-def _get_operator_view_model() -> OperatorApplicationViewModelV1 | None:
-    value = st.session_state.get(_OPERATOR_VIEW_MODEL_KEY)
-    if value is None:
-        return None
-    if type(value) is not OperatorApplicationViewModelV1:
-        raise TypeError(_OPERATOR_VIEW_MODEL_KEY)
-    return value
-
-
 def home() -> None:
     synchronize_registered_dashboard_publication(
         st.session_state
     )
 
-    operator_view_model = _get_operator_view_model()
+    operator_view_model = (
+        get_operator_application_view_model(
+            st.session_state
+        )
+    )
     if operator_view_model is not None:
         render_operator_dashboard(
             st=st,
@@ -68,7 +62,8 @@ def home() -> None:
         )
         st.divider()
         st.caption(
-            f"{APP_NAME} | Version {VERSION} | {PHASE} | Build {BUILD}"
+            f"{APP_NAME} | Version {VERSION} | "
+            f"{PHASE} | Build {BUILD}"
         )
         return
 
@@ -110,5 +105,6 @@ def home() -> None:
 
     st.divider()
     st.caption(
-        f"{APP_NAME} | Version {VERSION} | {PHASE} | Build {BUILD}"
+        f"{APP_NAME} | Version {VERSION} | "
+        f"{PHASE} | Build {BUILD}"
     )
