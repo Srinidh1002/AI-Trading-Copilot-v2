@@ -10,3 +10,14 @@ data/paper_trading_runtime_heartbeat.json
 logs/
 data/market_sessions/
 data/research_reports/
+
+# Weekend paper-trading runtime artifacts
+data/paper_trading/
+reports/paper_observation/
+phase6_*.log
+phase6_*_stdout.log
+phase6_*_stderr.log
+phase6_gate1_provider_check.py
+
+# Test runner cache
+.pytest_cache/
