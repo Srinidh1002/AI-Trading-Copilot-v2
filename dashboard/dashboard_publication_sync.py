@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 
+from services.contracts.operator_application_view_model_v1 import (
+    OperatorApplicationViewModelV1,
+)
 from services.dashboard_publication import (
     DashboardPublicationSnapshotV1,
 )
@@ -38,6 +41,12 @@ OPTION_INTELLIGENCE_STATE_KEY = (
 )
 RUNTIME_OPERATIONS_STATE_KEY = (
     "dashboard_runtime_operations_view_v1"
+)
+OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY = (
+    "operator_application_view_model_v1"
+)
+OPERATOR_APPLICATION_VIEW_MODEL_SEQUENCE_STATE_KEY = (
+    "operator_application_view_model_sequence"
 )
 
 
@@ -105,6 +114,47 @@ def synchronize_dashboard_publication(
 
     return True
 
+
+def synchronize_operator_view_model_publication(
+    state: MutableMapping[str, object],
+    *,
+    publication_sequence: int,
+    view_model: OperatorApplicationViewModelV1,
+) -> bool:
+    """Publish a newer immutable operator view model into dashboard state."""
+
+    if not isinstance(state, MutableMapping):
+        raise TypeError("state must be a mutable mapping")
+    if (
+        type(publication_sequence) is not int
+        or isinstance(publication_sequence, bool)
+        or publication_sequence <= 0
+    ):
+        raise ValueError("publication_sequence")
+    if type(view_model) is not OperatorApplicationViewModelV1:
+        raise TypeError(
+            "view_model must be exact OperatorApplicationViewModelV1"
+        )
+
+    current_sequence = state.get(
+        OPERATOR_APPLICATION_VIEW_MODEL_SEQUENCE_STATE_KEY
+    )
+    if current_sequence is not None:
+        if (
+            type(current_sequence) is not int
+            or isinstance(current_sequence, bool)
+        ):
+            raise TypeError(
+                "operator publication sequence state must be an exact int"
+            )
+        if publication_sequence <= current_sequence:
+            return False
+
+    state[OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY] = view_model
+    state[
+        OPERATOR_APPLICATION_VIEW_MODEL_SEQUENCE_STATE_KEY
+    ] = publication_sequence
+    return True
 
 
 def synchronize_registered_dashboard_publication(
