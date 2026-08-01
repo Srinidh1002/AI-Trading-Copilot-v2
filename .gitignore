@@ -21,3 +21,6 @@ phase6_gate1_provider_check.py
 
 # Test runner cache
 .pytest_cache/
+
+# Task 7A temporary replay runtime data
+artifacts/certification/task7a_replay_work/
