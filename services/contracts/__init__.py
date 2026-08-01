@@ -89,6 +89,7 @@ _EXPORTS = {
 "external_context_regime_component_result_v1": ("ExternalContextRegimeComponentResultV1",),
 "market_regime_input_v1": ("MarketRegimeInputV1",),
 "market_opportunity_candidate_v1": ("MarketOpportunityCandidateV1",),
+"market_analysis_candidate_v1": ("MarketAnalysisCandidateV1","MarketAnalysisEvidenceV1"),
 "four_market_ranking_policy_v1": ("FourMarketRankingPolicyV1","DEFAULT_FOUR_MARKET_RANKING_POLICY"),
 "four_market_opportunity_ranking_result_v1": ("FourMarketOpportunityRankingResultV1",),
 "paper_orchestration_policy_v1":("PaperOrchestrationPolicyV1",),
