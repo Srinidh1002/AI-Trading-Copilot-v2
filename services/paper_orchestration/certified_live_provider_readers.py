@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from services.contracts.market_analysis_candidate_v1 import (
+    MarketAnalysisCandidateV1,
+)
 from services.contracts.paper_orchestration_cycle_input_v1 import (
     PaperOrchestrationCycleInputV1,
 )
@@ -17,6 +20,14 @@ from services.paper_orchestration.certified_live_read_authorities import (
 QuoteReader = Callable[
     [str, str, str],
     Mapping[str, Any],
+]
+CandidateReader = Callable[
+    [
+        PaperOrchestrationCycleInputV1,
+        CertifiedLiveDataResultV1,
+        Mapping[str, Any],
+    ],
+    MarketAnalysisCandidateV1,
 ]
 
 
@@ -198,6 +209,7 @@ class CertifiedLiveProviderReaders:
         analysis_pipeline: object,
         option_decision_pipeline: object,
         available_capital: float,
+        candidate_reader: CandidateReader | None = None,
         risk_percent: float = 1.0,
         maximum_capital_usage_percent: float = 100.0,
     ) -> None:
@@ -228,8 +240,12 @@ class CertifiedLiveProviderReaders:
                 "option_decision_pipeline must expose analyse()"
             )
 
+        if candidate_reader is not None and not callable(candidate_reader):
+            raise TypeError("candidate_reader must be callable or None")
+
         self.quote_reader = quote_reader
         self.analysis_pipeline = analysis_pipeline
+        self.candidate_reader = candidate_reader
         self.option_decision_pipeline = (
             option_decision_pipeline
         )
@@ -366,8 +382,40 @@ class CertifiedLiveProviderReaders:
             "LiveAnalysisPipeline.analyse",
         )
 
+        candidate = None
+        if self.candidate_reader is not None:
+            candidate = self.candidate_reader(
+                cycle_input,
+                data_result,
+                result,
+            )
+            if type(candidate) is not MarketAnalysisCandidateV1:
+                raise TypeError(
+                    "candidate_reader must return exact "
+                    "MarketAnalysisCandidateV1"
+                )
+            expected = (
+                cycle_input.observation_id,
+                cycle_input.underlying_symbol,
+                cycle_input.exchange,
+                data_result.symboltoken,
+                cycle_input.market_timestamp,
+            )
+            actual = (
+                candidate.observation_id,
+                candidate.underlying_symbol,
+                candidate.exchange,
+                candidate.symboltoken,
+                candidate.market_timestamp,
+            )
+            if actual != expected:
+                raise ValueError(
+                    "candidate identity does not match certified child cycle"
+                )
+
         return {
             "analysis": result,
+            "candidate": candidate,
             "warnings": (),
             "blockers": (),
         }
@@ -501,6 +549,9 @@ class CertifiedLiveProviderReaders:
                 "live_option_decision": raw,
                 "analysis_observation_id": (
                     analysis_result.observation_id
+                ),
+                "market_analysis_candidate": (
+                    analysis_result.candidate
                 ),
                 "certified_market_timestamp": (
                     cycle_input.market_timestamp.isoformat()

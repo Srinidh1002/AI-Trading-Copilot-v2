@@ -5,6 +5,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from services.contracts.market_analysis_candidate_v1 import (
+    MarketAnalysisCandidateV1,
+)
 from services.contracts.market_session_validation_v1 import (
     MarketSessionValidationV1,
 )
@@ -144,6 +147,7 @@ class CertifiedLiveAnalysisResultV1:
     symboltoken: str
     market_timestamp: datetime
     analysis: Mapping[str, Any]
+    candidate: MarketAnalysisCandidateV1 | None = None
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     execution_mode: str = "PAPER"
@@ -173,6 +177,31 @@ class CertifiedLiveAnalysisResultV1:
             "analysis",
             _mapping(self.analysis, "analysis"),
         )
+
+        if self.candidate is not None:
+            if type(self.candidate) is not MarketAnalysisCandidateV1:
+                raise TypeError(
+                    "candidate must be exact MarketAnalysisCandidateV1 or None"
+                )
+            candidate_identity = (
+                self.candidate.observation_id,
+                self.candidate.underlying_symbol,
+                self.candidate.exchange,
+                self.candidate.symboltoken,
+                self.candidate.market_timestamp,
+            )
+            result_identity = (
+                self.observation_id,
+                self.underlying_symbol,
+                self.exchange,
+                self.symboltoken,
+                self.market_timestamp,
+            )
+            if candidate_identity != result_identity:
+                raise ValueError(
+                    "candidate identity does not match analysis result"
+                )
+
         object.__setattr__(
             self,
             "blockers",
@@ -384,6 +413,7 @@ class CertifiedLiveAnalysisAuthority:
             symboltoken=data_result.symboltoken,
             market_timestamp=data_result.market_timestamp,
             analysis=raw.get("analysis", raw),
+            candidate=raw.get("candidate"),
             blockers=raw.get("blockers", ()),
             warnings=raw.get("warnings", ()),
         )
