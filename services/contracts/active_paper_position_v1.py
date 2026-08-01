@@ -33,6 +33,7 @@ def _number(
     name: str,
     *,
     positive: bool = False,
+    allow_negative: bool = False,
 ) -> float:
     if (
         type(value) not in (int, float)
@@ -41,9 +42,9 @@ def _number(
     ):
         raise ValueError(name)
     number = float(value)
-    if (positive and number <= 0.0) or (
-        not positive and number < 0.0
-    ):
+    if positive and number <= 0.0:
+        raise ValueError(name)
+    if not positive and not allow_negative and number < 0.0:
         raise ValueError(name)
     return number
 
@@ -173,7 +174,11 @@ class ActivePaperPositionV1:
         object.__setattr__(
             self,
             "realized_pnl",
-            _number(self.realized_pnl, "realized_pnl"),
+            _number(
+                self.realized_pnl,
+                "realized_pnl",
+                allow_negative=True,
+            ),
         )
         if self.current_stop_loss is None:
             object.__setattr__(
