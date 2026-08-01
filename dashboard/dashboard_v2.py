@@ -11,7 +11,16 @@ from dashboard.dashboard_read_model_state import get_plan_position_views
 from dashboard.operational_components import (
     render_operational_dashboard,
 )
-from dashboard.plan_position_components import render_plan_and_position_dashboard
+from dashboard.operator_dashboard import render_operator_dashboard
+from dashboard.plan_position_components import (
+    render_plan_and_position_dashboard,
+)
+from services.contracts.operator_application_view_model_v1 import (
+    OperatorApplicationViewModelV1,
+)
+
+
+_OPERATOR_VIEW_MODEL_KEY = "operator_application_view_model_v1"
 
 
 def _render_unavailable_sections() -> None:
@@ -37,10 +46,31 @@ def _render_unavailable_sections() -> None:
     )
 
 
+def _get_operator_view_model() -> OperatorApplicationViewModelV1 | None:
+    value = st.session_state.get(_OPERATOR_VIEW_MODEL_KEY)
+    if value is None:
+        return None
+    if type(value) is not OperatorApplicationViewModelV1:
+        raise TypeError(_OPERATOR_VIEW_MODEL_KEY)
+    return value
+
+
 def home() -> None:
     synchronize_registered_dashboard_publication(
         st.session_state
     )
+
+    operator_view_model = _get_operator_view_model()
+    if operator_view_model is not None:
+        render_operator_dashboard(
+            st=st,
+            view_model=operator_view_model,
+        )
+        st.divider()
+        st.caption(
+            f"{APP_NAME} | Version {VERSION} | {PHASE} | Build {BUILD}"
+        )
+        return
 
     (
         opportunity_view,
