@@ -42,9 +42,9 @@ _RESULT_STATUSES = {
 }
 _CLOSURE_REASONS = {
     "TARGET_3",
-    "STOP_HIT",
+    "STOP",
     "EARLY_SAFETY_EXIT",
-    "TRADE_CLOSED",
+    "MANUAL_CERTIFIED_CLOSE",
 }
 
 
