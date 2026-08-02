@@ -11,6 +11,8 @@ from services.contracts.market_session_validation_v1 import MarketSessionValidat
 from services.market.angel_live_observation_normalizer import AngelLiveMarketObservationV1, normalize_angel_live_observation
 from services.options.angel_option_chain_normalizer import AngelOptionNormalizationResultV1, normalize_angel_option_chain
 from services.paper_orchestration.certified_live_provider_readers import CertifiedIndexMarketSpecV1
+from services.contracts.certified_live_captured_evidence_v1 import CertifiedLiveCapturedEvidenceV1
+from services.paper_orchestration.certified_live_provider_readers import market_spec_for
 
 @dataclass(frozen=True,slots=True)
 class LiveCandidatePolicySourceV1:
@@ -18,6 +20,11 @@ class LiveCandidatePolicySourceV1:
  def __post_init__(self):
   # Delegate vocabulary/range validation to the existing policy contract.
   MarketAnalysisCandidateCompositionPolicyV1(self.direction,self.eligibility,self.confidence,self.score,self.blockers,self.warnings,self.contradictions,self.reasons,self.invalidation_conditions)
+
+ @classmethod
+ def unavailable(cls, *, blockers:tuple[str,...]=(), reasons:tuple[str,...]=()):
+  """Use the composer-defined unavailable numeric representation (0.0)."""
+  return cls("UNAVAILABLE", "UNAVAILABLE", 0.0, 0.0, reasons=tuple(dict.fromkeys(("Authoritative policy evidence is unavailable.", *reasons))), blockers=tuple(dict.fromkeys(("CERTIFIED_POLICY_EVIDENCE_UNAVAILABLE", *blockers))))
 
 @dataclass(frozen=True,slots=True)
 class LiveMarketCandidateEvaluationInputV1:
@@ -39,6 +46,16 @@ def evaluate_live_market_candidate(value:LiveMarketCandidateEvaluationInputV1)->
  evidence=build_live_canonical_evidence(observation=observation,options=options,session=value.session,evaluated_at=value.evaluated_at,engines=value.engines,blockers=value.blockers,warnings=value.warnings,contradictions=value.policy.contradictions,reasons=value.policy.reasons,invalidation_conditions=value.policy.invalidation_conditions)
  composition,policy=compose_from_live_canonical_evidence(source=source,evidence=evidence)
  return LiveMarketCandidateEvaluationResultV1(observation,options,evidence,composition,policy,compose_market_analysis_candidate(composition,policy))
+
+def evaluate_captured_certified_market_candidate(*, captured_evidence:CertifiedLiveCapturedEvidenceV1, session_validation:MarketSessionValidationV1, policy_source:LiveCandidatePolicySourceV1, candidate_id:str, observation_id:str, engines:LiveCanonicalEvidenceEnginesV1)->LiveMarketCandidateEvaluationResultV1:
+ """Pure one-market bridge from the certified immutable capture to typed evidence."""
+ if type(captured_evidence) is not CertifiedLiveCapturedEvidenceV1 or type(session_validation) is not MarketSessionValidationV1 or type(policy_source) is not LiveCandidatePolicySourceV1 or type(engines) is not LiveCanonicalEvidenceEnginesV1: raise TypeError("exact captured evaluator inputs")
+ spec=market_spec_for(captured_evidence.underlying_symbol,captured_evidence.spot_exchange)
+ if (session_validation.symbol,session_validation.exchange)!=(spec.underlying_symbol,spec.exchange): raise ValueError("session identity")
+ payload=dict(captured_evidence.spot_payload)
+ if "data" not in payload:
+  payload={"data":{"ltp":payload.get("spot_price",payload.get("ltp")),"tradingsymbol":spec.underlying_symbol,"exchange":spec.exchange,"symboltoken":spec.symboltoken}}
+ return evaluate_live_market_candidate(LiveMarketCandidateEvaluationInputV1(spec,candidate_id,observation_id,payload,captured_evidence.candle_rows_by_timeframe,captured_evidence.option_contracts,captured_evidence.provider_timestamp,captured_evidence.evaluated_at,session_validation,policy_source,engines,blockers=captured_evidence.provider_blockers,warnings=captured_evidence.provider_warnings))
 
 def attach_certified_candidate_evidence(raw_analysis:Mapping[str,object],evaluation:LiveMarketCandidateEvaluationResultV1)->dict[str,object]:
  if not isinstance(raw_analysis,Mapping) or type(evaluation) is not LiveMarketCandidateEvaluationResultV1:raise TypeError("attachment")

@@ -59,6 +59,39 @@ from services.option_chain_intelligence.support_resistance import (
 )
 
 
+def build_unavailable_option_chain_intelligence(
+    *,
+    underlying_symbol: str,
+    exchange: str,
+    option_exchange: str,
+    evaluated_at: datetime,
+    blockers: tuple[str, ...],
+    warnings: tuple[str, ...] = (),
+    reasons: tuple[str, ...] = (),
+    source_status: str = "UNAVAILABLE",
+    option_chain_intelligence_result_id_factory: Callable[[], str] | None = None,
+) -> OptionChainIntelligenceResultV1:
+    """Produce truthful canonical evidence when no option snapshot exists."""
+    identity = (str(underlying_symbol).upper(), str(exchange).upper(), str(option_exchange).upper())
+    if identity not in {("NIFTY", "NSE", "NFO"), ("SENSEX", "BSE", "BFO")}:
+        raise ValueError("unsupported certified option identity")
+    if not isinstance(evaluated_at, datetime) or evaluated_at.tzinfo is None or evaluated_at.utcoffset() is None:
+        raise ValueError("evaluated_at")
+    if not blockers:
+        raise ValueError("unavailable option intelligence requires blockers")
+    result_id = (option_chain_intelligence_result_id_factory or (lambda: f"unavailable-option-intelligence:{identity[0]}:{evaluated_at.isoformat()}"))()
+    return OptionChainIntelligenceResultV1(
+        option_chain_intelligence_result_id=result_id, created_at=evaluated_at,
+        option_chain_snapshot_id=None, option_chain_quality_result_id=None,
+        underlying_symbol=identity[0], exchange=identity[1], expiry=None,
+        metrics=(), intelligence_status="UNAVAILABLE", aggregate_bias="UNAVAILABLE",
+        aggregate_strength=0.0, bullish_metrics=(), bearish_metrics=(), neutral_metrics=(),
+        unavailable_metrics=(), valid_metric_count=0, unavailable_metric_count=0,
+        blockers=tuple(blockers), warnings=tuple(warnings), reasons=tuple(reasons),
+        source_status=source_status,
+    )
+
+
 def build_canonical_option_chain_intelligence(
     *,
     snapshot: OptionChainSnapshotV1,
@@ -191,4 +224,5 @@ def build_canonical_option_chain_intelligence(
 
 __all__ = [
     "build_canonical_option_chain_intelligence",
+    "build_unavailable_option_chain_intelligence",
 ]

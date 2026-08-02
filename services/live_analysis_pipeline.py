@@ -99,12 +99,10 @@ class LiveAnalysisPipeline:
         symboltoken,
         option_analysis=None,
         end_time=None,
+        captured_timeframes=None,
     ):
-        timeframes = self.data_service.fetch_all(
-            exchange=exchange,
-            symboltoken=symboltoken,
-            end_time=end_time,
-        )
+        capture = captured_timeframes
+        timeframes = (capture["dataframes"] if isinstance(capture, Mapping) and "dataframes" in capture else capture) if capture is not None else self.data_service.fetch_all(exchange=exchange, symboltoken=symboltoken, end_time=end_time)
 
         uppercase_timeframes = self._normalize_timeframes(
             timeframes
@@ -185,7 +183,7 @@ class LiveAnalysisPipeline:
             ),
         )
 
-        return {
+        result = {
             "timeframes": timeframes,
             "technical": technical_analysis,
             "timeframe": timeframe_analysis,
@@ -201,3 +199,5 @@ class LiveAnalysisPipeline:
                 market_structure_analysis
             ),
         }
+        if capture is not None: result["captured_timeframes"] = capture
+        return result

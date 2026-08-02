@@ -112,11 +112,18 @@ def external_input(symbol="NIFTY", **changes):
 
 @pytest.mark.parametrize("symbol", ("NIFTY", "SENSEX"))
 def test_valid_option_chain_preserves_identity_timestamp_metrics_and_ids(symbol):
-    result = adapt_option_chain_intelligence(chain_input(symbol))
+    result = adapt_option_chain_intelligence(
+        chain_input(symbol, reasons=("Captured option-chain evidence.",))
+    )
     assert (result.underlying_symbol, result.exchange) == identity(symbol)[:2]
     assert result.created_at == REQUESTED
     assert result.option_chain_snapshot_id == f"chain-{symbol}"
     assert result.metrics[0].metric_name == "PCR_OPEN_INTEREST"
+    assert result.reasons == ("CAPTURED OPTION-CHAIN EVIDENCE.",)
+
+
+def test_option_chain_empty_reasons_remain_empty():
+    assert adapt_option_chain_intelligence(chain_input(reasons=())).reasons == ()
 
 
 def test_option_chain_ready_requires_real_metrics_and_rejects_duplicate_metrics():

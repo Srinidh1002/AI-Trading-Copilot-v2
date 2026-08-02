@@ -212,3 +212,19 @@ class LiveMultiTimeframeData:
                 time.sleep(1.25)
 
         return results
+
+    def fetch_all_with_capture(self, exchange, symboltoken, end_time=None):
+        """Return existing DataFrames plus the same captured Angel rows."""
+        dataframes, rows, metadata = {}, {}, {}
+        for index, timeframe in enumerate(TIMEFRAME_CONFIG):
+            try:
+                response = self._request_historical(exchange, symboltoken, timeframe, end_time=end_time)
+                raw = response.get("data", [])
+                rows[timeframe] = tuple(tuple(item) for item in raw)
+                dataframes[timeframe] = normalize_angel_candles(raw)
+                metadata[timeframe] = {"captured": True}
+            except Exception as exc:
+                rows[timeframe] = ()
+                metadata[timeframe] = {"captured": False, "error": type(exc).__name__}
+            if index < len(TIMEFRAME_CONFIG) - 1: time.sleep(1.25)
+        return {"dataframes": dataframes, "rows_by_timeframe": rows, "cache_metadata": metadata}

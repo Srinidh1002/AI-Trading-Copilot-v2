@@ -15,6 +15,7 @@ from services.contracts.option_contract_ranking_result_v1 import OptionContractR
 from services.contracts.technical_intelligence_result_v1 import TechnicalIntelligenceResultV1
 from services.market.angel_live_observation_normalizer import AngelLiveMarketObservationV1
 from services.options.angel_option_chain_normalizer import AngelOptionNormalizationResultV1
+from services.analysis.market_analysis_pillar_aggregation import MarketAnalysisPillarAggregationResultV1
 
 
 _PILLARS = ("price_action", "candlestick", "chart_pattern", "volume", "volatility", "oi", "oi_change", "pcr", "support_resistance", "max_pain", "iv", "greeks", "premium_behavior", "liquidity_spread")
@@ -32,7 +33,7 @@ class LiveCanonicalEvidenceEnginesV1:
     regime: Callable[[TechnicalIntelligenceResultV1, MarketSessionValidationV1, datetime], CanonicalMarketRegimeResultV1]
     option_chain: Callable[[AngelOptionNormalizationResultV1, datetime], OptionChainIntelligenceResultV1]
     contract_ranking: Callable[[OptionChainIntelligenceResultV1, AngelOptionNormalizationResultV1, datetime], OptionContractRankingResultV1]
-    pillars: Callable[[AngelLiveMarketObservationV1, OptionChainIntelligenceResultV1, OptionContractRankingResultV1], Mapping[str, MarketAnalysisEvidenceV1]]
+    pillars: Callable[[AngelLiveMarketObservationV1, OptionChainIntelligenceResultV1, OptionContractRankingResultV1, datetime], MarketAnalysisPillarAggregationResultV1]
 
     def __post_init__(self) -> None:
         if not all(callable(getattr(self, name)) for name in self.__dataclass_fields__): raise TypeError("canonical engine callable")
@@ -47,7 +48,7 @@ class LiveCanonicalEvidenceResultV1:
     regime: CanonicalMarketRegimeResultV1
     option_chain: OptionChainIntelligenceResultV1
     contract_ranking: OptionContractRankingResultV1
-    pillars: Mapping[str, MarketAnalysisEvidenceV1]
+    pillars: MarketAnalysisPillarAggregationResultV1
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     contradictions: tuple[str, ...] = ()
@@ -60,7 +61,7 @@ class LiveCanonicalEvidenceResultV1:
         if any(type(value) is not expected for value, expected in zip((self.data_quality,self.multi_timeframe,self.technical,self.regime,self.option_chain,self.contract_ranking), required)): raise TypeError("canonical evidence")
         identity = (self.observation.spot.underlying_symbol, self.observation.spot.exchange)
         if any((getattr(item,"underlying_symbol"),getattr(item,"exchange")) != identity for item in (self.data_quality,self.multi_timeframe,self.technical,self.regime,self.option_chain,self.contract_ranking)): raise ValueError("canonical evidence identity")
-        if set(self.pillars) != set(_PILLARS) or not all(type(self.pillars[key]) is MarketAnalysisEvidenceV1 for key in _PILLARS): raise ValueError("pillar evidence")
+        if type(self.pillars) is not MarketAnalysisPillarAggregationResultV1: raise TypeError("pillar aggregation")
         for name in ("blockers","warnings","contradictions","reasons","invalidation_conditions"):
             if not isinstance(getattr(self,name),tuple): raise TypeError(name)
 
@@ -76,5 +77,5 @@ def build_live_canonical_evidence(*, observation: AngelLiveMarketObservationV1, 
     regime = engines.regime(technical, session, evaluated_at)
     option_chain = engines.option_chain(options, evaluated_at)
     ranking = engines.contract_ranking(option_chain, options, evaluated_at)
-    pillars = engines.pillars(observation, option_chain, ranking)
+    pillars = engines.pillars(observation, option_chain, ranking, evaluated_at)
     return LiveCanonicalEvidenceResultV1(observation, session, quality, timeframe, technical, regime, option_chain, ranking, pillars, blockers, warnings, contradictions, reasons, invalidation_conditions)

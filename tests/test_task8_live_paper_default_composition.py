@@ -1,0 +1,5 @@
+from services.certification.task8_live_paper_default_composition import build_task8_dependencies
+
+
+def test_default_factory_is_exposed_without_running_live_reads():
+    assert callable(build_task8_dependencies)

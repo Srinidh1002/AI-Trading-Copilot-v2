@@ -33,6 +33,7 @@ _ALLOWED_STATUSES = frozenset(
         "MALFORMED",
         "UNSUPPORTED",
         "FAILED",
+        "UNAVAILABLE",
     }
 )
 
@@ -235,12 +236,12 @@ class OptionChainIntelligenceResultV1:
     option_chain_intelligence_result_id: str
     created_at: datetime
 
-    option_chain_snapshot_id: str
-    option_chain_quality_result_id: str
+    option_chain_snapshot_id: str | None
+    option_chain_quality_result_id: str | None
 
     underlying_symbol: str
     exchange: str
-    expiry: date
+    expiry: date | None
 
     metrics: tuple[OptionChainMetricV1, ...]
 
@@ -265,6 +266,8 @@ class OptionChainIntelligenceResultV1:
 
     execution_mode: str = "PAPER"
     live_execution_eligible: bool = False
+    reasons: tuple[str, ...] = ()
+    source_status: str = "AVAILABLE"
 
     def __post_init__(self) -> None:
         result_id = _require_non_empty_string(
@@ -282,6 +285,32 @@ class OptionChainIntelligenceResultV1:
             "created_at",
         )
         object.__setattr__(self, "created_at", created_at)
+
+        status = _require_non_empty_string(self.intelligence_status, "intelligence_status").upper()
+        if status not in _ALLOWED_STATUSES:
+            raise ValueError(f"unsupported intelligence_status: {status}")
+        object.__setattr__(self, "intelligence_status", status)
+        if status == "UNAVAILABLE":
+            if any(value is not None for value in (self.option_chain_snapshot_id, self.option_chain_quality_result_id, self.expiry)):
+                raise ValueError("UNAVAILABLE result must not carry snapshot, quality, or expiry")
+            if self.metrics or any((self.bullish_metrics, self.bearish_metrics, self.neutral_metrics, self.unavailable_metrics)):
+                raise ValueError("UNAVAILABLE result must not carry analytical metrics")
+            if self.valid_metric_count != 0 or self.unavailable_metric_count != 0 or self.support_strikes or self.resistance_strikes or self.max_pain_strike is not None:
+                raise ValueError("UNAVAILABLE result must not carry derived values")
+            symbol = _require_non_empty_string(self.underlying_symbol, "underlying_symbol").upper()
+            exchange = _require_non_empty_string(self.exchange, "exchange").upper()
+            if (symbol, exchange) not in _CANONICAL_MARKETS or self.aggregate_bias != "UNAVAILABLE" or self.aggregate_strength != 0.0:
+                raise ValueError("invalid UNAVAILABLE option intelligence")
+            blockers = _require_string_tuple(self.blockers, "blockers")
+            if not blockers:
+                raise ValueError("UNAVAILABLE result requires blockers")
+            object.__setattr__(self, "underlying_symbol", symbol)
+            object.__setattr__(self, "exchange", exchange)
+            object.__setattr__(self, "blockers", blockers)
+            object.__setattr__(self, "warnings", _require_string_tuple(self.warnings, "warnings"))
+            object.__setattr__(self, "reasons", _require_string_tuple(self.reasons, "reasons"))
+            object.__setattr__(self, "source_status", _require_non_empty_string(self.source_status, "source_status").upper())
+            return
 
         snapshot_id = _require_non_empty_string(
             self.option_chain_snapshot_id,
@@ -539,6 +568,8 @@ class OptionChainIntelligenceResultV1:
 
         object.__setattr__(self, "blockers", blockers)
         object.__setattr__(self, "warnings", warnings)
+        object.__setattr__(self, "reasons", _require_string_tuple(self.reasons, "reasons"))
+        object.__setattr__(self, "source_status", _require_non_empty_string(self.source_status, "source_status").upper())
 
         if status == "READY":
             if blockers:
@@ -670,7 +701,7 @@ class OptionChainIntelligenceResultV1:
             ),
             "underlying_symbol": self.underlying_symbol,
             "exchange": self.exchange,
-            "expiry": self.expiry.isoformat(),
+            "expiry": self.expiry.isoformat() if self.expiry is not None else None,
             "metrics": [
                 metric.to_dict()
                 for metric in self.metrics
@@ -695,6 +726,8 @@ class OptionChainIntelligenceResultV1:
             "max_pain_strike": self.max_pain_strike,
             "blockers": list(self.blockers),
             "warnings": list(self.warnings),
+            "reasons": list(self.reasons),
+            "source_status": self.source_status,
             "execution_mode": self.execution_mode,
             "live_execution_eligible": (
                 self.live_execution_eligible

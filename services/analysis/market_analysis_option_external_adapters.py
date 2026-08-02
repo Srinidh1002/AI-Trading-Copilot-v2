@@ -128,6 +128,8 @@ class OptionChainEvidenceAdapterInputV1:
     max_pain_strike: float | None = None
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
+    reasons: tuple[str, ...] = ()
+    source_status: str = "AVAILABLE"
 
     def __post_init__(self) -> None:
         symbol, exchange = _identity(self.underlying_symbol, self.exchange)
@@ -145,10 +147,11 @@ class OptionChainEvidenceAdapterInputV1:
         for metric in self.metrics:
             if type(metric) is not OptionChainMetricV1:
                 raise TypeError("metrics")
-        for name in ("bullish_metrics", "bearish_metrics", "neutral_metrics", "unavailable_metrics", "blockers", "warnings"):
+        for name in ("bullish_metrics", "bearish_metrics", "neutral_metrics", "unavailable_metrics", "blockers", "warnings", "reasons"):
             object.__setattr__(self, name, _messages(getattr(self, name), name))
         object.__setattr__(self, "intelligence_status", _text(self.intelligence_status, "intelligence_status", upper=True))
         object.__setattr__(self, "aggregate_bias", _text(self.aggregate_bias, "aggregate_bias", upper=True))
+        object.__setattr__(self, "source_status", _text(self.source_status, "source_status", upper=True))
         object.__setattr__(self, "aggregate_strength", _finite(self.aggregate_strength, "aggregate_strength", 0.0, 1.0))
         for name in ("valid_metric_count", "unavailable_metric_count"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 0:
@@ -161,15 +164,30 @@ def adapt_option_chain_intelligence(value: OptionChainEvidenceAdapterInputV1) ->
     if value.intelligence_status in _READY and not value.metrics:
         raise ValueError("READY option-chain evidence requires metrics")
     return OptionChainIntelligenceResultV1(
-        value.option_chain_intelligence_result_id, value.created_at,
-        value.option_chain_snapshot_id, value.option_chain_quality_result_id,
-        value.underlying_symbol, value.exchange, value.expiry, value.metrics,
-        value.intelligence_status, value.aggregate_bias, value.aggregate_strength,
-        value.bullish_metrics, value.bearish_metrics, value.neutral_metrics,
-        value.unavailable_metrics, value.valid_metric_count,
-        value.unavailable_metric_count, value.support_strikes,
-        value.resistance_strikes, value.max_pain_strike,
-        blockers=value.blockers, warnings=value.warnings,
+        option_chain_intelligence_result_id=value.option_chain_intelligence_result_id,
+        created_at=value.created_at,
+        option_chain_snapshot_id=value.option_chain_snapshot_id,
+        option_chain_quality_result_id=value.option_chain_quality_result_id,
+        underlying_symbol=value.underlying_symbol,
+        exchange=value.exchange,
+        expiry=value.expiry,
+        metrics=value.metrics,
+        intelligence_status=value.intelligence_status,
+        aggregate_bias=value.aggregate_bias,
+        aggregate_strength=value.aggregate_strength,
+        bullish_metrics=value.bullish_metrics,
+        bearish_metrics=value.bearish_metrics,
+        neutral_metrics=value.neutral_metrics,
+        unavailable_metrics=value.unavailable_metrics,
+        valid_metric_count=value.valid_metric_count,
+        unavailable_metric_count=value.unavailable_metric_count,
+        support_strikes=value.support_strikes,
+        resistance_strikes=value.resistance_strikes,
+        max_pain_strike=value.max_pain_strike,
+        blockers=value.blockers,
+        warnings=value.warnings,
+        reasons=value.reasons,
+        source_status=value.source_status,
     )
 
 

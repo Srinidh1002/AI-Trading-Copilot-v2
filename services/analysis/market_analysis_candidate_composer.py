@@ -33,6 +33,12 @@ from services.contracts.option_contract_ranking_result_v1 import (
 from services.contracts.technical_intelligence_result_v1 import (
     TechnicalIntelligenceResultV1,
 )
+from services.analysis.canonical_evidence_usability import (
+    is_usable_option_intelligence_status,
+    is_usable_option_ranking_status,
+    is_usable_regime_status,
+    is_usable_technical_status,
+)
 
 _IDENTITIES = {
     ("NIFTY", "NSE", "NFO"),
@@ -162,7 +168,7 @@ def _ready(name: str, value: object) -> bool:
             and not value.errors
         )
     if name == "technical":
-        return value.status == "READY" and not value.blockers
+        return is_usable_technical_status(value.status) and not value.blockers
     if name == "multi_timeframe":
         return (
             bool(value.timeframe_evidence)
@@ -176,11 +182,11 @@ def _ready(name: str, value: object) -> bool:
         )
     if name == "regime":
         return (
-            value.context_status == "READY"
+            is_usable_regime_status(value.context_status)
             and value.primary_regime
             not in {"UNAVAILABLE", "CONFLICTING", "BLOCKED"}
             and value.entry_suitability == "SUITABLE"
-            and value.entry_restriction_state == "OPEN"
+            and value.entry_restriction_state in {"OPEN", "WARNING"}
             and value.analysis_allowed
             and value.new_entries_allowed
             and not value.blockers
@@ -188,13 +194,13 @@ def _ready(name: str, value: object) -> bool:
         )
     if name == "option_chain":
         return (
-            value.intelligence_status == "READY"
+            is_usable_option_intelligence_status(value.intelligence_status)
             and bool(value.metrics)
             and not value.blockers
         )
     if name == "option_contract_eligibility":
         return (
-            value.ranking_status == "RANKED"
+            is_usable_option_ranking_status(value.ranking_status)
             and value.selected_candidate is not None
             and not value.blockers
         )
@@ -388,7 +394,13 @@ def compose_market_analysis_candidate(
     )
 
     blockers = policy.blockers
-    warnings = policy.warnings
+    evidence_warnings = tuple(
+        message
+        for name in (*_REQUIRED, *_OPTIONAL)
+        if getattr(composition, name) is not None
+        for message in getattr(getattr(composition, name), "warnings", ())
+    )
+    warnings = tuple(dict.fromkeys(policy.warnings + evidence_warnings))
     contradictions = policy.contradictions
     direction = policy.direction
     eligibility = policy.eligibility

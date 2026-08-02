@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from inspect import signature
+from threading import RLock
 from typing import Any
 
 from services.contracts.market_analysis_candidate_v1 import (
@@ -11,6 +13,10 @@ from services.contracts.market_analysis_candidate_v1 import (
 from services.contracts.paper_orchestration_cycle_input_v1 import (
     PaperOrchestrationCycleInputV1,
 )
+from services.contracts.certified_live_captured_evidence_v1 import (
+    CertifiedLiveCapturedEvidenceV1,
+)
+from services.market.live_multi_timeframe_data import normalize_angel_candles
 from services.paper_orchestration.certified_live_read_authorities import (
     CertifiedLiveAnalysisResultV1,
     CertifiedLiveDataResultV1,
@@ -29,6 +35,7 @@ CandidateReader = Callable[
     ],
     MarketAnalysisCandidateV1,
 ]
+CaptureReader = Callable[[PaperOrchestrationCycleInputV1], CertifiedLiveCapturedEvidenceV1]
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,6 +217,7 @@ class CertifiedLiveProviderReaders:
         option_decision_pipeline: object,
         available_capital: float,
         candidate_reader: CandidateReader | None = None,
+        capture_reader: CaptureReader | None = None,
         risk_percent: float = 1.0,
         maximum_capital_usage_percent: float = 100.0,
     ) -> None:
@@ -242,10 +250,15 @@ class CertifiedLiveProviderReaders:
 
         if candidate_reader is not None and not callable(candidate_reader):
             raise TypeError("candidate_reader must be callable or None")
+        if capture_reader is not None and not callable(capture_reader):
+            raise TypeError("capture_reader must be callable or None")
 
         self.quote_reader = quote_reader
         self.analysis_pipeline = analysis_pipeline
         self.candidate_reader = candidate_reader
+        self.capture_reader = capture_reader
+        self._capture_lock = RLock()
+        self._captures: dict[str, CertifiedLiveCapturedEvidenceV1] = {}
         self.option_decision_pipeline = (
             option_decision_pipeline
         )
@@ -262,6 +275,32 @@ class CertifiedLiveProviderReaders:
             maximum_capital_usage_percent,
             "maximum_capital_usage_percent",
         )
+
+    def _capture_for(self, cycle_input: PaperOrchestrationCycleInputV1) -> CertifiedLiveCapturedEvidenceV1 | None:
+        if self.capture_reader is None:
+            return None
+        key = cycle_input.observation_id
+        with self._capture_lock:
+            existing = self._captures.get(key)
+            if existing is not None:
+                return existing
+            captured = self.capture_reader(cycle_input)
+            if type(captured) is not CertifiedLiveCapturedEvidenceV1:
+                raise TypeError("capture_reader must return exact CertifiedLiveCapturedEvidenceV1")
+            spec = market_spec_for(cycle_input.underlying_symbol, cycle_input.exchange)
+            identity = (captured.underlying_symbol, captured.spot_exchange, captured.spot_token, captured.option_exchange)
+            if identity != (spec.underlying_symbol, spec.exchange, spec.symboltoken, spec.option_exchange):
+                raise ValueError("captured evidence identity does not match certified cycle")
+            self._captures[key] = captured
+            return captured
+
+    @staticmethod
+    def _candidate_with_capture(reader, cycle_input, data_result, analysis, captured):
+        try:
+            signature(reader).bind(cycle_input, data_result, analysis, captured)
+        except TypeError:
+            return reader(cycle_input, data_result, analysis)
+        return reader(cycle_input, data_result, analysis, captured)
 
     def read_data(
         self,
@@ -281,9 +320,11 @@ class CertifiedLiveProviderReaders:
             cycle_input.exchange,
         )
 
-        spot_price = cycle_input.metadata.get(
+        captured = self._capture_for(cycle_input)
+
+        spot_price = (captured.spot_payload.get("spot_price", captured.spot_payload.get("ltp")) if captured is not None else cycle_input.metadata.get(
             "spot_price"
-        )
+        ))
 
         if spot_price is None:
             raise ValueError(
@@ -373,22 +414,18 @@ class CertifiedLiveProviderReaders:
                 "the certified cycle observation"
             )
 
-        result = _mapping(
-            self.analysis_pipeline.analyse(
-                exchange=data_result.exchange,
-                symboltoken=data_result.symboltoken,
-                end_time=data_result.market_timestamp,
-            ),
-            "LiveAnalysisPipeline.analyse",
-        )
+        captured = self._capture_for(cycle_input)
+        captured_timeframes = None
+        if captured is not None:
+            captured_timeframes = {"dataframes": {key: normalize_angel_candles(value) for key, value in captured.candle_rows_by_timeframe.items()}, "rows_by_timeframe": captured.candle_rows_by_timeframe, "cache_metadata": captured.cache_metadata}
+        kwargs = {"exchange": data_result.exchange, "symboltoken": data_result.symboltoken, "end_time": data_result.market_timestamp}
+        if captured_timeframes is not None:
+            kwargs["captured_timeframes"] = captured_timeframes
+        result = _mapping(self.analysis_pipeline.analyse(**kwargs), "LiveAnalysisPipeline.analyse")
 
         candidate = None
         if self.candidate_reader is not None:
-            candidate = self.candidate_reader(
-                cycle_input,
-                data_result,
-                result,
-            )
+            candidate = self._candidate_with_capture(self.candidate_reader, cycle_input, data_result, result, captured)
             if type(candidate) is not MarketAnalysisCandidateV1:
                 raise TypeError(
                     "candidate_reader must return exact "
@@ -448,6 +485,7 @@ class CertifiedLiveProviderReaders:
             cycle_input.underlying_symbol,
             cycle_input.exchange,
         )
+        captured = self._capture_for(cycle_input)
 
         spot_price = analysis_result.analysis.get(
             "spot_price"
@@ -469,8 +507,7 @@ class CertifiedLiveProviderReaders:
                 "expose spot_price or ltp"
             )
 
-        raw = _mapping(
-            self.option_decision_pipeline.analyse(
+        kwargs = dict(
                 exchange=spec.exchange,
                 symboltoken=spec.symboltoken,
                 underlying=spec.underlying_symbol,
@@ -489,9 +526,10 @@ class CertifiedLiveProviderReaders:
                 session_now=(
                     cycle_input.market_timestamp
                 ),
-            ),
-            "LiveOptionDecisionPipeline.analyse",
-        )
+            )
+        if captured is not None:
+            kwargs["captured_option_input"] = {"underlying": captured.underlying_symbol, "spot_price": _positive(spot_price, "spot_price"), "contracts": captured.option_contracts}
+        raw = _mapping(self.option_decision_pipeline.analyse(**kwargs), "LiveOptionDecisionPipeline.analyse")
 
         decision = str(
             raw.get("decision", "")

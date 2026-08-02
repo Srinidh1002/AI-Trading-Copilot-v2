@@ -11,6 +11,12 @@ from zoneinfo import ZoneInfo
 import config
 
 from services.broker.shared_client import get_market_client
+from services.contracts.certified_live_captured_evidence_v1 import (
+    CertifiedLiveCapturedEvidenceV1,
+)
+from services.contracts.paper_orchestration_cycle_input_v1 import (
+    PaperOrchestrationCycleInputV1,
+)
 from services.contracts.paper_orchestration_policy_v1 import (
     PaperOrchestrationPolicyV1,
 )
@@ -203,6 +209,61 @@ def _provider_ltp_reader(
         "timestamp_source": "LOCAL_RECEIPT_TIME",
         "provider_response": dict(response),
     }
+
+
+def capture_certified_live_evidence(
+    *,
+    cycle_input: PaperOrchestrationCycleInputV1,
+    data_service: LiveMultiTimeframeData,
+    option_decision_pipeline: LiveOptionDecisionPipeline,
+) -> CertifiedLiveCapturedEvidenceV1:
+    """Capture one certified market's read-only inputs for later reuse."""
+    if type(cycle_input) is not PaperOrchestrationCycleInputV1:
+        raise TypeError("cycle_input must be exact PaperOrchestrationCycleInputV1")
+    spec = market_spec_for(cycle_input.underlying_symbol, cycle_input.exchange)
+    if not callable(getattr(data_service, "fetch_all_with_capture", None)):
+        raise TypeError("data_service must expose fetch_all_with_capture()")
+    if not callable(getattr(option_decision_pipeline, "capture_option_inputs", None)):
+        raise TypeError("option_decision_pipeline must expose capture_option_inputs()")
+    spot_price = _extract_spot_price(cycle_input.metadata)
+    market_timestamp = _aware_datetime(cycle_input.market_timestamp, "market_timestamp")
+    evaluated_at = _aware_datetime(cycle_input.received_at, "received_at")
+    payload = cycle_input.metadata.get("captured_spot_payload")
+    if not isinstance(payload, Mapping):
+        payload = {"spot_price": spot_price, "timestamp_source": cycle_input.metadata.get("timestamp_source")}
+    captured = data_service.fetch_all_with_capture(spec.exchange, spec.symboltoken, end_time=market_timestamp)
+    if not isinstance(captured, Mapping):
+        raise TypeError("fetch_all_with_capture must return a mapping")
+    rows = captured.get("rows_by_timeframe", {})
+    cache_metadata = captured.get("cache_metadata", {})
+    if not isinstance(rows, Mapping) or not isinstance(cache_metadata, Mapping):
+        raise TypeError("invalid candle capture result")
+    candle_blockers = tuple(
+        f"CANDLE_CAPTURE_{timeframe.upper()}_{str(info.get('error')).upper()}"
+        for timeframe, info in cache_metadata.items()
+        if isinstance(info, Mapping) and not info.get("captured", False)
+    )
+    option_capture = option_decision_pipeline.capture_option_inputs(
+        underlying=spec.underlying_symbol,
+        spot_price=spot_price,
+        option_exchange=spec.option_exchange,
+        provider_timestamp=market_timestamp,
+        evaluated_at=evaluated_at,
+    )
+    return CertifiedLiveCapturedEvidenceV1(
+        underlying_symbol=spec.underlying_symbol,
+        spot_exchange=spec.exchange,
+        spot_token=spec.symboltoken,
+        option_exchange=spec.option_exchange,
+        spot_payload=payload,
+        candle_rows_by_timeframe={key: tuple(value) for key, value in rows.items()},
+        option_contracts=option_capture.contracts,
+        provider_timestamp=market_timestamp,
+        evaluated_at=evaluated_at,
+        provider_blockers=candle_blockers + option_capture.blockers,
+        provider_warnings=option_capture.warnings,
+        cache_metadata={"candles": cache_metadata, "options": option_capture.metadata},
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -456,6 +517,7 @@ class CertifiedRuntimeProviderBundleV1:
     quote_reader: QuoteReader
     analysis_pipeline: object
     option_decision_pipeline: object
+    candidate_reader: Callable[..., object] | None = None
     clock: Clock = _aware_now
     schema_version: str = (
         "certified_runtime_provider_bundle.v1"
@@ -489,6 +551,8 @@ class CertifiedRuntimeProviderBundleV1:
             raise TypeError(
                 "option_decision_pipeline must expose analyse()"
             )
+        if self.candidate_reader is not None and not callable(self.candidate_reader):
+            raise TypeError("candidate_reader")
 
         if self.schema_version != (
             "certified_runtime_provider_bundle.v1"
@@ -641,6 +705,10 @@ class CertifiedCycleSource:
                     "timestamp_source"
                 ),
                 "spot_price": spot_price,
+                "captured_spot_payload": {
+                    "spot_price": spot_price,
+                    "timestamp_source": raw_mapping.get("timestamp_source"),
+                },
                 "execution_mode": "PAPER",
             },
         )
@@ -805,6 +873,16 @@ def build_certified_launcher(
 
     clock = provider_bundle.clock
 
+    data_service = getattr(provider_bundle.analysis_pipeline, "data_service", None)
+    capture_reader = None
+    if callable(getattr(data_service, "fetch_all_with_capture", None)) and callable(getattr(provider_bundle.option_decision_pipeline, "capture_option_inputs", None)):
+        def capture_reader(cycle_input):
+            return capture_certified_live_evidence(
+                cycle_input=cycle_input,
+                data_service=data_service,
+                option_decision_pipeline=provider_bundle.option_decision_pipeline,
+            )
+
     readers = CertifiedLiveProviderReaders(
         quote_reader=provider_bundle.quote_reader,
         analysis_pipeline=(
@@ -814,6 +892,8 @@ def build_certified_launcher(
             provider_bundle.option_decision_pipeline
         ),
         available_capital=value.available_capital,
+        candidate_reader=provider_bundle.candidate_reader,
+        capture_reader=capture_reader,
     )
 
     data_authority = CertifiedLiveDataAuthority(

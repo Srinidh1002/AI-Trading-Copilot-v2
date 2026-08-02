@@ -148,6 +148,8 @@ def test_expected_fields() -> None:
         "warnings",
         "execution_mode",
         "live_execution_eligible",
+        "reasons",
+        "source_status",
     )
 
 
@@ -1196,6 +1198,8 @@ def test_deterministic_serialization() -> None:
         "max_pain_strike": 22000.0,
         "blockers": [],
         "warnings": [],
+        "reasons": [],
+        "source_status": "AVAILABLE",
         "execution_mode": "PAPER",
         "live_execution_eligible": False,
     }
@@ -1232,3 +1236,19 @@ def test_result_is_hashable() -> None:
     }
 
     assert len(results) == 1
+
+
+def test_unavailable_truthfully_omits_snapshot_quality_expiry_and_metrics():
+    result = OptionChainIntelligenceResultV1(
+        "unavailable", CREATED_AT, None, None, "NIFTY", "NSE", None, (),
+        "UNAVAILABLE", "UNAVAILABLE", 0.0, (), (), (), (), 0, 0,
+        blockers=("OPTION_CHAIN_UNAVAILABLE",), reasons=("No option snapshot was captured.",), source_status="CAPTURE_UNAVAILABLE",
+    )
+    assert result.expiry is None
+    assert result.metrics == ()
+    assert result.to_dict()["option_chain_snapshot_id"] is None
+
+
+def test_unavailable_rejects_analytical_values():
+    with pytest.raises(ValueError):
+        OptionChainIntelligenceResultV1("unavailable", CREATED_AT, None, None, "SENSEX", "BSE", None, (), "UNAVAILABLE", "UNAVAILABLE", 0.0, (), (), (), (), 1, 0, blockers=("OPTION_CHAIN_UNAVAILABLE",))
