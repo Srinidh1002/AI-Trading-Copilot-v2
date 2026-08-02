@@ -5,6 +5,7 @@ import pytest
 
 from services.diagnostics.india_vix_provider_contract_capture import (
     IndiaVixProviderContractEvidenceV1,
+    _parse_provider_timestamp,
     collect_master_evidence,
     capture_provider_contract,
 )
@@ -19,9 +20,13 @@ def record(**changes):
 
 
 class Client:
-    def __init__(self, response): self.response = response; self.calls = 0
+    def __init__(self, response): self.response = response; self.calls = 0; self.historical_calls = 0
     def get_market_data(self, mode, exchange_tokens):
         self.calls += 1; assert mode == "FULL"; assert exchange_tokens == {"NSE": ["99926017"]}; return self.response
+    def get_historical_data(self, **kwargs):
+        self.historical_calls += 1
+        assert kwargs["exchange"] == "NSE" and kwargs["interval"] == "ONE_DAY"
+        return {"status": True, "data": [["safe-daily-row"]], "authorization": "must-not-serialize"}
 
 
 def quote(**changes):
@@ -33,6 +38,12 @@ def quote(**changes):
 def capture(response=None, *, previous_close_semantics_proven=True):
     values = iter((NOW, NOW, NOW + timedelta(seconds=1)))
     return capture_provider_contract(master_fetcher=lambda: [record()], market_client=Client(response or quote()), clock=lambda: next(values), previous_close_semantics_proven=previous_close_semantics_proven)
+
+
+def capture_at(response, now, *, inspect_historical=False):
+    client = Client(response)
+    evidence = capture_provider_contract(master_fetcher=lambda: [record()], market_client=client, clock=lambda: now, previous_close_semantics_proven=True, inspect_historical=inspect_historical)
+    return evidence, client
 
 
 def test_exactly_one_valid_master_confirms_identity():
@@ -91,6 +102,35 @@ def test_timestamp_and_previous_close_rules_are_fail_closed():
     assert "INDIA_VIX_PROVIDER_TIMESTAMP_NOT_FRESH" in stale.blockers
     no_previous = capture(quote(previousClose=None), previous_close_semantics_proven=True)
     assert "INDIA_VIX_PREVIOUS_CLOSE_SEMANTICS_UNPROVEN" in no_previous.blockers
+
+
+def test_exact_angel_timestamp_uses_explicit_india_timezone_and_is_fresh():
+    parsed = _parse_provider_timestamp("31-Jul-2026 16:08:13")
+    assert parsed.tzinfo.key == "Asia/Kolkata" and parsed.utcoffset() == timedelta(hours=5, minutes=30)
+    evidence, _ = capture_at(quote(exchFeedTime="31-Jul-2026 16:08:13"), datetime(2026, 7, 31, 10, 40, tzinfo=timezone.utc))
+    assert evidence.quote.provider_timestamp_is_provider_issued
+    assert evidence.quote.timestamp_age_seconds == 107
+    assert "INDIA_VIX_PROVIDER_TIMESTAMP_UNPROVEN" not in evidence.blockers
+    assert "INDIA_VIX_PROVIDER_TIMESTAMP_NOT_FRESH" not in evidence.blockers
+
+
+def test_observed_angel_timestamp_is_stale_not_unproven_and_iso_still_works():
+    evidence, _ = capture_at(quote(exchFeedTime="31-Jul-2026 16:08:13"), NOW)
+    assert "INDIA_VIX_PROVIDER_TIMESTAMP_NOT_FRESH" in evidence.blockers
+    assert "INDIA_VIX_PROVIDER_TIMESTAMP_UNPROVEN" not in evidence.blockers
+    assert _parse_provider_timestamp("2026-08-02T09:59:30+00:00").tzinfo == timezone.utc
+
+
+def test_missing_timestamp_is_not_substituted_and_historical_schema_is_bounded():
+    evidence, client = capture_at(quote(exchFeedTime=None), NOW)
+    assert evidence.quote.parsed_provider_timestamp is None
+    assert evidence.quote.received_at is not None
+    assert "INDIA_VIX_PROVIDER_TIMESTAMP_UNPROVEN" in evidence.blockers
+    no_previous = quote(); del no_previous["data"]["fetched"][0]["previousClose"]
+    historical, historical_client = capture_at(no_previous, NOW, inspect_historical=True)
+    assert historical_client.historical_calls == 1
+    assert historical.quote.historical_evidence["status"] == "SCHEMA_ONLY"
+    assert "authorization" not in historical.to_json()
 
 
 def test_secrets_are_rejected_and_repr_is_safe():

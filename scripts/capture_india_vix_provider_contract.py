@@ -4,6 +4,13 @@ import argparse
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
+from pathlib import Path
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
 from services.angel_instrument_master import AngelInstrumentMaster
 from services.broker.shared_client import get_market_client
 from services.diagnostics.india_vix_provider_contract_capture import capture_provider_contract, load_cached_master

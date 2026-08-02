@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Mapping, Sequence
+from zoneinfo import ZoneInfo
 
 
 STATUSES = frozenset({"CONFIRMED", "AMBIGUOUS", "INCOMPLETE", "PROVIDER_UNAVAILABLE", "REJECTED"})
@@ -16,6 +17,8 @@ MASTER_URL_IDENTIFIER = "https://margincalculator.angelone.in/OpenAPI_File/files
 SAFE_MASTER_FIELDS = ("token", "symbol", "name", "exch_seg", "instrumenttype", "expiry", "strike", "tick_size", "lotsize")
 SAFE_QUOTE_FIELDS = ("ltp", "previousClose", "open", "opn", "high", "low", "close", "tradingSymbol", "symbolToken", "exchange", "exchFeedTime", "exchangeTimestamp", "timestamp")
 _SECRET_TERMS = ("api_key", "apikey", "client_secret", "password", "pin", "totp", "jwt", "refresh", "authorization", "cookie")
+_ANGEL_TIMESTAMP_FORMAT = "%d-%b-%Y %H:%M:%S"
+_IST = ZoneInfo("Asia/Kolkata")
 
 
 def _aware(value: object, name: str) -> datetime:
@@ -43,6 +46,8 @@ def _safe_metadata(value: Mapping[str, Any]) -> Mapping[str, Any]:
             raise ValueError("unsafe metadata key")
         if isinstance(item, Mapping):
             result[name] = _safe_metadata(item)
+        elif isinstance(item, (tuple, list)):
+            result[name] = tuple(_safe_metadata({str(index): nested})[str(index)] for index, nested in enumerate(item))
         elif item is None or isinstance(item, (str, bool, int, float)):
             result[name] = item
         else:
@@ -177,8 +182,11 @@ def _parse_provider_timestamp(value: object) -> datetime | None:
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return datetime.fromtimestamp(float(value) / (1000 if value > 100000000000 else 1), tz=timezone.utc)
     if isinstance(value, str):
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return _aware(parsed, "provider timestamp")
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return _aware(parsed, "provider timestamp")
+        except ValueError:
+            return datetime.strptime(value, _ANGEL_TIMESTAMP_FORMAT).replace(tzinfo=_IST)
     return None
 
 
