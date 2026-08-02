@@ -1,0 +1,111 @@
+# AI Trading Copilot — Frozen Small-Capital LIVE Roadmap
+
+## Scope freeze
+
+This roadmap contains exactly eight prerequisite tasks. No ninth prerequisite
+task may be introduced. New work is either implementation within one of these
+eight tasks, a defect fix within the active task, or an optional post-launch
+improvement. A requirement discovered later belongs to the closest existing
+task rather than a new roadmap phase. Profit is never guaranteed.
+
+LIVE means automated real-money order placement and management in the connected
+brokerage account after all safety gates pass. LIVE remains disabled by default.
+The launch scope is NIFTY/NSE/NFO and SENSEX/BSE/BFO only.
+
+## Final product definition
+
+The finished copilot continuously analyses NIFTY and SENSEX: price and market
+structure; candlestick/chart patterns; trend/momentum; volume; volatility;
+multi-timeframe alignment; option chain; OI/OI change/PCR; support/resistance/
+max pain; Greeks/premium behaviour; market regime; broader/external context;
+and data quality, freshness, and contradictions. It compares both markets and
+selects the strongest eligible risk-adjusted opportunity while explaining the
+winner and loser.
+
+It reads user capital and calculates an affordable contract, lots/quantity,
+capital required, maximum permitted loss, entry, stop-loss, T1/T2/T3. It
+returns CALL, PUT, WAIT, NO_TRADE, HOLD, or EXIT; monitors open trades to
+closure; announces targets; moves/protects stops only when policy permits;
+warns about confidence deterioration; recommends unsafe early exit; maintains
+PAPER and LIVE journals; and produces daily, weekly, and monthly reports with
+identical reporting semantics. It never claims guaranteed profit.
+
+## The eight final tasks
+
+### 1. Authoritative live evidence
+
+Purpose: establish truthful, timestamped, typed NIFTY/SENSEX and option-market
+evidence. Foundations: `certified_live_provider_readers`, Angel normalization,
+P5 contracts, and the diagnostic-only India VIX capture. Remaining work:
+complete source certification where unproven, including India VIX. Exit gate:
+every required active input is provider-proven or explicitly unavailable.
+Depends on: none. Excludes: decision, planning, orders, and LIVE execution.
+
+### 2. Fourteen-pillar decision certification
+
+Purpose: certify complete per-market evidence and deterministic two-market
+selection. Foundations: typed technical, multi-timeframe, option-chain,
+regime, broader-market, candidate, parent-cycle, and Task 8 canary contracts.
+Remaining work: close unproven pillars and certify contradiction/freshness and
+winner/loser rationale. Exit gate: exactly-once NIFTY/SENSEX parent cycles with
+all required pillars or explicit unavailable evidence. Depends on: Task 1.
+Excludes: capital allocation and lifecycle execution.
+
+### 3. Capital, option selection and risk planning
+
+Purpose: plan only the selected eligible market using actual capital and option
+constraints. Foundations: P6 input/result contracts, option contract ranking/
+selection, risk policy/pipeline, entry/stop/three-target evaluators, and
+selected-market planning bridge. Remaining work: certified two-market selected
+handoff and evidence completeness in the active composition. Exit gate: a
+selected-market-only PAPER plan proves affordability, lot/quantity, costs,
+maximum loss, entry, stop, T1/T2/T3, or deterministic NO_TRADE. Depends on: 2.
+Excludes: fills, monitoring, broker submission.
+
+### 4. PAPER trade lifecycle
+
+Purpose: persist and monitor PAPER positions from entry through reconciliation.
+Foundations: P7/P8 contracts, entry/position evaluators, target/stop/terminal
+appliers, JSON repositories, recovery services, portfolio persistence, and
+monitoring executors. Remaining work: active-position discovery and recovery
+wiring in the certified runtime. Exit gate: idempotent PAPER entry, monitoring,
+HOLD/risk/target/exit, EOD closure, restart recovery, and reconciliation.
+Depends on: 3. Excludes: real broker order methods.
+
+### 5. Prediction verification, journals and reports
+
+Purpose: preserve predictions and later outcomes, then reconcile reports.
+Foundations: orchestration journal, audit events, paper-trade persistence,
+session manifests/analytics, runtime summaries, research reports, and dashboard
+publication. Remaining work: immutable recommendation/outcome linkage,
+standardized outcome mapping, PAPER/LIVE journal distinction, and reconciled
+daily/weekly/monthly reports. Exit gate: persisted prediction-to-outcome records
+and restart-safe reconciled reports. Depends on: 3 and 4. Excludes: count
+inflation from replay or dashboard refresh.
+
+### 6. Automated 100 NIFTY + 100 SENSEX real-time PAPER certification
+
+Purpose: one continuous supervised real-market PAPER certification session.
+Foundations: Task 8 canary, journals, lifecycle, publication, and reports.
+Every defect, fix, retest, prediction-marking issue, monitoring issue, journal
+issue, dashboard issue, and report issue discovered during this session remains
+inside Task 6 until its exit gate passes. Exit gate: the rules in
+`TASK6_REALTIME_PAPER_CERTIFICATION_RULES.md`. Depends on: 1–5. Excludes:
+replay/historical counts and LIVE orders.
+
+### 7. LIVE execution and safety layer
+
+Purpose: create a separately reviewed real-order boundary after PAPER proof.
+Foundations: repository PAPER guards, safety validators, broker abstraction,
+emergency halt, and operator controls. Remaining work: explicit LIVE authority,
+order lifecycle/reconciliation, kill-switch/adverse-path certification, and
+operator confirmation. Exit gate: reviewed, fail-closed LIVE safety evidence.
+Depends on: 6. Excludes: enabling LIVE by default or dashboard authority.
+
+### 8. Supervised small-capital LIVE launch
+
+Purpose: operator-supervised, small-capital rollout after Task 7 acceptance.
+Foundations: all prior gates. Remaining work: launch runbook, monitored pilot,
+rollback/reconciliation, and post-launch review. Exit gate: accepted supervised
+pilot with no unresolved critical safety incident. Depends on: 7. Excludes:
+profit promises and autonomous scaling.

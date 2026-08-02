@@ -1,5 +1,7 @@
 # Final Trading Copilot Roadmap
 
+> Historical or superseded planning document. The canonical launch roadmap is docs/FINAL_SMALL_CAPITAL_LIVE_ROADMAP.md.
+
 Frozen order for NIFTY/SENSEX Indian index F&O. Tasks 1-9 remain PAPER-only:
 `execution_mode="PAPER"`, `live_execution_eligible=False`, and
 `broker_order_submission=False`. Task 10 needs separate approval and cannot
