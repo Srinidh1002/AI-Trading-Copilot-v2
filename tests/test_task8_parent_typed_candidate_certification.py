@@ -13,6 +13,8 @@ from services.market_session.validator import validate_session_timestamp
 from services.paper_orchestration.certified_cycle_input_factory import build_certified_cycle_input
 from services.paper_orchestration.certified_live_provider_readers import CertifiedLiveProviderReaders, market_spec_for
 from services.paper_orchestration.certified_two_market_parent_runtime import run_certified_two_market_parent_runtime
+from services.analysis.shared_broader_market_context import build_certified_shared_broader_context
+from services.market.angel_live_observation_normalizer import normalize_angel_live_observation
 
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -83,7 +85,11 @@ def test_real_parent_completes_both_typed_children_and_selects_none_when_blocked
     nifty_cycle, sensex_cycle = cycle("NIFTY", "NSE", nifty), cycle("SENSEX", "BSE", sensex)
     captures = {nifty_cycle.observation_id: nifty, sensex_cycle.observation_id: sensex}
     analysis = Analysis()
-    readers = CertifiedLiveProviderReaders(quote_reader=lambda *_: (_ for _ in ()).throw(AssertionError("provider call")), analysis_pipeline=analysis, option_decision_pipeline=Options(), available_capital=10000.0, candidate_reader=adapt_task8_live_candidate, capture_reader=lambda item: captures[item.observation_id])
+    capture_calls = []
+    def capture_reader(item):
+        capture_calls.append(item.observation_id)
+        return captures[item.observation_id]
+    readers = CertifiedLiveProviderReaders(quote_reader=lambda *_: (_ for _ in ()).throw(AssertionError("provider call")), analysis_pipeline=analysis, option_decision_pipeline=Options(), available_capital=10000.0, candidate_reader=adapt_task8_live_candidate, capture_reader=capture_reader)
     parent = TwoMarketParentCycleInputV1("parent", "decision", "nifty-child", "sensex-child", nifty_cycle.observation_id, sensex_cycle.observation_id, NOW, NOW, TwoMarketDecisionPolicyV1(180.0, 5.0))
     result = run_certified_two_market_parent_runtime(parent, nifty_cycle=nifty_cycle, sensex_cycle=sensex_cycle, readers=readers)
     assert analysis.calls == 2
@@ -92,6 +98,9 @@ def test_real_parent_completes_both_typed_children_and_selects_none_when_blocked
     assert result.selected_market is None
     assert result.selected_candidate_id is None
     assert "NO_ELIGIBLE_MARKET" in result.blockers
+    assert capture_calls == [nifty_cycle.observation_id, sensex_cycle.observation_id]
+    assert readers._shared_contexts[nifty_cycle.observation_id] is readers._shared_contexts[sensex_cycle.observation_id]
+    assert readers._shared_contexts[nifty_cycle.observation_id].nifty_broader_market is not None
 
 
 def test_complete_nifty_options_preserve_existing_warning_gates_without_forced_selection():
@@ -107,3 +116,21 @@ def test_complete_nifty_options_preserve_existing_warning_gates_without_forced_s
     assert eligible.evidence.option_chain.option_chain_snapshot_id is not None
     assert eligible.evidence.option_chain.expiry == date(2026, 8, 6)
     assert eligible.evidence.contract_ranking.ranking_status in {"RANKED", "RANKED_WITH_WARNINGS"}
+
+
+def test_shared_broader_result_reaches_matching_regime_without_forcing_suitability():
+    nifty, sensex = captured("NIFTY", "NSE", 25000.0, complete_options=True), captured("SENSEX", "BSE", 80000.0)
+    def observation(value):
+        spec = market_spec_for(value.underlying_symbol, value.spot_exchange)
+        return normalize_angel_live_observation(
+            spot_response={"data": {"ltp": value.spot_payload["spot_price"], "tradingsymbol": spec.underlying_symbol, "exchange": spec.exchange, "symboltoken": spec.symboltoken}},
+            candle_rows_by_timeframe=value.candle_rows_by_timeframe, market_spec=spec,
+            provider_timestamp=value.provider_timestamp, evaluated_at=value.evaluated_at,
+            blockers=value.provider_blockers, warnings=value.provider_warnings,
+        )
+    shared = build_certified_shared_broader_context(nifty_observation=observation(nifty), sensex_observation=observation(sensex), evaluated_at=NOW)
+    session = validate_session_timestamp(symbol="NIFTY", exchange="NSE", market_timestamp=NOW, evaluated_at=NOW, validation_mode="LENIENT_ANALYSIS", id_factory=lambda: "session:nifty")
+    result = evaluate_captured_certified_market_candidate(captured_evidence=nifty, session_validation=session, policy_source=LiveCandidatePolicySourceV1("BULLISH", "ELIGIBLE", 80.0, 80.0), candidate_id="candidate:shared", observation_id="observation:shared", engines=build_default_live_canonical_evidence_engines(), broader_market=shared.nifty_broader_market)
+    assert result.composition.broader_market is shared.nifty_broader_market
+    assert result.evidence.regime.broader_market_regime_component is not None
+    assert result.evidence.regime.entry_suitability != "SUITABLE"

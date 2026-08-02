@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from inspect import signature
 
 from services.contracts.canonical_market_regime_result_v1 import CanonicalMarketRegimeResultV1
 from services.contracts.market_analysis_candidate_v1 import MarketAnalysisEvidenceV1
@@ -13,6 +14,7 @@ from services.contracts.multi_timeframe_snapshot_v1 import MultiTimeframeSnapsho
 from services.contracts.option_chain_intelligence_result_v1 import OptionChainIntelligenceResultV1
 from services.contracts.option_contract_ranking_result_v1 import OptionContractRankingResultV1
 from services.contracts.technical_intelligence_result_v1 import TechnicalIntelligenceResultV1
+from services.contracts.broader_market_intelligence_result_v1 import BroaderMarketIntelligenceResultV1
 from services.market.angel_live_observation_normalizer import AngelLiveMarketObservationV1
 from services.options.angel_option_chain_normalizer import AngelOptionNormalizationResultV1
 from services.analysis.market_analysis_pillar_aggregation import MarketAnalysisPillarAggregationResultV1
@@ -30,7 +32,7 @@ class LiveCanonicalEvidenceEnginesV1:
     data_quality: Callable[[AngelLiveMarketObservationV1, datetime], MarketDataQualityResultV1]
     multi_timeframe: Callable[[AngelLiveMarketObservationV1, MarketDataQualityResultV1, datetime], MultiTimeframeSnapshotV1]
     technical: Callable[[AngelLiveMarketObservationV1, MultiTimeframeSnapshotV1, datetime], TechnicalIntelligenceResultV1]
-    regime: Callable[[TechnicalIntelligenceResultV1, MarketSessionValidationV1, datetime], CanonicalMarketRegimeResultV1]
+    regime: Callable[[TechnicalIntelligenceResultV1, MarketSessionValidationV1, datetime, BroaderMarketIntelligenceResultV1 | None], CanonicalMarketRegimeResultV1]
     option_chain: Callable[[AngelOptionNormalizationResultV1, datetime], OptionChainIntelligenceResultV1]
     contract_ranking: Callable[[OptionChainIntelligenceResultV1, AngelOptionNormalizationResultV1, datetime], OptionContractRankingResultV1]
     pillars: Callable[[AngelLiveMarketObservationV1, OptionChainIntelligenceResultV1, OptionContractRankingResultV1, datetime], MarketAnalysisPillarAggregationResultV1]
@@ -45,6 +47,7 @@ class LiveCanonicalEvidenceResultV1:
     data_quality: MarketDataQualityResultV1
     multi_timeframe: MultiTimeframeSnapshotV1
     technical: TechnicalIntelligenceResultV1
+    broader_market: BroaderMarketIntelligenceResultV1 | None
     regime: CanonicalMarketRegimeResultV1
     option_chain: OptionChainIntelligenceResultV1
     contract_ranking: OptionContractRankingResultV1
@@ -62,10 +65,11 @@ class LiveCanonicalEvidenceResultV1:
         identity = (self.observation.spot.underlying_symbol, self.observation.spot.exchange)
         if any((getattr(item,"underlying_symbol"),getattr(item,"exchange")) != identity for item in (self.data_quality,self.multi_timeframe,self.technical,self.regime,self.option_chain,self.contract_ranking)): raise ValueError("canonical evidence identity")
         if type(self.pillars) is not MarketAnalysisPillarAggregationResultV1: raise TypeError("pillar aggregation")
+        if self.broader_market is not None and (type(self.broader_market) is not BroaderMarketIntelligenceResultV1 or (self.broader_market.underlying_symbol, self.broader_market.exchange) != identity): raise ValueError("broader market identity")
         for name in ("blockers","warnings","contradictions","reasons","invalidation_conditions"):
             if not isinstance(getattr(self,name),tuple): raise TypeError(name)
 
-def build_live_canonical_evidence(*, observation: AngelLiveMarketObservationV1, options: AngelOptionNormalizationResultV1, session: MarketSessionValidationV1, evaluated_at: datetime, engines: LiveCanonicalEvidenceEnginesV1, blockers: tuple[str,...]=(), warnings: tuple[str,...]=(), contradictions: tuple[str,...]=(), reasons: tuple[str,...]=(), invalidation_conditions: tuple[str,...]=()) -> LiveCanonicalEvidenceResultV1:
+def build_live_canonical_evidence(*, observation: AngelLiveMarketObservationV1, options: AngelOptionNormalizationResultV1, session: MarketSessionValidationV1, evaluated_at: datetime, engines: LiveCanonicalEvidenceEnginesV1, broader_market: BroaderMarketIntelligenceResultV1 | None = None, blockers: tuple[str,...]=(), warnings: tuple[str,...]=(), contradictions: tuple[str,...]=(), reasons: tuple[str,...]=(), invalidation_conditions: tuple[str,...]=()) -> LiveCanonicalEvidenceResultV1:
     """Call each supplied canonical service once in dependency order."""
     if type(observation) is not AngelLiveMarketObservationV1 or type(options) is not AngelOptionNormalizationResultV1 or type(session) is not MarketSessionValidationV1 or type(engines) is not LiveCanonicalEvidenceEnginesV1: raise TypeError("exact typed inputs")
     _aware(evaluated_at)
@@ -74,8 +78,13 @@ def build_live_canonical_evidence(*, observation: AngelLiveMarketObservationV1, 
     quality = engines.data_quality(observation, evaluated_at)
     timeframe = engines.multi_timeframe(observation, quality, evaluated_at)
     technical = engines.technical(observation, timeframe, evaluated_at)
-    regime = engines.regime(technical, session, evaluated_at)
+    try:
+        signature(engines.regime).bind(technical, session, evaluated_at, broader_market)
+    except TypeError:
+        regime = engines.regime(technical, session, evaluated_at)
+    else:
+        regime = engines.regime(technical, session, evaluated_at, broader_market)
     option_chain = engines.option_chain(options, evaluated_at)
     ranking = engines.contract_ranking(option_chain, options, evaluated_at)
     pillars = engines.pillars(observation, option_chain, ranking, evaluated_at)
-    return LiveCanonicalEvidenceResultV1(observation, session, quality, timeframe, technical, regime, option_chain, ranking, pillars, blockers, warnings, contradictions, reasons, invalidation_conditions)
+    return LiveCanonicalEvidenceResultV1(observation, session, quality, timeframe, technical, broader_market, regime, option_chain, ranking, pillars, blockers, warnings, contradictions, reasons, invalidation_conditions)

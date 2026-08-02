@@ -23,6 +23,7 @@ from services.analysis.live_market_candidate_evaluator import (
     LiveCandidatePolicySourceV1,
     evaluate_captured_certified_market_candidate,
 )
+from services.contracts.certified_shared_market_context_v1 import CertifiedSharedMarketContextV1
 
 
 def adapt_task8_live_candidate(
@@ -30,6 +31,7 @@ def adapt_task8_live_candidate(
     data_result: CertifiedLiveDataResultV1,
     supplied_analysis: Mapping[str, object],
     captured_evidence: CertifiedLiveCapturedEvidenceV1 | None = None,
+    shared_context: CertifiedSharedMarketContextV1 | None = None,
 ) -> MarketAnalysisCandidateV1:
     """Adapt only exact pre-composed evidence attached by the live reader.
 
@@ -45,6 +47,8 @@ def adapt_task8_live_candidate(
         raise TypeError("supplied_analysis")
     if captured_evidence is not None and type(captured_evidence) is not CertifiedLiveCapturedEvidenceV1:
         raise TypeError("captured_evidence")
+    if shared_context is not None and type(shared_context) is not CertifiedSharedMarketContextV1:
+        raise TypeError("shared_context")
     expected = (cycle_input.underlying_symbol, cycle_input.exchange)
     if expected not in {("NIFTY", "NSE"), ("SENSEX", "BSE")}:
         raise ValueError("unsupported Task 8 market")
@@ -75,6 +79,7 @@ def adapt_task8_live_candidate(
             candidate_id=f"certified-live:{cycle_input.observation_id}",
             observation_id=cycle_input.observation_id,
             engines=build_default_live_canonical_evidence_engines(),
+            broader_market=shared_context.for_market(*expected) if shared_context is not None else None,
         ).candidate
     if type(composition) is not MarketAnalysisCandidateCompositionInputV1:
         raise TypeError("certified_candidate_composition")

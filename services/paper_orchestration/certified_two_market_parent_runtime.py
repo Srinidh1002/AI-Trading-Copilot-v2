@@ -87,12 +87,16 @@ def run_certified_two_market_parent_runtime(
         symbol="NIFTY",
         observation_id=parent.nifty_observation_id,
     )
+
     _validate_child_cycle(
         parent=parent,
         cycle=sensex_cycle,
         symbol="SENSEX",
         observation_id=parent.sensex_observation_id,
     )
+
+    if readers.capture_reader is not None:
+        readers.prepare_shared_broader_context(nifty_cycle, sensex_cycle)
 
     cycles = {
         ("NIFTY", "NSE", parent.nifty_observation_id): nifty_cycle,

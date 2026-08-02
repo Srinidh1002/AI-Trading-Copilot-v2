@@ -17,6 +17,7 @@ from services.contracts.certified_live_captured_evidence_v1 import (
     CertifiedLiveCapturedEvidenceV1,
 )
 from services.market.live_multi_timeframe_data import normalize_angel_candles
+from services.contracts.certified_shared_market_context_v1 import CertifiedSharedMarketContextV1
 from services.paper_orchestration.certified_live_read_authorities import (
     CertifiedLiveAnalysisResultV1,
     CertifiedLiveDataResultV1,
@@ -259,6 +260,7 @@ class CertifiedLiveProviderReaders:
         self.capture_reader = capture_reader
         self._capture_lock = RLock()
         self._captures: dict[str, CertifiedLiveCapturedEvidenceV1] = {}
+        self._shared_contexts: dict[str, CertifiedSharedMarketContextV1] = {}
         self.option_decision_pipeline = (
             option_decision_pipeline
         )
@@ -295,12 +297,51 @@ class CertifiedLiveProviderReaders:
             return captured
 
     @staticmethod
-    def _candidate_with_capture(reader, cycle_input, data_result, analysis, captured):
+    def _candidate_with_capture(reader, cycle_input, data_result, analysis, captured, shared_context):
         try:
-            signature(reader).bind(cycle_input, data_result, analysis, captured)
+            signature(reader).bind(cycle_input, data_result, analysis, captured, shared_context)
         except TypeError:
-            return reader(cycle_input, data_result, analysis)
-        return reader(cycle_input, data_result, analysis, captured)
+            try:
+                signature(reader).bind(cycle_input, data_result, analysis, captured)
+            except TypeError:
+                return reader(cycle_input, data_result, analysis)
+            return reader(cycle_input, data_result, analysis, captured)
+        return reader(cycle_input, data_result, analysis, captured, shared_context)
+
+    @staticmethod
+    def _normalized_capture(cycle_input, captured):
+        from services.market.angel_live_observation_normalizer import normalize_angel_live_observation
+
+        spec = market_spec_for(cycle_input.underlying_symbol, cycle_input.exchange)
+        payload = dict(captured.spot_payload)
+        if "data" not in payload:
+            payload = {"data": {"ltp": payload.get("spot_price", payload.get("ltp")), "tradingsymbol": spec.underlying_symbol, "exchange": spec.exchange, "symboltoken": spec.symboltoken}}
+        return normalize_angel_live_observation(
+            spot_response=payload, candle_rows_by_timeframe=captured.candle_rows_by_timeframe,
+            market_spec=spec, provider_timestamp=captured.provider_timestamp,
+            evaluated_at=captured.evaluated_at, blockers=captured.provider_blockers,
+            warnings=captured.provider_warnings,
+        )
+
+    def prepare_shared_broader_context(self, nifty_cycle: PaperOrchestrationCycleInputV1, sensex_cycle: PaperOrchestrationCycleInputV1) -> CertifiedSharedMarketContextV1:
+        """Capture each child once, then build one provider-free shared context."""
+        from services.analysis.shared_broader_market_context import build_certified_shared_broader_context
+
+        if (nifty_cycle.underlying_symbol, nifty_cycle.exchange) != ("NIFTY", "NSE") or (sensex_cycle.underlying_symbol, sensex_cycle.exchange) != ("SENSEX", "BSE"):
+            raise ValueError("shared context identity")
+        nifty = self._capture_for(nifty_cycle)
+        sensex = self._capture_for(sensex_cycle)
+        if nifty is None or sensex is None:
+            raise RuntimeError("shared broader context requires certified captures")
+        context = build_certified_shared_broader_context(
+            nifty_observation=self._normalized_capture(nifty_cycle, nifty),
+            sensex_observation=self._normalized_capture(sensex_cycle, sensex),
+            evaluated_at=nifty.evaluated_at,
+        )
+        with self._capture_lock:
+            self._shared_contexts[nifty_cycle.observation_id] = context
+            self._shared_contexts[sensex_cycle.observation_id] = context
+        return context
 
     def read_data(
         self,
@@ -425,7 +466,7 @@ class CertifiedLiveProviderReaders:
 
         candidate = None
         if self.candidate_reader is not None:
-            candidate = self._candidate_with_capture(self.candidate_reader, cycle_input, data_result, result, captured)
+            candidate = self._candidate_with_capture(self.candidate_reader, cycle_input, data_result, result, captured, self._shared_contexts.get(cycle_input.observation_id))
             if type(candidate) is not MarketAnalysisCandidateV1:
                 raise TypeError(
                     "candidate_reader must return exact "
