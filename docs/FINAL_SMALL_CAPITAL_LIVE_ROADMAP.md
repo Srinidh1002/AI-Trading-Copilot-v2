@@ -69,6 +69,12 @@ hard-block effects without double counting aggregates. Legacy candidate
 confidence and score remain authoritative; neither selection nor parent ranking
 changes until equivalence and policy approval support a later Task 2C step.
 
+Task 2C adds PAPER-only child CALL, PUT, WAIT, and UNAVAILABLE projections.
+WAIT is a valid non-entry decision, while parent NO_TRADE remains parent-owned.
+CALL and PUT do not imply affordability, contract planning, or execution; HOLD
+and EXIT remain Task 4 lifecycle actions. Parent ranking and the shadow ledger
+remain unchanged; Task 2D will add evidence-grounded winner/loser explanations.
+
 ### 3. Capital, option selection and risk planning
 
 Purpose: plan only the selected eligible market using actual capital and option

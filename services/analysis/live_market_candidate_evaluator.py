@@ -16,6 +16,7 @@ from services.paper_orchestration.certified_live_provider_readers import market_
 from services.contracts.broader_market_intelligence_result_v1 import BroaderMarketIntelligenceResultV1
 from services.contracts.external_market_context_result_v1 import ExternalMarketContextResultV1
 from services.analysis.market_analysis_confidence_ledger import build_market_analysis_confidence_ledger
+from services.analysis.pre_entry_action_resolver import resolve_pre_entry_market_action
 
 @dataclass(frozen=True,slots=True)
 class LiveCandidatePolicySourceV1:
@@ -41,7 +42,7 @@ class LiveMarketCandidateEvaluationInputV1:
 
 @dataclass(frozen=True,slots=True)
 class LiveMarketCandidateEvaluationResultV1:
- observation:AngelLiveMarketObservationV1;options:AngelOptionNormalizationResultV1;evidence:LiveCanonicalEvidenceResultV1;composition:MarketAnalysisCandidateCompositionInputV1;policy:MarketAnalysisCandidateCompositionPolicyV1;candidate:MarketAnalysisCandidateV1
+ observation:AngelLiveMarketObservationV1;options:AngelOptionNormalizationResultV1;evidence:LiveCanonicalEvidenceResultV1;composition:MarketAnalysisCandidateCompositionInputV1;policy:MarketAnalysisCandidateCompositionPolicyV1;candidate:MarketAnalysisCandidateV1;pre_entry_action:object|None=None
 
 def evaluate_live_market_candidate(value:LiveMarketCandidateEvaluationInputV1)->LiveMarketCandidateEvaluationResultV1:
  if type(value) is not LiveMarketCandidateEvaluationInputV1:raise TypeError("evaluation input")
@@ -51,7 +52,9 @@ def evaluate_live_market_candidate(value:LiveMarketCandidateEvaluationInputV1)->
  evidence=build_live_canonical_evidence(observation=observation,options=options,session=value.session,evaluated_at=value.evaluated_at,engines=value.engines,cycle_id=value.candidate_id,observation_id=value.observation_id,broader_market=value.broader_market,external_context=value.external_context,blockers=value.blockers,warnings=value.warnings,contradictions=value.policy.contradictions,reasons=value.policy.reasons,invalidation_conditions=value.policy.invalidation_conditions)
  evidence=replace(evidence,confidence_ledger=build_market_analysis_confidence_ledger(cycle_id=value.candidate_id,observation_id=value.observation_id,evidence=evidence,policy_source=value.policy))
  composition,policy=compose_from_live_canonical_evidence(source=source,evidence=evidence)
- return LiveMarketCandidateEvaluationResultV1(observation,options,evidence,composition,policy,compose_market_analysis_candidate(composition,policy))
+ candidate=compose_market_analysis_candidate(composition,policy)
+ action=resolve_pre_entry_market_action(candidate=candidate,cycle_id=value.candidate_id,observation_id=value.observation_id,evaluated_at=value.evaluated_at,ledger=evidence.confidence_ledger)
+ return LiveMarketCandidateEvaluationResultV1(observation,options,evidence,composition,policy,candidate,action)
 
 def evaluate_captured_certified_market_candidate(*, captured_evidence:CertifiedLiveCapturedEvidenceV1, session_validation:MarketSessionValidationV1, policy_source:LiveCandidatePolicySourceV1, candidate_id:str, observation_id:str, engines:LiveCanonicalEvidenceEnginesV1, broader_market:BroaderMarketIntelligenceResultV1|None=None, external_context:ExternalMarketContextResultV1|None=None)->LiveMarketCandidateEvaluationResultV1:
  """Pure one-market bridge from the certified immutable capture to typed evidence."""
