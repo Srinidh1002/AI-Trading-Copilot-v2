@@ -25,3 +25,4 @@ phase6_gate1_provider_check.py
 # Task 7A temporary replay runtime data
 artifacts/certification/task7a_replay_work/
 artifacts/diagnostics/
+artifacts/certification/task2/

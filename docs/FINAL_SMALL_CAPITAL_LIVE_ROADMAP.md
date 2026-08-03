@@ -97,6 +97,19 @@ a provider-free single-result composer/report foundation. Both markets retain
 the truthful shared parent cycle; Task 2E3 remains responsible for the full
 scenario matrix, aggregate report, CLI, and final Task 2 gate.
 
+Task 2E3 adds the ordered provider-free scenario matrix, aggregate typed
+report, and CLI. It certifies NIFTY/SENSEX/NONE, CALL/PUT/WAIT/UNAVAILABLE,
+ranking comparison branches and safety paths while retaining the shadow ledger
+as non-authoritative. Task 2 completes only after focused tests, CLI, full
+suite, and a separate Task 2E3 commit/push.
+Dedicated E3 tests cover catalog order, aggregate determinism/coverage,
+production-composer results, and CLI success/error behavior with zero
+operational safety counters.
+They include exhaustive fixed-outcome assertions for the 19 scenarios and
+production-builder invocation counts for a fully reached two-market fixture.
+Expectation-separation and subprocess CLI import/security tests also verify
+that fixture expectations cannot control production outputs or trigger reads.
+
 ### 3. Capital, option selection and risk planning
 
 Purpose: plan only the selected eligible market using actual capital and option

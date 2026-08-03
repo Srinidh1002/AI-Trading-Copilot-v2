@@ -85,6 +85,17 @@ and leaves ranking, action resolution, explanations, and shadow-ledger policy
 authoritative in their production components. Task 2E3 still owns the complete
 scenario matrix, aggregate report/CLI, and final Task 2 completion gate.
 
+Task 2E3 provides the deterministic scenario catalog, aggregate certification
+result and provider-free CLI. It exercises parent selection/action outcomes
+without capital planning or execution, while preserving the non-authoritative
+confidence ledger and PAPER-only safety counters.
+Dedicated E3 tests verify catalog identity, aggregate coverage/checksums, and
+provider-free CLI behavior; the full-suite/commit gate still remains.
+They also verify all catalog outcomes and the production composition seam's
+per-stage invocation counts.
+Subprocess CLI tests confirm silent import, deterministic output, and the
+absence of secret-like report fields.
+
 `FINAL_TRADING_COPILOT_ROADMAP.md` conflicts with this roadmap because it has
 eleven tasks and replay-count language. It is historical/superseded. Prior P4–
 P10 audits and certification documents are historical evidence, not launch

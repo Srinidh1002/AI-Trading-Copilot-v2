@@ -1,6 +1,8 @@
 """Provider-free fixed fixture profiles for Task 2E2 certification."""
 from services.contracts.task2_decision_certification_fixture_v1 import Task2MarketFixtureV1,Task2TwoMarketFixtureV1
 from dataclasses import replace
+from pathlib import Path
+import sys
 
 PILLAR_ORDER=("price_action","candlestick","chart_pattern","volume","volatility","oi","oi_change","pcr","support_resistance","max_pain","iv","greeks","premium_behavior","liquidity_spread")
 
@@ -10,6 +12,8 @@ def build_candidate(item):
  The E2 foundation deliberately exercises the production action/ranking and
  explanation boundaries without introducing a second evidence/scoring engine.
  """
+ tests_path=str(Path(__file__).resolve().parents[2]/"tests")
+ if tests_path not in sys.path:sys.path.insert(0,tests_path)
  from test_market_analysis_candidate_v1 import build, unavailable_candidate
  base=dict(underlying_symbol=item.underlying_symbol,candidate_id=item.candidate_id,observation_id=item.observation_id,warnings=item.controlled_warnings,blockers=item.controlled_blockers,contradictions=item.controlled_contradictions)
  if item.fixture_profile_id in {"UNAVAILABLE_CHILD","REQUIRED_EVIDENCE_MISSING"}: return unavailable_candidate(**base)
@@ -21,6 +25,8 @@ def build_candidate(item):
 
 def build_canonical_sources(item):
  """Return fixed, provider-free canonical sources accepted by Task 2A/2B."""
+ tests_path=str(Path(__file__).resolve().parents[2]/"tests")
+ if tests_path not in sys.path:sys.path.insert(0,tests_path)
  from test_task8_parent_typed_candidate_certification import captured,NOW
  from services.market_session.validator import validate_session_timestamp
  from services.analysis.live_market_candidate_evaluator import LiveCandidatePolicySourceV1,evaluate_captured_certified_market_candidate
