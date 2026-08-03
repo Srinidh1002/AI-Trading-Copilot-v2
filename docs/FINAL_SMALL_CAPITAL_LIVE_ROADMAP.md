@@ -57,6 +57,12 @@ winner/loser rationale. Exit gate: exactly-once NIFTY/SENSEX parent cycles with
 all required pillars or explicit unavailable evidence. Depends on: Task 1.
 Excludes: capital allocation and lifecycle execution.
 
+Task 2A exposes one immutable typed contribution record per canonical pillar.
+Grouped-source provenance is explicit: it does not fabricate independent
+directions or scores when the active adapters expose only grouped evidence.
+This changes neither confidence, score, eligibility, nor action; Task 2B will
+consume these records for final-confidence certification.
+
 ### 3. Capital, option selection and risk planning
 
 Purpose: plan only the selected eligible market using actual capital and option

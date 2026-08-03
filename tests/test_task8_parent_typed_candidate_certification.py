@@ -70,6 +70,11 @@ def test_real_captured_evaluator_returns_typed_blocked_candidate_for_both_market
         assert result.evidence.option_chain.option_chain_snapshot_id is None
         assert result.evidence.option_chain.expiry is None
         assert result.evidence.pillars.aggregation_status == "BLOCKED"
+        contributions = result.evidence.contributions
+        assert contributions is not None
+        assert tuple(item.pillar_name for item in contributions.contributions) == ("price_action", "candlestick", "chart_pattern", "volume", "volatility", "oi", "oi_change", "pcr", "support_resistance", "max_pain", "iv", "greeks", "premium_behavior", "liquidity_spread")
+        assert all(item.status == result.evidence.pillars.ordered_pillars[item.pillar_name].status for item in contributions.contributions)
+        assert all(item.direction == "UNAVAILABLE" and item.normalized_score is None for item in contributions.contributions)
 
 
 class Analysis:
@@ -116,6 +121,8 @@ def test_complete_nifty_options_preserve_existing_warning_gates_without_forced_s
     assert eligible.evidence.option_chain.option_chain_snapshot_id is not None
     assert eligible.evidence.option_chain.expiry == date(2026, 8, 6)
     assert eligible.evidence.contract_ranking.ranking_status in {"RANKED", "RANKED_WITH_WARNINGS"}
+    assert eligible.evidence.contributions is not None
+    assert all(item.provenance_classification == "GROUPED" for item in eligible.evidence.contributions.contributions)
 
 
 def test_shared_broader_result_reaches_matching_regime_without_forcing_suitability():
