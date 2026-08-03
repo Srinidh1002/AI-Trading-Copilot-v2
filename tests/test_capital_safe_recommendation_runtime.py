@@ -129,6 +129,7 @@ def test_stale_selected_candidate_returns_wait():
             replace(
                 bridge,
                 action="CALL",
+                selected_child_action="CALL",
                 planning_allowed=True,
                 blockers=(),
             )

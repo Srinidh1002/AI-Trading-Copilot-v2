@@ -51,6 +51,32 @@ def _losing_entry(
     return losing[0]
 
 
+def _validate_selected_trace(
+    *,
+    decision: TwoMarketDecisionResultV1,
+    selected_entry: TwoMarketDecisionEntryV1,
+) -> None:
+    child = selected_entry.child
+    candidate = child.candidate
+    if candidate is None:
+        raise ValueError("selected child must retain candidate")
+    if child.parent_cycle_id != decision.parent_cycle_id:
+        raise ValueError("selected child parent_cycle_id mismatch")
+    if child.observation_id != candidate.observation_id:
+        raise ValueError("selected child observation_id mismatch")
+    child_market = (child.underlying_symbol, child.exchange)
+    candidate_market = (
+        candidate.underlying_symbol,
+        candidate.exchange,
+    )
+    if child_market != candidate_market:
+        raise ValueError("selected child market identity mismatch")
+    if decision.selected_market != candidate_market:
+        raise ValueError("parent selected_market mismatch")
+    if decision.selected_candidate_id != candidate.candidate_id:
+        raise ValueError("parent selected_candidate_id mismatch")
+
+
 def bridge_selected_market_to_planning(
     *,
     bridge_result_id: str,
@@ -58,7 +84,7 @@ def bridge_selected_market_to_planning(
     evaluated_at: datetime,
     maximum_candidate_age_seconds: float,
 ) -> SelectedMarketPlanningBridgeResultV1:
-    """Authorize only Task 3's selected market for later P6 planning."""
+    """Authorize only Task 3's selected market for later planning."""
 
     if type(decision) is not TwoMarketDecisionResultV1:
         raise TypeError("decision")
@@ -90,11 +116,19 @@ def bridge_selected_market_to_planning(
         return SelectedMarketPlanningBridgeResultV1(
             bridge_result_id=bridge_result_id,
             parent_cycle_id=decision.parent_cycle_id,
+            parent_decision_id=decision.decision_result_id,
             evaluated_at=now,
             action="NO_TRADE",
             planning_allowed=False,
             selected_market=None,
             selected_candidate=None,
+            selected_child_result_id=None,
+            selected_child_action="NO_TRADE",
+            candidate_id=None,
+            observation_id=None,
+            direction=None,
+            confidence=None,
+            score=None,
             losing_market=None,
             losing_outcome_reason=None,
             reasons=reasons or ("NO_ELIGIBLE_MARKET",),
@@ -115,8 +149,19 @@ def bridge_selected_market_to_planning(
         )
 
     selected_entry = selected_entries[0]
-    candidate = selected_entry.child.candidate
+    _validate_selected_trace(
+        decision=decision,
+        selected_entry=selected_entry,
+    )
+    child = selected_entry.child
+    candidate = child.candidate
+    if candidate is None:
+        raise ValueError("selected child must retain candidate")
+
     losing = _losing_entry(decision)
+    if losing is None:
+        raise ValueError("selected decision must retain losing entry")
+
     selected_market = (
         candidate.underlying_symbol,
         candidate.exchange,
@@ -164,12 +209,19 @@ def bridge_selected_market_to_planning(
         )
     )
 
-    common = dict(
+    trace = dict(
         bridge_result_id=bridge_result_id,
         parent_cycle_id=decision.parent_cycle_id,
+        parent_decision_id=decision.decision_result_id,
         evaluated_at=now,
         selected_market=selected_market,
         selected_candidate=candidate,
+        selected_child_result_id=child.child_result_id,
+        candidate_id=candidate.candidate_id,
+        observation_id=candidate.observation_id,
+        direction=candidate.direction,
+        confidence=candidate.confidence,
+        score=candidate.score,
         losing_market=losing_market,
         losing_outcome_reason=losing.outcome_reason,
         losing_rationale=losing.rationale,
@@ -180,8 +232,9 @@ def bridge_selected_market_to_planning(
 
     if blockers:
         return SelectedMarketPlanningBridgeResultV1(
-            **common,
+            **trace,
             action="WAIT",
+            selected_child_action="WAIT",
             planning_allowed=False,
             blockers=tuple(blockers),
         )
@@ -192,7 +245,8 @@ def bridge_selected_market_to_planning(
         else "PUT"
     )
     return SelectedMarketPlanningBridgeResultV1(
-        **common,
+        **trace,
         action=action,
+        selected_child_action=action,
         planning_allowed=True,
     )
