@@ -92,6 +92,11 @@ by NIFTY and SENSEX. Candidate and observation IDs remain market-specific, and
 there is no certified candidate-ID fallback. Scoring, actions, explanations,
 and ranking remain unchanged; Task 2E2 is unblocked, but Task 2 is not complete.
 
+Task 2E2 adds immutable certification-result and fixed-fixture contracts with
+a provider-free single-result composer/report foundation. Both markets retain
+the truthful shared parent cycle; Task 2E3 remains responsible for the full
+scenario matrix, aggregate report, CLI, and final Task 2 gate.
+
 ### 3. Capital, option selection and risk planning
 
 Purpose: plan only the selected eligible market using actual capital and option

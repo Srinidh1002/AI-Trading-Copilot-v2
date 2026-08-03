@@ -79,6 +79,12 @@ explanation, and typed parent-explanation identity now use that parent cycle
 without changing scoring, actions, explanations, ranking, or PAPER-only
 guards. This unblocks Task 2E2; it does not declare Task 2 complete.
 
+Task 2E2 adds typed decision-certification results and deterministic,
+provider-free foundation fixtures. It retains the shared parent-cycle identity
+and leaves ranking, action resolution, explanations, and shadow-ledger policy
+authoritative in their production components. Task 2E3 still owns the complete
+scenario matrix, aggregate report/CLI, and final Task 2 completion gate.
+
 `FINAL_TRADING_COPILOT_ROADMAP.md` conflicts with this roadmap because it has
 eleven tasks and replay-count language. It is historical/superseded. Prior P4–
 P10 audits and certification documents are historical evidence, not launch
