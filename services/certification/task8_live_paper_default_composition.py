@@ -27,7 +27,7 @@ from services.contracts.paper_orchestration_policy_v1 import PaperOrchestrationP
 from services.contracts.two_market_decision_policy_v1 import TwoMarketDecisionPolicyV1
 from services.contracts.two_market_parent_cycle_input_v1 import TwoMarketParentCycleInputV1
 from services.market_session.validator import validate_session_timestamp
-from services.paper_orchestration.certified_two_market_parent_runtime import run_certified_two_market_parent_runtime
+from services.paper_orchestration.authoritative_two_market_entry_point import run_authoritative_two_market_parent_cycle
 from services.paper_orchestration.certified_runtime_safety import (
     validate_no_broker_submission_guard,
     validate_repository_paper_safety,
@@ -91,6 +91,6 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
             policy = PaperOrchestrationPolicyV1(orchestration_policy_id=f"task8-policy-{requested_at.date().isoformat()}", policy_timestamp=requested_at, observation_frequency_seconds=60.0, emergency_paper_halt=False)
             cycles[(symbol, exchange)] = build_certified_cycle_input(cycle_kind="OPPORTUNITY", observation_id=f"task8-{symbol.lower()}-{market_timestamp.isoformat()}", orchestration_policy=policy, underlying_symbol=symbol, exchange=exchange, market_timestamp=market_timestamp, received_at=received_at, cycle_requested_at=requested_at, session_validation=session, metadata={"spot_price": raw["spot_price"], "timestamp_source": raw.get("timestamp_source"), "captured_spot_payload":{"spot_price":raw["spot_price"],"timestamp_source":raw.get("timestamp_source")}})
         parent = TwoMarketParentCycleInputV1(parent_cycle_id=f"task8-parent-{requested.isoformat()}", decision_result_id=f"task8-decision-{requested.isoformat()}", nifty_child_result_id=f"task8-child-nifty-{requested.isoformat()}", sensex_child_result_id=f"task8-child-sensex-{requested.isoformat()}", nifty_observation_id=cycles[("NIFTY", "NSE")].observation_id, sensex_observation_id=cycles[("SENSEX", "BSE")].observation_id, requested_at=cycles[("NIFTY", "NSE")].cycle_requested_at, completed_at=datetime.now(timezone.utc), decision_policy=TwoMarketDecisionPolicyV1(180.0, 5.0))
-        return run_certified_two_market_parent_runtime(parent, nifty_cycle=cycles[("NIFTY", "NSE")], sensex_cycle=cycles[("SENSEX", "BSE")], readers=readers)
+        return run_authoritative_two_market_parent_cycle(parent, nifty_cycle=cycles[("NIFTY", "NSE")], sensex_cycle=cycles[("SENSEX", "BSE")], readers=readers)
 
     return Task8CanaryDependenciesV1(branch=_git("branch", "--show-current"), commit=_git("rev-parse", "--short", "HEAD"), preflight=preflight, parent_cycle=parent_cycle, selected_planner=lambda market: (_ for _ in ()).throw(RuntimeError("selected-market lifecycle wiring is unavailable")), monitoring=lambda: None, clock=lambda: datetime.now(timezone.utc), id_factory=lambda: f"task8-live-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}")
