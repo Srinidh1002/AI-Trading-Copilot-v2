@@ -86,6 +86,12 @@ against existing parent ranking and child outputs. It adds neither scenario
 fixtures nor a CLI; Task 2E2 will add the typed certification result and
 composer, and Task 2E3 the deterministic scenario matrix and provider-free CLI.
 
+Task 2E1.5 certifies parent-cycle identity propagation: the cycle originates
+solely at `TwoMarketParentCycleInputV1.parent_cycle_id` and is shared unchanged
+by NIFTY and SENSEX. Candidate and observation IDs remain market-specific, and
+there is no certified candidate-ID fallback. Scoring, actions, explanations,
+and ranking remain unchanged; Task 2E2 is unblocked, but Task 2 is not complete.
+
 ### 3. Capital, option selection and risk planning
 
 Purpose: plan only the selected eligible market using actual capital and option

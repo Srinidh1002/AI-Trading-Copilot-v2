@@ -132,7 +132,7 @@ def run_certified_two_market_parent_runtime(
         except Exception as exc:
             raise ChildEvaluationFailure("session", "SESSION_EVIDENCE_UNAVAILABLE") from exc
         try:
-            analysis = analysis_authority(cycle, data, session)
+            analysis = analysis_authority(cycle, data, session, parent_cycle_id=parent.parent_cycle_id)
         except Exception as exc:
             raise ChildEvaluationFailure("candidate_composition", "CANDIDATE_COMPOSITION_FAILED") from exc
         candidate = analysis.candidate

@@ -35,7 +35,7 @@ def _decision(scores=(80.0, 60.0), eligible=True):
         decision_policy=TwoMarketDecisionPolicyV1(180.0, 5.0),
     )
     calls = []
-    def candidate(cycle, data, analysis):
+    def candidate(cycle, data, analysis, captured, shared_context, *, parent_cycle_id):
         calls.append(cycle.underlying_symbol)
         return candidate_for(cycle, data, score=scores[0] if cycle.underlying_symbol == "NIFTY" else scores[1], eligibility="ELIGIBLE" if eligible else "INELIGIBLE")
     readers = CertifiedLiveProviderReaders(quote_reader=lambda *_: None, analysis_pipeline=OfflineAnalysisPipeline(), option_decision_pipeline=OfflineOptionPipeline(), available_capital=10_000.0, candidate_reader=candidate)

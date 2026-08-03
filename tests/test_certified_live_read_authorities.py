@@ -118,7 +118,7 @@ def test_analysis_authority_returns_exact_read_only_result():
     data = data_authority()(cycle)
     session = CertifiedSessionAuthority()(cycle, data)
     authority = CertifiedLiveAnalysisAuthority(
-        reader=lambda cycle_input, data_result: {
+        reader=lambda cycle_input, data_result, *, parent_cycle_id: {
             "analysis": {
                 "decision": "BULLISH",
                 "timeframes": {"5m": "available"},
@@ -127,7 +127,7 @@ def test_analysis_authority_returns_exact_read_only_result():
         }
     )
 
-    result = authority(cycle, data, session)
+    result = authority(cycle, data, session, parent_cycle_id="test-parent-cycle")
 
     assert type(result) is CertifiedLiveAnalysisResultV1
     assert result.analysis["decision"] == "BULLISH"
@@ -146,11 +146,11 @@ def test_analysis_authority_fails_closed_when_session_blocks():
         id_factory=lambda: "session-blocked",
     )
     authority = CertifiedLiveAnalysisAuthority(
-        reader=lambda cycle_input, data_result: {}
+        reader=lambda cycle_input, data_result, *, parent_cycle_id: {}
     )
 
     with pytest.raises(RuntimeError, match="not allowed"):
-        authority(cycle, data, blocked_session)
+        authority(cycle, data, blocked_session, parent_cycle_id="test-parent-cycle")
 
 
 @pytest.mark.parametrize(
@@ -172,10 +172,10 @@ def test_opportunity_authority_normalizes_stage_status(
     data = data_authority()(cycle)
     session = CertifiedSessionAuthority()(cycle, data)
     analysis = CertifiedLiveAnalysisAuthority(
-        reader=lambda cycle_input, data_result: {
+        reader=lambda cycle_input, data_result, *, parent_cycle_id: {
             "analysis": {"decision": "BULLISH"}
         }
-    )(cycle, data, session)
+    )(cycle, data, session, parent_cycle_id="test-parent-cycle")
     authority = CertifiedLiveOpportunityAuthority(
         reader=lambda cycle_input, analysis_result, session_result: {
             "opportunity_status": status,
@@ -220,11 +220,11 @@ def test_readers_are_called_once_in_exact_order():
     session = CertifiedSessionAuthority()(cycle, data)
     calls.append("SESSION")
     analysis = CertifiedLiveAnalysisAuthority(
-        reader=lambda cycle_input, data_result: (
+        reader=lambda cycle_input, data_result, *, parent_cycle_id: (
             calls.append("ANALYSIS")
             or {"analysis": {"decision": "BULLISH"}}
         )
-    )(cycle, data, session)
+    )(cycle, data, session, parent_cycle_id="test-parent-cycle")
     CertifiedLiveOpportunityAuthority(
         reader=lambda cycle_input, analysis_result, session_result: (
             calls.append("OPPORTUNITY")

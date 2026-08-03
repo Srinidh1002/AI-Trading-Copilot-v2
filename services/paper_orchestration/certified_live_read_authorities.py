@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 
 from services.contracts.market_analysis_candidate_v1 import (
     MarketAnalysisCandidateV1,
@@ -17,10 +17,14 @@ from services.contracts.paper_orchestration_cycle_input_v1 import (
 
 
 DataReader = Callable[[PaperOrchestrationCycleInputV1], Mapping[str, Any]]
-AnalysisReader = Callable[
-    [PaperOrchestrationCycleInputV1, "CertifiedLiveDataResultV1"],
-    Mapping[str, Any],
-]
+class AnalysisReader(Protocol):
+    def __call__(
+        self,
+        cycle_input: PaperOrchestrationCycleInputV1,
+        data_result: "CertifiedLiveDataResultV1",
+        *,
+        parent_cycle_id: str,
+    ) -> Mapping[str, Any]: ...
 OpportunityReader = Callable[
     [
         PaperOrchestrationCycleInputV1,
@@ -386,6 +390,8 @@ class CertifiedLiveAnalysisAuthority:
         cycle_input: PaperOrchestrationCycleInputV1,
         data_result: CertifiedLiveDataResultV1,
         session_result: MarketSessionValidationV1,
+        *,
+        parent_cycle_id: str,
     ) -> CertifiedLiveAnalysisResultV1:
         if type(cycle_input) is not PaperOrchestrationCycleInputV1:
             raise TypeError(
@@ -399,11 +405,13 @@ class CertifiedLiveAnalysisAuthority:
             raise TypeError(
                 "session_result must be exact MarketSessionValidationV1"
             )
+        if type(parent_cycle_id) is not str or not parent_cycle_id.strip():
+            raise ValueError("parent_cycle_id")
         if not session_result.analysis_allowed:
             raise RuntimeError("analysis is not allowed by session authority")
 
         raw = _mapping(
-            self.reader(cycle_input, data_result),
+            self.reader(cycle_input, data_result, parent_cycle_id=parent_cycle_id),
             "analysis reader result",
         )
         return CertifiedLiveAnalysisResultV1(

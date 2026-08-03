@@ -53,7 +53,7 @@ def test_each_existing_child_cycle_attaches_exactly_one_typed_candidate(
     )
     calls = []
 
-    def candidate_reader(cycle, data, supplied_analysis):
+    def candidate_reader(cycle, data, supplied_analysis, captured, shared_context, *, parent_cycle_id):
         calls.append((cycle, data, dict(supplied_analysis)))
         return expected
 
@@ -70,7 +70,7 @@ def test_each_existing_child_cycle_attaches_exactly_one_typed_candidate(
     analysis = CertifiedLiveAnalysisAuthority(reader=readers.read_analysis)(
         cycle_input,
         data,
-        session,
+        session, parent_cycle_id="test-parent-cycle",
     )
     opportunity = CertifiedLiveOpportunityAuthority(
         reader=readers.read_opportunity
@@ -100,7 +100,7 @@ def test_existing_child_cycle_behavior_is_preserved_without_candidate_reader():
     analysis = CertifiedLiveAnalysisAuthority(reader=readers.read_analysis)(
         cycle_input,
         data,
-        session,
+        session, parent_cycle_id="test-parent-cycle",
     )
     opportunity = CertifiedLiveOpportunityAuthority(
         reader=readers.read_opportunity
@@ -119,12 +119,12 @@ def test_candidate_reader_is_called_once_and_wrong_type_fails_closed():
         analysis_pipeline=OfflineAnalysisPipeline(),
         option_decision_pipeline=OfflineOptionPipeline(),
         available_capital=10_000.0,
-        candidate_reader=lambda *_: {},
+        candidate_reader=lambda cycle, data, analysis, captured, shared_context, *, parent_cycle_id: {},
     )
     data = CertifiedLiveDataAuthority(reader=readers.read_data)(cycle_input)
 
     with pytest.raises(TypeError, match="MarketAnalysisCandidateV1"):
-        readers.read_analysis(cycle_input, data)
+        readers.read_analysis(cycle_input, data, parent_cycle_id="test-parent-cycle")
 
 
 def test_candidate_identity_mismatch_fails_closed():
@@ -136,12 +136,12 @@ def test_candidate_identity_mismatch_fails_closed():
         analysis_pipeline=OfflineAnalysisPipeline(),
         option_decision_pipeline=OfflineOptionPipeline(),
         available_capital=10_000.0,
-        candidate_reader=lambda *_: wrong,
+        candidate_reader=lambda cycle, data, analysis, captured, shared_context, *, parent_cycle_id: wrong,
     )
     data = CertifiedLiveDataAuthority(reader=readers.read_data)(cycle_input)
 
     with pytest.raises(ValueError, match="candidate identity"):
-        readers.read_analysis(cycle_input, data)
+        readers.read_analysis(cycle_input, data, parent_cycle_id="test-parent-cycle")
 
 
 def test_candidate_seam_has_no_comparison_ranking_or_order_submission():

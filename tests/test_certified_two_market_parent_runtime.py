@@ -82,9 +82,11 @@ def candidate_for(cycle, data, *, score, eligibility="ELIGIBLE"):
 def test_runtime_evaluates_nifty_once_and_sensex_once_and_selects_one():
     nifty, sensex = cycles()
     calls = []
+    parent_cycles = []
 
-    def factory(cycle, data, analysis):
+    def factory(cycle, data, analysis, captured, shared_context, *, parent_cycle_id):
         calls.append(cycle.underlying_symbol)
+        parent_cycles.append(parent_cycle_id)
         return candidate_for(
             cycle,
             data,
@@ -99,6 +101,7 @@ def test_runtime_evaluates_nifty_once_and_sensex_once_and_selects_one():
     )
 
     assert calls == ["NIFTY", "SENSEX"]
+    assert parent_cycles == ["certified-parent-1", "certified-parent-1"]
     assert result.selected_market == ("NIFTY", "NSE")
     assert len(result.entries) == 2
     assert sum(e.outcome_reason == "SELECTED" for e in result.entries) == 1
@@ -109,7 +112,7 @@ def test_one_market_failure_keeps_other_terminal_result():
     nifty, sensex = cycles()
     calls = []
 
-    def factory(cycle, data, analysis):
+    def factory(cycle, data, analysis, captured, shared_context, *, parent_cycle_id):
         calls.append(cycle.underlying_symbol)
         if cycle.underlying_symbol == "NIFTY":
             raise RuntimeError("INJECTED_NIFTY_FAILURE")
@@ -131,7 +134,7 @@ def test_one_market_failure_keeps_other_terminal_result():
 def test_neither_eligible_produces_no_trade_with_both_reasons():
     nifty, sensex = cycles()
 
-    def factory(cycle, data, analysis):
+    def factory(cycle, data, analysis, captured, shared_context, *, parent_cycle_id):
         return candidate_for(
             cycle,
             data,
@@ -167,7 +170,7 @@ def test_runtime_applies_timestamp_skew_policy():
         session_validation=shifted_session,
     )
 
-    def factory(cycle, data, analysis):
+    def factory(cycle, data, analysis, captured, shared_context, *, parent_cycle_id):
         return candidate_for(cycle, data, score=70.0)
 
     result = run_certified_two_market_parent_runtime(

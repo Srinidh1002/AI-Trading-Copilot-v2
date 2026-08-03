@@ -147,10 +147,13 @@ def _run_existing_certified_child_path(replay: dict) -> tuple[object, OfflineAna
     )
     data = CertifiedLiveDataAuthority(reader=readers.read_data)(cycle_input)
     session = CertifiedSessionAuthority()(cycle_input, data)
+    parent_cycle_id = f"runtime-readiness-{replay['fixture_id']}"
+
     analysis = CertifiedLiveAnalysisAuthority(reader=readers.read_analysis)(
         cycle_input,
         data,
         session,
+        parent_cycle_id=parent_cycle_id,
     )
     opportunity = CertifiedLiveOpportunityAuthority(reader=readers.read_opportunity)(
         cycle_input,

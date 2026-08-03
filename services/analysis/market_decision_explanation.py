@@ -3,6 +3,7 @@ from services.contracts.market_decision_explanation_v1 import MarketEvidenceExpl
 from services.contracts.market_decision_explanation_policy_v1 import MarketDecisionExplanationPolicyV1
 def build_market_decision_explanation(*,candidate,action,cycle_id,observation_id,evaluated_at,contributions=None,ledger=None,terminal_codes=(),policy=MarketDecisionExplanationPolicyV1()):
  if type(policy) is not MarketDecisionExplanationPolicyV1:raise TypeError("policy")
+ if action.cycle_id!=cycle_id:raise ValueError("cycle coherence")
  symbol,exchange=action.underlying_symbol,action.exchange
  if candidate is not None and (candidate.underlying_symbol,candidate.exchange)!=(symbol,exchange):raise ValueError("candidate identity")
  entries=[]

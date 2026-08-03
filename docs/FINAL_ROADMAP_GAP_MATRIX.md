@@ -69,6 +69,16 @@ repositories, but active runtime recovery wiring remains incomplete.
 
 ## Documentation status
 
+### Task 2E1.5 certified parent-cycle identity migration
+
+`TwoMarketParentCycleInputV1.parent_cycle_id` is the sole certified parent
+cycle source. The identical value is supplied to both NIFTY and SENSEX child
+evaluations; candidate and observation identities remain market-specific.
+Certified paths have no candidate-ID fallback. Ledger, pre-entry action, child
+explanation, and typed parent-explanation identity now use that parent cycle
+without changing scoring, actions, explanations, ranking, or PAPER-only
+guards. This unblocks Task 2E2; it does not declare Task 2 complete.
+
 `FINAL_TRADING_COPILOT_ROADMAP.md` conflicts with this roadmap because it has
 eleven tasks and replay-count language. It is historical/superseded. Prior P4–
 P10 audits and certification documents are historical evidence, not launch

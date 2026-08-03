@@ -32,6 +32,8 @@ def adapt_task8_live_candidate(
     supplied_analysis: Mapping[str, object],
     captured_evidence: CertifiedLiveCapturedEvidenceV1 | None = None,
     shared_context: CertifiedSharedMarketContextV1 | None = None,
+    *,
+    parent_cycle_id: str,
 ) -> MarketAnalysisCandidateV1:
     """Adapt only exact pre-composed evidence attached by the live reader.
 
@@ -49,6 +51,8 @@ def adapt_task8_live_candidate(
         raise TypeError("captured_evidence")
     if shared_context is not None and type(shared_context) is not CertifiedSharedMarketContextV1:
         raise TypeError("shared_context")
+    if type(parent_cycle_id) is not str or not parent_cycle_id.strip():
+        raise ValueError("parent_cycle_id")
     if shared_context is not None and shared_context.shared_external_context is not None and (shared_context.shared_external_context.cycle_id != shared_context.cycle_id or shared_context.shared_external_context.evaluated_at != shared_context.evaluated_at):
         raise ValueError("shared external context cycle")
     expected = (cycle_input.underlying_symbol, cycle_input.exchange)
@@ -78,6 +82,7 @@ def adapt_task8_live_candidate(
             captured_evidence=captured_evidence,
             session_validation=cycle_input.session_validation,
             policy_source=source,
+            parent_cycle_id=parent_cycle_id,
             candidate_id=f"certified-live:{cycle_input.observation_id}",
             observation_id=cycle_input.observation_id,
             engines=build_default_live_canonical_evidence_engines(),

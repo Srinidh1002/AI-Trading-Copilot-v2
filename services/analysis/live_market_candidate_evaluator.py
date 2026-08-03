@@ -32,9 +32,10 @@ class LiveCandidatePolicySourceV1:
 
 @dataclass(frozen=True,slots=True)
 class LiveMarketCandidateEvaluationInputV1:
- market_spec:CertifiedIndexMarketSpecV1;candidate_id:str;observation_id:str;spot_response:object;candle_rows_by_timeframe:Mapping[str,object];option_contracts:object;provider_timestamp:datetime;evaluated_at:datetime;session:MarketSessionValidationV1;policy:LiveCandidatePolicySourceV1;engines:LiveCanonicalEvidenceEnginesV1;broader_market:BroaderMarketIntelligenceResultV1|None=None;external_context:ExternalMarketContextResultV1|None=None;provider_state:str="OK";blockers:tuple[str,...]=();warnings:tuple[str,...]=()
+ market_spec:CertifiedIndexMarketSpecV1;parent_cycle_id:str;candidate_id:str;observation_id:str;spot_response:object;candle_rows_by_timeframe:Mapping[str,object];option_contracts:object;provider_timestamp:datetime;evaluated_at:datetime;session:MarketSessionValidationV1;policy:LiveCandidatePolicySourceV1;engines:LiveCanonicalEvidenceEnginesV1;broader_market:BroaderMarketIntelligenceResultV1|None=None;external_context:ExternalMarketContextResultV1|None=None;provider_state:str="OK";blockers:tuple[str,...]=();warnings:tuple[str,...]=()
  def __post_init__(self):
   if type(self.market_spec) is not CertifiedIndexMarketSpecV1 or type(self.session) is not MarketSessionValidationV1 or type(self.policy) is not LiveCandidatePolicySourceV1 or type(self.engines) is not LiveCanonicalEvidenceEnginesV1:raise TypeError("typed evaluation input")
+  if type(self.parent_cycle_id) is not str or not self.parent_cycle_id.strip():raise ValueError("parent_cycle_id")
   if self.provider_timestamp.tzinfo is None or self.evaluated_at.tzinfo is None:raise ValueError("timestamps")
   if (self.session.symbol,self.session.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange):raise ValueError("session identity")
   if self.broader_market is not None and (type(self.broader_market) is not BroaderMarketIntelligenceResultV1 or (self.broader_market.underlying_symbol,self.broader_market.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange)):raise ValueError("broader market identity")
@@ -50,13 +51,13 @@ def evaluate_live_market_candidate(value:LiveMarketCandidateEvaluationInputV1)->
  options=normalize_angel_option_chain(contracts=value.option_contracts,market_spec=value.market_spec,spot_price=observation.spot.price,provider_timestamp=value.provider_timestamp,evaluated_at=value.evaluated_at,provider_state=value.provider_state,blockers=value.blockers,warnings=value.warnings)
  source=LiveTypedEvidenceInputV1(value.candidate_id,value.observation_id,value.market_spec.underlying_symbol,value.market_spec.exchange,value.market_spec.option_exchange,value.market_spec.symboltoken,value.evaluated_at,value.provider_timestamp,value.evaluated_at,observation,options,value.session,value.policy.direction,value.policy.eligibility,value.policy.confidence,value.policy.score,value.policy.reasons,value.policy.invalidation_conditions,value.policy.blockers,value.policy.warnings,value.policy.contradictions)
  evidence=build_live_canonical_evidence(observation=observation,options=options,session=value.session,evaluated_at=value.evaluated_at,engines=value.engines,cycle_id=value.candidate_id,observation_id=value.observation_id,broader_market=value.broader_market,external_context=value.external_context,blockers=value.blockers,warnings=value.warnings,contradictions=value.policy.contradictions,reasons=value.policy.reasons,invalidation_conditions=value.policy.invalidation_conditions)
- evidence=replace(evidence,confidence_ledger=build_market_analysis_confidence_ledger(cycle_id=value.candidate_id,observation_id=value.observation_id,evidence=evidence,policy_source=value.policy))
+ evidence=replace(evidence,confidence_ledger=build_market_analysis_confidence_ledger(cycle_id=value.parent_cycle_id,observation_id=value.observation_id,evidence=evidence,policy_source=value.policy))
  composition,policy=compose_from_live_canonical_evidence(source=source,evidence=evidence)
  candidate=compose_market_analysis_candidate(composition,policy)
- action=resolve_pre_entry_market_action(candidate=candidate,cycle_id=value.candidate_id,observation_id=value.observation_id,evaluated_at=value.evaluated_at,ledger=evidence.confidence_ledger)
+ action=resolve_pre_entry_market_action(candidate=candidate,cycle_id=value.parent_cycle_id,observation_id=value.observation_id,evaluated_at=value.evaluated_at,ledger=evidence.confidence_ledger)
  return LiveMarketCandidateEvaluationResultV1(observation,options,evidence,composition,policy,candidate,action)
 
-def evaluate_captured_certified_market_candidate(*, captured_evidence:CertifiedLiveCapturedEvidenceV1, session_validation:MarketSessionValidationV1, policy_source:LiveCandidatePolicySourceV1, candidate_id:str, observation_id:str, engines:LiveCanonicalEvidenceEnginesV1, broader_market:BroaderMarketIntelligenceResultV1|None=None, external_context:ExternalMarketContextResultV1|None=None)->LiveMarketCandidateEvaluationResultV1:
+def evaluate_captured_certified_market_candidate(*, captured_evidence:CertifiedLiveCapturedEvidenceV1, session_validation:MarketSessionValidationV1, policy_source:LiveCandidatePolicySourceV1, parent_cycle_id:str, candidate_id:str, observation_id:str, engines:LiveCanonicalEvidenceEnginesV1, broader_market:BroaderMarketIntelligenceResultV1|None=None, external_context:ExternalMarketContextResultV1|None=None)->LiveMarketCandidateEvaluationResultV1:
  """Pure one-market bridge from the certified immutable capture to typed evidence."""
  if type(captured_evidence) is not CertifiedLiveCapturedEvidenceV1 or type(session_validation) is not MarketSessionValidationV1 or type(policy_source) is not LiveCandidatePolicySourceV1 or type(engines) is not LiveCanonicalEvidenceEnginesV1: raise TypeError("exact captured evaluator inputs")
  spec=market_spec_for(captured_evidence.underlying_symbol,captured_evidence.spot_exchange)
@@ -64,7 +65,7 @@ def evaluate_captured_certified_market_candidate(*, captured_evidence:CertifiedL
  payload=dict(captured_evidence.spot_payload)
  if "data" not in payload:
   payload={"data":{"ltp":payload.get("spot_price",payload.get("ltp")),"tradingsymbol":spec.underlying_symbol,"exchange":spec.exchange,"symboltoken":spec.symboltoken}}
- return evaluate_live_market_candidate(LiveMarketCandidateEvaluationInputV1(spec,candidate_id,observation_id,payload,captured_evidence.candle_rows_by_timeframe,captured_evidence.option_contracts,captured_evidence.provider_timestamp,captured_evidence.evaluated_at,session_validation,policy_source,engines,broader_market=broader_market,external_context=external_context,blockers=captured_evidence.provider_blockers,warnings=captured_evidence.provider_warnings))
+ return evaluate_live_market_candidate(LiveMarketCandidateEvaluationInputV1(spec,parent_cycle_id,candidate_id,observation_id,payload,captured_evidence.candle_rows_by_timeframe,captured_evidence.option_contracts,captured_evidence.provider_timestamp,captured_evidence.evaluated_at,session_validation,policy_source,engines,broader_market=broader_market,external_context=external_context,blockers=captured_evidence.provider_blockers,warnings=captured_evidence.provider_warnings))
 
 def attach_certified_candidate_evidence(raw_analysis:Mapping[str,object],evaluation:LiveMarketCandidateEvaluationResultV1)->dict[str,object]:
  if not isinstance(raw_analysis,Mapping) or type(evaluation) is not LiveMarketCandidateEvaluationResultV1:raise TypeError("attachment")

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from inspect import signature
 from threading import RLock
-from typing import Any
+from typing import Any, Protocol
 
 from services.contracts.market_analysis_candidate_v1 import (
     MarketAnalysisCandidateV1,
@@ -28,14 +28,17 @@ QuoteReader = Callable[
     [str, str, str],
     Mapping[str, Any],
 ]
-CandidateReader = Callable[
-    [
-        PaperOrchestrationCycleInputV1,
-        CertifiedLiveDataResultV1,
-        Mapping[str, Any],
-    ],
-    MarketAnalysisCandidateV1,
-]
+class CandidateReader(Protocol):
+    def __call__(
+        self,
+        cycle_input: PaperOrchestrationCycleInputV1,
+        data_result: CertifiedLiveDataResultV1,
+        analysis: Mapping[str, Any],
+        captured_evidence: CertifiedLiveCapturedEvidenceV1 | None,
+        shared_context: CertifiedSharedMarketContextV1 | None,
+        *,
+        parent_cycle_id: str,
+    ) -> MarketAnalysisCandidateV1: ...
 CaptureReader = Callable[[PaperOrchestrationCycleInputV1], CertifiedLiveCapturedEvidenceV1]
 
 
@@ -313,16 +316,8 @@ class CertifiedLiveProviderReaders:
             return captured
 
     @staticmethod
-    def _candidate_with_capture(reader, cycle_input, data_result, analysis, captured, shared_context):
-        try:
-            signature(reader).bind(cycle_input, data_result, analysis, captured, shared_context)
-        except TypeError:
-            try:
-                signature(reader).bind(cycle_input, data_result, analysis, captured)
-            except TypeError:
-                return reader(cycle_input, data_result, analysis)
-            return reader(cycle_input, data_result, analysis, captured)
-        return reader(cycle_input, data_result, analysis, captured, shared_context)
+    def _candidate_with_capture(reader, cycle_input, data_result, analysis, captured, shared_context, *, parent_cycle_id):
+        return reader(cycle_input, data_result, analysis, captured, shared_context, parent_cycle_id=parent_cycle_id)
 
     @staticmethod
     def _normalized_capture(cycle_input, captured, *, evaluated_at=None):
@@ -471,15 +466,19 @@ class CertifiedLiveProviderReaders:
         self,
         cycle_input: PaperOrchestrationCycleInputV1,
         data_result: CertifiedLiveDataResultV1,
+        *,
+        parent_cycle_id: str,
     ) -> Mapping[str, Any]:
         if (
             type(cycle_input)
             is not PaperOrchestrationCycleInputV1
-        ):
+            ):
             raise TypeError(
                 "cycle_input must be exact "
                 "PaperOrchestrationCycleInputV1"
             )
+        if type(parent_cycle_id) is not str or not parent_cycle_id.strip():
+            raise ValueError("parent_cycle_id")
 
         if (
             type(data_result)
@@ -510,7 +509,7 @@ class CertifiedLiveProviderReaders:
 
         candidate = None
         if self.candidate_reader is not None:
-            candidate = self._candidate_with_capture(self.candidate_reader, cycle_input, data_result, result, captured, self._shared_contexts.get(cycle_input.observation_id))
+            candidate = self._candidate_with_capture(self.candidate_reader, cycle_input, data_result, result, captured, self._shared_contexts.get(cycle_input.observation_id), parent_cycle_id=parent_cycle_id)
             if type(candidate) is not MarketAnalysisCandidateV1:
                 raise TypeError(
                     "candidate_reader must return exact "
