@@ -223,6 +223,7 @@ class CertifiedLiveProviderReaders:
         candidate_reader: CandidateReader | None = None,
         capture_reader: CaptureReader | None = None,
         india_vix_reader: object | None = None,
+        external_context_reader: object | None = None,
         substage_callback: Callable[[str], None] | None = None,
         risk_percent: float = 1.0,
         maximum_capital_usage_percent: float = 100.0,
@@ -266,6 +267,9 @@ class CertifiedLiveProviderReaders:
         if india_vix_reader is not None and not callable(getattr(india_vix_reader, "capture", None)):
             raise TypeError("india_vix_reader must expose capture()")
         self.india_vix_reader = india_vix_reader
+        if external_context_reader is not None and not callable(getattr(external_context_reader, "build", None)):
+            raise TypeError("external_context_reader must expose build()")
+        self.external_context_reader = external_context_reader
         if substage_callback is not None and not callable(substage_callback): raise TypeError("substage_callback")
         self.substage_callback = substage_callback
         self.india_vix_normalization_count = 0
@@ -361,11 +365,20 @@ class CertifiedLiveProviderReaders:
             sensex.evaluated_at,
             vix_capture.evaluated_at if vix_capture is not None else nifty.evaluated_at,
         )
+        external_context = (
+            self.external_context_reader.build(
+                cycle_id=f"shared-broader:{parent_evaluated_at.isoformat()}",
+                evaluated_at=parent_evaluated_at,
+            )
+            if self.external_context_reader is not None
+            else None
+        )
         context = build_certified_shared_broader_context(
             nifty_observation=self._normalized_capture(nifty_cycle, nifty, evaluated_at=parent_evaluated_at),
             sensex_observation=self._normalized_capture(sensex_cycle, sensex, evaluated_at=parent_evaluated_at),
             evaluated_at=parent_evaluated_at,
             india_vix_capture=vix_capture,
+            shared_external_context=external_context,
             capture_diagnostics={
                 "NIFTY": {"provider_timestamp": nifty.provider_timestamp, "received_at": nifty.evaluated_at, "cache_metadata": dict(nifty.cache_metadata), "shared_candle_cutoff": candle_cutoff},
                 "SENSEX": {"provider_timestamp": sensex.provider_timestamp, "received_at": sensex.evaluated_at, "cache_metadata": dict(sensex.cache_metadata), "shared_candle_cutoff": candle_cutoff},

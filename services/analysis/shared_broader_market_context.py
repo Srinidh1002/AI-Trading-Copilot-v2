@@ -7,7 +7,7 @@ from services.broader_market_intelligence.integration import build_broader_marke
 from services.contracts.certified_shared_market_context_v1 import CertifiedSharedMarketContextV1
 from services.contracts.india_vix_capture_result_v1 import IndiaVixCaptureResultV1
 from services.analysis.india_vix_normalizer import normalize_india_vix_capture
-from services.analysis.shared_external_market_context import build_shared_external_market_context
+from services.analysis.shared_external_market_context import SharedExternalMarketContextV1, build_shared_external_market_context
 from services.market.angel_live_observation_normalizer import AngelLiveMarketObservationV1
 
 
@@ -30,13 +30,15 @@ def _series(observation: AngelLiveMarketObservationV1, identity: tuple[str, str]
     return {series.timeframe: series for series in observation.candle_series}
 
 
-def build_certified_shared_broader_context(*, nifty_observation: AngelLiveMarketObservationV1, sensex_observation: AngelLiveMarketObservationV1, evaluated_at: datetime, india_vix_capture: IndiaVixCaptureResultV1|None=None, capture_diagnostics: dict | None = None) -> CertifiedSharedMarketContextV1:
+def build_certified_shared_broader_context(*, nifty_observation: AngelLiveMarketObservationV1, sensex_observation: AngelLiveMarketObservationV1, evaluated_at: datetime, india_vix_capture: IndiaVixCaptureResultV1|None=None, capture_diagnostics: dict | None = None, shared_external_context: SharedExternalMarketContextV1 | None = None) -> CertifiedSharedMarketContextV1:
     """Build both primary canonical results from already-normalized 5m candles."""
     evaluated_at = _aware(evaluated_at)
     nifty = _series(nifty_observation, _IDENTITIES[0], evaluated_at)
     sensex = _series(sensex_observation, _IDENTITIES[1], evaluated_at)
     cycle_id = f"shared-broader:{evaluated_at.isoformat()}"
-    blockers: tuple[str, ...] = (); vix=normalize_india_vix_capture(india_vix_capture) if india_vix_capture is not None else (None,None); external=build_shared_external_market_context(cycle_id=cycle_id, evaluated_at=evaluated_at)
+    blockers: tuple[str, ...] = (); vix=normalize_india_vix_capture(india_vix_capture) if india_vix_capture is not None else (None,None); external=shared_external_context or build_shared_external_market_context(cycle_id=cycle_id, evaluated_at=evaluated_at)
+    if type(external) is not SharedExternalMarketContextV1 or external.cycle_id != cycle_id or external.evaluated_at != evaluated_at:
+        raise ValueError("shared external context boundary")
     nifty_result = sensex_result = None
     if CORRELATION_TIMEFRAME not in nifty or CORRELATION_TIMEFRAME not in sensex:
         blockers = ("CORRELATION_TIMEFRAME_UNAVAILABLE_5M",)
