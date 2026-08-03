@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from inspect import signature
 from threading import RLock
 from typing import Any
@@ -286,7 +286,7 @@ class CertifiedLiveProviderReaders:
             "maximum_capital_usage_percent",
         )
 
-    def _capture_for(self, cycle_input: PaperOrchestrationCycleInputV1) -> CertifiedLiveCapturedEvidenceV1 | None:
+    def _capture_for(self, cycle_input: PaperOrchestrationCycleInputV1, *, candle_cutoff: datetime | None = None) -> CertifiedLiveCapturedEvidenceV1 | None:
         if self.capture_reader is None:
             return None
         key = cycle_input.observation_id
@@ -294,7 +294,15 @@ class CertifiedLiveProviderReaders:
             existing = self._captures.get(key)
             if existing is not None:
                 return existing
-            captured = self.capture_reader(cycle_input)
+            if candle_cutoff is None:
+                captured = self.capture_reader(cycle_input)
+            else:
+                try:
+                    signature(self.capture_reader).bind(cycle_input, candle_cutoff=candle_cutoff)
+                except TypeError:
+                    captured = self.capture_reader(cycle_input)
+                else:
+                    captured = self.capture_reader(cycle_input, candle_cutoff=candle_cutoff)
             if type(captured) is not CertifiedLiveCapturedEvidenceV1:
                 raise TypeError("capture_reader must return exact CertifiedLiveCapturedEvidenceV1")
             spec = market_spec_for(cycle_input.underlying_symbol, cycle_input.exchange)
@@ -337,8 +345,13 @@ class CertifiedLiveProviderReaders:
 
         if (nifty_cycle.underlying_symbol, nifty_cycle.exchange) != ("NIFTY", "NSE") or (sensex_cycle.underlying_symbol, sensex_cycle.exchange) != ("SENSEX", "BSE"):
             raise ValueError("shared context identity")
-        nifty = self._capture_for(nifty_cycle)
-        sensex = self._capture_for(sensex_cycle)
+        # The cross-market source is the final completed 5m candle, not the
+        # sequential quote receipt.  One conservative cutoff keeps both
+        # historical requests on the same completed exchange boundary.
+        earliest = min(nifty_cycle.market_timestamp, sensex_cycle.market_timestamp)
+        candle_cutoff = earliest - timedelta(minutes=earliest.minute % 5, seconds=earliest.second, microseconds=earliest.microsecond)
+        nifty = self._capture_for(nifty_cycle, candle_cutoff=candle_cutoff)
+        sensex = self._capture_for(sensex_cycle, candle_cutoff=candle_cutoff)
         if nifty is None or sensex is None:
             raise RuntimeError("shared broader context requires certified captures")
         vix_capture = self.india_vix_reader.capture(f"{nifty_cycle.observation_id}:{sensex_cycle.observation_id}") if self.india_vix_reader else None
@@ -358,6 +371,10 @@ class CertifiedLiveProviderReaders:
             sensex_observation=self._normalized_capture(sensex_cycle, sensex, evaluated_at=parent_evaluated_at),
             evaluated_at=parent_evaluated_at,
             india_vix_capture=vix_capture,
+            capture_diagnostics={
+                "NIFTY": {"provider_timestamp": nifty.provider_timestamp, "received_at": nifty.evaluated_at, "cache_metadata": dict(nifty.cache_metadata), "shared_candle_cutoff": candle_cutoff},
+                "SENSEX": {"provider_timestamp": sensex.provider_timestamp, "received_at": sensex.evaluated_at, "cache_metadata": dict(sensex.cache_metadata), "shared_candle_cutoff": candle_cutoff},
+            },
         )
         if self.substage_callback is not None: self.substage_callback("SHARED_CONTEXT_BUILD_COMPLETE")
         with self._capture_lock:

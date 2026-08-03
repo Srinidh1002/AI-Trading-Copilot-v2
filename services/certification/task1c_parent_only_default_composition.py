@@ -29,11 +29,11 @@ def build_task1c_parent_only_dependencies() -> Task1CParentOnlyDependenciesV1:
     counts = {"nifty_spot_calls": 0, "sensex_spot_calls": 0, "nifty_candle_capture_count": 0, "sensex_candle_capture_count": 0, "nifty_option_capture_count": 0, "sensex_option_capture_count": 0, "broader_intelligence_calls": 2}
     substage = {"value": "DEPENDENCY_READY"}
     def mark(value: str) -> None: substage["value"] = value
-    def capture(cycle):
+    def capture(cycle, *, candle_cutoff=None):
         key = cycle.underlying_symbol.lower()
         if cycle.underlying_symbol == "NIFTY": mark("NIFTY_CANDLE_CAPTURE_START")
         counts[f"{key}_candle_capture_count"] += 1; counts[f"{key}_option_capture_count"] += 1
-        result = capture_certified_live_evidence(cycle_input=cycle, data_service=data_service, option_decision_pipeline=providers.option_decision_pipeline)
+        result = capture_certified_live_evidence(cycle_input=cycle, data_service=data_service, option_decision_pipeline=providers.option_decision_pipeline, candle_cutoff=candle_cutoff)
         if cycle.underlying_symbol == "NIFTY": mark("NIFTY_OPTION_CAPTURE_COMPLETE"); mark("NIFTY_NORMALIZATION_START"); mark("NIFTY_NORMALIZATION_COMPLETE"); mark("NIFTY_TYPED_EVIDENCE_START")
         mark(f"{cycle.underlying_symbol}_CAPTURE_COMPLETE")
         return result

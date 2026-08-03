@@ -218,6 +218,7 @@ def capture_certified_live_evidence(
     cycle_input: PaperOrchestrationCycleInputV1,
     data_service: LiveMultiTimeframeData,
     option_decision_pipeline: LiveOptionDecisionPipeline,
+    candle_cutoff: datetime | None = None,
 ) -> CertifiedLiveCapturedEvidenceV1:
     """Capture one certified market's read-only inputs for later reuse."""
     if type(cycle_input) is not PaperOrchestrationCycleInputV1:
@@ -233,7 +234,11 @@ def capture_certified_live_evidence(
     payload = cycle_input.metadata.get("captured_spot_payload")
     if not isinstance(payload, Mapping):
         payload = {"spot_price": spot_price, "timestamp_source": cycle_input.metadata.get("timestamp_source")}
-    captured = data_service.fetch_all_with_capture(spec.exchange, spec.symboltoken, end_time=market_timestamp)
+    if candle_cutoff is not None:
+        candle_cutoff = _aware_datetime(candle_cutoff, "candle_cutoff")
+        if candle_cutoff > market_timestamp:
+            raise ValueError("candle_cutoff cannot follow market_timestamp")
+    captured = data_service.fetch_all_with_capture(spec.exchange, spec.symboltoken, end_time=candle_cutoff or market_timestamp)
     if not isinstance(captured, Mapping):
         raise TypeError("fetch_all_with_capture must return a mapping")
     rows = captured.get("rows_by_timeframe", {})
@@ -264,7 +269,7 @@ def capture_certified_live_evidence(
         evaluated_at=evaluated_at,
         provider_blockers=candle_blockers + option_capture.blockers,
         provider_warnings=option_capture.warnings,
-        cache_metadata={"candles": cache_metadata, "options": option_capture.metadata},
+        cache_metadata={"candles": cache_metadata, "options": option_capture.metadata, "shared_candle_cutoff": candle_cutoff.isoformat() if candle_cutoff else None},
     )
 
 

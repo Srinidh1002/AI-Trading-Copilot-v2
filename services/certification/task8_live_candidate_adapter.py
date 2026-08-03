@@ -49,6 +49,8 @@ def adapt_task8_live_candidate(
         raise TypeError("captured_evidence")
     if shared_context is not None and type(shared_context) is not CertifiedSharedMarketContextV1:
         raise TypeError("shared_context")
+    if shared_context is not None and shared_context.shared_external_context is not None and (shared_context.shared_external_context.cycle_id != shared_context.cycle_id or shared_context.shared_external_context.evaluated_at != shared_context.evaluated_at):
+        raise ValueError("shared external context cycle")
     expected = (cycle_input.underlying_symbol, cycle_input.exchange)
     if expected not in {("NIFTY", "NSE"), ("SENSEX", "BSE")}:
         raise ValueError("unsupported Task 8 market")
@@ -80,6 +82,7 @@ def adapt_task8_live_candidate(
             observation_id=cycle_input.observation_id,
             engines=build_default_live_canonical_evidence_engines(),
             broader_market=shared_context.for_market(*expected) if shared_context is not None else None,
+            external_context=shared_context.shared_external_context.for_market(*expected) if shared_context is not None and shared_context.shared_external_context is not None else None,
         ).candidate
     if type(composition) is not MarketAnalysisCandidateCompositionInputV1:
         raise TypeError("certified_candidate_composition")

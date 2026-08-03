@@ -381,9 +381,11 @@ def compose_market_analysis_candidate(
         if getattr(composition, name) is not None
         and not _ready(name, getattr(composition, name))
     )
+    # Optional contexts are optional only when absent.  An explicitly supplied
+    # non-ready context must fail closed so the candidate contract can retain
+    # it without ever claiming ELIGIBLE.
     optional_nonready = tuple(
-        name
-        for name in _OPTIONAL
+        name for name in _OPTIONAL
         if getattr(composition, name) is not None
         and not _ready(name, getattr(composition, name))
     )

@@ -11,6 +11,7 @@ from typing import Any
 from services.contracts.broader_market_intelligence_result_v1 import BroaderMarketIntelligenceResultV1
 from services.contracts.market_candle_series_v1 import MarketCandleSeriesV1
 from services.contracts.india_vix_capture_result_v1 import IndiaVixCaptureResultV1
+from services.analysis.shared_external_market_context import SharedExternalMarketContextV1
 
 
 _MARKETS = (("NIFTY", "NSE"), ("SENSEX", "BSE"))
@@ -82,6 +83,7 @@ class CertifiedSharedMarketContextV1:
     sensex_broader_market: BroaderMarketIntelligenceResultV1 | None
     source_timestamps: Mapping[str, datetime]
     india_vix_capture: IndiaVixCaptureResultV1 | None = None
+    shared_external_context: SharedExternalMarketContextV1 | None = None
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     cache_metadata: Mapping[str, Any] = field(default_factory=dict)
@@ -100,6 +102,8 @@ class CertifiedSharedMarketContextV1:
         timestamps = {str(key): _aware(value, "source_timestamps") for key, value in self.source_timestamps.items()}
         if self.india_vix_capture is not None and type(self.india_vix_capture) is not IndiaVixCaptureResultV1:
             raise ValueError("india_vix_capture")
+        if self.shared_external_context is not None and (type(self.shared_external_context) is not SharedExternalMarketContextV1 or self.shared_external_context.cycle_id != self.cycle_id or self.shared_external_context.evaluated_at != self.evaluated_at):
+            raise ValueError("shared_external_context")
         if tuple(timestamps) != tuple(sorted(timestamps)):
             raise ValueError("source_timestamps")
         object.__setattr__(self, "source_timestamps", MappingProxyType(timestamps))
@@ -128,6 +132,7 @@ class CertifiedSharedMarketContextV1:
             "sensex_broader_market": self.sensex_broader_market.to_dict() if self.sensex_broader_market else None,
             "source_timestamps": {key: value.isoformat() for key, value in self.source_timestamps.items()},
             "india_vix_capture": self.india_vix_capture.to_dict() if self.india_vix_capture else None,
+            "shared_external_context": {"cycle_id": self.shared_external_context.cycle_id, "evaluated_at": self.shared_external_context.evaluated_at.isoformat(), "nifty_status": self.shared_external_context.nifty.context_status, "sensex_status": self.shared_external_context.sensex.context_status} if self.shared_external_context else None,
             "blockers": list(self.blockers), "warnings": list(self.warnings),
             "cache_metadata": _plain(self.cache_metadata), "schema_version": self.schema_version,
         }

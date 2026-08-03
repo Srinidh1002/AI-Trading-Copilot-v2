@@ -62,9 +62,10 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         quote_reader=bundle.quote_reader, analysis_pipeline=bundle.analysis_pipeline,
         option_decision_pipeline=bundle.option_decision_pipeline, available_capital=10_000.0,
         candidate_reader=adapt_task8_live_candidate,
-        capture_reader=lambda cycle: capture_certified_live_evidence(
+        capture_reader=lambda cycle, *, candle_cutoff=None: capture_certified_live_evidence(
             cycle_input=cycle, data_service=data_service,
             option_decision_pipeline=bundle.option_decision_pipeline,
+            candle_cutoff=candle_cutoff,
         ),
     )
 

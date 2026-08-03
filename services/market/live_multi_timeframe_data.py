@@ -79,6 +79,7 @@ class LiveMultiTimeframeData:
             )
 
         self.cache_enabled = bool(cache_enabled)
+        self._capture_cache_status = {}
 
     @staticmethod
     def _cache_ttl_seconds(timeframe):
@@ -122,6 +123,7 @@ class LiveMultiTimeframeData:
             if cached_response is not None:
                 candles = cached_response.get("data", [])
                 if candles:
+                    self._capture_cache_status[(exchange, symboltoken, timeframe)] = "CACHED"
                     return cached_response
 
         response = self.client.get_historical_data(
@@ -153,6 +155,8 @@ class LiveMultiTimeframeData:
                 timeframe,
                 response,
             )
+
+        self._capture_cache_status[(exchange, symboltoken, timeframe)] = "LIVE"
 
         return response
 
@@ -222,7 +226,7 @@ class LiveMultiTimeframeData:
                 raw = response.get("data", [])
                 rows[timeframe] = tuple(tuple(item) for item in raw)
                 dataframes[timeframe] = normalize_angel_candles(raw)
-                metadata[timeframe] = {"captured": True}
+                metadata[timeframe] = {"captured": True, "cache_status": self._capture_cache_status.get((exchange, symboltoken, timeframe), "UNKNOWN"), "requested_until": end_time.isoformat() if isinstance(end_time, datetime) else None}
             except Exception as exc:
                 rows[timeframe] = ()
                 metadata[timeframe] = {"captured": False, "error": type(exc).__name__}

@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import pytest
 
-from services.certification.task1c_parent_only_live_canary import Task1CParentOnlyDependenciesV1
+from services.certification.task1c_parent_only_live_canary import Task1CParentOnlyDependenciesV1, _component_status
 
 
 NOW = datetime(2026, 8, 3, tzinfo=timezone.utc)
@@ -30,3 +31,14 @@ def test_shared_parent_boundary_can_be_distinct_from_individual_receipt_times():
     first = NOW
     second = NOW.replace(second=1)
     assert max(first, second) == second
+
+
+def test_early_candidate_failure_is_attributed_once_and_downstream_is_not_evaluated():
+    entry = SimpleNamespace(child=SimpleNamespace(candidate=None, terminal_status="FAILED", blockers=("CANDIDATE_COMPOSITION_FAILED",), errors=("CANDIDATE_COMPOSITION_FAILED",)))
+    broader = SimpleNamespace(intelligence_status="READY_WITH_WARNINGS", blockers=(), warnings=("optional breadth evidence is unavailable",))
+    summary = _component_status(entry, broader, None)
+    assert summary["terminal_components"] == ["candidate_composition"]
+    assert summary["terminal_reason_codes"] == ["CANDIDATE_COMPOSITION_FAILED"]
+    assert summary["statuses"]["candidate_composition"] == "FAILED"
+    assert summary["statuses"]["technical"] == "NOT_EVALUATED"
+    assert summary["statuses"]["external_context"] == "UNAVAILABLE"

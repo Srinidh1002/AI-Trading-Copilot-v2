@@ -27,7 +27,7 @@ def evaluate_broader_market_intelligence(*,underlying_symbol:str,exchange:str,cr
   if item.evidence_status in {"READY","READY_WITH_WARNINGS"}:available.append(("cross",item));warnings.extend(item.warnings)
   else:unavailable.append("CROSS_MARKET");warnings.extend(item.warnings);blockers.extend(item.blockers)
  required=policy.required_cross_market_relationships.get(identity,())
- if any(r not in related for r in required):blockers.append("required cross-market evidence is missing")
+ if any(r not in related for r in required):blockers.append("REQUIRED_CROSS_MARKET_EVIDENCE_MISSING")
  if breadth_evidence is not None:
   if not isinstance(breadth_evidence,MarketBreadthEvidenceV1):raise TypeError("breadth_evidence must be MarketBreadthEvidenceV1 or None")
   if (breadth_evidence.underlying_symbol,breadth_evidence.exchange)!=identity:raise ValueError("breadth identity must match result")
@@ -42,7 +42,7 @@ def evaluate_broader_market_intelligence(*,underlying_symbol:str,exchange:str,cr
   if volatility_context.context_status in {"READY","READY_WITH_WARNINGS"}:available.append(("volatility",volatility_context));warnings.extend(volatility_context.warnings)
   else:unavailable.append("VOLATILITY");warnings.extend(volatility_context.warnings);blockers.extend(volatility_context.blockers)
  elif policy.warn_on_missing_optional_evidence:warnings.append("optional volatility context is unavailable")
- if policy.require_cross_market_evidence and not any(name=="cross" for name,_ in available):blockers.append("mandatory cross-market evidence is unavailable")
+ if policy.require_cross_market_evidence and not any(name=="cross" for name,_ in available):blockers.append("MANDATORY_CROSS_MARKET_EVIDENCE_UNAVAILABLE")
  if policy.require_breadth_evidence and not any(name=="breadth" for name,_ in available):blockers.append("mandatory breadth evidence is unavailable")
  if policy.require_volatility_context and not any(name=="volatility" for name,_ in available):blockers.append("mandatory volatility context is unavailable")
  if len(available)<policy.minimum_available_component_count:blockers.append("available component count is below policy minimum")

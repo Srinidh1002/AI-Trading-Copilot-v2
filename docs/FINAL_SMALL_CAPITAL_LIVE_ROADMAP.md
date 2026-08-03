@@ -36,9 +36,15 @@ identical reporting semantics. It never claims guaranteed profit.
 
 Purpose: establish truthful, timestamped, typed NIFTY/SENSEX and option-market
 evidence. Foundations: `certified_live_provider_readers`, Angel normalization,
-P5 contracts, and the diagnostic-only India VIX capture. Remaining work:
-complete source certification where unproven, including India VIX. Exit gate:
-every required active input is provider-proven or explicitly unavailable.
+P5 contracts, certified shared India VIX, and typed optional external context.
+Institutional/global/event evidence and breadth remain optional under the
+current policy: the shared external projections are wired into each child’s
+canonical market-regime result, but missing optional evidence does not
+independently block a candidate. No unapproved provider is introduced, and
+unavailable context and the actual terminal component are attributed truthfully
+rather than fabricated. Future approved adapters remain optional improvements
+and do not reopen Task 1. Exit gate: every required active input is
+provider-proven or explicitly unavailable.
 Depends on: none. Excludes: decision, planning, orders, and LIVE execution.
 
 ### 2. Fourteen-pillar decision certification

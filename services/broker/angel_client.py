@@ -16,6 +16,7 @@ No orders are placed from this client.
 """
 
 import logging
+import re
 import time
 
 import pyotp
@@ -36,6 +37,24 @@ from services.broker.market_data_control import (
 
 
 LOGGER = logging.getLogger(__name__)
+_SECRET_VALUE = re.compile(r"(?i)((?:x-privatekey|api[_ -]?key|authorization|jwt|refresh[_ -]?token|feed[_ -]?token|pin|totp|cookie|session)[\"']?\s*[:=]\s*[\"']?)([^,\s}\]'\"]+)")
+
+
+def _safe_provider_reason(value):
+    """Retain a bounded operational reason without credentials or headers."""
+    raw = str(value)
+    if _SECRET_VALUE.search(raw):
+        return "REDACTED_PROVIDER_ERROR"
+    text = raw
+    return " ".join(text.split())[:200]
+
+
+def _suppress_smartapi_logs():
+    """SmartAPI may log request headers itself; keep it out of our console."""
+    for name in ("SmartApi", "smartapi", "smartapi-python"):
+        logger = logging.getLogger(name)
+        logger.disabled = True
+        logger.propagate = False
 
 
 class AngelMarketDataClient:
@@ -78,6 +97,7 @@ class AngelMarketDataClient:
                 "be at least 1."
             )
 
+        _suppress_smartapi_logs()
         self.api = SmartConnect(
             api_key=ANGEL_API_KEY
         )
@@ -197,15 +217,7 @@ class AngelMarketDataClient:
             self.authenticated = False
             self.session = None
 
-            raise RuntimeError(
-                "Angel One login request failed: "
-                f"{exc}"
-            ) from exc
-        debug_print(
-            f"LOGIN: "
-            f"status={response.get('status')} "
-            f"message={response.get('message', '')}"
-        )
+            raise RuntimeError("Angel One login request failed: " + _safe_provider_reason(exc)) from exc
         if self._is_rate_limit_error(
             response=response,
         ):
@@ -237,10 +249,7 @@ class AngelMarketDataClient:
             self.authenticated = False
             self.session = None
 
-            raise RuntimeError(
-                "Angel One login failed: "
-                f"{response.get('message', 'Unknown login error')}"
-            )
+            raise RuntimeError("Angel One login failed: " + _safe_provider_reason(response.get("message", "Unknown login error")))
 
         self.authenticated = True
 
@@ -500,11 +509,7 @@ class AngelMarketDataClient:
         if response.get(
             "status"
         ) is False:
-            raise RuntimeError(
-                f"Angel One {request_name} "
-                f"request failed: "
-                f"{response.get('message', 'Unknown error')}"
-            )
+            raise RuntimeError(f"Angel One {request_name} request failed: " + _safe_provider_reason(response.get("message", "Unknown error")))
 
         return response
 
@@ -571,19 +576,7 @@ class AngelMarketDataClient:
 
                 try:
                     response = request_callable()
-                    debug_print("\n========== BROKER RESPONSE ==========")
-                    if isinstance(response, dict):
-                        debug_print(
-                            f"{request_name}: "
-                            f"status={response.get('status')} "
-                            f"message={response.get('message', '')}"
-                        )
-                    else:
-                        debug_print(
-                            f"{request_name}: "
-                            f"invalid response type={type(response).__name__}"
-                        )
-                    debug_print("=====================================\n")
+                    LOGGER.info("broker_request request_type=%s endpoint_category=%s response_type=%s", request_name, request_name, type(response).__name__)
                 finally:
                     self.request_controller.mark_request_complete(
                         request_name
@@ -603,10 +596,7 @@ class AngelMarketDataClient:
                             request_name,
                             rate_limit_attempts,
                             "rate_limited",
-                            response.get(
-                                "message",
-                                "Unknown rate-limit error",
-                            ),
+                            _safe_provider_reason(response.get("message", "Unknown rate-limit error")),
                         )
 
                     self.request_controller.record_rate_limit(
@@ -693,10 +683,7 @@ class AngelMarketDataClient:
                 return validated
 
             except Exception as exc:
-                debug_print(
-                    f"RATE LIMIT EXCEPTION: "
-                    f"{type(exc).__name__}: {exc}"
-                )
+                LOGGER.warning("broker_request_failed request_type=%s error_type=%s retry=%s reason=%s", request_name, type(exc).__name__, attempt, _safe_provider_reason(exc))
                 last_exception = exc
 
                 if isinstance(
@@ -712,7 +699,7 @@ class AngelMarketDataClient:
                             request_name,
                             rate_limit_attempts,
                             "rate_limited",
-                            exc,
+                            _safe_provider_reason(exc),
                         ) from exc
                     self.request_controller.record_rate_limit(
                         request_name,
@@ -741,11 +728,7 @@ class AngelMarketDataClient:
                             )
 
                         except Exception as login_exc:
-                            raise RuntimeError(
-                                "Angel One session "
-                                "re-authentication failed: "
-                                f"{login_exc}"
-                            ) from login_exc
+                            raise RuntimeError("Angel One session re-authentication failed: " + _safe_provider_reason(login_exc)) from login_exc
 
                         continue
 
@@ -780,11 +763,7 @@ class AngelMarketDataClient:
                     self.retry_backoff_multiplier
                 )
 
-        raise RuntimeError(
-            f"Angel One {request_name} request "
-            f"failed after {self.max_retries} attempts: "
-            f"{last_exception}"
-        ) from last_exception
+        raise RuntimeError(f"Angel One {request_name} request failed after {self.max_retries} attempts: " + _safe_provider_reason(last_exception)) from last_exception
 
     @staticmethod
     def _market_data_cache_key(mode, exchange_tokens):

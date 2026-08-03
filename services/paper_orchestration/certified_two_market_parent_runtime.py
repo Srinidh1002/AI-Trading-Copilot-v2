@@ -22,6 +22,7 @@ from services.paper_orchestration.certified_live_read_authorities import (
     CertifiedSessionAuthority,
 )
 from services.paper_orchestration.two_market_parent_cycle_coordinator import (
+    ChildEvaluationFailure,
     run_two_market_parent_cycle,
 )
 
@@ -122,9 +123,18 @@ def run_certified_two_market_parent_runtime(
     ) -> MarketAnalysisCandidateV1:
         if callable(substage_callback): substage_callback(f"{symbol}_CANDIDATE_BUILD_START")
         cycle = cycles[(symbol, exchange, observation_id)]
-        data = data_authority(cycle)
-        session = session_authority(cycle, data)
-        analysis = analysis_authority(cycle, data, session)
+        try:
+            data = data_authority(cycle)
+        except Exception as exc:
+            raise ChildEvaluationFailure("spot", "SPOT_EVIDENCE_UNAVAILABLE") from exc
+        try:
+            session = session_authority(cycle, data)
+        except Exception as exc:
+            raise ChildEvaluationFailure("session", "SESSION_EVIDENCE_UNAVAILABLE") from exc
+        try:
+            analysis = analysis_authority(cycle, data, session)
+        except Exception as exc:
+            raise ChildEvaluationFailure("candidate_composition", "CANDIDATE_COMPOSITION_FAILED") from exc
         candidate = analysis.candidate
         if type(candidate) is not MarketAnalysisCandidateV1:
             raise RuntimeError(

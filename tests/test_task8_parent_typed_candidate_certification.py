@@ -130,7 +130,22 @@ def test_shared_broader_result_reaches_matching_regime_without_forcing_suitabili
         )
     shared = build_certified_shared_broader_context(nifty_observation=observation(nifty), sensex_observation=observation(sensex), evaluated_at=NOW)
     session = validate_session_timestamp(symbol="NIFTY", exchange="NSE", market_timestamp=NOW, evaluated_at=NOW, validation_mode="LENIENT_ANALYSIS", id_factory=lambda: "session:nifty")
-    result = evaluate_captured_certified_market_candidate(captured_evidence=nifty, session_validation=session, policy_source=LiveCandidatePolicySourceV1("BULLISH", "ELIGIBLE", 80.0, 80.0), candidate_id="candidate:shared", observation_id="observation:shared", engines=build_default_live_canonical_evidence_engines(), broader_market=shared.nifty_broader_market)
+    result = evaluate_captured_certified_market_candidate(captured_evidence=nifty, session_validation=session, policy_source=LiveCandidatePolicySourceV1("BULLISH", "ELIGIBLE", 80.0, 80.0), candidate_id="candidate:shared", observation_id="observation:shared", engines=build_default_live_canonical_evidence_engines(), broader_market=shared.nifty_broader_market, external_context=shared.shared_external_context.for_market("NIFTY", "NSE"))
     assert result.composition.broader_market is shared.nifty_broader_market
+    assert result.composition.external_context is None
+    assert result.candidate.external_context is None
     assert result.evidence.regime.broader_market_regime_component is not None
+    assert result.evidence.regime.external_context_regime_component is not None
+    assert result.evidence.regime.external_context_regime_component.context_status == "UNAVAILABLE"
     assert result.evidence.regime.entry_suitability != "SUITABLE"
+    without_external = evaluate_captured_certified_market_candidate(captured_evidence=nifty, session_validation=session, policy_source=LiveCandidatePolicySourceV1("BULLISH", "ELIGIBLE", 80.0, 80.0), candidate_id="candidate:without-external", observation_id="observation:without-external", engines=build_default_live_canonical_evidence_engines(), broader_market=shared.nifty_broader_market)
+    assert result.candidate.eligibility == without_external.candidate.eligibility
+
+
+def test_live_evaluator_rejects_cross_market_external_projection():
+    nifty, sensex = captured("NIFTY", "NSE", 25000.0, complete_options=True), captured("SENSEX", "BSE", 80000.0)
+    shared = build_certified_shared_broader_context(nifty_observation=normalize_angel_live_observation(spot_response={"data": {"ltp": 25000.0, "tradingsymbol": "NIFTY", "exchange": "NSE", "symboltoken": "99926000"}}, candle_rows_by_timeframe=nifty.candle_rows_by_timeframe, market_spec=market_spec_for("NIFTY", "NSE"), provider_timestamp=NOW, evaluated_at=NOW), sensex_observation=normalize_angel_live_observation(spot_response={"data": {"ltp": 80000.0, "tradingsymbol": "SENSEX", "exchange": "BSE", "symboltoken": "99919000"}}, candle_rows_by_timeframe=sensex.candle_rows_by_timeframe, market_spec=market_spec_for("SENSEX", "BSE"), provider_timestamp=NOW, evaluated_at=NOW), evaluated_at=NOW)
+    session = validate_session_timestamp(symbol="NIFTY", exchange="NSE", market_timestamp=NOW, evaluated_at=NOW, validation_mode="LENIENT_ANALYSIS", id_factory=lambda: "session:nifty")
+    import pytest
+    with pytest.raises(ValueError, match="external context identity"):
+        evaluate_captured_certified_market_candidate(captured_evidence=nifty, session_validation=session, policy_source=LiveCandidatePolicySourceV1.unavailable(), candidate_id="candidate:cross", observation_id="observation:cross", engines=build_default_live_canonical_evidence_engines(), external_context=shared.shared_external_context.for_market("SENSEX", "BSE"))

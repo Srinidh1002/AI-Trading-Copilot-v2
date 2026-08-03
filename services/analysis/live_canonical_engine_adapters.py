@@ -13,6 +13,7 @@ from services.data_quality.candle_quality import evaluate_market_candle_series_q
 from services.market_regime.service import evaluate_market_regime
 from services.market_regime.technical import evaluate_technical_regime_component
 from services.market_regime.broader import evaluate_broader_market_regime_component
+from services.market_regime.external import evaluate_external_context_regime_component
 from services.multi_timeframe.pipeline import build_canonical_multi_timeframe_snapshot
 from services.multi_timeframe.quality import evaluate_multi_timeframe_quality
 from services.option_chain_intelligence.intelligence_pipeline import build_canonical_option_chain_intelligence, build_unavailable_option_chain_intelligence
@@ -50,7 +51,7 @@ def _technical(observation, snapshot, evaluated_at):
     )
 
 
-def _regime(technical, session, evaluated_at, broader_market=None):
+def _regime(technical, session, evaluated_at, broader_market=None, external_context=None):
     component = evaluate_technical_regime_component(
         underlying_symbol=technical.underlying_symbol, exchange=technical.exchange,
         technical_context=technical, created_at=evaluated_at,
@@ -61,11 +62,17 @@ def _regime(technical, session, evaluated_at, broader_market=None):
         broader_market_context=broader_market, policy=None, created_at=evaluated_at,
         result_id=f"live-broader-regime:{technical.technical_intelligence_result_id}",
     ) if broader_market is not None else None
+    external_component = evaluate_external_context_regime_component(
+        underlying_symbol=technical.underlying_symbol, exchange=technical.exchange,
+        external_market_context=external_context, policy=None, created_at=evaluated_at,
+        result_id=f"live-external-regime:{technical.technical_intelligence_result_id}",
+    )
     return evaluate_market_regime(MarketRegimeInputV1(
         market_regime_input_id=f"live-regime:{technical.technical_intelligence_result_id}", created_at=evaluated_at,
         underlying_symbol=technical.underlying_symbol, exchange=technical.exchange,
         technical_intelligence=technical, technical_regime_component=component,
         broader_market_intelligence=broader_market, broader_market_regime_component=broader_component,
+        external_market_context=external_context, external_context_regime_component=external_component,
         market_session_validation=session, source_timestamps={"technical": technical.created_at, "session": session.market_timestamp},
     ))
 

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from services.contracts.india_vix_capture_result_v1 import IndiaVixCaptureResultV1
 from services.contracts.market_data_provenance_v1 import MarketDataProvenanceV1
@@ -31,6 +32,11 @@ def test_shared_context_builds_nifty_and_sensex_primary_correlation_once_each():
     assert result.sensex_broader_market.cross_market_evidence[0].related_symbol == "NIFTY"
     assert "optional breadth evidence is unavailable" in result.nifty_broader_market.warnings
     assert "optional volatility context is unavailable" in result.sensex_broader_market.warnings
+    assert result.shared_external_context is not None
+    assert result.shared_external_context.cycle_id == result.cycle_id
+    assert result.shared_external_context.evaluated_at == result.evaluated_at
+    with pytest.raises(ValueError):
+        replace(result, shared_external_context=replace(result.shared_external_context, cycle_id="wrong-cycle"))
 
 
 def test_missing_timeframe_is_explicit_and_cross_market_boundary_is_fail_closed():
