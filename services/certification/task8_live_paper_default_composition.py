@@ -28,6 +28,10 @@ from services.contracts.two_market_decision_policy_v1 import TwoMarketDecisionPo
 from services.contracts.two_market_parent_cycle_input_v1 import TwoMarketParentCycleInputV1
 from services.market_session.validator import validate_session_timestamp
 from services.paper_orchestration.authoritative_two_market_entry_point import run_authoritative_two_market_parent_cycle
+from services.paper_orchestration.selected_market_p6_planning_runtime import (
+    adapt_selected_market_p6_to_cycle_result,
+    execute_selected_market_p6_planning,
+)
 from services.paper_orchestration.certified_runtime_safety import (
     validate_no_broker_submission_guard,
     validate_repository_paper_safety,
@@ -74,6 +78,8 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         present = all(bool(os.getenv(name, "").strip()) for name in required)
         return {"branch_worktree": _git("branch", "--show-current") == "p10-two-market-weekend-readiness", "paper_mode": True, "live_execution_ineligible": True, "broker_submission_disabled": True, "nifty_provider": True, "sensex_provider": True, "routing": True, "persistence_writable": True, "journal_writable": True, "emergency_halt": True, "market_session_checked": True, "credentials_present": present, "journal_status": "NOT_WRITTEN"}
 
+    selected_runtime_state: dict[str, object] = {}
+
     def parent_cycle():
         # Capture each index LTP once before its child cycle is built.  The
         # certified reader reuses the captured value in DATA and does not re-read it.
@@ -91,6 +97,36 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
             policy = PaperOrchestrationPolicyV1(orchestration_policy_id=f"task8-policy-{requested_at.date().isoformat()}", policy_timestamp=requested_at, observation_frequency_seconds=60.0, emergency_paper_halt=False)
             cycles[(symbol, exchange)] = build_certified_cycle_input(cycle_kind="OPPORTUNITY", observation_id=f"task8-{symbol.lower()}-{market_timestamp.isoformat()}", orchestration_policy=policy, underlying_symbol=symbol, exchange=exchange, market_timestamp=market_timestamp, received_at=received_at, cycle_requested_at=requested_at, session_validation=session, metadata={"spot_price": raw["spot_price"], "timestamp_source": raw.get("timestamp_source"), "captured_spot_payload":{"spot_price":raw["spot_price"],"timestamp_source":raw.get("timestamp_source")}})
         parent = TwoMarketParentCycleInputV1(parent_cycle_id=f"task8-parent-{requested.isoformat()}", decision_result_id=f"task8-decision-{requested.isoformat()}", nifty_child_result_id=f"task8-child-nifty-{requested.isoformat()}", sensex_child_result_id=f"task8-child-sensex-{requested.isoformat()}", nifty_observation_id=cycles[("NIFTY", "NSE")].observation_id, sensex_observation_id=cycles[("SENSEX", "BSE")].observation_id, requested_at=cycles[("NIFTY", "NSE")].cycle_requested_at, completed_at=datetime.now(timezone.utc), decision_policy=TwoMarketDecisionPolicyV1(180.0, 5.0))
-        return run_authoritative_two_market_parent_cycle(parent, nifty_cycle=cycles[("NIFTY", "NSE")], sensex_cycle=cycles[("SENSEX", "BSE")], readers=readers)
+        decision = run_authoritative_two_market_parent_cycle(parent, nifty_cycle=cycles[("NIFTY", "NSE")], sensex_cycle=cycles[("SENSEX", "BSE")], readers=readers)
+        # The parent has already captured both child observations.  Retain its
+        # exact decision and child cycle identities for selected-only P6; do
+        # not perform any second provider read to reconstruct evidence.
+        selected_runtime_state["decision"] = decision
+        selected_runtime_state["cycles"] = cycles
+        return decision
 
-    return Task8CanaryDependenciesV1(branch=_git("branch", "--show-current"), commit=_git("rev-parse", "--short", "HEAD"), preflight=preflight, parent_cycle=parent_cycle, selected_planner=lambda market: (_ for _ in ()).throw(RuntimeError("selected-market lifecycle wiring is unavailable")), monitoring=lambda: None, clock=lambda: datetime.now(timezone.utc), id_factory=lambda: f"task8-live-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}")
+    def selected_planner(market: tuple[str, str]):
+        """Production selected-market P6 seam; P7/P8 are intentionally absent."""
+        decision = selected_runtime_state.get("decision")
+        cycles = selected_runtime_state.get("cycles")
+        if decision is None or not isinstance(cycles, dict):
+            raise RuntimeError("authoritative parent cycle must run before selected planning")
+        if decision.selected_market != market:
+            raise ValueError("selected planner market does not match authoritative decision")
+        selected_planning = execute_selected_market_p6_planning(
+            bridge_result_id=f"task8-bridge-{decision.decision_result_id}",
+            decision=decision,
+            selected_cycle=cycles[market],
+            # The current live candidate adapter does not retain a complete
+            # typed P6 bundle.  This deliberately blocks rather than reading
+            # providers or fabricating prices/contracts/risk inputs.
+            certified_p6_input_bundle=None,
+            evaluated_at=decision.completed_at,
+            maximum_candidate_age_seconds=180.0,
+        )
+        return adapt_selected_market_p6_to_cycle_result(
+            selected_cycle=cycles[market],
+            selected_planning=selected_planning,
+        )
+
+    return Task8CanaryDependenciesV1(branch=_git("branch", "--show-current"), commit=_git("rev-parse", "--short", "HEAD"), preflight=preflight, parent_cycle=parent_cycle, selected_planner=selected_planner, monitoring=lambda: None, clock=lambda: datetime.now(timezone.utc), id_factory=lambda: f"task8-live-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}")

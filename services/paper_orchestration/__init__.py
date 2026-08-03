@@ -52,6 +52,11 @@ from services.paper_orchestration.stage_result_factory import (
 from services.paper_orchestration.complete_cycle_executor import (
     CompletePaperOrchestrationCycleExecutor,
 )
+from services.paper_orchestration.selected_market_p6_planning_runtime import (
+    SelectedMarketP6PlanningResultV1,
+    adapt_selected_market_p6_to_cycle_result,
+    execute_selected_market_p6_planning,
+)
 
 from services.paper_orchestration.existing_position_monitoring_executor import (
     ExistingPositionMonitoringExecutor,
@@ -82,6 +87,9 @@ __all__ = [
     "ExistingPositionMonitoringInputV1",
     "ExistingPositionMonitoringResultV1",
     "CompletePaperOrchestrationCycleExecutor",
+    "SelectedMarketP6PlanningResultV1",
+    "adapt_selected_market_p6_to_cycle_result",
+    "execute_selected_market_p6_planning",
     "CompleteCycleAuthoritySetV1",
     "PaperOrchestrationExecutionContextV1",
     "build_completed_stage_result",
