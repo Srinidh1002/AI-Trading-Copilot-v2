@@ -1,4 +1,6 @@
 from datetime import timedelta
+from services.contracts.india_vix_capture_result_v1 import IndiaVixCaptureResultV1
+from services.contracts.market_data_provenance_v1 import MarketDataProvenanceV1
 
 import pytest
 
@@ -45,3 +47,21 @@ def test_missing_timeframe_is_explicit_and_cross_market_boundary_is_fail_closed(
             sensex_observation=observation("SENSEX", "BSE", 80000.0, evaluated_at=NOW + timedelta(seconds=1)),
             evaluated_at=NOW,
         )
+
+
+def test_later_fresh_vix_uses_shared_post_capture_boundary_without_future_block():
+    delayed = NOW + timedelta(seconds=130)
+    capture = IndiaVixCaptureResultV1(
+        capture_id="vix-capture", cycle_id="parent", canonical_name="INDIA_VIX", provider="ANGEL_SMARTAPI",
+        provider_symbol="India VIX", provider_exchange="NSE", provider_token="99926017", instrument_type="AMXIDX",
+        current_value=11.98, previous_close=11.76, provider_timestamp=delayed - timedelta(seconds=1), evaluated_at=delayed,
+        provenance=MarketDataProvenanceV1("ANGEL_SMARTAPI", "India VIX", "NSE", "LIVE", delayed - timedelta(seconds=1), delayed, False, None, None), source_status="READY",
+    )
+    result = build_certified_shared_broader_context(
+        nifty_observation=observation("NIFTY", "NSE", 25000.0, evaluated_at=delayed),
+        sensex_observation=observation("SENSEX", "BSE", 80000.0, evaluated_at=delayed), evaluated_at=delayed, india_vix_capture=capture,
+    )
+    assert result.evaluated_at == delayed
+    assert result.nifty_broader_market.volatility_context.volatility_regime == "LOW"
+    assert "volatility source timestamp exceeds future tolerance" not in result.nifty_broader_market.blockers
+    assert "optional breadth evidence is unavailable" in result.nifty_broader_market.warnings

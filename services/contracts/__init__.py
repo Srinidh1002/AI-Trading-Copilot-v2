@@ -74,6 +74,8 @@ _EXPORTS = {
 ),
 "market_breadth_snapshot_v1": ("MarketBreadthSnapshotV1",),
 "volatility_snapshot_v1": ("VolatilitySnapshotV1",),
+"india_vix_regime_policy_v1": ("IndiaVixRegimePolicyV1", "DEFAULT_INDIA_VIX_REGIME_POLICY", "classify_india_vix_regime"),
+"india_vix_capture_result_v1": ("IndiaVixCaptureResultV1",),
 "external_market_observation_v1": ("ExternalMarketObservationV1",),
 "institutional_flow_snapshot_v1": ("InstitutionalFlowSnapshotV1",),
 "scheduled_market_event_v1": ("ScheduledMarketEventV1",),

@@ -73,6 +73,7 @@ def run_certified_two_market_parent_runtime(
     nifty_cycle: PaperOrchestrationCycleInputV1,
     sensex_cycle: PaperOrchestrationCycleInputV1,
     readers: CertifiedLiveProviderReaders,
+    substage_callback=None,
 ) -> TwoMarketDecisionResultV1:
     """Run each certified child analysis exactly once, then coordinate/rank."""
 
@@ -81,21 +82,26 @@ def run_certified_two_market_parent_runtime(
     if type(readers) is not CertifiedLiveProviderReaders:
         raise TypeError("readers")
 
+    if callable(substage_callback): substage_callback("NIFTY_CYCLE_INPUT_BIND_START")
     _validate_child_cycle(
         parent=parent,
         cycle=nifty_cycle,
         symbol="NIFTY",
         observation_id=parent.nifty_observation_id,
     )
+    if callable(substage_callback): substage_callback("NIFTY_CYCLE_INPUT_BIND_COMPLETE")
 
+    if callable(substage_callback): substage_callback("SENSEX_CYCLE_INPUT_BIND_START")
     _validate_child_cycle(
         parent=parent,
         cycle=sensex_cycle,
         symbol="SENSEX",
         observation_id=parent.sensex_observation_id,
     )
+    if callable(substage_callback): substage_callback("SENSEX_CYCLE_INPUT_BIND_COMPLETE")
 
     if readers.capture_reader is not None:
+        if callable(substage_callback): substage_callback("SHARED_CONTEXT_BUILD_START")
         readers.prepare_shared_broader_context(nifty_cycle, sensex_cycle)
 
     cycles = {
@@ -114,6 +120,7 @@ def run_certified_two_market_parent_runtime(
         exchange: str,
         observation_id: str,
     ) -> MarketAnalysisCandidateV1:
+        if callable(substage_callback): substage_callback(f"{symbol}_CANDIDATE_BUILD_START")
         cycle = cycles[(symbol, exchange, observation_id)]
         data = data_authority(cycle)
         session = session_authority(cycle, data)
@@ -123,9 +130,13 @@ def run_certified_two_market_parent_runtime(
             raise RuntimeError(
                 "certified child analysis did not attach a typed candidate"
             )
+        if callable(substage_callback): substage_callback(f"{symbol}_CANDIDATE_BUILD_COMPLETE")
         return candidate
 
-    return run_two_market_parent_cycle(
+    if callable(substage_callback): substage_callback("PARENT_COMPARISON_START")
+    result = run_two_market_parent_cycle(
         parent,
         child_evaluator=evaluate,
     )
+    if callable(substage_callback): substage_callback("PARENT_COMPARISON_COMPLETE")
+    return result

@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import config
 
 from services.broker.shared_client import get_market_client
+from services.angel_instrument_master import AngelInstrumentMaster
 from services.contracts.certified_live_captured_evidence_v1 import (
     CertifiedLiveCapturedEvidenceV1,
 )
@@ -49,6 +50,7 @@ from services.paper_orchestration.certified_live_provider_readers import (
     CertifiedLiveProviderReaders,
     market_spec_for,
 )
+from services.paper_orchestration.india_vix_live_reader import IndiaVixLiveReader
 from services.paper_orchestration.certified_live_read_authorities import (
     CertifiedLiveAnalysisAuthority,
     CertifiedLiveDataAuthority,
@@ -894,6 +896,11 @@ def build_certified_launcher(
         available_capital=value.available_capital,
         candidate_reader=provider_bundle.candidate_reader,
         capture_reader=capture_reader,
+        india_vix_reader=IndiaVixLiveReader(
+            master_fetcher=AngelInstrumentMaster().fetch_instruments,
+            market_client=get_market_client(),
+            clock=clock,
+        ),
     )
 
     data_authority = CertifiedLiveDataAuthority(

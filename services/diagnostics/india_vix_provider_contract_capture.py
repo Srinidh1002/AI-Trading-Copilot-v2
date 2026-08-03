@@ -215,21 +215,26 @@ def capture_provider_contract(*, master_fetcher: Callable[[], Sequence[Mapping[s
     if age is not None and (age < -5 or age > 300): blockers.append("INDIA_VIX_PROVIDER_TIMESTAMP_NOT_FRESH")
     ltp = values.get("ltp")
     if isinstance(ltp, bool) or not isinstance(ltp, (int, float)) or not math.isfinite(float(ltp)) or float(ltp) <= 0: blockers.append("INDIA_VIX_LTP_INVALID")
-    previous_field = "previousClose" if "previousClose" in values else None
+    # Certified observed FULL payload semantics: `close` is the previous close.
+    previous_field = "close" if "close" in values else "previousClose" if "previousClose" in values else None
     previous_value = values.get(previous_field) if previous_field else None
-    if previous_field is None or isinstance(previous_value, bool) or not isinstance(previous_value, (int, float)) or not math.isfinite(float(previous_value)) or float(previous_value) <= 0 or not previous_close_semantics_proven:
+    close_semantics_proven = (
+        previous_field == "close"
+        or (previous_field == "previousClose" and previous_close_semantics_proven)
+    ) and not isinstance(previous_value, bool) and isinstance(previous_value, (int, float)) and math.isfinite(float(previous_value)) and float(previous_value) > 0
+    if not close_semantics_proven:
         blockers.append("INDIA_VIX_PREVIOUS_CLOSE_SEMANTICS_UNPROVEN")
     identity = values.get("symbolToken") == token and values.get("tradingSymbol") == symbol and str(values.get("exchange", "")).upper() == "NSE"
     if not identity: blockers.append("INDIA_VIX_QUOTE_IDENTITY_MISMATCH")
     status = "CONFIRMED" if not blockers else "INCOMPLETE"
     historical: dict[str, Any] = {"status": "NOT_REQUESTED"}
-    if inspect_historical and previous_field is None:
+    if inspect_historical:
         try:
             response = market_client.get_historical_data(exchange="NSE", symboltoken=token, interval="ONE_DAY", fromdate=(received_at - timedelta(days=7)).strftime("%Y-%m-%d %H:%M"), todate=received_at.strftime("%Y-%m-%d %H:%M"))
             historical = {"status": "SCHEMA_ONLY", "interval": "ONE_DAY", "top_level_fields": list(_safe_field_names(response)) if isinstance(response, Mapping) else []}
         except Exception as exc:
             historical = {"status": "FAILED", "error_type": type(exc).__name__}
-    quote = IndiaVixQuoteSchemaEvidenceV1("FULL", "NSE", symbol, token, requested_at, received_at, top, _safe_field_names(data) if isinstance(data, Mapping) else (), values, types, missing, timestamp_field, values.get(timestamp_field) if timestamp_field else None, parsed, parsed is not None, age, previous_field, previous_close_semantics_proven, identity, None, str(raw.get("status")) if isinstance(raw, Mapping) and "status" in raw else None, status, tuple(dict.fromkeys(blockers)), (), historical)
+    quote = IndiaVixQuoteSchemaEvidenceV1("FULL", "NSE", symbol, token, requested_at, received_at, top, _safe_field_names(data) if isinstance(data, Mapping) else (), values, types, missing, timestamp_field, values.get(timestamp_field) if timestamp_field else None, parsed, parsed is not None, age, previous_field, close_semantics_proven, identity, None, str(raw.get("status")) if isinstance(raw, Mapping) and "status" in raw else None, status, tuple(dict.fromkeys(blockers)), (), historical)
     return IndiaVixProviderContractEvidenceV1(received_at, master, quote, status, quote.blockers)
 
 

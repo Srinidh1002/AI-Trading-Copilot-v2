@@ -10,6 +10,7 @@ from typing import Any
 
 from services.contracts.broader_market_intelligence_result_v1 import BroaderMarketIntelligenceResultV1
 from services.contracts.market_candle_series_v1 import MarketCandleSeriesV1
+from services.contracts.india_vix_capture_result_v1 import IndiaVixCaptureResultV1
 
 
 _MARKETS = (("NIFTY", "NSE"), ("SENSEX", "BSE"))
@@ -80,6 +81,7 @@ class CertifiedSharedMarketContextV1:
     nifty_broader_market: BroaderMarketIntelligenceResultV1 | None
     sensex_broader_market: BroaderMarketIntelligenceResultV1 | None
     source_timestamps: Mapping[str, datetime]
+    india_vix_capture: IndiaVixCaptureResultV1 | None = None
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     cache_metadata: Mapping[str, Any] = field(default_factory=dict)
@@ -96,6 +98,8 @@ class CertifiedSharedMarketContextV1:
             if value is not None and (type(value) is not BroaderMarketIntelligenceResultV1 or (value.underlying_symbol, value.exchange) != identity):
                 raise ValueError(name)
         timestamps = {str(key): _aware(value, "source_timestamps") for key, value in self.source_timestamps.items()}
+        if self.india_vix_capture is not None and type(self.india_vix_capture) is not IndiaVixCaptureResultV1:
+            raise ValueError("india_vix_capture")
         if tuple(timestamps) != tuple(sorted(timestamps)):
             raise ValueError("source_timestamps")
         object.__setattr__(self, "source_timestamps", MappingProxyType(timestamps))
@@ -123,6 +127,7 @@ class CertifiedSharedMarketContextV1:
             "nifty_broader_market": self.nifty_broader_market.to_dict() if self.nifty_broader_market else None,
             "sensex_broader_market": self.sensex_broader_market.to_dict() if self.sensex_broader_market else None,
             "source_timestamps": {key: value.isoformat() for key, value in self.source_timestamps.items()},
+            "india_vix_capture": self.india_vix_capture.to_dict() if self.india_vix_capture else None,
             "blockers": list(self.blockers), "warnings": list(self.warnings),
             "cache_metadata": _plain(self.cache_metadata), "schema_version": self.schema_version,
         }

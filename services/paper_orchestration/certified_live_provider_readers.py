@@ -219,6 +219,8 @@ class CertifiedLiveProviderReaders:
         available_capital: float,
         candidate_reader: CandidateReader | None = None,
         capture_reader: CaptureReader | None = None,
+        india_vix_reader: object | None = None,
+        substage_callback: Callable[[str], None] | None = None,
         risk_percent: float = 1.0,
         maximum_capital_usage_percent: float = 100.0,
     ) -> None:
@@ -258,6 +260,12 @@ class CertifiedLiveProviderReaders:
         self.analysis_pipeline = analysis_pipeline
         self.candidate_reader = candidate_reader
         self.capture_reader = capture_reader
+        if india_vix_reader is not None and not callable(getattr(india_vix_reader, "capture", None)):
+            raise TypeError("india_vix_reader must expose capture()")
+        self.india_vix_reader = india_vix_reader
+        if substage_callback is not None and not callable(substage_callback): raise TypeError("substage_callback")
+        self.substage_callback = substage_callback
+        self.india_vix_normalization_count = 0
         self._capture_lock = RLock()
         self._captures: dict[str, CertifiedLiveCapturedEvidenceV1] = {}
         self._shared_contexts: dict[str, CertifiedSharedMarketContextV1] = {}
@@ -309,7 +317,7 @@ class CertifiedLiveProviderReaders:
         return reader(cycle_input, data_result, analysis, captured, shared_context)
 
     @staticmethod
-    def _normalized_capture(cycle_input, captured):
+    def _normalized_capture(cycle_input, captured, *, evaluated_at=None):
         from services.market.angel_live_observation_normalizer import normalize_angel_live_observation
 
         spec = market_spec_for(cycle_input.underlying_symbol, cycle_input.exchange)
@@ -319,7 +327,7 @@ class CertifiedLiveProviderReaders:
         return normalize_angel_live_observation(
             spot_response=payload, candle_rows_by_timeframe=captured.candle_rows_by_timeframe,
             market_spec=spec, provider_timestamp=captured.provider_timestamp,
-            evaluated_at=captured.evaluated_at, blockers=captured.provider_blockers,
+            evaluated_at=evaluated_at if evaluated_at is not None else captured.evaluated_at, blockers=captured.provider_blockers,
             warnings=captured.provider_warnings,
         )
 
@@ -333,15 +341,34 @@ class CertifiedLiveProviderReaders:
         sensex = self._capture_for(sensex_cycle)
         if nifty is None or sensex is None:
             raise RuntimeError("shared broader context requires certified captures")
-        context = build_certified_shared_broader_context(
-            nifty_observation=self._normalized_capture(nifty_cycle, nifty),
-            sensex_observation=self._normalized_capture(sensex_cycle, sensex),
-            evaluated_at=nifty.evaluated_at,
+        vix_capture = self.india_vix_reader.capture(f"{nifty_cycle.observation_id}:{sensex_cycle.observation_id}") if self.india_vix_reader else None
+        if self.substage_callback is not None: self.substage_callback("INDIA_VIX_CAPTURE_COMPLETE")
+        if vix_capture is not None:
+            self.india_vix_normalization_count += 1
+        # Each provider receipt remains on its captured evidence.  The shared
+        # cross-market calculation uses one boundary after every shared input
+        # has been captured; otherwise a fresh later VIX looks future-dated.
+        parent_evaluated_at = max(
+            nifty.evaluated_at,
+            sensex.evaluated_at,
+            vix_capture.evaluated_at if vix_capture is not None else nifty.evaluated_at,
         )
+        context = build_certified_shared_broader_context(
+            nifty_observation=self._normalized_capture(nifty_cycle, nifty, evaluated_at=parent_evaluated_at),
+            sensex_observation=self._normalized_capture(sensex_cycle, sensex, evaluated_at=parent_evaluated_at),
+            evaluated_at=parent_evaluated_at,
+            india_vix_capture=vix_capture,
+        )
+        if self.substage_callback is not None: self.substage_callback("SHARED_CONTEXT_BUILD_COMPLETE")
         with self._capture_lock:
             self._shared_contexts[nifty_cycle.observation_id] = context
             self._shared_contexts[sensex_cycle.observation_id] = context
         return context
+
+    def shared_context_for(self, observation_id: str) -> CertifiedSharedMarketContextV1 | None:
+        """Read-only evidence accessor for parent-only certification reports."""
+        with self._capture_lock:
+            return self._shared_contexts.get(observation_id)
 
     def read_data(
         self,
