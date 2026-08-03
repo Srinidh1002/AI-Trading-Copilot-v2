@@ -264,3 +264,18 @@ def render_plan_and_position_dashboard(
     render_trade_plan_card(st, plan)
     st.divider()
     render_paper_position_card(st, position)
+def render_r4_paper_lifecycle_dashboard(
+    *,
+    st,
+    view,
+):
+    """Render R4 through the certified component boundary."""
+
+    from dashboard.r4_paper_lifecycle_components import (
+        render_r4_paper_lifecycle_dashboard as render_view,
+    )
+
+    render_view(
+        st=st,
+        view=view,
+    )

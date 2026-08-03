@@ -58,3 +58,13 @@ def get_plan_position_views(
             DashboardPaperPositionDetailViewV1,
         ),
     )
+def get_r4_paper_lifecycle_view(session_state):
+    """Read the published R4 view through the certified state boundary."""
+
+    from dashboard.r4_paper_lifecycle_components import (
+        get_r4_paper_lifecycle_dashboard_view,
+    )
+
+    return get_r4_paper_lifecycle_dashboard_view(
+        session_state
+    )

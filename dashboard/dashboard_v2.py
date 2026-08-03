@@ -11,10 +11,16 @@ from dashboard.dashboard_publication_sync import (
     synchronize_registered_dashboard_publication,
 )
 from dashboard.dashboard_read_model_state import get_plan_position_views
+from dashboard.dashboard_read_model_state import (
+    get_r4_paper_lifecycle_view,
+)
 from dashboard.operational_components import (
     render_operational_dashboard,
 )
 from dashboard.plan_position_components import render_plan_and_position_dashboard
+from dashboard.plan_position_components import (
+    render_r4_paper_lifecycle_dashboard,
+)
 
 
 _OPERATOR_VIEW_MODEL_KEY = (
@@ -45,21 +51,36 @@ def _render_unavailable_sections() -> None:
     )
 
 
+def _render_r4_lifecycle_section(view) -> None:
+    if view is None:
+        st.subheader("PAPER Portfolio Lifecycle")
+        st.info(
+            "No certified persisted R4 lifecycle view "
+            "has been published."
+        )
+        return
+
+    render_r4_paper_lifecycle_dashboard(
+        st=st,
+        view=view,
+    )
+
+
 def home() -> None:
     synchronize_registered_dashboard_publication(
         st.session_state
     )
 
-    operator_view_model = (
-        get_operator_application_view_model(
-            st.session_state
-        )
+    operator_view_model = get_operator_application_view_model(
+        st.session_state
     )
+
     if operator_view_model is not None:
         render_operator_dashboard(
             st=st,
             view_model=operator_view_model,
         )
+
         st.divider()
         st.caption(
             f"{APP_NAME} | Version {VERSION} | "
@@ -78,6 +99,10 @@ def home() -> None:
         runtime_operations_view,
     ) = get_operational_views(st.session_state)
 
+    r4_lifecycle_view = get_r4_paper_lifecycle_view(
+        st.session_state
+    )
+
     st.title("🤖 AI Trading Copilot V2")
     st.caption(
         "Certified PAPER dashboard — immutable published read models only"
@@ -90,6 +115,10 @@ def home() -> None:
         plan=trade_plan_view,
         position=paper_position_view,
     )
+
+    st.divider()
+
+    _render_r4_lifecycle_section(r4_lifecycle_view)
 
     st.divider()
 
