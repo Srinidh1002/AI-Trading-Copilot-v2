@@ -81,6 +81,11 @@ UNAVAILABLE remain distinct. No generative model is canonical reasoning, and
 explanations do not change confidence, eligibility, action, or ranking. Task
 2E will provide the final end-to-end certification matrix.
 
+Task 2E1 adds a typed parent winner/loser/NO_TRADE explanation validated
+against existing parent ranking and child outputs. It adds neither scenario
+fixtures nor a CLI; Task 2E2 will add the typed certification result and
+composer, and Task 2E3 the deterministic scenario matrix and provider-free CLI.
+
 ### 3. Capital, option selection and risk planning
 
 Purpose: plan only the selected eligible market using actual capital and option
