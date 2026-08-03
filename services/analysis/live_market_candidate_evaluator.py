@@ -1,7 +1,7 @@
 """One provider-free NIFTY or SENSEX typed candidate evaluation."""
 from __future__ import annotations
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from services.analysis.live_canonical_evidence_engines import LiveCanonicalEvidenceEnginesV1, LiveCanonicalEvidenceResultV1, build_live_canonical_evidence
 from services.analysis.live_typed_candidate_evidence import LiveTypedEvidenceInputV1, compose_from_live_canonical_evidence
@@ -15,6 +15,7 @@ from services.contracts.certified_live_captured_evidence_v1 import CertifiedLive
 from services.paper_orchestration.certified_live_provider_readers import market_spec_for
 from services.contracts.broader_market_intelligence_result_v1 import BroaderMarketIntelligenceResultV1
 from services.contracts.external_market_context_result_v1 import ExternalMarketContextResultV1
+from services.analysis.market_analysis_confidence_ledger import build_market_analysis_confidence_ledger
 
 @dataclass(frozen=True,slots=True)
 class LiveCandidatePolicySourceV1:
@@ -48,6 +49,7 @@ def evaluate_live_market_candidate(value:LiveMarketCandidateEvaluationInputV1)->
  options=normalize_angel_option_chain(contracts=value.option_contracts,market_spec=value.market_spec,spot_price=observation.spot.price,provider_timestamp=value.provider_timestamp,evaluated_at=value.evaluated_at,provider_state=value.provider_state,blockers=value.blockers,warnings=value.warnings)
  source=LiveTypedEvidenceInputV1(value.candidate_id,value.observation_id,value.market_spec.underlying_symbol,value.market_spec.exchange,value.market_spec.option_exchange,value.market_spec.symboltoken,value.evaluated_at,value.provider_timestamp,value.evaluated_at,observation,options,value.session,value.policy.direction,value.policy.eligibility,value.policy.confidence,value.policy.score,value.policy.reasons,value.policy.invalidation_conditions,value.policy.blockers,value.policy.warnings,value.policy.contradictions)
  evidence=build_live_canonical_evidence(observation=observation,options=options,session=value.session,evaluated_at=value.evaluated_at,engines=value.engines,cycle_id=value.candidate_id,observation_id=value.observation_id,broader_market=value.broader_market,external_context=value.external_context,blockers=value.blockers,warnings=value.warnings,contradictions=value.policy.contradictions,reasons=value.policy.reasons,invalidation_conditions=value.policy.invalidation_conditions)
+ evidence=replace(evidence,confidence_ledger=build_market_analysis_confidence_ledger(cycle_id=value.candidate_id,observation_id=value.observation_id,evidence=evidence,policy_source=value.policy))
  composition,policy=compose_from_live_canonical_evidence(source=source,evidence=evidence)
  return LiveMarketCandidateEvaluationResultV1(observation,options,evidence,composition,policy,compose_market_analysis_candidate(composition,policy))
 

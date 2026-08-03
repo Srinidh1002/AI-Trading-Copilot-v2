@@ -75,6 +75,9 @@ def test_real_captured_evaluator_returns_typed_blocked_candidate_for_both_market
         assert tuple(item.pillar_name for item in contributions.contributions) == ("price_action", "candlestick", "chart_pattern", "volume", "volatility", "oi", "oi_change", "pcr", "support_resistance", "max_pain", "iv", "greeks", "premium_behavior", "liquidity_spread")
         assert all(item.status == result.evidence.pillars.ordered_pillars[item.pillar_name].status for item in contributions.contributions)
         assert all(item.direction == "UNAVAILABLE" and item.normalized_score is None for item in contributions.contributions)
+        assert result.evidence.confidence_ledger is not None
+        assert result.evidence.confidence_ledger.final_confidence == result.candidate.confidence
+        assert result.evidence.confidence_ledger.final_score == result.candidate.score
 
 
 class Analysis:

@@ -21,6 +21,7 @@ from services.options.angel_option_chain_normalizer import AngelOptionNormalizat
 from services.analysis.market_analysis_pillar_aggregation import MarketAnalysisPillarAggregationResultV1
 from services.analysis.market_analysis_pillar_contributions import build_market_analysis_pillar_contributions
 from services.contracts.market_analysis_pillar_contribution_v1 import MarketAnalysisPillarContributionCollectionV1
+from services.contracts.market_analysis_confidence_ledger_v1 import MarketAnalysisConfidenceLedgerV1
 
 
 _PILLARS = ("price_action", "candlestick", "chart_pattern", "volume", "volatility", "oi", "oi_change", "pcr", "support_resistance", "max_pain", "iv", "greeks", "premium_behavior", "liquidity_spread")
@@ -62,6 +63,7 @@ class LiveCanonicalEvidenceResultV1:
     reasons: tuple[str, ...] = ()
     invalidation_conditions: tuple[str, ...] = ()
     contributions: MarketAnalysisPillarContributionCollectionV1 | None = None
+    confidence_ledger: MarketAnalysisConfidenceLedgerV1 | None = None
 
     def __post_init__(self) -> None:
         if type(self.observation) is not AngelLiveMarketObservationV1 or type(self.session) is not MarketSessionValidationV1: raise TypeError("observation/session")
@@ -71,6 +73,7 @@ class LiveCanonicalEvidenceResultV1:
         if any((getattr(item,"underlying_symbol"),getattr(item,"exchange")) != identity for item in (self.data_quality,self.multi_timeframe,self.technical,self.regime,self.option_chain,self.contract_ranking)): raise ValueError("canonical evidence identity")
         if type(self.pillars) is not MarketAnalysisPillarAggregationResultV1: raise TypeError("pillar aggregation")
         if self.contributions is not None and (type(self.contributions) is not MarketAnalysisPillarContributionCollectionV1 or (self.contributions.underlying_symbol, self.contributions.exchange) != identity or self.contributions.evaluated_at != self.pillars.evaluated_at): raise ValueError("pillar contribution coherence")
+        if self.confidence_ledger is not None and (type(self.confidence_ledger) is not MarketAnalysisConfidenceLedgerV1 or (self.confidence_ledger.underlying_symbol, self.confidence_ledger.exchange) != identity or self.confidence_ledger.evaluated_at != self.pillars.evaluated_at): raise ValueError("confidence ledger coherence")
         if self.broader_market is not None and (type(self.broader_market) is not BroaderMarketIntelligenceResultV1 or (self.broader_market.underlying_symbol, self.broader_market.exchange) != identity): raise ValueError("broader market identity")
         if self.external_context is not None and (type(self.external_context) is not ExternalMarketContextResultV1 or (self.external_context.underlying_symbol, self.external_context.exchange) != identity or self.external_context.created_at != self.regime.created_at): raise ValueError("external context identity or evaluation boundary")
         for name in ("blockers","warnings","contradictions","reasons","invalidation_conditions"):

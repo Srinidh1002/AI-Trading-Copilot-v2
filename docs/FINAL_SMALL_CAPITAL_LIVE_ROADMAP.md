@@ -63,6 +63,12 @@ directions or scores when the active adapters expose only grouped evidence.
 This changes neither confidence, score, eligibility, nor action; Task 2B will
 consume these records for final-confidence certification.
 
+Task 2B adds a deterministic PAPER shadow confidence ledger. It exposes every
+counted and excluded source, and retains quality, contradiction and suitability
+hard-block effects without double counting aggregates. Legacy candidate
+confidence and score remain authoritative; neither selection nor parent ranking
+changes until equivalence and policy approval support a later Task 2C step.
+
 ### 3. Capital, option selection and risk planning
 
 Purpose: plan only the selected eligible market using actual capital and option
