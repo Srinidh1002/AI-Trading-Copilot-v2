@@ -75,6 +75,12 @@ CALL and PUT do not imply affordability, contract planning, or execution; HOLD
 and EXIT remain Task 4 lifecycle actions. Parent ranking and the shadow ledger
 remain unchanged; Task 2D will add evidence-grounded winner/loser explanations.
 
+Task 2D adds deterministic typed child and parent explanation projections from
+canonical evidence only. Grouped pillar limitations remain explicit; WAIT and
+UNAVAILABLE remain distinct. No generative model is canonical reasoning, and
+explanations do not change confidence, eligibility, action, or ranking. Task
+2E will provide the final end-to-end certification matrix.
+
 ### 3. Capital, option selection and risk planning
 
 Purpose: plan only the selected eligible market using actual capital and option
