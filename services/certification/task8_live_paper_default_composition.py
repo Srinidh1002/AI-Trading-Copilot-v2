@@ -32,6 +32,12 @@ from services.paper_orchestration.selected_market_p6_planning_runtime import (
     adapt_selected_market_p6_to_cycle_result,
     execute_selected_market_p6_planning,
 )
+from services.paper_orchestration.external_context_source_authority import ExternalContextSourceAuthority
+from services.paper_orchestration.unavailable_external_context_readers import (
+    UnavailableGlobalMarketReader,
+    UnavailableInstitutionalFlowReader,
+    UnavailableScheduledEventReader,
+)
 from services.paper_orchestration.certified_runtime_safety import (
     validate_no_broker_submission_guard,
     validate_repository_paper_safety,
@@ -62,6 +68,11 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         clock=providers.clock,
     )
     data_service = bundle.analysis_pipeline.data_service
+    external_context_authority = ExternalContextSourceAuthority(
+        global_reader=UnavailableGlobalMarketReader(),
+        institutional_reader=UnavailableInstitutionalFlowReader(),
+        event_reader=UnavailableScheduledEventReader(),
+    )
     readers = CertifiedLiveProviderReaders(
         quote_reader=bundle.quote_reader, analysis_pipeline=bundle.analysis_pipeline,
         option_decision_pipeline=bundle.option_decision_pipeline, available_capital=10_000.0,
@@ -71,6 +82,7 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
             option_decision_pipeline=bundle.option_decision_pipeline,
             candle_cutoff=candle_cutoff,
         ),
+        external_context_reader=external_context_authority,
     )
 
     def preflight():

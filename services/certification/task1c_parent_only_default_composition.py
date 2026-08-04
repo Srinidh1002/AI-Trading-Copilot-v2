@@ -17,6 +17,12 @@ from services.paper_orchestration.certified_live_provider_readers import Certifi
 from services.paper_orchestration.certified_runtime_composition import build_default_runtime_providers, capture_certified_live_evidence
 from services.paper_orchestration.authoritative_two_market_entry_point import run_authoritative_two_market_parent_cycle
 from services.paper_orchestration.india_vix_live_reader import IndiaVixLiveReader
+from services.paper_orchestration.external_context_source_authority import ExternalContextSourceAuthority
+from services.paper_orchestration.unavailable_external_context_readers import (
+    UnavailableGlobalMarketReader,
+    UnavailableInstitutionalFlowReader,
+    UnavailableScheduledEventReader,
+)
 
 
 def _git(*args: str) -> str: return subprocess.check_output(("git", *args), text=True, encoding="utf-8").strip()
@@ -37,7 +43,12 @@ def build_task1c_parent_only_dependencies() -> Task1CParentOnlyDependenciesV1:
         if cycle.underlying_symbol == "NIFTY": mark("NIFTY_OPTION_CAPTURE_COMPLETE"); mark("NIFTY_NORMALIZATION_START"); mark("NIFTY_NORMALIZATION_COMPLETE"); mark("NIFTY_TYPED_EVIDENCE_START")
         mark(f"{cycle.underlying_symbol}_CAPTURE_COMPLETE")
         return result
-    readers = CertifiedLiveProviderReaders(quote_reader=providers.quote_reader, analysis_pipeline=providers.analysis_pipeline, option_decision_pipeline=providers.option_decision_pipeline, available_capital=10_000.0, candidate_reader=adapt_task8_live_candidate, capture_reader=capture, india_vix_reader=vix_reader, substage_callback=mark)
+    external_context_authority = ExternalContextSourceAuthority(
+        global_reader=UnavailableGlobalMarketReader(),
+        institutional_reader=UnavailableInstitutionalFlowReader(),
+        event_reader=UnavailableScheduledEventReader(),
+    )
+    readers = CertifiedLiveProviderReaders(quote_reader=providers.quote_reader, analysis_pipeline=providers.analysis_pipeline, option_decision_pipeline=providers.option_decision_pipeline, available_capital=10_000.0, candidate_reader=adapt_task8_live_candidate, capture_reader=capture, india_vix_reader=vix_reader, external_context_reader=external_context_authority, substage_callback=mark)
     def run_parent() -> Task1CParentOnlyExecutionV1:
         mark("PARENT_RUN_START"); requested = datetime.now(timezone.utc); quotes = {}
         for symbol, exchange in (("NIFTY", "NSE"), ("SENSEX", "BSE")):

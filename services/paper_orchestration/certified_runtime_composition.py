@@ -51,6 +51,12 @@ from services.paper_orchestration.certified_live_provider_readers import (
     market_spec_for,
 )
 from services.paper_orchestration.india_vix_live_reader import IndiaVixLiveReader
+from services.paper_orchestration.external_context_source_authority import ExternalContextSourceAuthority
+from services.paper_orchestration.unavailable_external_context_readers import (
+    UnavailableGlobalMarketReader,
+    UnavailableInstitutionalFlowReader,
+    UnavailableScheduledEventReader,
+)
 from services.paper_orchestration.certified_live_read_authorities import (
     CertifiedLiveAnalysisAuthority,
     CertifiedLiveDataAuthority,
@@ -890,6 +896,11 @@ def build_certified_launcher(
                 option_decision_pipeline=provider_bundle.option_decision_pipeline,
             )
 
+    external_context_authority = ExternalContextSourceAuthority(
+        global_reader=UnavailableGlobalMarketReader(),
+        institutional_reader=UnavailableInstitutionalFlowReader(),
+        event_reader=UnavailableScheduledEventReader(),
+    )
     readers = CertifiedLiveProviderReaders(
         quote_reader=provider_bundle.quote_reader,
         analysis_pipeline=(
@@ -906,6 +917,7 @@ def build_certified_launcher(
             market_client=get_market_client(),
             clock=clock,
         ),
+        external_context_reader=external_context_authority,
     )
 
     data_authority = CertifiedLiveDataAuthority(
