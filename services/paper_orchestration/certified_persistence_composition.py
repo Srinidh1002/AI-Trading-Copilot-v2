@@ -11,6 +11,9 @@ from services.paper_orchestration.deterministic_cycle_coordinator import (
 from services.paper_orchestration.paper_orchestration_journal import (
     PaperOrchestrationJournal,
 )
+from services.paper_orchestration.two_market_parent_cycle_journal_adapter import (
+    TwoMarketParentCycleJournalAdapter,
+)
 from services.paper_orchestration.restart_recovery_operation import (
     RestartRecoveryOperation,
     RestartRecoveryTargetV1,
@@ -56,6 +59,13 @@ class CertifiedPersistencePathsV1:
             raise ValueError("live execution is not eligible")
         if self.schema_version != "certified_persistence_paths.v1":
             raise ValueError("unsupported schema_version")
+
+    @property
+    def parent_decision_journal_path(self) -> Path:
+        return (
+            self.root_directory
+            / "two_market_parent_decision_journal.json"
+        )
 
 
 def build_certified_persistence_paths(
@@ -183,5 +193,35 @@ def build_certified_restart_recovery(
 
     return RestartRecoveryOperation(
         targets=targets,
+        clock=clock,
+    )
+
+def build_certified_parent_journal_adapter(
+    *,
+    clock: Clock,
+    paths: CertifiedPersistencePathsV1 | None = None,
+) -> TwoMarketParentCycleJournalAdapter:
+    """Build the dedicated immutable parent-decision journal boundary."""
+    if not callable(clock):
+        raise TypeError("clock must be callable")
+
+    paths = paths or build_certified_persistence_paths()
+    if type(paths) is not CertifiedPersistencePathsV1:
+        raise TypeError(
+            "paths must be exact CertifiedPersistencePathsV1"
+        )
+
+    parent_path = paths.parent_decision_journal_path
+
+    if parent_path in {
+        paths.opportunity_journal_path,
+        paths.monitoring_journal_path,
+    }:
+        raise ValueError(
+            "parent decision journal must remain separate"
+        )
+
+    return TwoMarketParentCycleJournalAdapter(
+        journal=PaperOrchestrationJournal(parent_path),
         clock=clock,
     )

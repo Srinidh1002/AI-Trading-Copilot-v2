@@ -19,6 +19,9 @@ from services.paper_orchestration.certified_live_provider_readers import (
 from services.paper_orchestration.certified_two_market_parent_runtime import (
     run_certified_two_market_parent_runtime,
 )
+from services.paper_orchestration.two_market_parent_cycle_journal_adapter import (
+    TwoMarketParentCycleJournalAdapter,
+)
 from services.paper_orchestration.certified_p6_input_factory import (
     CertifiedP6InputBundleV1,
 )
@@ -40,6 +43,9 @@ def run_authoritative_two_market_parent_cycle(
     nifty_cycle: PaperOrchestrationCycleInputV1,
     sensex_cycle: PaperOrchestrationCycleInputV1,
     readers: CertifiedLiveProviderReaders,
+    parent_journal_adapter: (
+        TwoMarketParentCycleJournalAdapter | None
+    ) = None,
     substage_callback=None,
 ) -> TwoMarketDecisionResultV1:
     """Execute the only approved live NIFTY/SENSEX PAPER parent path."""
@@ -60,13 +66,28 @@ def run_authoritative_two_market_parent_cycle(
     if parent.broker_order_submission:
         raise ValueError("broker order submission must remain disabled")
 
-    return run_certified_two_market_parent_runtime(
+    if (
+        parent_journal_adapter is not None
+        and type(parent_journal_adapter)
+        is not TwoMarketParentCycleJournalAdapter
+    ):
+        raise TypeError("parent_journal_adapter")
+
+    decision = run_certified_two_market_parent_runtime(
         parent,
         nifty_cycle=nifty_cycle,
         sensex_cycle=sensex_cycle,
         readers=readers,
         substage_callback=substage_callback,
     )
+
+    if parent_journal_adapter is not None:
+        parent_journal_adapter.persist(
+            parent=parent,
+            decision=decision,
+        )
+
+    return decision
 
 
 def run_authoritative_two_market_selected_p6_cycle(

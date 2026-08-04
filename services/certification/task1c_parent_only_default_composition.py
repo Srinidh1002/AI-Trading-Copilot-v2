@@ -16,6 +16,9 @@ from services.paper_orchestration.certified_cycle_input_factory import build_cer
 from services.paper_orchestration.certified_live_provider_readers import CertifiedLiveProviderReaders, market_spec_for
 from services.paper_orchestration.certified_runtime_composition import build_default_runtime_providers, capture_certified_live_evidence
 from services.paper_orchestration.authoritative_two_market_entry_point import run_authoritative_two_market_parent_cycle
+from services.paper_orchestration.certified_persistence_composition import (
+    build_certified_parent_journal_adapter,
+)
 from services.paper_orchestration.india_vix_live_reader import IndiaVixLiveReader
 from services.paper_orchestration.external_context_source_authority import ExternalContextSourceAuthority
 from services.paper_orchestration.unavailable_external_context_readers import (
@@ -30,6 +33,11 @@ def _git(*args: str) -> str: return subprocess.check_output(("git", *args), text
 
 def build_task1c_parent_only_dependencies() -> Task1CParentOnlyDependenciesV1:
     providers = build_default_runtime_providers()
+    parent_journal_adapter = (
+        build_certified_parent_journal_adapter(
+            clock=providers.clock,
+        )
+    )
     data_service = providers.analysis_pipeline.data_service
     vix_reader = IndiaVixLiveReader(master_fetcher=AngelInstrumentMaster().fetch_instruments, market_client=get_market_client(), clock=providers.clock)
     counts = {"nifty_spot_calls": 0, "sensex_spot_calls": 0, "nifty_candle_capture_count": 0, "sensex_candle_capture_count": 0, "nifty_option_capture_count": 0, "sensex_option_capture_count": 0, "broader_intelligence_calls": 2}
@@ -70,7 +78,7 @@ def build_task1c_parent_only_dependencies() -> Task1CParentOnlyDependenciesV1:
             if symbol == "NIFTY": mark("NIFTY_SPOT_CONTRACT_BUILD_COMPLETE")
         nifty, sensex = cycles[("NIFTY", "NSE")], cycles[("SENSEX", "BSE")]
         parent = TwoMarketParentCycleInputV1(parent_cycle_id=f"task1c-parent-{parent_requested_at.isoformat()}", decision_result_id=f"task1c-decision-{parent_requested_at.isoformat()}", nifty_child_result_id=f"task1c-nifty-{parent_requested_at.isoformat()}", sensex_child_result_id=f"task1c-sensex-{parent_requested_at.isoformat()}", nifty_observation_id=nifty.observation_id, sensex_observation_id=sensex.observation_id, requested_at=parent_requested_at, completed_at=datetime.now(timezone.utc), decision_policy=TwoMarketDecisionPolicyV1(180.0, 5.0))
-        decision = run_authoritative_two_market_parent_cycle(parent, nifty_cycle=nifty, sensex_cycle=sensex, readers=readers, substage_callback=mark)
+        decision = run_authoritative_two_market_parent_cycle(parent, nifty_cycle=nifty, sensex_cycle=sensex, readers=readers, parent_journal_adapter=parent_journal_adapter, substage_callback=mark)
         context = readers.shared_context_for(nifty.observation_id)
         if context is None: raise RuntimeError("INDIA_VIX_SHARED_CONTEXT_MISSING")
         values = dict(counts, india_vix_master_resolution_count=vix_reader.master_resolution_count, india_vix_quote_count=vix_reader.quote_count, india_vix_normalization_count=readers.india_vix_normalization_count)
