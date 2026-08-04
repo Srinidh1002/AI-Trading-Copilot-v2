@@ -7,6 +7,8 @@ place that determines candidate eligibility from supplied evidence.
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
 from collections.abc import Mapping
 
 from services.analysis.market_analysis_candidate_composer import (
@@ -63,6 +65,12 @@ def adapt_task8_live_candidate(
     composition = supplied_analysis.get("certified_candidate_composition")
     policy = supplied_analysis.get("certified_candidate_policy")
     if captured_evidence is not None and composition is None and policy is None:
+        evaluation_capture = captured_evidence
+        if shared_context is not None:
+            evaluation_capture = replace(
+                captured_evidence,
+                evaluated_at=shared_context.evaluated_at,
+            )
         direction = supplied_analysis.get("policy_direction")
         eligibility = supplied_analysis.get("policy_eligibility")
         confidence = supplied_analysis.get("policy_confidence")
@@ -78,8 +86,8 @@ def adapt_task8_live_candidate(
             )
         else:
             source = LiveCandidatePolicySourceV1.unavailable()
-        return evaluate_captured_certified_market_candidate(
-            captured_evidence=captured_evidence,
+        candidate = evaluate_captured_certified_market_candidate(
+            captured_evidence=evaluation_capture,
             session_validation=cycle_input.session_validation,
             policy_source=source,
             parent_cycle_id=parent_cycle_id,
@@ -89,6 +97,11 @@ def adapt_task8_live_candidate(
             broader_market=shared_context.for_market(*expected) if shared_context is not None else None,
             external_context=shared_context.shared_external_context.for_market(*expected) if shared_context is not None and shared_context.shared_external_context is not None else None,
         ).candidate
+
+        return replace(
+            candidate,
+            requested_at=cycle_input.cycle_requested_at,
+        )
     if type(composition) is not MarketAnalysisCandidateCompositionInputV1:
         raise TypeError("certified_candidate_composition")
     if type(policy) is not MarketAnalysisCandidateCompositionPolicyV1:

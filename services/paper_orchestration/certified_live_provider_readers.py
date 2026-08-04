@@ -514,7 +514,19 @@ class CertifiedLiveProviderReaders:
         captured = self._capture_for(cycle_input)
         captured_timeframes = None
         if captured is not None:
-            captured_timeframes = {"dataframes": {key: normalize_angel_candles(value) for key, value in captured.candle_rows_by_timeframe.items()}, "rows_by_timeframe": captured.candle_rows_by_timeframe, "cache_metadata": captured.cache_metadata}
+            available_rows = {
+                key: value
+                for key, value in captured.candle_rows_by_timeframe.items()
+                if value
+            }
+            captured_timeframes = {
+                "dataframes": {
+                    key: normalize_angel_candles(value)
+                    for key, value in available_rows.items()
+                },
+                "rows_by_timeframe": available_rows,
+                "cache_metadata": captured.cache_metadata,
+            }
         kwargs = {"exchange": data_result.exchange, "symboltoken": data_result.symboltoken, "end_time": data_result.market_timestamp}
         if captured_timeframes is not None:
             kwargs["captured_timeframes"] = captured_timeframes

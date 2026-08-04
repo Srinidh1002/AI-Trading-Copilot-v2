@@ -66,11 +66,6 @@ def _evaluate_once(
             raise ValueError(
                 "candidate identity or requested_at mismatch"
             )
-        if candidate.received_at > parent.completed_at:
-            raise ValueError(
-                "candidate received_at exceeds parent completed_at"
-            )
-
         return TwoMarketChildTerminalResultV1(
             child_result_id=child_result_id,
             parent_cycle_id=parent.parent_cycle_id,
@@ -132,11 +127,17 @@ def run_two_market_parent_cycle(
         evaluator=child_evaluator,
     )
 
+    completed_at = max(
+        parent.completed_at,
+        nifty.received_at,
+        sensex.received_at,
+    )
+
     return rank_two_market_candidates(
         decision_result_id=parent.decision_result_id,
         parent_cycle_id=parent.parent_cycle_id,
         requested_at=parent.requested_at,
-        completed_at=parent.completed_at,
+        completed_at=completed_at,
         nifty=nifty,
         sensex=sensex,
         policy=parent.decision_policy,

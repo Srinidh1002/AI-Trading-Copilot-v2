@@ -25,11 +25,23 @@ def _num(value: object, name: str, *, positive: bool = False, integer: bool = Fa
     return value
 
 def _expiry(value: object) -> date:
-    if isinstance(value, datetime): return value.date()
-    if isinstance(value, date): return value
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
     if isinstance(value, str):
-        try: return date.fromisoformat(value.strip())
-        except ValueError: pass
+        normalized = value.strip()
+        try:
+            return date.fromisoformat(normalized)
+        except ValueError:
+            pass
+        try:
+            return datetime.strptime(
+                normalized.upper(),
+                "%d%b%Y",
+            ).date()
+        except ValueError:
+            pass
     raise ValueError("expiry")
 
 def _spec(value: object) -> CertifiedIndexMarketSpecV1:
