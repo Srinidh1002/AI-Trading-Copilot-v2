@@ -100,6 +100,9 @@ def run_authoritative_two_market_selected_p6_cycle(
     evaluated_at: datetime,
     maximum_candidate_age_seconds: float,
     certified_p6_input_bundles: Mapping[tuple[str, str], CertifiedP6InputBundleV1],
+    parent_journal_adapter: (
+        TwoMarketParentCycleJournalAdapter | None
+    ) = None,
     p6_stage_authority: P6StageAuthority | None = None,
     substage_callback=None,
 ) -> SelectedMarketP6PlanningResultV1:
@@ -116,6 +119,7 @@ def run_authoritative_two_market_selected_p6_cycle(
         nifty_cycle=nifty_cycle,
         sensex_cycle=sensex_cycle,
         readers=readers,
+        parent_journal_adapter=parent_journal_adapter,
         substage_callback=substage_callback,
     )
     cycles = {
