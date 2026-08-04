@@ -1,0 +1,2 @@
+from services.opportunity_ranking import CandidateEligibilityEvaluationV1,evaluate_candidate_eligibility
+def test_public_api_imports():assert CandidateEligibilityEvaluationV1 and callable(evaluate_candidate_eligibility)

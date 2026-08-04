@@ -149,6 +149,20 @@ def test_repeated_timeout_fails_safely():
     )
 
 
+def test_provider_failure_redacts_credential_like_values_from_logs_and_error(caplog, capsys):
+    client, api = make_client(max_retries=1)
+    secret = "api-key-secret jwt-secret refresh-secret feed-secret pin-secret totp-secret"
+    api.getCandleData.side_effect = TimeoutError(
+        "timed out headers={'X-PrivateKey': 'api-key-secret', 'Authorization': 'Bearer jwt-secret', 'Cookie': 'refresh-secret'} " + secret
+    )
+    with pytest.raises(RuntimeError) as error:
+        client.get_historical_data("NSE", "99926000", "FIVE_MINUTE", "2026-08-03 09:00", "2026-08-03 10:00")
+    rendered = "\n".join((str(error.value), capsys.readouterr().out, capsys.readouterr().err, *(record.getMessage() for record in caplog.records)))
+    for value in ("api-key-secret", "jwt-secret", "refresh-secret", "feed-secret", "pin-secret", "totp-secret"):
+        assert value not in rendered
+    assert "historical-data" in rendered
+
+
 def test_authentication_failure_reauthenticates():
 
     client, api = make_client(
@@ -254,6 +268,18 @@ def test_empty_response_is_rejected():
                     "99926000"
                 ]
             },
+        )
+
+
+@pytest.mark.parametrize("response", [{}, []])
+def test_empty_or_malformed_market_data_response_is_rejected(response):
+    client, api = make_client()
+    api.getMarketData.return_value = response
+
+    with pytest.raises(RuntimeError, match="empty market-data response"):
+        client.get_market_data(
+            mode="LTP",
+            exchange_tokens={"NSE": ["99926000"]},
         )
 
 

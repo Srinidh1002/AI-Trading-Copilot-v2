@@ -1,0 +1,1 @@
+def test_external_component_module_imports():import services.market_regime.external

@@ -4,11 +4,11 @@ Live multi-timeframe market-data service.
 Fetches historical candles from Angel One and converts them into
 standard OHLCV DataFrames.
 
-Read-only.
-No caching is performed here.
-Caching is handled exclusively by MarketDataManager.
+Read-only. A supplied or default historical-data cache may be used to avoid
+repeating fresh broker requests.
 """
-
+import time
+import os
 from datetime import datetime, timedelta
 
 from services.broker.shared_client import (
@@ -18,6 +18,7 @@ from services.broker.shared_client import (
 from services.data_normalizer import (
     normalize_angel_candles,
 )
+from services.historical_data_cache import HistoricalDataCache
 
 
 TIMEFRAME_CONFIG = {
@@ -44,18 +45,50 @@ class LiveMultiTimeframeData:
     """
     Fetch and normalize historical candles.
 
-    No caching is performed inside this class.
+    The cache dependency is optional for backwards-compatible deterministic
+    construction. New callers should prefer explicit dependency injection.
     """
 
     def __init__(
         self,
         client=None,
+        cache=None,
+        *,
+        cache_enabled=None,
     ):
         self.client = (
             client
             if client is not None
             else get_market_client()
         )
+        self.cache = (
+            cache
+            if cache is not None
+            else HistoricalDataCache()
+        )
+
+        if cache_enabled is None:
+            cache_enabled = (
+                str(
+                    os.getenv(
+                        "HISTORICAL_DATA_CACHE_ENABLED",
+                        "true",
+                    )
+                ).strip().lower()
+                in {"1", "true", "yes", "on"}
+            )
+
+        self.cache_enabled = bool(cache_enabled)
+        self._capture_cache_status = {}
+
+    @staticmethod
+    def _cache_ttl_seconds(timeframe):
+        return {
+            "5m": 240.0,
+            "15m": 600.0,
+            "1h": 2700.0,
+            "1d": 21600.0,
+        }[timeframe]
 
     def _request_historical(
         self,
@@ -80,6 +113,19 @@ class LiveMultiTimeframeData:
             days=config["lookback_days"]
         )
 
+        if self.cache_enabled:
+            cached_response = self.cache.get(
+                exchange,
+                symboltoken,
+                timeframe,
+                max_age_seconds=self._cache_ttl_seconds(timeframe),
+            )
+            if cached_response is not None:
+                candles = cached_response.get("data", [])
+                if candles:
+                    self._capture_cache_status[(exchange, symboltoken, timeframe)] = "CACHED"
+                    return cached_response
+
         response = self.client.get_historical_data(
             exchange=exchange,
             symboltoken=symboltoken,
@@ -101,6 +147,16 @@ class LiveMultiTimeframeData:
             raise ValueError(
                 f"No candle data returned for {timeframe}."
             )
+
+        if self.cache_enabled:
+            self.cache.set(
+                exchange,
+                symboltoken,
+                timeframe,
+                response,
+            )
+
+        self._capture_cache_status[(exchange, symboltoken, timeframe)] = "LIVE"
 
         return response
 
@@ -142,12 +198,37 @@ class LiveMultiTimeframeData:
         symboltoken,
         end_time=None,
     ):
-        return {
-            timeframe: self.fetch_timeframe(
+        results = {}
+        timeframes = tuple(TIMEFRAME_CONFIG)
+
+        for index, timeframe in enumerate(timeframes):
+            results[timeframe] = self.fetch_timeframe(
                 exchange=exchange,
                 symboltoken=symboltoken,
                 timeframe=timeframe,
                 end_time=end_time,
             )
-            for timeframe in TIMEFRAME_CONFIG
-        }
+
+            # Angel One can reject multiple historical-data requests
+            # issued almost simultaneously. Cached responses return
+            # immediately, while uncached startup requests are paced.
+            if index < len(timeframes) - 1:
+                time.sleep(1.25)
+
+        return results
+
+    def fetch_all_with_capture(self, exchange, symboltoken, end_time=None):
+        """Return existing DataFrames plus the same captured Angel rows."""
+        dataframes, rows, metadata = {}, {}, {}
+        for index, timeframe in enumerate(TIMEFRAME_CONFIG):
+            try:
+                response = self._request_historical(exchange, symboltoken, timeframe, end_time=end_time)
+                raw = response.get("data", [])
+                rows[timeframe] = tuple(tuple(item) for item in raw)
+                dataframes[timeframe] = normalize_angel_candles(raw)
+                metadata[timeframe] = {"captured": True, "cache_status": self._capture_cache_status.get((exchange, symboltoken, timeframe), "UNKNOWN"), "requested_until": end_time.isoformat() if isinstance(end_time, datetime) else None}
+            except Exception as exc:
+                rows[timeframe] = ()
+                metadata[timeframe] = {"captured": False, "error": type(exc).__name__}
+            if index < len(TIMEFRAME_CONFIG) - 1: time.sleep(1.25)
+        return {"dataframes": dataframes, "rows_by_timeframe": rows, "cache_metadata": metadata}

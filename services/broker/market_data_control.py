@@ -2,6 +2,7 @@
 Centralized controls for read-only broker market-data requests.
 """
 
+from copy import deepcopy
 import logging
 import os
 import threading
@@ -95,6 +96,16 @@ class MarketDataRequestController:
             "historical_request_interval_seconds",
         )
 
+        self.cache_ttl_seconds = _non_negative_float(
+            configured_value(
+                "ANGEL_MARKET_DATA_CACHE_TTL_SECONDS",
+                2.0,
+                float,
+                cache_ttl_seconds,
+            ),
+            "cache_ttl_seconds",
+        )
+
         self.rate_limit_cooldown_seconds = _non_negative_float(
             configured_value(
                 "ANGEL_MARKET_DATA_RATE_LIMIT_COOLDOWN_SECONDS",
@@ -114,6 +125,7 @@ class MarketDataRequestController:
         self._last_request_by_type = {}
 
         self._cooldown_until = 0.0
+        self._cache = {}
 
     def _endpoint_interval(
         self,
@@ -133,15 +145,54 @@ class MarketDataRequestController:
         key,
         request_type,
     ):
-    
-        return None
+        now = self.monotonic_function()
+
+        if self.cache_ttl_seconds == 0:
+            LOGGER.info(
+                "broker_request request_type=%s monotonic=%.6f cache=miss cache_disabled=true",
+                request_type,
+                now,
+            )
+            return None
+
+        with self._lock:
+            entry = self._cache.get(key)
+            if entry is None:
+                LOGGER.info(
+                    "broker_request request_type=%s monotonic=%.6f cache=miss",
+                    request_type,
+                    now,
+                )
+                return None
+
+            cached_at, response = entry
+            if now - cached_at > self.cache_ttl_seconds:
+                self._cache.pop(key, None)
+                LOGGER.info(
+                    "broker_request request_type=%s monotonic=%.6f cache=miss cache_expired=true",
+                    request_type,
+                    now,
+                )
+                return None
+
+            LOGGER.info(
+                "broker_request request_type=%s monotonic=%.6f cache=hit",
+                request_type,
+                now,
+            )
+            return deepcopy(response)
 
     def cache(
         self,
         key,
         response,
     ):
-        return
+        if self.cache_ttl_seconds:
+            with self._lock:
+                self._cache[key] = (
+                    self.monotonic_function(),
+                    deepcopy(response),
+                )
 
     def wait_for_slot(
         self,
@@ -213,7 +264,7 @@ class MarketDataRequestController:
                 request_type
             ] = sent_at
 
-            LOGGER.debug(
+            LOGGER.info(
                 "broker_request request_type=%s monotonic=%.6f attempt=%s wait_applied_seconds=%.6f",
                 request_type,
                 sent_at,

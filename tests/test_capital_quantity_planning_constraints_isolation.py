@@ -1,0 +1,3 @@
+def test_import():
+ from services.trade_planning import resolve_capital_quantity_planning_constraints
+ assert resolve_capital_quantity_planning_constraints

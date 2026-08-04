@@ -1,0 +1,1 @@
+def test_component_imports_without_recalculation():import services.market_regime.broader

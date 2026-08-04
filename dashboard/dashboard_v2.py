@@ -1,619 +1,139 @@
-import sqlite3
-
-import pandas as pd
 import streamlit as st
-from services.market_snapshot import get_market_snapshot
-from services.trade.trade_engine import analyze_trade
-from services.trade.paper_trade_manager import (
-    get_trade_statistics,
+
+from config import APP_NAME, BUILD, PHASE, VERSION
+from dashboard.dashboard_operational_read_model_state import (
+    get_operational_views,
 )
-from services.refresh.refresh_intervals import (
-    MARKET_SNAPSHOT,
+from dashboard.dashboard_publication_sync import (
+    OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY,
+    get_operator_application_view_model,
+    render_operator_dashboard,
+    synchronize_registered_dashboard_publication,
 )
-from services.performance import performance_monitor
-from services.refresh import history_cache
-from services.utils import safe_execute
-from services.health import health_check
-from config import (
-    APP_NAME,
-    VERSION,
-    PHASE,
-    BUILD,
+from dashboard.dashboard_read_model_state import get_plan_position_views
+from dashboard.dashboard_read_model_state import (
+    get_r4_paper_lifecycle_view,
+)
+from dashboard.operational_components import (
+    render_operational_dashboard,
+)
+from dashboard.plan_position_components import render_plan_and_position_dashboard
+from dashboard.plan_position_components import (
+    render_r4_paper_lifecycle_dashboard,
 )
 
 
-DB = "database/ai_trading.db"
-
-def load_history(limit=25):
-
-    try:
-
-        conn = sqlite3.connect(DB)
-
-        df = pd.read_sql_query(
-            """
-            SELECT
-                timestamp,
-                signal,
-                confidence,
-                price
-            FROM decision_log
-            ORDER BY id DESC
-            LIMIT ?
-            """,
-            conn,
-            params=(limit,),
-        )
-
-        conn.close()
-
-        return df
-
-    except Exception:
-
-        return pd.DataFrame()
+_OPERATOR_VIEW_MODEL_KEY = (
+    OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY
+)
 
 
-def load_validation_stats():
-
-    return get_trade_statistics()
-
-@st.fragment(run_every=MARKET_SNAPSHOT)
-def home():
-
-    snapshot = safe_execute(
-        get_market_snapshot,
-        default=None,
+def _render_unavailable_sections() -> None:
+    st.subheader("Market Overview")
+    st.info(
+        "Certified market-overview data is not available yet. "
+        "The dashboard will not fetch or calculate it independently."
     )
 
-    if snapshot is None:
+    st.divider()
 
-        st.error(
-            "Unable to load market snapshot. Please try again."
-        )
-
-        st.stop()
-
-    trade = safe_execute(
-        analyze_trade,
-        default=None,
-        snapshot=snapshot,
+    st.subheader("Validation")
+    st.info(
+        "Certified portfolio validation statistics are not available yet."
     )
 
-    if trade is None:
+    st.divider()
 
-        st.error(
-            "Unable to generate trade analysis."
-        )
-
-        st.stop()
-
-    indicators = snapshot["indicators"]
-
-    stats = safe_execute(
-        load_validation_stats,
-        default={
-            "total_trades": 0,
-            "winning_trades": 0,
-            "losing_trades": 0,
-            "net_pnl": 0,
-        },
+    st.subheader("Decision History")
+    st.info(
+        "Certified typed decision history is not available yet. "
+        "The dashboard does not query the legacy SQLite decision log."
     )
 
-    option = snapshot.get("option_analysis", {})
+
+def _render_r4_lifecycle_section(view) -> None:
+    if view is None:
+        st.subheader("PAPER Portfolio Lifecycle")
+        st.info(
+            "No certified persisted R4 lifecycle view "
+            "has been published."
+        )
+        return
+
+    render_r4_paper_lifecycle_dashboard(
+        st=st,
+        view=view,
+    )
+
+
+def home() -> None:
+    synchronize_registered_dashboard_publication(
+        st.session_state
+    )
+
+    operator_view_model = get_operator_application_view_model(
+        st.session_state
+    )
+
+    if operator_view_model is not None:
+        render_operator_dashboard(
+            st=st,
+            view_model=operator_view_model,
+        )
+
+        st.divider()
+        st.caption(
+            f"{APP_NAME} | Version {VERSION} | "
+            f"{PHASE} | Build {BUILD}"
+        )
+        return
+
+    (
+        opportunity_view,
+        trade_plan_view,
+        paper_position_view,
+    ) = get_plan_position_views(st.session_state)
+
+    (
+        option_intelligence_view,
+        runtime_operations_view,
+    ) = get_operational_views(st.session_state)
+
+    r4_lifecycle_view = get_r4_paper_lifecycle_view(
+        st.session_state
+    )
 
     st.title("🤖 AI Trading Copilot V2")
-
     st.caption(
-        f"Market : {snapshot['market_status']} | "
-        f"Updated : {snapshot['refresh_time']}"
+        "Certified PAPER dashboard — immutable published read models only"
+    )
+    st.divider()
+
+    render_plan_and_position_dashboard(
+        st,
+        opportunity=opportunity_view,
+        plan=trade_plan_view,
+        position=paper_position_view,
     )
 
     st.divider()
 
-    # =====================================================
-    # TOP SUMMARY
-    # =====================================================
+    _render_r4_lifecycle_section(r4_lifecycle_view)
 
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    st.divider()
 
-    c1.metric(
-        "NIFTY",
-        round(snapshot["ltp"], 2),
-    )
-
-    c2.metric(
-        "Decision",
-        trade["decision"],
-    )
-
-    c3.metric(
-        "Confidence",
-        f"{trade['confidence']}%",
-    )
-
-    c4.metric(
-        "Institutional Score",
-        trade["institutional_score"],
-    )
-
-    c5.metric(
-        "Trade Grade",
-        trade["trade_grade"],
-    )
-
-    c6.metric(
-        "Execution",
-        trade["trade_action"],
+    render_operational_dashboard(
+        st,
+        option_intelligence=option_intelligence_view,
+        runtime_operations=runtime_operations_view,
     )
 
     st.divider()
 
-    # =====================================================
-    # SCORES
-    # =====================================================
-
-    a, b, c, d = st.columns(4)
-
-    try:
-        a.metric("Bull Score", trade["bull_score"])
-        b.metric("Bear Score", trade["bear_score"])
-        c.metric("Neutral", trade["neutral_score"])
-        d.metric("RSI", round(indicators["RSI"], 2))
-    except Exception as e:
-            st.exception(e)
-            st.stop()
+    _render_unavailable_sections()
 
     st.divider()
-
-    # =====================================================
-    # TREND
-    # =====================================================
-
-    st.subheader("📊 Trend Analysis")
-
-    x1, x2, x3 = st.columns(3)
-
-    x1.metric(
-        "Momentum",
-        trade["trend"]["momentum"],
-    )
-
-    x2.metric(
-        "Strength",
-        trade["trend"]["strength"],
-    )
-
-    x3.metric(
-        "Score",
-        f"{trade['trend']['score']}%",
-    )
-
-    st.divider()
-
-    # =====================================================
-    # CANDLESTICK
-    # =====================================================
-
-    st.subheader("🕯 Candlestick")
-
-    y1, y2, y3 = st.columns(3)
-
-    y1.metric(
-        "Pattern",
-        trade["pattern"]["pattern"],
-    )
-
-    y2.metric(
-        "Signal",
-        trade["pattern"]["signal"],
-    )
-
-    y3.metric(
-        "Status",
-        "Detected",
-    )
-
-    st.divider()
-
-    # =====================================================
-    # SUPPORT / RESISTANCE
-    # =====================================================
-
-    st.subheader("📍 Support & Resistance")
-
-    s1, s2 = st.columns(2)
-
-    s1.metric(
-        "Support",
-        round(
-            trade["support_resistance"]["Support"],
-            2,
-        ),
-    )
-
-    s2.metric(
-        "Resistance",
-        round(
-            trade["support_resistance"]["Resistance"],
-            2,
-        ),
-    )
-
-    st.divider()
-
-    # =====================================================
-    # OPTION CHAIN ANALYSIS
-    # =====================================================
-
-    st.subheader("📈 Institutional Option Analysis")
-
-    if option and option.get("Status") == "Success":
-
-        flow = option.get("Flow", {})
-
-        greeks = option.get("Greeks", {})
-
-        summary = greeks.get("Summary", {})
-
-        atm = greeks.get("ATM", {})
-
-        # -------------------------------------------------
-
-        o1, o2, o3, o4 = st.columns(4)
-
-        o1.metric(
-            "PCR",
-            option["PCR"]["PCR"],
-        )
-
-        o2.metric(
-            "Option Bias",
-            option["Bias"],
-        )
-
-        o3.metric(
-            "Option Flow",
-            flow.get(
-                "Flow",
-                "-",
-            ),
-        )
-
-        o4.metric(
-            "Confidence",
-            f"{option['Confidence']}%",
-        )
-
-        # -------------------------------------------------
-
-        a1, a2, a3 = st.columns(3)
-
-        a1.metric(
-            "Support",
-            option["Support"],
-        )
-
-        a2.metric(
-            "Resistance",
-            option["Resistance"],
-        )
-
-        a3.metric(
-            "Max Pain",
-            option["MaxPainStrike"],
-        )
-
-        st.divider()
-
-        # -------------------------------------------------
-
-        st.subheader("🏦 Open Interest")
-
-        oi = option["OI"]
-
-        i1, i2, i3 = st.columns(3)
-
-        i1.metric(
-            "CE OI",
-            f"{oi['CE_OI']:,}",
-        )
-
-        i2.metric(
-            "PE OI",
-            f"{oi['PE_OI']:,}",
-        )
-
-        i3.metric(
-            "PCR",
-            oi["PCR"],
-        )
-
-        st.divider()
-
-        # -------------------------------------------------
-
-        st.subheader("📐 Live Greeks")
-
-        g1, g2, g3, g4, g5 = st.columns(5)
-
-        g1.metric(
-            "Δ Delta",
-            round(
-                atm.get("Delta", 0),
-                4,
-            ),
-        )
-
-        g2.metric(
-            "Γ Gamma",
-            round(
-                atm.get("Gamma", 0),
-                4,
-            ),
-        )
-
-        g3.metric(
-            "Θ Theta",
-            round(
-                atm.get("Theta", 0),
-                4,
-            ),
-        )
-
-        g4.metric(
-            "V Vega",
-            round(
-                atm.get("Vega", 0),
-                4,
-            ),
-        )
-
-        g5.metric(
-            "IV %",
-            round(
-                atm.get("IV", 0),
-                2,
-            ),
-        )
-
-        st.divider()
-
-        s1, s2, s3 = st.columns(3)
-
-        s1.metric(
-            "Greeks Bias",
-            summary.get(
-                "Bias",
-                "-",
-            ),
-        )
-
-        s2.metric(
-            "Average Delta",
-            summary.get(
-                "AverageDelta",
-                0,
-            ),
-        )
-
-        s3.metric(
-            "Average IV",
-            summary.get(
-                "AverageIV",
-                0,
-            ),
-        )
-
-    else:
-
-        st.info(
-            "Live option chain unavailable."
-        )
-
-    st.divider()
-
-    # =====================================================
-    # TRADE PLAN
-    # =====================================================
-
-    st.subheader("💰 Trade Plan")
-
-    p1, p2, p3 = st.columns(3)
-
-    p1.metric(
-        "Entry",
-        trade["entry"],
-    )
-
-    p1.metric(
-        "Stop Loss",
-        trade["stop_loss"],
-    )
-
-    p2.metric(
-        "Target 1",
-        trade["target1"],
-    )
-
-    p2.metric(
-        "Target 2",
-        trade["target2"],
-    )
-
-    p3.metric(
-        "Target 3",
-        trade["risk"]["TARGET3"],
-    )
-
-    p3.metric(
-        "Risk : Reward",
-        trade["risk"]["RR"],
-    )
-
-    st.divider()
-
-    # =====================================================
-    # INSTITUTIONAL SCORE
-    # =====================================================
-
-    st.subheader("🏛 Institutional Decision")
-
-    t1, t2, t3 = st.columns(3)
-
-    t1.metric(
-        "Trade Grade",
-        trade["trade_grade"],
-    )
-
-    t2.metric(
-        "Institutional Score",
-        trade["institutional_score"],
-    )
-
-    t3.metric(
-        "Execution",
-        trade["trade_action"],
-    )
-
     st.caption(
-        f"Risk Level : {trade['risk_level']}"
+        f"{APP_NAME} | Version {VERSION} | "
+        f"{PHASE} | Build {BUILD}"
     )
-
-    st.divider()
-
-    # =====================================================
-    # AI REASON
-    # =====================================================
-
-    st.subheader("🧠 AI Reason")
-
-    st.success(
-        trade["reason"]
-    )
-
-    st.divider()
-
-    # =====================================================
-    # VALIDATION
-    # =====================================================
-
-    st.subheader("📈 Validation")
-
-    v1, v2, v3, v4, v5 = st.columns(5)
-
-    v1.metric(
-        "Trades",
-        stats["total_trades"],
-    )
-
-    v2.metric(
-        "Wins",
-        stats["winning_trades"],
-    )
-
-    v3.metric(
-        "Losses",
-        stats["losing_trades"],
-    )
-
-    v4.metric(
-        "Net PnL",
-        stats["net_pnl"],
-    )
-
-    v5.metric(
-        "Trade Grade",
-        trade["trade_grade"],
-    )
-
-    st.divider()
-
-    # =====================================================
-    # PERFORMANCE METRICS
-    # =====================================================
-
-    with st.expander("⚡ Performance Metrics", expanded=False):
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-
-            st.metric(
-                "Market Snapshot",
-                f"{performance_monitor.elapsed('market_snapshot')} sec",
-            )
-
-        with col2:
-
-            st.metric(
-                "Decision Engine",
-                f"{performance_monitor.elapsed('decision_engine')} sec",
-            )
-
-    st.divider()
-    # =====================================================
-    # SYSTEM HEALTH
-    # =====================================================
-
-    health = health_check.run()
-
-    with st.expander("🟢 System Health", expanded=False):
-
-        c1, c2, c3, c4 = st.columns(4)
-
-        c1.metric(
-            "Market",
-            health["market_snapshot"],
-        )
-
-        c2.metric(
-            "Database",
-            health["database"],
-        )
-
-        c3.metric(
-            "Paper Trade",
-            health["paper_trade"],
-        )
-
-        c4.metric(
-            "Option Chain",
-            health["option_chain"],
-        )
-
-    st.divider()
-    # =====================================================
-    # DECISION HISTORY
-    # =====================================================
-
-    st.subheader("📜 Decision History")
-
-    history = safe_execute(
-        history_cache.get,
-        default=pd.DataFrame(),
-        loader=load_history,
-    )
-
-    if history.empty:
-
-        st.info(
-            "No trade history available."
-        )
-
-    else:
-
-        st.dataframe(
-            history,
-            width="stretch",
-            hide_index=True,
-        )
-
-        st.divider()
-
-        st.caption(
-            f"{APP_NAME} | "
-            f"Version {VERSION} | "
-            f"{PHASE} | "
-            f"Build {BUILD}"
-        )
