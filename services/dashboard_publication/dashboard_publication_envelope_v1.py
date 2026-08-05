@@ -18,6 +18,9 @@ from services.dashboard_read_models.dashboard_option_intelligence_view_v1 import
 from services.dashboard_read_models.dashboard_runtime_operations_view_v1 import (
     DashboardRuntimeOperationsViewV1,
 )
+from services.dashboard_read_models.r4_paper_lifecycle_dashboard_view_v1 import (
+    R4PaperLifecycleDashboardViewV1,
+)
 
 
 _PUBLICATION_STATUSES = frozenset(
@@ -71,6 +74,7 @@ class DashboardPublicationEnvelopeV1:
     paper_position: DashboardPaperPositionDetailViewV1 | None = None
     option_intelligence: DashboardOptionIntelligenceViewV1 | None = None
     runtime_operations: DashboardRuntimeOperationsViewV1 | None = None
+    r4_paper_lifecycle: R4PaperLifecycleDashboardViewV1 | None = None
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
@@ -155,6 +159,11 @@ class DashboardPublicationEnvelopeV1:
                 self.runtime_operations,
                 DashboardRuntimeOperationsViewV1,
                 "runtime_operations",
+            ),
+            (
+                self.r4_paper_lifecycle,
+                R4PaperLifecycleDashboardViewV1,
+                "r4_paper_lifecycle",
             ),
         )
         for value, expected, name in exact_optional:
@@ -246,6 +255,11 @@ class DashboardPublicationEnvelopeV1:
             "runtime_operations": (
                 self.runtime_operations.to_dict()
                 if self.runtime_operations is not None
+                else None
+            ),
+            "r4_paper_lifecycle": (
+                self.r4_paper_lifecycle.to_dict()
+                if self.r4_paper_lifecycle is not None
                 else None
             ),
             "blockers": list(self.blockers),

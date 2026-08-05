@@ -100,8 +100,17 @@ from services.paper_orchestration.continuous_runtime_adapter import (
     ContinuousPaperOrchestrationRuntimeAdapter,
     ContinuousPaperOrchestrationRuntimeConfigV1,
 )
-from services.paper_orchestration.existing_position_monitoring_cycle_executor import (
-    ExistingPositionMonitoringCycleExecutor,
+from services.paper_orchestration.active_position_monitoring_batch_executor import (
+    ActivePositionMonitoringBatchExecutor,
+)
+from services.paper_orchestration.certified_live_option_quote_reader import (
+    CertifiedLiveOptionQuoteReader,
+)
+from services.paper_orchestration.certified_position_evaluation_input_factory import (
+    CertifiedPositionEvaluationInputFactory,
+)
+from services.paper_orchestration.certified_startup_recovery import (
+    CertifiedStartupRecovery,
 )
 from services.paper_orchestration.existing_position_monitoring_executor import (
     ExistingPositionMonitoringExecutor,
@@ -109,17 +118,26 @@ from services.paper_orchestration.existing_position_monitoring_executor import (
 from services.paper_orchestration.new_entry_paper_lifecycle_executor import (
     NewEntryPaperLifecycleExecutor,
 )
+from services.dashboard_read_models.r4_paper_lifecycle_dashboard_view_v1 import (
+    build_r4_paper_lifecycle_dashboard_view,
+)
 from services.paper_portfolio.paper_portfolio_lifecycle_coordinator import (
     PaperPortfolioLifecycleCoordinator,
 )
 from services.paper_portfolio.paper_portfolio_persistence_service import (
     PaperPortfolioPersistenceService,
 )
+from services.paper_portfolio.paper_portfolio_recovery_service import (
+    PaperPortfolioRecoveryService,
+)
 from services.paper_portfolio_repository import (
     PaperPortfolioRepository,
 )
 from services.paper_trading.paper_trade_persistence_service import (
     PaperTradePersistenceService,
+)
+from services.paper_trading.paper_trade_recovery_service import (
+    PaperTradeRecoveryService,
 )
 from services.paper_trading.paper_trade_replay_coordinator import (
     PaperTradeReplayCoordinator,
@@ -747,26 +765,6 @@ def _observe_only_new_entry_input_factory(
     )
 
 
-def _no_active_position_monitoring_input(
-    *args: object,
-    **kwargs: object,
-):
-    raise RuntimeError(
-        "no active certified P7 position is available "
-        "for monitoring"
-    )
-
-
-def _recovery_success_empty() -> dict[str, object]:
-    return {
-        "success": True,
-        "status": "RECOVERED",
-        "target_count": 0,
-        "execution_mode": "PAPER",
-        "live_execution_eligible": False,
-    }
-
-
 def build_default_runtime_providers(
 ) -> CertifiedRuntimeProviderBundleV1:
     shared_client = get_market_client()
@@ -983,6 +981,14 @@ def build_certified_launcher(
         )
     )
 
+    trade_recovery = PaperTradeRecoveryService(
+        trade_persistence
+    )
+
+    portfolio_recovery = PaperPortfolioRecoveryService(
+        portfolio_persistence
+    )
+
     monitoring_authority = (
         ExistingPositionMonitoringExecutor(
             trade_replay_coordinator=(
@@ -998,17 +1004,234 @@ def build_certified_launcher(
         )
     )
 
-    monitoring_executor = (
-        ExistingPositionMonitoringCycleExecutor(
-            monitoring_input_factory=(
-                _no_active_position_monitoring_input
+    def monitoring_portfolio_policy(
+        cycle_input: PaperOrchestrationCycleInputV1,
+    ) -> PaperPortfolioPolicyV1:
+        current = portfolio_persistence.get(
+            value.portfolio_id
+        )
+
+        policy_id = (
+            current.portfolio_snapshot.portfolio_policy_id
+            if current is not None
+            else (
+                "certified-paper-portfolio-policy:"
+                f"{cycle_input.trading_day_id}"
+            )
+        )
+
+        capital = value.available_capital
+
+        return PaperPortfolioPolicyV1(
+            portfolio_policy_id=policy_id,
+            policy_timestamp=(
+                cycle_input.cycle_requested_at
             ),
-            monitoring_authority=(
-                monitoring_authority.execute
+            maximum_concurrent_trades=3,
+            maximum_total_deployed_capital=capital,
+            maximum_total_portfolio_risk_amount=(
+                capital * 0.10
+            ),
+            maximum_daily_loss_amount=(
+                capital * 0.02
+            ),
+            maximum_daily_drawdown_amount=(
+                capital * 0.03
+            ),
+            maximum_instrument_risk_fraction=0.75,
+            maximum_direction_risk_fraction=0.75,
+            maximum_correlated_index_risk_fraction=0.60,
+            maximum_expiry_risk_fraction=0.60,
+            minimum_available_cash_reserve=0.0,
+            metadata={
+                "authority": (
+                    "CERTIFIED_RUNTIME_MONITORING"
+                ),
+                "broker_order_submission": False,
+            },
+        )
+
+    monitoring_executor = (
+        ActivePositionMonitoringBatchExecutor(
+            portfolio_id=value.portfolio_id,
+            trade_recovery_service=trade_recovery,
+            quote_reader=CertifiedLiveOptionQuoteReader(
+                market_client=get_market_client(),
+                instrument_master=AngelInstrumentMaster(),
+                clock=clock,
+            ),
+            evaluation_input_factory=(
+                CertifiedPositionEvaluationInputFactory()
+            ),
+            monitoring_executor=monitoring_authority,
+            portfolio_policy_provider=(
+                monitoring_portfolio_policy
             ),
             clock=clock,
         )
     )
+
+    startup_recovery = CertifiedStartupRecovery(
+        portfolio_id=value.portfolio_id,
+        trade_recovery_service=trade_recovery,
+        portfolio_recovery_service=(
+            portfolio_recovery
+        ),
+        clock=clock,
+    )
+
+    latest_startup_recovery: dict[str, object] = {
+        "status": "NOT_RUN",
+        "reconciliation_status": "UNKNOWN",
+        "reconciliation_codes": (),
+    }
+
+    def startup_operation() -> dict[str, object]:
+        result = startup_recovery()
+        latest_startup_recovery.update(
+            {
+                "status": (
+                    "RECOVERED"
+                    if result.success
+                    else "BLOCKED"
+                ),
+                "reconciliation_status": (
+                    "RECONCILED"
+                    if result.success
+                    else "DRIFT_DETECTED"
+                ),
+                "reconciliation_codes": (
+                    result.reconciliation_codes
+                ),
+            }
+        )
+
+        return {
+            "success": result.success,
+            "status": (
+                "RECOVERED"
+                if result.success
+                else "BLOCKED"
+            ),
+            "recovered_at": (
+                result.recovered_at.isoformat()
+            ),
+            "target_count": (
+                result.recovered_trade_count
+                + result.recovered_portfolio_count
+            ),
+            "recovered_trade_count": (
+                result.recovered_trade_count
+            ),
+            "active_trade_count": (
+                result.active_trade_count
+            ),
+            "pending_trade_count": (
+                result.pending_trade_count
+            ),
+            "terminal_trade_count": (
+                result.terminal_trade_count
+            ),
+            "recovered_portfolio_count": (
+                result.recovered_portfolio_count
+            ),
+            "reconciliation_codes": (
+                result.reconciliation_codes
+            ),
+            "blockers": result.blockers,
+            "warnings": result.warnings,
+            "execution_mode": "PAPER",
+            "live_execution_eligible": False,
+            "broker_order_submission": False,
+        }
+
+    def dashboard_lifecycle_view_provider(
+        cycle_input: PaperOrchestrationCycleInputV1,
+        cycle_result: object,
+        source: str,
+    ):
+        del cycle_input, source
+
+        portfolio_snapshot = portfolio_persistence.get(
+            value.portfolio_id
+        )
+        if portfolio_snapshot is None:
+            return None
+
+        candidate_trade_ids: list[str] = []
+        metadata = getattr(cycle_result, "metadata", {})
+        if isinstance(metadata, Mapping):
+            outcomes = metadata.get("trade_outcomes", ())
+            if isinstance(outcomes, (tuple, list)):
+                ordered_outcomes = sorted(
+                    (
+                        item
+                        for item in outcomes
+                        if isinstance(item, Mapping)
+                    ),
+                    key=lambda item: (
+                        not bool(item.get("p7_state_changed")),
+                        int(item.get("sequence", 0)),
+                    ),
+                )
+                for item in ordered_outcomes:
+                    trade_id = item.get("paper_trade_id")
+                    if (
+                        type(trade_id) is str
+                        and trade_id.strip()
+                        and trade_id not in candidate_trade_ids
+                    ):
+                        candidate_trade_ids.append(
+                            trade_id.strip()
+                        )
+
+        active = trade_recovery.recover_active()
+        for snapshot in sorted(
+            active,
+            key=lambda item: (
+                item.updated_at,
+                item.paper_trade_id,
+            ),
+            reverse=True,
+        ):
+            if snapshot.paper_trade_id not in candidate_trade_ids:
+                candidate_trade_ids.append(
+                    snapshot.paper_trade_id
+                )
+
+        for paper_trade_id in candidate_trade_ids:
+            trade_snapshot = trade_persistence.get(
+                paper_trade_id
+            )
+            if (
+                trade_snapshot is None
+                or trade_snapshot.position is None
+            ):
+                continue
+
+            try:
+                return build_r4_paper_lifecycle_dashboard_view(
+                    portfolio_snapshot=portfolio_snapshot,
+                    trade_snapshot=trade_snapshot,
+                    restart_status=str(
+                        latest_startup_recovery["status"]
+                    ),
+                    reconciliation_status=str(
+                        latest_startup_recovery[
+                            "reconciliation_status"
+                        ]
+                    ),
+                    reconciliation_drift_codes=tuple(
+                        latest_startup_recovery[
+                            "reconciliation_codes"
+                        ]
+                    ),
+                    duplicate_protection_verified=True,
+                )
+            except ValueError:
+                continue
+
+        return None
 
     paths = build_certified_persistence_paths(
         value.data_root,
@@ -1025,6 +1248,9 @@ def build_certified_launcher(
 
     dashboard = build_certified_dashboard_publication(
         clock=clock,
+        lifecycle_view_provider=(
+            dashboard_lifecycle_view_provider
+        ),
     )
 
     controls = CertifiedOperatorControls(
@@ -1061,7 +1287,7 @@ def build_certified_launcher(
                 interval_seconds=value.interval_seconds,
             )
         ),
-        startup_operation=_recovery_success_empty,
+        startup_operation=startup_operation,
         dashboard_publication_producer=(
             dashboard.producer
         ),

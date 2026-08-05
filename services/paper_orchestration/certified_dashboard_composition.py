@@ -16,6 +16,7 @@ from services.dashboard_publication.dashboard_publication_store import (
 )
 from services.dashboard_publication.dashboard_runtime_publication_producer import (
     DashboardRuntimePublicationProducer,
+    LifecycleViewProvider,
 )
 
 
@@ -76,15 +77,22 @@ class CertifiedDashboardPublicationCompositionV1:
 def build_certified_dashboard_publication(
     *,
     clock: Clock,
+    lifecycle_view_provider: LifecycleViewProvider | None = None,
 ) -> CertifiedDashboardPublicationCompositionV1:
     if not callable(clock):
         raise TypeError("clock must be callable")
+    if (
+        lifecycle_view_provider is not None
+        and not callable(lifecycle_view_provider)
+    ):
+        raise TypeError("lifecycle_view_provider")
 
     store = DashboardPublicationStore()
     producer = DashboardRuntimePublicationProducer(
         store=store,
         clock=clock,
         publication_id_factory=_publication_id,
+        lifecycle_view_provider=lifecycle_view_provider,
     )
     return CertifiedDashboardPublicationCompositionV1(
         store=store,

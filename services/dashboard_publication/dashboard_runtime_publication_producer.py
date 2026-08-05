@@ -29,6 +29,9 @@ from services.dashboard_read_models.dashboard_option_intelligence_projection imp
 from services.dashboard_read_models.dashboard_runtime_operations_projection import (
     project_runtime_operations,
 )
+from services.dashboard_read_models.r4_paper_lifecycle_dashboard_view_v1 import (
+    R4PaperLifecycleDashboardViewV1,
+)
 
 from .dashboard_publication_envelope_v1 import (
     DashboardPublicationEnvelopeV1,
@@ -40,6 +43,14 @@ Clock = Callable[[], datetime]
 PublicationIdFactory = Callable[
     [PaperOrchestrationCycleInputV1, PaperOrchestrationCycleResultV1, int],
     str,
+]
+LifecycleViewProvider = Callable[
+    [
+        PaperOrchestrationCycleInputV1,
+        PaperOrchestrationCycleResultV1,
+        str,
+    ],
+    R4PaperLifecycleDashboardViewV1 | None,
 ]
 
 
@@ -61,6 +72,7 @@ class DashboardRuntimePublicationProducer:
         store: DashboardPublicationStore,
         clock: Clock,
         publication_id_factory: PublicationIdFactory,
+        lifecycle_view_provider: LifecycleViewProvider | None = None,
     ) -> None:
         if type(store) is not DashboardPublicationStore:
             raise TypeError("store")
@@ -68,9 +80,15 @@ class DashboardRuntimePublicationProducer:
             raise TypeError("clock")
         if not callable(publication_id_factory):
             raise TypeError("publication_id_factory")
+        if (
+            lifecycle_view_provider is not None
+            and not callable(lifecycle_view_provider)
+        ):
+            raise TypeError("lifecycle_view_provider")
         self.store = store
         self.clock = clock
         self.publication_id_factory = publication_id_factory
+        self.lifecycle_view_provider = lifecycle_view_provider
 
     def _next_sequence(self) -> int:
         latest = self.store.get_snapshot().latest_envelope
@@ -173,6 +191,22 @@ class DashboardRuntimePublicationProducer:
             runtime_operations = project_runtime_operations(
                 cycle_result
             )
+            r4_paper_lifecycle = None
+            if self.lifecycle_view_provider is not None:
+                r4_paper_lifecycle = self.lifecycle_view_provider(
+                    cycle_input,
+                    cycle_result,
+                    source,
+                )
+                if (
+                    r4_paper_lifecycle is not None
+                    and type(r4_paper_lifecycle)
+                    is not R4PaperLifecycleDashboardViewV1
+                ):
+                    raise TypeError(
+                        "lifecycle_view_provider must return exact "
+                        "R4PaperLifecycleDashboardViewV1 or None"
+                    )
 
             if publication_status == "NO_ACTION":
                 trade_plan = None
@@ -234,6 +268,7 @@ class DashboardRuntimePublicationProducer:
                 paper_position=paper_position,
                 option_intelligence=option_intelligence,
                 runtime_operations=runtime_operations,
+                r4_paper_lifecycle=r4_paper_lifecycle,
                 blockers=blockers,
                 warnings=warnings,
                 errors=errors,

@@ -18,6 +18,9 @@ from .dashboard_read_model_state import (
     TRADE_PLAN_STATE_KEY,
 )
 from dashboard.operator_dashboard import render_operator_dashboard
+from dashboard.r4_paper_lifecycle_components import (
+    R4_PAPER_LIFECYCLE_VIEW_STATE_KEY,
+)
 
 
 PUBLICATION_ID_STATE_KEY = "dashboard_publication_id"
@@ -102,6 +105,9 @@ def synchronize_dashboard_publication(
     )
     state[RUNTIME_OPERATIONS_STATE_KEY] = (
         envelope.runtime_operations
+    )
+    state[R4_PAPER_LIFECYCLE_VIEW_STATE_KEY] = (
+        envelope.r4_paper_lifecycle
     )
 
     state[PUBLICATION_ID_STATE_KEY] = envelope.publication_id
