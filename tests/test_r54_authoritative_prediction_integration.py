@@ -24,6 +24,8 @@ from test_certified_two_market_parent_runtime import (
 
 def _runtime():
     nifty, sensex = cycles()
+    nifty = replace(nifty, metadata={**dict(nifty.metadata), "spot_price": 25000.0})
+    sensex = replace(sensex, metadata={**dict(sensex.metadata), "spot_price": 80000.0})
     runtime_readers = readers(
         lambda cycle, data, analysis, captured, shared_context, *,
         parent_cycle_id: candidate_for(

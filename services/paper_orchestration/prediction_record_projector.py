@@ -1,6 +1,9 @@
 """Pure deterministic projection of one parent result into two predictions."""
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
+
 from services.contracts.prediction_record_v1 import PredictionRecordV1
 from services.contracts.two_market_decision_result_v1 import (
     TwoMarketDecisionResultV1,
@@ -21,11 +24,24 @@ def _predicted_action(direction: str, *, selected: bool) -> str:
 
 def project_parent_decision_predictions(
     decision: TwoMarketDecisionResultV1,
+    *,
+    start_underlying_prices: Mapping[tuple[str, str], float],
 ) -> tuple[PredictionRecordV1, PredictionRecordV1]:
     """Project one parent decision into exact ordered NIFTY/SENSEX records."""
 
     if type(decision) is not TwoMarketDecisionResultV1:
         raise TypeError("decision")
+    if not isinstance(start_underlying_prices, Mapping):
+        raise TypeError("start_underlying_prices")
+    expected_identities = (("NIFTY", "NSE"), ("SENSEX", "BSE"))
+    if set(start_underlying_prices) != set(expected_identities):
+        raise ValueError("exact NIFTY/SENSEX start prices required")
+    normalized_prices = {}
+    for identity in expected_identities:
+        value = start_underlying_prices[identity]
+        if type(value) not in (int, float) or isinstance(value, bool) or not math.isfinite(value) or value <= 0.0:
+            raise ValueError("start underlying price")
+        normalized_prices[identity] = float(value)
 
     records: list[PredictionRecordV1] = []
 
@@ -69,6 +85,7 @@ def project_parent_decision_predictions(
                 completed_at=decision.completed_at,
                 market_timestamp=market_timestamp,
                 received_at=child.received_at,
+                start_underlying_price=normalized_prices[(child.underlying_symbol, child.exchange)],
                 terminal_status=child.terminal_status,
                 candidate_id=candidate_id,
                 predicted_direction=direction,

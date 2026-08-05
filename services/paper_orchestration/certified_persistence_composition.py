@@ -14,6 +14,9 @@ from services.paper_orchestration.paper_orchestration_journal import (
 from services.paper_orchestration.prediction_ledger import (
     PredictionLedger,
 )
+from services.paper_orchestration.prediction_outcome_ledger import (
+    PredictionOutcomeLedger,
+)
 from services.paper_orchestration.restart_recovery_operation import (
     RestartRecoveryOperation,
     RestartRecoveryTargetV1,
@@ -110,6 +113,16 @@ class CertifiedPersistencePathsV1:
         return (
             self.root_directory
             / "prediction_ledger.json"
+        )
+
+
+    @property
+    def prediction_outcome_ledger_path(
+        self,
+    ) -> Path:
+        return (
+            self.root_directory
+            / "prediction_outcome_ledger.json"
         )
 
 
@@ -406,4 +419,43 @@ def build_certified_prediction_ledger(
 
     return PredictionLedger(
         prediction_path
+    )
+
+
+
+def build_certified_prediction_outcome_ledger(
+    *,
+    paths: CertifiedPersistencePathsV1 | None = None,
+) -> PredictionOutcomeLedger:
+    """Build the dedicated immutable prediction-outcome ledger."""
+
+    paths = (
+        paths
+        or build_certified_persistence_paths()
+    )
+    if (
+        type(paths)
+        is not CertifiedPersistencePathsV1
+    ):
+        raise TypeError(
+            "paths must be exact "
+            "CertifiedPersistencePathsV1"
+        )
+
+    outcome_path = (
+        paths.prediction_outcome_ledger_path
+    )
+
+    if outcome_path in {
+        paths.opportunity_journal_path,
+        paths.monitoring_journal_path,
+        paths.parent_decision_journal_path,
+        paths.prediction_ledger_path,
+    }:
+        raise ValueError(
+            "prediction outcome ledger must remain separate"
+        )
+
+    return PredictionOutcomeLedger(
+        outcome_path
     )

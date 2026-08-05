@@ -20,6 +20,7 @@ def record(**changes):
         completed_at=candidate.received_at,
         market_timestamp=candidate.market_timestamp,
         received_at=candidate.received_at,
+        start_underlying_price=25000.0,
         terminal_status="COMPLETED",
         candidate_id=candidate.candidate_id,
         predicted_direction="BULLISH",
@@ -74,3 +75,9 @@ def test_noncompleted_record_is_zeroed_and_waiting():
         errors=("CANDIDATE_COMPOSITION_FAILED",),
     )
     assert value.terminal_status == "FAILED"
+
+
+def test_start_underlying_price_is_required_positive_finite():
+    for value in (0.0, -1.0, float("nan"), float("inf"), True):
+        with pytest.raises(ValueError):
+            record(start_underlying_price=value)

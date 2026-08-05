@@ -27,7 +27,9 @@ def test_selected_parent_projects_call_and_wait_records():
         ),
     )
 
-    records = project_parent_decision_predictions(decision)
+    records = project_parent_decision_predictions(decision,
+        start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0},
+    )
 
     assert tuple(
         (item.underlying_symbol, item.exchange)
@@ -55,7 +57,9 @@ def test_failed_child_still_projects_one_prediction_record():
         child_evaluator=evaluator,
     )
 
-    records = project_parent_decision_predictions(decision)
+    records = project_parent_decision_predictions(decision,
+        start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0},
+    )
 
     assert records[0].terminal_status == "FAILED"
     assert records[0].candidate_id is None
@@ -80,7 +84,9 @@ def test_no_trade_projects_two_wait_records():
         ),
     )
 
-    records = project_parent_decision_predictions(decision)
+    records = project_parent_decision_predictions(decision,
+        start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0},
+    )
 
     assert decision.decision == "NO_TRADE"
     assert tuple(
@@ -103,10 +109,20 @@ def test_projection_is_deterministic():
         ),
     )
 
-    first = project_parent_decision_predictions(decision)
-    second = project_parent_decision_predictions(decision)
+    first = project_parent_decision_predictions(decision,
+        start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0},
+    )
+    second = project_parent_decision_predictions(decision,
+        start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0},
+    )
 
     assert first == second
     assert tuple(item.semantic_hash for item in first) == tuple(
         item.semantic_hash for item in second
     )
+
+
+def test_projection_retains_exact_start_prices():
+    decision = run_two_market_parent_cycle(parent(), child_evaluator=lambda symbol, exchange, observation_id: candidate_for(symbol, observation_id, score=80.0 if symbol == "NIFTY" else 60.0))
+    records = project_parent_decision_predictions(decision, start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0})
+    assert tuple(item.start_underlying_price for item in records) == (25000.0, 80000.0)

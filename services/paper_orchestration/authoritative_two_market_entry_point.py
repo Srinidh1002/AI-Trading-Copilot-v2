@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import math
 from datetime import datetime
 
 from services.contracts.paper_orchestration_cycle_input_v1 import (
@@ -36,6 +37,17 @@ from services.paper_orchestration.selected_market_p6_planning_runtime import (
 from services.paper_orchestration.two_market_parent_cycle_journal_adapter import (
     TwoMarketParentCycleJournalAdapter,
 )
+
+
+def _cycle_start_price(cycle: PaperOrchestrationCycleInputV1) -> float:
+    value = cycle.metadata.get("spot_price")
+    if value is None:
+        captured = cycle.metadata.get("captured_spot_payload")
+        if isinstance(captured, Mapping):
+            value = captured.get("spot_price", captured.get("ltp"))
+    if type(value) not in (int, float) or isinstance(value, bool) or not math.isfinite(value) or value <= 0.0:
+        raise ValueError(f"{cycle.underlying_symbol} start spot price unavailable")
+    return float(value)
 
 
 AUTHORITATIVE_TWO_MARKET_ENTRY_POINT_ID = (
@@ -100,7 +112,13 @@ def run_authoritative_two_market_parent_cycle(
     )
 
     prediction_records = (
-        project_parent_decision_predictions(decision)
+        project_parent_decision_predictions(
+            decision,
+            start_underlying_prices={
+                ("NIFTY", "NSE"): _cycle_start_price(nifty_cycle),
+                ("SENSEX", "BSE"): _cycle_start_price(sensex_cycle),
+            },
+        )
         if prediction_ledger is not None
         else None
     )

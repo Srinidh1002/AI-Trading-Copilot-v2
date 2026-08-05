@@ -1,15 +1,17 @@
-"""Atomic immutable ledger for exact two-market prediction records."""
+"""Atomic immutable ledger for prediction outcome records."""
 from __future__ import annotations
 
 import json
 import os
 from pathlib import Path
 
-from services.contracts.prediction_record_v1 import PredictionRecordV1
+from services.contracts.prediction_outcome_record_v1 import (
+    PredictionOutcomeRecordV1,
+)
 
 
-class PredictionLedger:
-    """Durable append-only ledger keyed by deterministic prediction identity."""
+class PredictionOutcomeLedger:
+    """Durable append-only outcome ledger keyed by deterministic outcome ID."""
 
     SCHEMA_VERSION = 1
 
@@ -18,7 +20,7 @@ class PredictionLedger:
             file_path
             or (
                 "data/paper_trading/certified_runtime/"
-                "prediction_ledger.json"
+                "prediction_outcome_ledger.json"
             )
         )
 
@@ -33,32 +35,32 @@ class PredictionLedger:
     def _validate_document(cls, document):
         if type(document) is not dict:
             raise ValueError(
-                "prediction ledger must contain a JSON object"
+                "prediction outcome ledger must contain a JSON object"
             )
         if document.get("version") != cls.SCHEMA_VERSION:
             raise ValueError(
-                "unsupported prediction ledger version"
+                "unsupported prediction outcome ledger version"
             )
 
         records = document.get("records")
         if type(records) is not dict:
             raise ValueError(
-                "prediction ledger records must be a dictionary"
+                "prediction outcome ledger records must be a dictionary"
             )
 
         normalized = {}
         for key, value in records.items():
             if type(key) is not str or not key.strip():
                 raise ValueError(
-                    "prediction ledger key must be non-empty"
+                    "prediction outcome ledger key must be non-empty"
                 )
             if type(value) is not dict:
                 raise ValueError(
-                    "prediction ledger record must be a dictionary"
+                    "prediction outcome ledger record must be a dictionary"
                 )
-            if value.get("prediction_id") != key:
+            if value.get("outcome_id") != key:
                 raise ValueError(
-                    "prediction ledger record key mismatch"
+                    "prediction outcome ledger record key mismatch"
                 )
             semantic_hash = value.get("semantic_hash")
             if (
@@ -66,7 +68,7 @@ class PredictionLedger:
                 or len(semantic_hash) != 64
             ):
                 raise ValueError(
-                    "prediction ledger semantic hash"
+                    "prediction outcome ledger semantic hash"
                 )
             normalized[key] = dict(value)
 
@@ -87,7 +89,7 @@ class PredictionLedger:
                 document = json.load(file)
         except json.JSONDecodeError as exc:
             raise ValueError(
-                "invalid JSON in prediction ledger"
+                "invalid JSON in prediction outcome ledger"
             ) from exc
 
         return self._validate_document(document)
@@ -130,16 +132,16 @@ class PredictionLedger:
                 pass
             raise
 
-    def get_raw(self, prediction_id):
-        if type(prediction_id) is not str:
+    def get_raw(self, outcome_id):
+        if type(outcome_id) is not str:
             raise TypeError(
-                "prediction_id must be a string"
+                "outcome_id must be a string"
             )
 
-        key = prediction_id.strip()
+        key = outcome_id.strip()
         if not key:
             raise ValueError(
-                "prediction_id must be non-empty"
+                "outcome_id must be non-empty"
             )
 
         value = self._read_document()["records"].get(key)
@@ -148,109 +150,80 @@ class PredictionLedger:
     def classify(
         self,
         *,
-        prediction_id: str,
+        outcome_id: str,
         semantic_hash: str,
     ) -> str:
-        raw = self.get_raw(prediction_id)
+        raw = self.get_raw(outcome_id)
         if raw is None:
             return "NEW"
         if raw.get("semantic_hash") == semantic_hash:
             return "DUPLICATE_SAME_PAYLOAD"
         return "IDEMPOTENCY_PAYLOAD_CONFLICT"
 
-    def save_pair(
+    def save(
         self,
-        records: tuple[
-            PredictionRecordV1,
-            PredictionRecordV1,
-        ],
-    ) -> tuple[
-        PredictionRecordV1,
-        PredictionRecordV1,
-    ]:
-        if (
-            not isinstance(records, tuple)
-            or len(records) != 2
-            or not all(
-                type(item) is PredictionRecordV1
-                for item in records
-            )
-        ):
+        record: PredictionOutcomeRecordV1,
+    ) -> PredictionOutcomeRecordV1:
+        if type(record) is not PredictionOutcomeRecordV1:
             raise TypeError(
-                "exact prediction record pair required"
-            )
-
-        if tuple(
-            (
-                item.underlying_symbol,
-                item.exchange,
-            )
-            for item in records
-        ) != (
-            ("NIFTY", "NSE"),
-            ("SENSEX", "BSE"),
-        ):
-            raise ValueError(
-                "exact ordered NIFTY/SENSEX pair required"
-            )
-
-        if len(
-            {
-                item.parent_cycle_id
-                for item in records
-            }
-        ) != 1:
-            raise ValueError(
-                "prediction pair parent mismatch"
-            )
-        if len(
-            {
-                item.decision_result_id
-                for item in records
-            }
-        ) != 1:
-            raise ValueError(
-                "prediction pair decision mismatch"
-            )
-        if len(
-            {
-                item.prediction_id
-                for item in records
-            }
-        ) != 2:
-            raise ValueError(
-                "prediction IDs must be distinct"
+                "record must be exact PredictionOutcomeRecordV1"
             )
 
         document = self._read_document()
+        existing = document["records"].get(
+            record.outcome_id
+        )
 
-        for record in records:
-            existing = document["records"].get(
-                record.prediction_id
-            )
+        if existing is not None:
             if (
-                existing is not None
-                and existing.get("semantic_hash")
-                != record.semantic_hash
+                existing.get("semantic_hash")
+                == record.semantic_hash
             ):
-                raise ValueError(
-                    "IDEMPOTENCY_PAYLOAD_CONFLICT"
-                )
+                return record
+            raise ValueError(
+                "IDEMPOTENCY_PAYLOAD_CONFLICT"
+            )
 
-        changed = False
-        for record in records:
-            if record.prediction_id in document["records"]:
-                continue
-            document["records"][record.prediction_id] = {
-                **record.to_dict(),
-                "semantic_hash": record.semantic_hash,
-            }
-            changed = True
+        document["records"][record.outcome_id] = {
+            **record.to_dict(),
+            "semantic_hash": record.semantic_hash,
+        }
+        self._write_document(document)
+        return record
 
-        if changed:
-            self._write_document(document)
+    def has_outcome_for_prediction(self, prediction_id) -> bool:
+        return bool(self.records_for_prediction(prediction_id))
 
-        return records
+    def records_for_prediction(
+        self,
+        prediction_id,
+    ) -> tuple[dict, ...]:
+        if (
+            type(prediction_id) is not str
+            or not prediction_id.strip()
+        ):
+            raise ValueError(
+                "prediction_id must be non-empty"
+            )
+
+        records = tuple(
+            dict(value)
+            for value in self._read_document()[
+                "records"
+            ].values()
+            if value.get("prediction_id")
+            == prediction_id.strip()
+        )
+
+        return tuple(
+            sorted(
+                records,
+                key=lambda item: (
+                    item["evaluation_due_at"],
+                    item["outcome_id"],
+                ),
+            )
+        )
 
     def records_for_parent(
         self,
@@ -281,14 +254,11 @@ class PredictionLedger:
                     if item["underlying_symbol"]
                     == "NIFTY"
                     else 1,
-                    item["prediction_id"],
+                    item["evaluation_due_at"],
+                    item["outcome_id"],
                 ),
             )
         )
-
-    def all_records(self) -> tuple[dict, ...]:
-        records = tuple(dict(value) for value in self._read_document()["records"].values())
-        return tuple(sorted(records, key=lambda item: (item["completed_at"], 0 if item["underlying_symbol"] == "NIFTY" else 1, item["prediction_id"])))
 
     def count(self) -> int:
         return len(

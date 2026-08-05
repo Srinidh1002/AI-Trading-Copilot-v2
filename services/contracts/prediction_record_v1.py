@@ -56,6 +56,7 @@ class PredictionRecordV1:
     completed_at: datetime
     market_timestamp: datetime | None
     received_at: datetime
+    start_underlying_price: float
     terminal_status: str
     candidate_id: str | None
     predicted_direction: str
@@ -92,6 +93,15 @@ class PredictionRecordV1:
         market = None if self.market_timestamp is None else _aware(self.market_timestamp, "market_timestamp")
         if requested > completed or requested > received or (market is not None and market > received):
             raise ValueError("timestamp ordering")
+
+        if (
+            type(self.start_underlying_price) not in (int, float)
+            or isinstance(self.start_underlying_price, bool)
+            or not isfinite(self.start_underlying_price)
+            or self.start_underlying_price <= 0.0
+        ):
+            raise ValueError("start_underlying_price")
+        object.__setattr__(self, "start_underlying_price", float(self.start_underlying_price))
 
         status = _text(self.terminal_status, "terminal_status").upper()
         direction = _text(self.predicted_direction, "predicted_direction").upper()
@@ -152,3 +162,32 @@ class PredictionRecordV1:
     @property
     def semantic_hash(self) -> str:
         return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
+
+
+def prediction_record_from_dict(value: object) -> PredictionRecordV1:
+    if type(value) is not dict:
+        raise TypeError("prediction record payload must be a dictionary")
+    payload = dict(value)
+    payload.pop("semantic_hash", None)
+    for name in ("requested_at", "completed_at", "received_at"):
+        raw = payload.get(name)
+        if type(raw) is not str:
+            raise ValueError(f"{name} must be an ISO datetime string")
+        try:
+            payload[name] = datetime.fromisoformat(raw)
+        except ValueError as exc:
+            raise ValueError(f"invalid {name}") from exc
+    raw_market = payload.get("market_timestamp")
+    if raw_market is not None:
+        if type(raw_market) is not str:
+            raise ValueError("market_timestamp must be an ISO datetime string or null")
+        try:
+            payload["market_timestamp"] = datetime.fromisoformat(raw_market)
+        except ValueError as exc:
+            raise ValueError("invalid market_timestamp") from exc
+    for name in ("rationale", "blockers", "warnings", "errors"):
+        raw = payload.get(name, [])
+        if type(raw) is not list:
+            raise ValueError(f"{name} must be a list")
+        payload[name] = tuple(raw)
+    return PredictionRecordV1(**payload)

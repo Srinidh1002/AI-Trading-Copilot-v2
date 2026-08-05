@@ -33,7 +33,8 @@ def records():
         ),
     )
     return project_parent_decision_predictions(
-        decision
+        decision,
+        start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0},
     )
 
 
@@ -120,3 +121,12 @@ def test_corrupt_document_fails_closed(tmp_path):
         match="invalid JSON",
     ):
         PredictionLedger(path).count()
+
+
+def test_all_records_is_restart_ordered(tmp_path):
+    path = tmp_path / "prediction-ledger.json"
+    pair = records()
+    PredictionLedger(path).save_pair(pair)
+    restored = PredictionLedger(path).all_records()
+    assert tuple(item["underlying_symbol"] for item in restored) == ("NIFTY", "SENSEX")
+    assert tuple(item["start_underlying_price"] for item in restored) == (25000.0, 80000.0)
