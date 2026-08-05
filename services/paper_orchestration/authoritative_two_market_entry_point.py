@@ -16,19 +16,25 @@ from services.contracts.two_market_parent_cycle_input_v1 import (
 from services.paper_orchestration.certified_live_provider_readers import (
     CertifiedLiveProviderReaders,
 )
+from services.paper_orchestration.certified_p6_input_factory import (
+    CertifiedP6InputBundleV1,
+)
 from services.paper_orchestration.certified_two_market_parent_runtime import (
     run_certified_two_market_parent_runtime,
 )
-from services.paper_orchestration.two_market_parent_cycle_journal_adapter import (
-    TwoMarketParentCycleJournalAdapter,
+from services.paper_orchestration.prediction_ledger import (
+    PredictionLedger,
 )
-from services.paper_orchestration.certified_p6_input_factory import (
-    CertifiedP6InputBundleV1,
+from services.paper_orchestration.prediction_record_projector import (
+    project_parent_decision_predictions,
 )
 from services.paper_orchestration.selected_market_p6_planning_runtime import (
     P6StageAuthority,
     SelectedMarketP6PlanningResultV1,
     execute_selected_market_p6_planning,
+)
+from services.paper_orchestration.two_market_parent_cycle_journal_adapter import (
+    TwoMarketParentCycleJournalAdapter,
 )
 
 
@@ -46,9 +52,14 @@ def run_authoritative_two_market_parent_cycle(
     parent_journal_adapter: (
         TwoMarketParentCycleJournalAdapter | None
     ) = None,
+    prediction_ledger: PredictionLedger | None = None,
     substage_callback=None,
 ) -> TwoMarketDecisionResultV1:
-    """Execute the only approved live NIFTY/SENSEX PAPER parent path."""
+    """Execute the approved NIFTY/SENSEX PAPER parent path.
+
+    When persistence boundaries are supplied, the exact parent decision is
+    journaled and exactly two immutable prediction records are retained.
+    """
 
     if type(parent) is not TwoMarketParentCycleInputV1:
         raise TypeError("parent")
@@ -64,7 +75,9 @@ def run_authoritative_two_market_parent_cycle(
     if parent.live_execution_eligible:
         raise ValueError("parent cannot be live eligible")
     if parent.broker_order_submission:
-        raise ValueError("broker order submission must remain disabled")
+        raise ValueError(
+            "broker order submission must remain disabled"
+        )
 
     if (
         parent_journal_adapter is not None
@@ -72,6 +85,11 @@ def run_authoritative_two_market_parent_cycle(
         is not TwoMarketParentCycleJournalAdapter
     ):
         raise TypeError("parent_journal_adapter")
+    if (
+        prediction_ledger is not None
+        and type(prediction_ledger) is not PredictionLedger
+    ):
+        raise TypeError("prediction_ledger")
 
     decision = run_certified_two_market_parent_runtime(
         parent,
@@ -81,10 +99,24 @@ def run_authoritative_two_market_parent_cycle(
         substage_callback=substage_callback,
     )
 
+    prediction_records = (
+        project_parent_decision_predictions(decision)
+        if prediction_ledger is not None
+        else None
+    )
+
     if parent_journal_adapter is not None:
         parent_journal_adapter.persist(
             parent=parent,
             decision=decision,
+        )
+
+    if (
+        prediction_ledger is not None
+        and prediction_records is not None
+    ):
+        prediction_ledger.save_pair(
+            prediction_records
         )
 
     return decision
@@ -99,49 +131,76 @@ def run_authoritative_two_market_selected_p6_cycle(
     bridge_result_id: str,
     evaluated_at: datetime,
     maximum_candidate_age_seconds: float,
-    certified_p6_input_bundles: Mapping[tuple[str, str], CertifiedP6InputBundleV1],
+    certified_p6_input_bundles: Mapping[
+        tuple[str, str],
+        CertifiedP6InputBundleV1,
+    ],
     parent_journal_adapter: (
         TwoMarketParentCycleJournalAdapter | None
     ) = None,
+    prediction_ledger: PredictionLedger | None = None,
     p6_stage_authority: P6StageAuthority | None = None,
     substage_callback=None,
 ) -> SelectedMarketP6PlanningResultV1:
-    """Run the parent once, then route only its selected child into P6.
+    """Run the parent once, persist predictions, then route selected P6."""
 
-    Bundles are caller-retained typed evidence.  The selected lookup happens
-    only after ranking, so the losing market's planning bundle is never read
-    and its planner is never invoked.
-    """
-    if not isinstance(certified_p6_input_bundles, Mapping):
-        raise TypeError("certified_p6_input_bundles")
+    if not isinstance(
+        certified_p6_input_bundles,
+        Mapping,
+    ):
+        raise TypeError(
+            "certified_p6_input_bundles"
+        )
+
     decision = run_authoritative_two_market_parent_cycle(
         parent,
         nifty_cycle=nifty_cycle,
         sensex_cycle=sensex_cycle,
         readers=readers,
         parent_journal_adapter=parent_journal_adapter,
+        prediction_ledger=prediction_ledger,
         substage_callback=substage_callback,
     )
+
     cycles = {
-        (nifty_cycle.underlying_symbol, nifty_cycle.exchange): nifty_cycle,
-        (sensex_cycle.underlying_symbol, sensex_cycle.exchange): sensex_cycle,
+        (
+            nifty_cycle.underlying_symbol,
+            nifty_cycle.exchange,
+        ): nifty_cycle,
+        (
+            sensex_cycle.underlying_symbol,
+            sensex_cycle.exchange,
+        ): sensex_cycle,
     }
+
     selected_market = decision.selected_market
-    selected_cycle = cycles.get(selected_market) if selected_market else None
+    selected_cycle = (
+        cycles.get(selected_market)
+        if selected_market
+        else None
+    )
     bundle = (
-        certified_p6_input_bundles.get(selected_market)
+        certified_p6_input_bundles.get(
+            selected_market
+        )
         if selected_market is not None
         else None
     )
+
     kwargs = {}
     if p6_stage_authority is not None:
-        kwargs["p6_stage_authority"] = p6_stage_authority
+        kwargs["p6_stage_authority"] = (
+            p6_stage_authority
+        )
+
     return execute_selected_market_p6_planning(
         bridge_result_id=bridge_result_id,
         decision=decision,
         selected_cycle=selected_cycle,
         certified_p6_input_bundle=bundle,
         evaluated_at=evaluated_at,
-        maximum_candidate_age_seconds=maximum_candidate_age_seconds,
+        maximum_candidate_age_seconds=(
+            maximum_candidate_age_seconds
+        ),
         **kwargs,
     )

@@ -30,6 +30,7 @@ from services.market_session.validator import validate_session_timestamp
 from services.paper_orchestration.authoritative_two_market_entry_point import run_authoritative_two_market_parent_cycle
 from services.paper_orchestration.certified_persistence_composition import (
     build_certified_parent_journal_adapter,
+    build_certified_prediction_ledger,
 )
 from services.paper_orchestration.selected_market_p6_planning_runtime import (
     adapt_selected_market_p6_to_cycle_result,
@@ -65,6 +66,9 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         build_certified_parent_journal_adapter(
             clock=providers.clock,
         )
+    )
+    prediction_ledger = (
+        build_certified_prediction_ledger()
     )
     # This validates that the production adapter can be injected into the
     # existing live reader bundle; no provider call occurs at factory time.
@@ -117,7 +121,7 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
             policy = PaperOrchestrationPolicyV1(orchestration_policy_id=f"task8-policy-{requested_at.date().isoformat()}", policy_timestamp=requested_at, observation_frequency_seconds=60.0, emergency_paper_halt=False)
             cycles[(symbol, exchange)] = build_certified_cycle_input(cycle_kind="OPPORTUNITY", observation_id=f"task8-{symbol.lower()}-{market_timestamp.isoformat()}", orchestration_policy=policy, underlying_symbol=symbol, exchange=exchange, market_timestamp=market_timestamp, received_at=received_at, cycle_requested_at=requested_at, session_validation=session, metadata={"spot_price": raw["spot_price"], "timestamp_source": raw.get("timestamp_source"), "captured_spot_payload":{"spot_price":raw["spot_price"],"timestamp_source":raw.get("timestamp_source")}})
         parent = TwoMarketParentCycleInputV1(parent_cycle_id=f"task8-parent-{requested.isoformat()}", decision_result_id=f"task8-decision-{requested.isoformat()}", nifty_child_result_id=f"task8-child-nifty-{requested.isoformat()}", sensex_child_result_id=f"task8-child-sensex-{requested.isoformat()}", nifty_observation_id=cycles[("NIFTY", "NSE")].observation_id, sensex_observation_id=cycles[("SENSEX", "BSE")].observation_id, requested_at=cycles[("NIFTY", "NSE")].cycle_requested_at, completed_at=max(cycles[("NIFTY", "NSE")].received_at, cycles[("SENSEX", "BSE")].received_at), decision_policy=TwoMarketDecisionPolicyV1(180.0, 5.0))
-        decision = run_authoritative_two_market_parent_cycle(parent, nifty_cycle=cycles[("NIFTY", "NSE")], sensex_cycle=cycles[("SENSEX", "BSE")], readers=readers, parent_journal_adapter=parent_journal_adapter)
+        decision = run_authoritative_two_market_parent_cycle(parent, nifty_cycle=cycles[("NIFTY", "NSE")], sensex_cycle=cycles[("SENSEX", "BSE")], readers=readers, parent_journal_adapter=parent_journal_adapter, prediction_ledger=prediction_ledger)
         # The parent has already captured both child observations.  Retain its
         # exact decision and child cycle identities for selected-only P6; do
         # not perform any second provider read to reconstruct evidence.

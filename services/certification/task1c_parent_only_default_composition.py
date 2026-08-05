@@ -18,6 +18,7 @@ from services.paper_orchestration.certified_runtime_composition import build_def
 from services.paper_orchestration.authoritative_two_market_entry_point import run_authoritative_two_market_parent_cycle
 from services.paper_orchestration.certified_persistence_composition import (
     build_certified_parent_journal_adapter,
+    build_certified_prediction_ledger,
 )
 from services.paper_orchestration.india_vix_live_reader import IndiaVixLiveReader
 from services.paper_orchestration.external_context_source_authority import ExternalContextSourceAuthority
@@ -37,6 +38,9 @@ def build_task1c_parent_only_dependencies() -> Task1CParentOnlyDependenciesV1:
         build_certified_parent_journal_adapter(
             clock=providers.clock,
         )
+    )
+    prediction_ledger = (
+        build_certified_prediction_ledger()
     )
     data_service = providers.analysis_pipeline.data_service
     vix_reader = IndiaVixLiveReader(master_fetcher=AngelInstrumentMaster().fetch_instruments, market_client=get_market_client(), clock=providers.clock)
@@ -78,7 +82,7 @@ def build_task1c_parent_only_dependencies() -> Task1CParentOnlyDependenciesV1:
             if symbol == "NIFTY": mark("NIFTY_SPOT_CONTRACT_BUILD_COMPLETE")
         nifty, sensex = cycles[("NIFTY", "NSE")], cycles[("SENSEX", "BSE")]
         parent = TwoMarketParentCycleInputV1(parent_cycle_id=f"task1c-parent-{parent_requested_at.isoformat()}", decision_result_id=f"task1c-decision-{parent_requested_at.isoformat()}", nifty_child_result_id=f"task1c-nifty-{parent_requested_at.isoformat()}", sensex_child_result_id=f"task1c-sensex-{parent_requested_at.isoformat()}", nifty_observation_id=nifty.observation_id, sensex_observation_id=sensex.observation_id, requested_at=parent_requested_at, completed_at=parent_requested_at, decision_policy=TwoMarketDecisionPolicyV1(180.0, 5.0))
-        decision = run_authoritative_two_market_parent_cycle(parent, nifty_cycle=nifty, sensex_cycle=sensex, readers=readers, parent_journal_adapter=parent_journal_adapter, substage_callback=mark)
+        decision = run_authoritative_two_market_parent_cycle(parent, nifty_cycle=nifty, sensex_cycle=sensex, readers=readers, parent_journal_adapter=parent_journal_adapter, prediction_ledger=prediction_ledger, substage_callback=mark)
         context = readers.shared_context_for(nifty.observation_id)
         if context is None: raise RuntimeError("INDIA_VIX_SHARED_CONTEXT_MISSING")
         values = dict(counts, india_vix_master_resolution_count=vix_reader.master_resolution_count, india_vix_quote_count=vix_reader.quote_count, india_vix_normalization_count=readers.india_vix_normalization_count)
