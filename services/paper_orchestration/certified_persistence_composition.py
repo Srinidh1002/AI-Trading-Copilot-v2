@@ -24,6 +24,9 @@ from services.paper_orchestration.restart_recovery_operation import (
 from services.paper_orchestration.two_market_parent_cycle_journal_adapter import (
     TwoMarketParentCycleJournalAdapter,
 )
+from services.reporting.prediction_performance_report_archive import (
+    PredictionPerformanceReportArchive,
+)
 
 
 Clock = Callable[[], datetime]
@@ -123,6 +126,16 @@ class CertifiedPersistencePathsV1:
         return (
             self.root_directory
             / "prediction_outcome_ledger.json"
+        )
+
+
+    @property
+    def prediction_report_directory(
+        self,
+    ) -> Path:
+        return (
+            self.root_directory
+            / "prediction_reports"
         )
 
 
@@ -458,4 +471,44 @@ def build_certified_prediction_outcome_ledger(
 
     return PredictionOutcomeLedger(
         outcome_path
+    )
+
+
+
+def build_certified_prediction_performance_report_archive(
+    *,
+    paths: CertifiedPersistencePathsV1 | None = None,
+) -> PredictionPerformanceReportArchive:
+    """Build the dedicated read-only prediction report archive."""
+
+    paths = (
+        paths
+        or build_certified_persistence_paths()
+    )
+    if (
+        type(paths)
+        is not CertifiedPersistencePathsV1
+    ):
+        raise TypeError(
+            "paths must be exact "
+            "CertifiedPersistencePathsV1"
+        )
+
+    report_directory = (
+        paths.prediction_report_directory
+    )
+
+    if report_directory in {
+        paths.opportunity_journal_path,
+        paths.monitoring_journal_path,
+        paths.parent_decision_journal_path,
+        paths.prediction_ledger_path,
+        paths.prediction_outcome_ledger_path,
+    }:
+        raise ValueError(
+            "prediction report archive must remain separate"
+        )
+
+    return PredictionPerformanceReportArchive(
+        report_directory
     )

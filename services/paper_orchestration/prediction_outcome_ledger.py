@@ -260,6 +260,26 @@ class PredictionOutcomeLedger:
             )
         )
 
+    def all_records(self) -> tuple[dict, ...]:
+        """Return every retained outcome in deterministic order."""
+
+        records = tuple(
+            dict(value)
+            for value in self._read_document()["records"].values()
+        )
+        return tuple(
+            sorted(
+                records,
+                key=lambda item: (
+                    item["evaluated_at"],
+                    0
+                    if item["underlying_symbol"] == "NIFTY"
+                    else 1,
+                    item["outcome_id"],
+                ),
+            )
+        )
+
     def count(self) -> int:
         return len(
             self._read_document()["records"]
