@@ -56,7 +56,8 @@ def successful_market_response():
                     "symbolToken": "99926000",
                     "ltp": 24206.9,
                 }
-            ]
+            ],
+            "unfetched": [],
         },
     }
 
@@ -480,3 +481,501 @@ def test_unrelated_provider_failure_is_not_rate_limited():
         )
         is False
     )
+
+
+@pytest.mark.parametrize(
+    "response",
+    (
+        {
+            "status": True,
+            "message": "SUCCESS",
+            "errorcode": "",
+            "data": {},
+        },
+        {
+            "status": "true",
+            "message": "SUCCESS",
+            "errorcode": "",
+            "data": {},
+        },
+        {
+            "success": True,
+            "message": "SUCCESS",
+            "errorCode": "",
+            "data": {},
+        },
+        {
+            "success": "success",
+            "message": "SUCCESS",
+            "errorCode": "",
+            "data": {},
+        },
+    ),
+)
+def test_valid_angel_response_envelope_variants_are_accepted(
+    response,
+):
+    assert (
+        AngelMarketDataClient._validate_response(
+            response,
+            "market-data",
+        )
+        is response
+    )
+
+
+@pytest.mark.parametrize(
+    "response",
+    (
+        {
+            "status": False,
+            "message": "Symbol not found",
+            "errorcode": "AB1009",
+            "data": None,
+        },
+        {
+            "status": "false",
+            "message": "Symbol not found",
+            "errorcode": "AB1009",
+            "data": None,
+        },
+        {
+            "success": False,
+            "message": "Symbol not found",
+            "errorCode": "AB1009",
+            "data": None,
+        },
+    ),
+)
+def test_failed_angel_response_envelope_variants_are_rejected(
+    response,
+):
+    with pytest.raises(
+        RuntimeError,
+        match="AB1009",
+    ):
+        AngelMarketDataClient._validate_response(
+            response,
+            "market-data",
+        )
+
+
+@pytest.mark.parametrize(
+    "response",
+    (
+        {
+            "message": "SUCCESS",
+            "data": {},
+        },
+        {
+            "status": "unknown",
+            "message": "SUCCESS",
+            "data": {},
+        },
+        {
+            "status": 1,
+            "message": "SUCCESS",
+            "data": {},
+        },
+    ),
+)
+def test_ambiguous_response_status_fails_closed(
+    response,
+):
+    with pytest.raises(
+        RuntimeError,
+        match="invalid market-data response envelope",
+    ):
+        AngelMarketDataClient._validate_response(
+            response,
+            "market-data",
+        )
+
+
+@pytest.mark.parametrize(
+    "response",
+    (
+        {
+            "status": True,
+            "message": "SUCCESS",
+            "errorcode": "",
+        },
+        {
+            "success": True,
+            "message": "SUCCESS",
+            "errorCode": "",
+        },
+    ),
+)
+def test_success_response_without_data_is_rejected(
+    response,
+):
+    with pytest.raises(
+        RuntimeError,
+        match="without data",
+    ):
+        AngelMarketDataClient._validate_response(
+            response,
+            "market-data",
+        )
+
+
+@pytest.mark.parametrize(
+    "error_code",
+    (
+        "AG8001",
+        "AG8002",
+        "AG8003",
+        "AB8050",
+        "AB8051",
+        "AB1010",
+        "AB1011",
+    ),
+)
+def test_documented_authentication_codes_are_classified(
+    error_code,
+):
+    response = {
+        "status": False,
+        "message": "Provider authentication failure",
+        "errorcode": error_code,
+        "data": None,
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._is_authentication_error(
+            response=response,
+        )
+        is True
+    )
+
+
+def test_error_code_camel_case_is_normalized():
+    response = {
+        "success": False,
+        "message": "Token expired",
+        "errorCode": "ag8002",
+        "data": None,
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._response_error_code(response)
+        == "AG8002"
+    )
+
+
+def test_unrelated_error_code_is_not_authentication_failure():
+    response = {
+        "status": False,
+        "message": "Symbol not found",
+        "errorcode": "AB1009",
+        "data": None,
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._is_authentication_error(
+            response=response,
+        )
+        is False
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    (
+        None,
+        [],
+        {},
+        {
+            "fetched": [],
+        },
+        {
+            "unfetched": [],
+        },
+        {
+            "fetched": {},
+            "unfetched": [],
+        },
+        {
+            "fetched": [],
+            "unfetched": {},
+        },
+    ),
+)
+def test_market_data_payload_shape_is_validated(
+    data,
+):
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": data,
+    }
+
+    with pytest.raises(RuntimeError):
+        AngelMarketDataClient\
+            ._validate_market_data_payload(
+                response
+            )
+
+
+def test_market_data_payload_accepts_empty_result_lists():
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": {
+            "fetched": [],
+            "unfetched": [],
+        },
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._validate_market_data_payload(
+            response
+        )
+        is response
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    (
+        None,
+        {},
+        [],
+        "invalid",
+    ),
+)
+def test_historical_payload_requires_non_empty_list(
+    data,
+):
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": data,
+    }
+
+    with pytest.raises(RuntimeError):
+        AngelMarketDataClient\
+            ._validate_historical_payload(
+                response
+            )
+
+
+def test_historical_payload_accepts_candle_rows():
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": [
+            [
+                "2026-08-06T10:00:00+05:30",
+                24000,
+                24010,
+                23990,
+                24005,
+                0,
+            ]
+        ],
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._validate_historical_payload(
+            response
+        )
+        is response
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    (
+        None,
+        {},
+        "invalid",
+        [None],
+        [["not-a-dictionary"]],
+    ),
+)
+def test_option_greeks_payload_requires_list_of_objects(
+    data,
+):
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": data,
+    }
+
+    with pytest.raises(RuntimeError):
+        AngelMarketDataClient\
+            ._validate_option_greeks_payload(
+                response
+            )
+
+
+def test_option_greeks_payload_accepts_empty_list():
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": [],
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._validate_option_greeks_payload(
+            response
+        )
+        is response
+    )
+
+
+def test_get_ltp_matches_exact_exchange_and_token():
+    client, api = make_client()
+
+    api.getMarketData.return_value = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": {
+            "fetched": [
+                {
+                    "exchange": "BSE",
+                    "symbolToken": "99919000",
+                    "tradingSymbol": "SENSEX",
+                    "ltp": 81000.0,
+                },
+                {
+                    "exchange": "NSE",
+                    "symbolToken": "99926000",
+                    "tradingSymbol": "NIFTY",
+                    "ltp": 24500.0,
+                },
+            ],
+            "unfetched": [],
+        },
+    }
+
+    result = client.get_ltp(
+        "NSE",
+        "NIFTY",
+        "99926000",
+    )
+
+    assert result["data"]["ltp"] == 24500.0
+    assert result["data"]["exchange"] == "NSE"
+    assert (
+        result["data"]["symboltoken"]
+        == "99926000"
+    )
+
+
+def test_get_ltp_rejects_missing_exact_identity():
+    client, api = make_client()
+
+    api.getMarketData.return_value = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": {
+            "fetched": [
+                {
+                    "exchange": "BSE",
+                    "symbolToken": "99919000",
+                    "ltp": 81000.0,
+                }
+            ],
+            "unfetched": [],
+        },
+    }
+
+    with pytest.raises(
+        RuntimeError,
+        match="exactly one matching",
+    ):
+        client.get_ltp(
+            "NSE",
+            "NIFTY",
+            "99926000",
+        )
+
+
+def test_get_ltp_rejects_matching_unfetched_error():
+    client, api = make_client()
+
+    api.getMarketData.return_value = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": {
+            "fetched": [],
+            "unfetched": [
+                {
+                    "exchange": "NSE",
+                    "symbolToken": "99926000",
+                    "message": "Symbol unavailable",
+                    "errorCode": "AB4018",
+                }
+            ],
+        },
+    }
+
+    with pytest.raises(
+        RuntimeError,
+        match="AB4018",
+    ):
+        client.get_ltp(
+            "NSE",
+            "NIFTY",
+            "99926000",
+        )
+
+
+@pytest.mark.parametrize(
+    "ltp",
+    (
+        None,
+        "",
+        "invalid",
+        0,
+        -1,
+    ),
+)
+def test_get_ltp_rejects_invalid_price(
+    ltp,
+):
+    client, api = make_client()
+
+    api.getMarketData.return_value = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": {
+            "fetched": [
+                {
+                    "exchange": "NSE",
+                    "symbolToken": "99926000",
+                    "ltp": ltp,
+                }
+            ],
+            "unfetched": [],
+        },
+    }
+
+    with pytest.raises(
+        RuntimeError,
+        match="LTP",
+    ):
+        client.get_ltp(
+            "NSE",
+            "NIFTY",
+            "99926000",
+        )

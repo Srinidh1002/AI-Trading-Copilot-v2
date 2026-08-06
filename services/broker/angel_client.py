@@ -227,35 +227,64 @@ class AngelMarketDataClient:
                 self.retry_backoff_multiplier,
             )
 
-        if (
-            not response
-            or not isinstance(
-                response,
+        try:
+            validated_response = (
+                self._validate_response(
+                    response,
+                    "login",
+                )
+            )
+
+            session_data = (
+                validated_response.get(
+                    "data"
+                )
+            )
+
+            if not isinstance(
+                session_data,
                 dict,
+            ):
+                raise RuntimeError(
+                    "Angel One login returned "
+                    "invalid session data."
+                )
+
+            required_tokens = (
+                "jwtToken",
+                "refreshToken",
+                "feedToken",
             )
-        ):
+
+            missing_tokens = tuple(
+                name
+                for name in required_tokens
+                if (
+                    not isinstance(
+                        session_data.get(name),
+                        str,
+                    )
+                    or not session_data[
+                        name
+                    ].strip()
+                )
+            )
+
+            if missing_tokens:
+                raise RuntimeError(
+                    "Angel One login returned "
+                    "incomplete authentication data."
+                )
+
+        except Exception:
             self.authenticated = False
             self.session = None
-
-            raise RuntimeError(
-                "Angel One login returned "
-                "an invalid response."
-            )
-
-        if not response.get(
-            "status",
-            False,
-        ):
-            self.authenticated = False
-            self.session = None
-
-            raise RuntimeError("Angel One login failed: " + _safe_provider_reason(response.get("message", "Unknown login error")))
+            raise
 
         self.authenticated = True
+        self.session = validated_response
 
-        self.session = response
-
-        return response
+        return validated_response
 
     # ---------------------------------
     # SESSION HELPERS
@@ -381,37 +410,165 @@ class AngelMarketDataClient:
             for term in rate_limit_terms
         )
     @staticmethod
+    def _normalized_response_status(response):
+        """Return True, False, or None for an Angel response envelope."""
+
+        if not isinstance(response, dict):
+            return None
+
+        if "status" in response:
+            raw_status = response.get("status")
+        elif "success" in response:
+            raw_status = response.get("success")
+        else:
+            return None
+
+        if raw_status is True:
+            return True
+
+        if raw_status is False:
+            return False
+
+        if isinstance(raw_status, str):
+            normalized = raw_status.strip().lower()
+
+            if normalized in {
+                "true",
+                "success",
+                "successful",
+            }:
+                return True
+
+            if normalized in {
+                "false",
+                "failure",
+                "failed",
+                "error",
+            }:
+                return False
+
+        return None
+
+    @staticmethod
+    def _response_error_code(response):
+        """Return a normalized Angel error code without guessing."""
+
+        if not isinstance(response, dict):
+            return ""
+
+        value = response.get(
+            "errorcode",
+            response.get(
+                "errorCode",
+                "",
+            ),
+        )
+
+        if value is None:
+            return ""
+
+        return str(value).strip().upper()
+
+    @staticmethod
+    def _response_message(response):
+        """Return a bounded sanitized Angel response message."""
+
+        if not isinstance(response, dict):
+            return ""
+
+        return _safe_provider_reason(
+            response.get(
+                "message",
+                "",
+            )
+        )
+
+    @classmethod
     def _is_authentication_error(
+        cls,
         response=None,
         exception=None,
     ):
+        """Classify documented Angel authentication/session failures."""
+
+        authentication_error_codes = {
+            "AG8001",  # Invalid token
+            "AG8002",  # Token expired
+            "AG8003",  # Token missing
+            "AB8050",  # Invalid refresh token
+            "AB8051",  # Refresh token expired
+            "AB1010",  # Session expired
+            "AB1011",  # Client not logged in
+        }
+
+        if (
+            cls._response_error_code(response)
+            in authentication_error_codes
+        ):
+            return True
+
         messages = []
 
         if isinstance(response, dict):
-            messages.extend([
-                str(response.get("message", "")),
-                str(response.get("errorcode", "")),
-            ])
+            messages.extend(
+                (
+                    str(
+                        response.get(
+                            "message",
+                            "",
+                        )
+                    ),
+                    cls._response_error_code(
+                        response
+                    ),
+                )
+            )
 
         if exception is not None:
-            messages.append(str(exception))
+            messages.extend(
+                (
+                    str(exception),
+                    str(
+                        getattr(
+                            exception,
+                            "errorcode",
+                            "",
+                        )
+                    ),
+                    str(
+                        getattr(
+                            exception,
+                            "errorCode",
+                            "",
+                        )
+                    ),
+                )
+            )
 
-        combined = " ".join(messages).lower()
+        combined = " ".join(
+            messages
+        ).lower()
 
-        auth_terms = (
+        authentication_terms = (
             "session expired",
             "invalid session",
             "invalid token",
             "token expired",
-            "jwt",
+            "token missing",
+            "invalid refresh token",
+            "refresh token expired",
+            "client not login",
+            "client not logged in",
+            "jwt expired",
             "unauthorized",
             "authentication failed",
         )
 
         return any(
             term in combined
-            for term in auth_terms
+            for term in authentication_terms
         )
+
     @staticmethod
     def _is_retryable_exception(
         exception,
@@ -525,37 +682,68 @@ class AngelMarketDataClient:
     # RESPONSE VALIDATION
     # ---------------------------------
 
-    @staticmethod
+    @classmethod
     def _validate_response(
+        cls,
         response,
         request_name,
     ):
-        """
-        Validate a SmartAPI response.
+        """Validate the common Angel response envelope."""
 
-        Returns the response when valid.
-        Raises RuntimeError when invalid.
-        """
-
-        if not response:
+        if response is None or response == {} or response == []:
             raise RuntimeError(
                 f"Angel One returned an empty "
                 f"{request_name} response."
             )
 
-        if not isinstance(
-            response,
-            dict,
-        ):
+        if not isinstance(response, dict):
             raise RuntimeError(
                 f"Angel One returned an invalid "
                 f"{request_name} response type."
             )
 
-        if response.get(
-            "status"
-        ) is False:
-            raise RuntimeError(f"Angel One {request_name} request failed: " + _safe_provider_reason(response.get("message", "Unknown error")))
+        status = cls._normalized_response_status(
+            response
+        )
+
+        if status is None:
+            raise RuntimeError(
+                f"Angel One returned an invalid "
+                f"{request_name} response envelope."
+            )
+
+        if status is False:
+            error_code = cls._response_error_code(
+                response
+            )
+            message = cls._response_message(
+                response
+            )
+
+            details = []
+
+            if error_code:
+                details.append(error_code)
+
+            if message:
+                details.append(message)
+
+            reason = (
+                " - ".join(details)
+                if details
+                else "Unknown error"
+            )
+
+            raise RuntimeError(
+                f"Angel One {request_name} "
+                f"request failed: {reason}"
+            )
+
+        if "data" not in response:
+            raise RuntimeError(
+                f"Angel One returned a successful "
+                f"{request_name} response without data."
+            )
 
         return response
 
@@ -822,6 +1010,124 @@ class AngelMarketDataClient:
             )),
         )
 
+    @staticmethod
+    def _validate_market_data_payload(
+        response,
+    ):
+        """Validate Angel batched quote payload shape."""
+
+        data = response.get("data")
+
+        if not isinstance(data, dict):
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains invalid data."
+            )
+
+        fetched = data.get("fetched")
+        unfetched = data.get("unfetched")
+
+        if not isinstance(fetched, list):
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains invalid fetched data."
+            )
+
+        if not isinstance(unfetched, list):
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains invalid unfetched data."
+            )
+
+        for item in fetched:
+            if not isinstance(item, dict):
+                raise RuntimeError(
+                    "Angel One market-data response "
+                    "contains an invalid fetched item."
+                )
+
+        for item in unfetched:
+            if not isinstance(item, dict):
+                raise RuntimeError(
+                    "Angel One market-data response "
+                    "contains an invalid unfetched item."
+                )
+
+        return response
+
+    @staticmethod
+    def _validate_historical_payload(
+        response,
+    ):
+        """Validate Angel historical candle payload shape."""
+
+        data = response.get("data")
+
+        if not isinstance(data, list):
+            raise RuntimeError(
+                "Angel One historical-data response "
+                "contains invalid data."
+            )
+
+        if not data:
+            raise RuntimeError(
+                "Angel One historical-data response "
+                "contains no candle data."
+            )
+
+        return response
+
+    @staticmethod
+    def _validate_option_greeks_payload(
+        response,
+    ):
+        """Validate Angel option-Greeks payload shape."""
+
+        data = response.get("data")
+
+        if not isinstance(data, list):
+            raise RuntimeError(
+                "Angel One Option Greeks response "
+                "contains invalid data."
+            )
+
+        for item in data:
+            if not isinstance(item, dict):
+                raise RuntimeError(
+                    "Angel One Option Greeks response "
+                    "contains an invalid item."
+                )
+
+        return response
+
+    @staticmethod
+    def _normalized_market_identity(
+        exchange,
+        symboltoken,
+    ):
+        normalized_exchange = str(
+            exchange
+        ).strip().upper()
+
+        normalized_token = str(
+            symboltoken
+        ).strip()
+
+        if not normalized_exchange:
+            raise ValueError(
+                "exchange is required."
+            )
+
+        if not normalized_token:
+            raise ValueError(
+                "symboltoken is required."
+            )
+
+        return (
+            normalized_exchange,
+            normalized_token,
+        )
+
     # ---------------------------------
     # LIVE MARKET DATA
     # ---------------------------------
@@ -876,7 +1182,7 @@ class AngelMarketDataClient:
                 "exchange_tokens cannot be empty."
             )
 
-        return self._execute_request(
+        response = self._execute_request(
             request_callable=lambda: (
                 self.api.getMarketData(
                     mode,
@@ -884,7 +1190,14 @@ class AngelMarketDataClient:
                 )
             ),
             request_name="market-data",
-            cache_key=self._market_data_cache_key(mode, exchange_tokens),
+            cache_key=self._market_data_cache_key(
+                mode,
+                exchange_tokens,
+            ),
+        )
+
+        return self._validate_market_data_payload(
+            response
         )
     def get_ltp(
         self,
@@ -892,24 +1205,160 @@ class AngelMarketDataClient:
         tradingsymbol,
         symboltoken,
     ):
+        expected_exchange, expected_token = (
+            self._normalized_market_identity(
+                exchange,
+                symboltoken,
+            )
+        )
+
         response = self.get_market_data(
             "LTP",
             {
-                exchange: [symboltoken],
+                expected_exchange: [
+                    expected_token
+                ],
             },
         )
 
-        data = response["data"]["fetched"][0]
+        payload = response["data"]
+        fetched = payload["fetched"]
+        unfetched = payload["unfetched"]
+
+        matching_unfetched = [
+            item
+            for item in unfetched
+            if (
+                str(
+                    item.get(
+                        "exchange",
+                        "",
+                    )
+                ).strip().upper()
+                == expected_exchange
+                and str(
+                    item.get(
+                        "symbolToken",
+                        item.get(
+                            "symboltoken",
+                            "",
+                        ),
+                    )
+                ).strip()
+                == expected_token
+            )
+        ]
+
+        if matching_unfetched:
+            item = matching_unfetched[0]
+
+            error_code = str(
+                item.get(
+                    "errorCode",
+                    item.get(
+                        "errorcode",
+                        "",
+                    ),
+                )
+            ).strip()
+
+            reason = _safe_provider_reason(
+                item.get(
+                    "message",
+                    "Unable to fetch requested token",
+                )
+            )
+
+            detail = (
+                f"{error_code} - {reason}"
+                if error_code
+                else reason
+            )
+
+            raise RuntimeError(
+                "Angel One failed to fetch "
+                f"{expected_exchange}:"
+                f"{expected_token}: {detail}"
+            )
+
+        matches = []
+
+        for item in fetched:
+            item_exchange = str(
+                item.get(
+                    "exchange",
+                    "",
+                )
+            ).strip().upper()
+
+            item_token = str(
+                item.get(
+                    "symbolToken",
+                    item.get(
+                        "symboltoken",
+                        "",
+                    ),
+                )
+            ).strip()
+
+            if (
+                item_exchange
+                == expected_exchange
+                and item_token
+                == expected_token
+            ):
+                matches.append(item)
+
+        if len(matches) != 1:
+            raise RuntimeError(
+                "Angel One market-data response "
+                "did not contain exactly one matching "
+                f"{expected_exchange}:{expected_token} quote."
+            )
+
+        data = matches[0]
+
+        try:
+            ltp = float(data["ltp"])
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains an invalid LTP."
+            ) from exc
+
+        if ltp <= 0:
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains a non-positive LTP."
+            )
+
+        returned_symbol = str(
+            data.get(
+                "tradingSymbol",
+                data.get(
+                    "tradingsymbol",
+                    tradingsymbol,
+                ),
+            )
+        ).strip()
 
         return {
             "status": True,
             "data": {
-                "ltp": float(data["ltp"]),
-                "tradingsymbol": tradingsymbol,
-                "symboltoken": symboltoken,
-                "exchange": exchange,
+                "ltp": ltp,
+                "tradingsymbol": (
+                    returned_symbol
+                    or str(tradingsymbol)
+                ),
+                "symboltoken": expected_token,
+                "exchange": expected_exchange,
             },
         }
+
     # ---------------------------------
     # HISTORICAL CANDLE DATA
     # ---------------------------------
@@ -960,17 +1409,19 @@ class AngelMarketDataClient:
         }
 
        
-        return self._execute_request(
-    request_callable=lambda: (
-        self.api.getCandleData(
-            params
+        response = self._execute_request(
+            request_callable=lambda: (
+                self.api.getCandleData(
+                    params
+                )
+            ),
+            request_name="historical-data",
+            cache_key=None,
         )
-        
-    ),
-    
-    request_name="historical-data",
-    cache_key=None,
-)
+
+        return self._validate_historical_payload(
+            response
+        )
 
     # ---------------------------------
     # OPTION GREEKS
@@ -1013,14 +1464,22 @@ class AngelMarketDataClient:
             "expirydate": expiry_date,
         }
 
-        return self._execute_request(
+        response = self._execute_request(
             request_callable=lambda: (
                 self.api.optionGreek(
                     params
                 )
             ),
             request_name="Option Greeks",
-            cache_key=("option-greeks", params["name"], expiry_date),
+            cache_key=(
+                "option-greeks",
+                params["name"],
+                expiry_date,
+            ),
+        )
+
+        return self._validate_option_greeks_payload(
+            response
         )
     # ---------------------------------
     # OPTION CHAIN (LIVE)

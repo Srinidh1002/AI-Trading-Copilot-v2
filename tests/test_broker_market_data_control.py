@@ -24,7 +24,15 @@ class FakeClock:
 def _response():
     return {
         "status": True,
-        "data": {"fetched": [{"symbolToken": "99926000", "ltp": 25000.0}]},
+        "data": {
+            "fetched": [
+                {
+                    "symbolToken": "99926000",
+                    "ltp": 25000.0,
+                }
+            ],
+            "unfetched": [],
+        },
     }
 
 

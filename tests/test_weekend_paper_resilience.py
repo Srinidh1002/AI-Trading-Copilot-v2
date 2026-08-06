@@ -58,7 +58,18 @@ class ForbiddenBroker:
 
 
 def _response():
-    return {"status": True, "data": {"fetched": [{"symbolToken": "99926000", "ltp": 25000.0}]}}
+    return {
+        "status": True,
+        "data": {
+            "fetched": [
+                {
+                    "symbolToken": "99926000",
+                    "ltp": 25000.0,
+                }
+            ],
+            "unfetched": [],
+        },
+    }
 
 
 def _client(*, retries=2):
