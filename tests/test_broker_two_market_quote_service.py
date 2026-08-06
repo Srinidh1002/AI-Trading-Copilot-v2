@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,12 +10,23 @@ from services.broker.two_market_quote_service import (
 )
 
 
+NOW = datetime(
+    2026,
+    8,
+    5,
+    9,
+    30,
+    tzinfo=timezone.utc,
+)
+
+
 def _quote(
     *,
     exchange,
     token,
     symbol,
     ltp,
+    timestamp=None,
 ):
     return {
         "exchange": exchange,
@@ -25,6 +37,14 @@ def _quote(
         "high": 24520.0,
         "low": 24480.0,
         "close": 24495.0,
+        "exchFeedTime": (
+            timestamp
+            if timestamp is not None
+            else (
+                NOW
+                - timedelta(seconds=30)
+            ).isoformat()
+        ),
     }
 
 
@@ -78,7 +98,8 @@ def test_fetches_both_indices_in_exactly_one_full_request():
 
     result = (
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
     )
 
@@ -115,7 +136,8 @@ def test_result_order_is_nifty_then_sensex_even_when_provider_reverses():
 
     result = (
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
     )
 
@@ -153,7 +175,8 @@ def test_result_exposes_exact_canonical_identities():
 
     result = (
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
     )
 
@@ -206,7 +229,8 @@ def test_missing_canonical_quote_fails_closed(
         match="exactly one",
     ):
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
 
 
@@ -238,7 +262,8 @@ def test_duplicate_canonical_quote_fails_closed():
         match="exactly one NIFTY",
     ):
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
 
 
@@ -273,7 +298,8 @@ def test_unexpected_fetched_identity_fails_closed():
         match="unexpected fetched identity",
     ):
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
 
 
@@ -320,7 +346,8 @@ def test_canonical_unfetched_record_fails_closed(
         match=rf"{market} FULL quote was unfetched.*AB4018",
     ):
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
 
 
@@ -361,7 +388,8 @@ def test_invalid_ltp_fails_closed(
         match="NIFTY FULL quote",
     ):
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
 
 
@@ -398,7 +426,8 @@ def test_malformed_response_fails_closed(
 
     with pytest.raises(RuntimeError):
         fetch_canonical_two_market_full_quotes(
-            client
+            client,
+            clock=lambda: NOW,
         )
 
 
@@ -423,7 +452,8 @@ def test_service_does_not_expose_order_submission_methods():
     )
 
     fetch_canonical_two_market_full_quotes(
-        client
+        client,
+        clock=lambda: NOW,
     )
 
     assert (
@@ -444,6 +474,10 @@ def test_service_does_not_expose_order_submission_methods():
 def test_shared_helper_uses_repository_shared_client(
     monkeypatch,
 ):
+    monkeypatch.setattr(
+        "services.broker.two_market_quote_service._utc_now",
+        lambda: NOW,
+    )
     client = _client(
         _response(
             fetched=[
@@ -483,3 +517,262 @@ def test_shared_helper_uses_repository_shared_client(
         "FULL",
         CANONICAL_EXCHANGE_TOKENS,
     )
+
+
+def test_result_exposes_provider_timestamp_evidence():
+    client = _client(
+        _response(
+            fetched=[
+                _quote(
+                    exchange="NSE",
+                    token="99926000",
+                    symbol="NIFTY",
+                    ltp=24500,
+                ),
+                _quote(
+                    exchange="BSE",
+                    token="99919000",
+                    symbol="SENSEX",
+                    ltp=80500,
+                ),
+            ]
+        )
+    )
+
+    result = fetch_canonical_two_market_full_quotes(
+        client,
+        clock=lambda: NOW,
+    )
+
+    for quote in result.ordered():
+        assert quote.provider_timestamp == (
+            NOW - timedelta(seconds=30)
+        )
+        assert quote.received_at == NOW
+        assert quote.timestamp_field == "exchFeedTime"
+        assert quote.quote_age_seconds == 30.0
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        False,
+        None,
+        1,
+        "true",
+    ],
+)
+def test_non_exact_success_status_fails_closed(
+    status,
+):
+    response = _response(
+        fetched=[
+            _quote(
+                exchange="NSE",
+                token="99926000",
+                symbol="NIFTY",
+                ltp=24500,
+            ),
+            _quote(
+                exchange="BSE",
+                token="99919000",
+                symbol="SENSEX",
+                ltp=80500,
+            ),
+        ]
+    )
+    response["status"] = status
+
+    with pytest.raises(
+        RuntimeError,
+        match="status must be exactly true",
+    ):
+        fetch_canonical_two_market_full_quotes(
+            _client(response),
+            clock=lambda: NOW,
+        )
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        None,
+        "",
+        "bad",
+        True,
+    ],
+)
+def test_invalid_provider_timestamp_fails_closed(
+    timestamp,
+):
+    nifty = _quote(
+        exchange="NSE",
+        token="99926000",
+        symbol="NIFTY",
+        ltp=24500,
+    )
+    nifty["exchFeedTime"] = timestamp
+
+    client = _client(
+        _response(
+            fetched=[
+                nifty,
+                _quote(
+                    exchange="BSE",
+                    token="99919000",
+                    symbol="SENSEX",
+                    ltp=80500,
+                ),
+            ]
+        )
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="NIFTY FULL quote.*timestamp",
+    ):
+        fetch_canonical_two_market_full_quotes(
+            client,
+            clock=lambda: NOW,
+        )
+
+
+def test_stale_provider_timestamp_fails_closed():
+    client = _client(
+        _response(
+            fetched=[
+                _quote(
+                    exchange="NSE",
+                    token="99926000",
+                    symbol="NIFTY",
+                    ltp=24500,
+                    timestamp=(
+                        NOW
+                        - timedelta(seconds=301)
+                    ).isoformat(),
+                ),
+                _quote(
+                    exchange="BSE",
+                    token="99919000",
+                    symbol="SENSEX",
+                    ltp=80500,
+                ),
+            ]
+        )
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="NIFTY FULL quote.*timestamp",
+    ):
+        fetch_canonical_two_market_full_quotes(
+            client,
+            clock=lambda: NOW,
+        )
+
+
+def test_future_provider_timestamp_fails_closed():
+    client = _client(
+        _response(
+            fetched=[
+                _quote(
+                    exchange="NSE",
+                    token="99926000",
+                    symbol="NIFTY",
+                    ltp=24500,
+                ),
+                _quote(
+                    exchange="BSE",
+                    token="99919000",
+                    symbol="SENSEX",
+                    ltp=80500,
+                    timestamp=(
+                        NOW
+                        + timedelta(seconds=6)
+                    ).isoformat(),
+                ),
+            ]
+        )
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="SENSEX FULL quote.*timestamp",
+    ):
+        fetch_canonical_two_market_full_quotes(
+            client,
+            clock=lambda: NOW,
+        )
+
+
+def test_timestamp_freshness_boundaries_are_inclusive():
+    client = _client(
+        _response(
+            fetched=[
+                _quote(
+                    exchange="NSE",
+                    token="99926000",
+                    symbol="NIFTY",
+                    ltp=24500,
+                    timestamp=(
+                        NOW
+                        - timedelta(seconds=300)
+                    ).isoformat(),
+                ),
+                _quote(
+                    exchange="BSE",
+                    token="99919000",
+                    symbol="SENSEX",
+                    ltp=80500,
+                    timestamp=(
+                        NOW
+                        + timedelta(seconds=5)
+                    ).isoformat(),
+                ),
+            ]
+        )
+    )
+
+    result = fetch_canonical_two_market_full_quotes(
+        client,
+        clock=lambda: NOW,
+    )
+
+    assert result.nifty.quote_age_seconds == 300.0
+    assert result.sensex.quote_age_seconds == -5.0
+
+
+def test_naive_clock_fails_closed():
+    client = _client(
+        _response(
+            fetched=[
+                _quote(
+                    exchange="NSE",
+                    token="99926000",
+                    symbol="NIFTY",
+                    ltp=24500,
+                ),
+                _quote(
+                    exchange="BSE",
+                    token="99919000",
+                    symbol="SENSEX",
+                    ltp=80500,
+                ),
+            ]
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="timezone-aware",
+    ):
+        fetch_canonical_two_market_full_quotes(
+            client,
+            clock=lambda: datetime(
+                2026,
+                8,
+                5,
+                9,
+                30,
+            ),
+        )

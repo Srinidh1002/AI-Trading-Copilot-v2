@@ -8,8 +8,14 @@ No broker order submission.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Mapping, Protocol
+
+from services.paper_orchestration.angel_provider_timestamp import (
+    validate_angel_quote_timestamp,
+)
 
 
 NIFTY_MARKET = "NIFTY"
@@ -61,6 +67,10 @@ class CanonicalIndexFullQuote:
     symboltoken: str
     tradingsymbol: str
     ltp: float
+    provider_timestamp: datetime
+    received_at: datetime
+    timestamp_field: str
+    quote_age_seconds: float
     payload: Mapping[str, object]
 
 
@@ -95,6 +105,10 @@ class CanonicalTwoMarketFullQuotes:
             NIFTY_MARKET: self.nifty,
             SENSEX_MARKET: self.sensex,
         }
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 _EXPECTED_IDENTITIES = {
@@ -224,6 +238,7 @@ def _build_quote(
     exchange: str,
     symboltoken: str,
     item: Mapping[str, object],
+    received_at: datetime,
 ) -> CanonicalIndexFullQuote:
     tradingsymbol = str(
         item.get(
@@ -238,6 +253,22 @@ def _build_quote(
     if not tradingsymbol:
         tradingsymbol = market
 
+    try:
+        timestamp_evidence = (
+            validate_angel_quote_timestamp(
+                data=item,
+                received_at=received_at,
+            )
+        )
+    except (
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise RuntimeError(
+            f"{market} FULL quote contains "
+            "invalid provider timestamp evidence."
+        ) from exc
+
     return CanonicalIndexFullQuote(
         market=market,
         exchange=exchange,
@@ -247,12 +278,26 @@ def _build_quote(
             item.get("ltp"),
             market=market,
         ),
+        provider_timestamp=(
+            timestamp_evidence.provider_timestamp
+        ),
+        received_at=(
+            timestamp_evidence.received_at
+        ),
+        timestamp_field=(
+            timestamp_evidence.timestamp_field
+        ),
+        quote_age_seconds=(
+            timestamp_evidence.age_seconds
+        ),
         payload=dict(item),
     )
 
 
 def fetch_canonical_two_market_full_quotes(
     market_client: MarketDataClient,
+    *,
+    clock: Callable[[], datetime] = _utc_now,
 ) -> CanonicalTwoMarketFullQuotes:
     """Fetch and validate NIFTY and SENSEX in one FULL request."""
 
@@ -277,10 +322,27 @@ def fetch_canonical_two_market_full_quotes(
         },
     )
 
+    received_at = clock()
+
+    if (
+        not isinstance(received_at, datetime)
+        or received_at.tzinfo is None
+        or received_at.utcoffset() is None
+    ):
+        raise ValueError(
+            "clock must return a timezone-aware datetime."
+        )
+
     envelope = _mapping(
         response,
         name="response envelope",
     )
+
+    if envelope.get("status") is not True:
+        raise RuntimeError(
+            "Canonical two-market FULL response "
+            "status must be exactly true."
+        )
 
     data = _mapping(
         envelope.get("data"),
@@ -375,12 +437,14 @@ def fetch_canonical_two_market_full_quotes(
             exchange=NIFTY_EXCHANGE,
             symboltoken=NIFTY_SYMBOLTOKEN,
             item=nifty_item,
+            received_at=received_at,
         ),
         sensex=_build_quote(
             market=SENSEX_MARKET,
             exchange=SENSEX_EXCHANGE,
             symboltoken=SENSEX_SYMBOLTOKEN,
             item=sensex_item,
+            received_at=received_at,
         ),
     )
 
@@ -393,5 +457,6 @@ def fetch_shared_canonical_two_market_full_quotes():
     )
 
     return fetch_canonical_two_market_full_quotes(
-        get_market_client()
+        get_market_client(),
+        clock=_utc_now,
     )
