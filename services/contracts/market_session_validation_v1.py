@@ -2,6 +2,7 @@ from __future__ import annotations
 import json, math
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from types import MappingProxyType
 from typing import Any, Mapping
 STATES={"PRE_OPEN","REGULAR","CLOSING","POST_CLOSE","CLOSED","HOLIDAY","WEEKEND","SPECIAL","UNKNOWN"}; PHASES={"BEFORE_PRE_OPEN","PRE_OPEN_ORDER_ENTRY","PRE_OPEN_MATCHING","PRE_OPEN_BUFFER","REGULAR_TRADING","CLOSING_SESSION","AFTER_MARKET","SPECIAL_TRADING","CLOSED_ALL_DAY","UNKNOWN"}; DAYS={"TRADING_DAY","WEEKEND","HOLIDAY","SPECIAL_TRADING_DAY","UNKNOWN"}
 @dataclass(frozen=True,slots=True)
@@ -12,7 +13,22 @@ class MarketSessionValidationV1:
         if self.schema_version!="market_session_validation.v1" or not self.validation_id or self.session_state not in STATES or self.session_phase not in PHASES or self.trading_day_status not in DAYS: raise ValueError("Invalid market session validation contract.")
         if self.evaluated_at.tzinfo is None or self.market_timestamp.tzinfo is None: raise ValueError("Session timestamps must be timezone-aware.")
         if self.timestamp_age_seconds is not None and not math.isfinite(self.timestamp_age_seconds): raise ValueError("timestamp_age_seconds must be finite.")
-        object.__setattr__(self,"metadata",dict(self.metadata))
+        if not isinstance(self.metadata, Mapping):
+            raise TypeError(
+                "metadata must be a mapping."
+            )
+
+        object.__setattr__(
+            self,
+            "metadata",
+            MappingProxyType(
+                dict(
+                    sorted(
+                        self.metadata.items()
+                    )
+                )
+            ),
+        )
     def to_dict(self):
         result={name:getattr(self,name) for name in self.__dataclass_fields__}; result["evaluated_at"]=self.evaluated_at.isoformat(); result["market_timestamp"]=self.market_timestamp.isoformat(); result["trading_date"]=self.trading_date.isoformat()
         for name in ("regular_open_at","regular_close_at","phase_started_at","phase_ends_at"):
