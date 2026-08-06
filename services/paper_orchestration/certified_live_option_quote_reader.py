@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
-import math
+from datetime import datetime
 from typing import Protocol
-from zoneinfo import ZoneInfo
 
 from services.contracts.paper_trade_persistence_snapshot_v1 import (
     PaperTradePersistenceSnapshotV1,
+)
+from services.paper_orchestration.angel_provider_timestamp import (
+    validate_angel_quote_timestamp,
 )
 
 
@@ -45,98 +46,6 @@ def _aware(value: object, name: str) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError(f"{name} must be timezone-aware")
     return value
-
-
-_IST = ZoneInfo("Asia/Kolkata")
-_ANGEL_TIMESTAMP_FORMAT = "%d-%b-%Y %H:%M:%S"
-_MAXIMUM_QUOTE_AGE_SECONDS = 300.0
-_MAXIMUM_FUTURE_SKEW_SECONDS = 5.0
-_PROVIDER_TIMESTAMP_FIELDS = (
-    "exchFeedTime",
-    "exchangeTimestamp",
-    "timestamp",
-)
-
-
-def _parse_provider_timestamp(
-    value: object,
-) -> datetime:
-    if isinstance(value, datetime):
-        parsed = value
-
-    elif (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(float(value))
-    ):
-        numeric = float(value)
-
-        if numeric > 100_000_000_000:
-            numeric /= 1000.0
-
-        try:
-            parsed = datetime.fromtimestamp(
-                numeric,
-                tz=timezone.utc,
-            )
-        except (
-            OverflowError,
-            OSError,
-            ValueError,
-        ) as exc:
-            raise ValueError(
-                "provider timestamp is invalid"
-            ) from exc
-
-    elif isinstance(value, str) and value.strip():
-        raw = value.strip()
-
-        try:
-            parsed = datetime.fromisoformat(
-                raw.replace("Z", "+00:00")
-            )
-        except ValueError:
-            try:
-                parsed = datetime.strptime(
-                    raw,
-                    _ANGEL_TIMESTAMP_FORMAT,
-                ).replace(tzinfo=_IST)
-            except ValueError as exc:
-                raise ValueError(
-                    "provider timestamp is invalid"
-                ) from exc
-
-    else:
-        raise ValueError(
-            "provider timestamp is missing"
-        )
-
-    return _aware(
-        parsed,
-        "provider timestamp",
-    )
-
-
-def _provider_timestamp_from_data(
-    data: Mapping[str, object],
-) -> datetime:
-    field = next(
-        (
-            name
-            for name in _PROVIDER_TIMESTAMP_FIELDS
-            if data.get(name) is not None
-        ),
-        None,
-    )
-
-    if field is None:
-        raise ValueError(
-            "provider timestamp is missing"
-        )
-
-    return _parse_provider_timestamp(
-        data[field]
-    )
 
 
 def _positive_float(value: object, name: str) -> float:
@@ -457,31 +366,16 @@ class CertifiedLiveOptionQuoteReader:
             "clock result",
         )
 
-        provider_timestamp = (
-            _provider_timestamp_from_data(data)
+        timestamp_evidence = (
+            validate_angel_quote_timestamp(
+                data=data,
+                received_at=received_at,
+            )
         )
 
-        quote_age_seconds = (
-            received_at
-            - provider_timestamp
-        ).total_seconds()
-
-        if (
-            quote_age_seconds
-            > _MAXIMUM_QUOTE_AGE_SECONDS
-        ):
-            raise ValueError(
-                "provider option quote timestamp is stale"
-            )
-
-        if (
-            quote_age_seconds
-            < -_MAXIMUM_FUTURE_SKEW_SECONDS
-        ):
-            raise ValueError(
-                "provider option quote timestamp exceeds "
-                "allowed future skew"
-            )
+        provider_timestamp = (
+            timestamp_evidence.provider_timestamp
+        )
 
         return CertifiedLiveOptionQuoteV1(
             paper_trade_id=snapshot.paper_trade_id,

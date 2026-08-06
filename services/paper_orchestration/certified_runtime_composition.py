@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import math
 from pathlib import Path
 from threading import RLock
 from typing import Any
@@ -12,6 +11,9 @@ from zoneinfo import ZoneInfo
 import config
 
 from services.broker.shared_client import get_market_client
+from services.paper_orchestration.angel_provider_timestamp import (
+    validate_angel_quote_timestamp,
+)
 from services.angel_instrument_master import AngelInstrumentMaster
 from services.contracts.certified_live_captured_evidence_v1 import (
     CertifiedLiveCapturedEvidenceV1,
@@ -193,110 +195,6 @@ def _extract_spot_price(raw: Mapping[str, Any]) -> float:
     return _positive_float(value, "spot_price")
 
 
-_ANGEL_TIMESTAMP_FORMAT = "%d-%b-%Y %H:%M:%S"
-_MAXIMUM_QUOTE_AGE_SECONDS = 300.0
-_MAXIMUM_FUTURE_SKEW_SECONDS = 5.0
-_PROVIDER_TIMESTAMP_FIELDS = (
-    "exchFeedTime",
-    "exchangeTimestamp",
-    "timestamp",
-)
-
-
-def _parse_live_provider_timestamp(
-    value: object,
-) -> datetime:
-    if isinstance(value, datetime):
-        parsed = value
-
-    elif (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(float(value))
-    ):
-        numeric = float(value)
-
-        if numeric > 100_000_000_000:
-            numeric /= 1000.0
-
-        try:
-            parsed = datetime.fromtimestamp(
-                numeric,
-                tz=timezone.utc,
-            )
-        except (
-            OverflowError,
-            OSError,
-            ValueError,
-        ) as exc:
-            raise ValueError(
-                "Provider timestamp is invalid."
-            ) from exc
-
-    elif isinstance(value, str) and value.strip():
-        raw = value.strip()
-
-        try:
-            parsed = datetime.fromisoformat(
-                raw.replace(
-                    "Z",
-                    "+00:00",
-                )
-            )
-        except ValueError:
-            try:
-                parsed = datetime.strptime(
-                    raw,
-                    _ANGEL_TIMESTAMP_FORMAT,
-                ).replace(
-                    tzinfo=IST,
-                )
-            except ValueError as exc:
-                raise ValueError(
-                    "Provider timestamp is invalid."
-                ) from exc
-
-    else:
-        raise ValueError(
-            "Provider timestamp is missing."
-        )
-
-    if (
-        parsed.tzinfo is None
-        or parsed.utcoffset() is None
-    ):
-        raise ValueError(
-            "Provider timestamp must be timezone-aware."
-        )
-
-    return parsed.astimezone(IST)
-
-
-def _provider_timestamp_from_quote(
-    data: Mapping[str, Any],
-) -> tuple[datetime, str]:
-    timestamp_field = next(
-        (
-            field
-            for field in _PROVIDER_TIMESTAMP_FIELDS
-            if data.get(field) is not None
-        ),
-        None,
-    )
-
-    if timestamp_field is None:
-        raise ValueError(
-            "Provider quote timestamp is missing."
-        )
-
-    return (
-        _parse_live_provider_timestamp(
-            data[timestamp_field]
-        ),
-        timestamp_field,
-    )
-
-
 def _required_quote_text(
     value: object,
     *,
@@ -455,33 +353,22 @@ def _provider_ltp_reader(
 
     received_at = _aware_now().astimezone(IST)
 
-    provider_timestamp, timestamp_field = (
-        _provider_timestamp_from_quote(
-            data
+    timestamp_evidence = (
+        validate_angel_quote_timestamp(
+            data=data,
+            received_at=received_at,
         )
     )
 
+    provider_timestamp = (
+        timestamp_evidence.provider_timestamp
+    )
+    timestamp_field = (
+        timestamp_evidence.timestamp_field
+    )
     quote_age_seconds = (
-        received_at
-        - provider_timestamp
-    ).total_seconds()
-
-    if (
-        quote_age_seconds
-        > _MAXIMUM_QUOTE_AGE_SECONDS
-    ):
-        raise ValueError(
-            "Provider quote timestamp is stale."
-        )
-
-    if (
-        quote_age_seconds
-        < -_MAXIMUM_FUTURE_SKEW_SECONDS
-    ):
-        raise ValueError(
-            "Provider quote timestamp exceeds "
-            "allowed future skew."
-        )
+        timestamp_evidence.age_seconds
+    )
 
     return {
         "spot_price": spot_price,
