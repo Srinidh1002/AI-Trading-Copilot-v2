@@ -381,3 +381,102 @@ def test_invalid_backoff_multiplier():
             AngelMarketDataClient(
                 retry_backoff_multiplier=0.5
             )
+
+
+@pytest.mark.parametrize(
+    "response",
+    (
+        {
+            "status": False,
+            "message": "Too many requests",
+            "errorcode": "AB1021",
+            "data": None,
+        },
+        {
+            "status": False,
+            "message": (
+                "Access denied because of "
+                "exceeding rate limit"
+            ),
+            "errorcode": "",
+            "data": None,
+        },
+        {
+            "success": False,
+            "message": "Forbidden",
+            "errorCode": "AB1021",
+            "data": None,
+        },
+        {
+            "status": False,
+            "message": "HTTP 403 Forbidden",
+            "errorcode": "",
+            "data": None,
+        },
+    ),
+)
+def test_documented_angel_rate_limit_responses_are_classified(
+    response,
+):
+    assert (
+        AngelMarketDataClient
+        ._is_rate_limit_error(
+            response=response,
+        )
+        is True
+    )
+
+
+def test_success_response_is_not_rate_limited_even_with_numeric_data():
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": {
+            "ltp": 24000.0,
+            "http_code": 403,
+        },
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._is_rate_limit_error(
+            response=response,
+        )
+        is False
+    )
+
+
+class _ForbiddenException(RuntimeError):
+    status_code = 403
+
+
+def test_http_403_exception_is_classified_as_rate_limit():
+    exception = _ForbiddenException(
+        "Access denied"
+    )
+
+    assert (
+        AngelMarketDataClient
+        ._is_rate_limit_error(
+            exception=exception,
+        )
+        is True
+    )
+
+
+def test_unrelated_provider_failure_is_not_rate_limited():
+    response = {
+        "status": False,
+        "message": "Symbol not found",
+        "errorcode": "AB1009",
+        "data": None,
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._is_rate_limit_error(
+            response=response,
+        )
+        is False
+    )

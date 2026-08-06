@@ -294,40 +294,86 @@ class AngelMarketDataClient:
         response=None,
         exception=None,
     ):
-        """
-        Detect only genuine broker rate-limit errors.
-        """
+        """Detect documented Angel One rate-limit failures."""
 
         if isinstance(response, dict):
+            status = response.get(
+                "status",
+                response.get("success"),
+            )
 
-            #
-            # SUCCESS responses are NEVER rate limited
-            #
-            if response.get("status") is True:
+            if status is True:
                 return False
 
         messages = []
 
         if isinstance(response, dict):
             messages.extend(
-                [
-                    str(response.get("message", "")),
-                    str(response.get("errorcode", "")),
-                ]
+                (
+                    str(
+                        response.get(
+                            "message",
+                            "",
+                        )
+                    ),
+                    str(
+                        response.get(
+                            "errorcode",
+                            response.get(
+                                "errorCode",
+                                "",
+                            ),
+                        )
+                    ),
+                    str(
+                        response.get(
+                            "statusCode",
+                            response.get(
+                                "status_code",
+                                "",
+                            ),
+                        )
+                    ),
+                )
             )
 
         if exception is not None:
-            messages.append(str(exception))
+            messages.extend(
+                (
+                    str(exception),
+                    str(
+                        getattr(
+                            exception,
+                            "status_code",
+                            "",
+                        )
+                    ),
+                    str(
+                        getattr(
+                            exception,
+                            "response",
+                            "",
+                        )
+                    ),
+                )
+            )
 
-        combined = " ".join(messages).lower()
+        combined = " ".join(
+            messages
+        ).lower()
 
         rate_limit_terms = (
+            "ab1021",
+            "403",
+            "429",
             "exceeding access rate",
+            "exceeding rate limit",
             "access rate exceeded",
             "rate limit exceeded",
+            "rate limited",
+            "rate_limited",
             "too many requests",
             "too many request",
-            "429",
         )
 
         return any(

@@ -228,3 +228,158 @@ def test_completed_authentication_becomes_the_next_request_pacing_boundary():
 
     assert wait == 2
     assert clock.value == 5
+
+
+def test_historical_second_budget_is_enforced():
+    clock = FakeClock()
+    controller = MarketDataRequestController(
+        min_request_interval_seconds=0,
+        historical_request_interval_seconds=0,
+        historical_requests_per_second=1,
+        historical_requests_per_minute=120,
+        historical_requests_per_hour=4000,
+        cache_ttl_seconds=0,
+        rate_limit_cooldown_seconds=0,
+        monotonic_function=clock.monotonic,
+        sleep_function=clock.sleep,
+    )
+
+    first_wait = controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+    second_wait = controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+
+    assert first_wait == 0
+    assert second_wait == 1
+    assert clock.value == 1
+
+
+def test_historical_minute_budget_is_enforced():
+    clock = FakeClock()
+    controller = MarketDataRequestController(
+        min_request_interval_seconds=0,
+        historical_request_interval_seconds=0,
+        historical_requests_per_second=0,
+        historical_requests_per_minute=2,
+        historical_requests_per_hour=4000,
+        cache_ttl_seconds=0,
+        rate_limit_cooldown_seconds=0,
+        monotonic_function=clock.monotonic,
+        sleep_function=clock.sleep,
+    )
+
+    controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+    clock.value = 1
+    controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+    clock.value = 2
+
+    wait = controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+
+    assert wait == 58
+    assert clock.value == 60
+
+
+def test_historical_hour_budget_is_enforced():
+    clock = FakeClock()
+    controller = MarketDataRequestController(
+        min_request_interval_seconds=0,
+        historical_request_interval_seconds=0,
+        historical_requests_per_second=0,
+        historical_requests_per_minute=0,
+        historical_requests_per_hour=2,
+        cache_ttl_seconds=0,
+        rate_limit_cooldown_seconds=0,
+        monotonic_function=clock.monotonic,
+        sleep_function=clock.sleep,
+    )
+
+    controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+    clock.value = 10
+    controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+    clock.value = 20
+
+    wait = controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+
+    assert wait == 3580
+    assert clock.value == 3600
+
+
+def test_non_historical_requests_do_not_consume_historical_budget():
+    clock = FakeClock()
+    controller = MarketDataRequestController(
+        min_request_interval_seconds=0,
+        historical_request_interval_seconds=0,
+        historical_requests_per_second=1,
+        historical_requests_per_minute=1,
+        historical_requests_per_hour=1,
+        cache_ttl_seconds=0,
+        rate_limit_cooldown_seconds=0,
+        monotonic_function=clock.monotonic,
+        sleep_function=clock.sleep,
+    )
+
+    controller.wait_for_slot(
+        "market-data",
+        1,
+    )
+    controller.wait_for_slot(
+        "market-data",
+        1,
+    )
+
+    wait = controller.wait_for_slot(
+        "historical-data",
+        1,
+    )
+
+    assert wait == 0
+    assert clock.value == 0
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value"),
+    (
+        (
+            "historical_requests_per_second",
+            -1,
+        ),
+        (
+            "historical_requests_per_minute",
+            -1,
+        ),
+        (
+            "historical_requests_per_hour",
+            -1,
+        ),
+    ),
+)
+def test_negative_historical_budget_is_rejected(
+    keyword,
+    value,
+):
+    with pytest.raises(ValueError):
+        MarketDataRequestController(
+            **{keyword: value}
+        )
