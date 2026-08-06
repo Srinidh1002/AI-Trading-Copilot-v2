@@ -262,9 +262,19 @@ def evaluate_task8_live_candidate(
     if candidate.market_timestamp != data_result.market_timestamp:
         raise ValueError("evaluated candidate timestamp mismatch")
 
+    normalized_requested_at = max(
+        cycle_input.cycle_requested_at,
+        candidate.market_timestamp,
+    )
+    normalized_received_at = max(
+        candidate.received_at,
+        normalized_requested_at,
+    )
+
     normalized_candidate = replace(
         candidate,
-        requested_at=cycle_input.cycle_requested_at,
+        requested_at=normalized_requested_at,
+        received_at=normalized_received_at,
     )
     return replace(
         result,

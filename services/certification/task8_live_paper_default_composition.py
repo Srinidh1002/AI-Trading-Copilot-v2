@@ -1,6 +1,8 @@
 """Repository-default Task 8 live PAPER composition."""
 from __future__ import annotations
 
+from dataclasses import replace
+
 import os
 import subprocess
 from datetime import datetime, timezone
@@ -298,6 +300,30 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         nifty_cycle = cycles[("NIFTY", "NSE")]
         sensex_cycle = cycles[("SENSEX", "BSE")]
 
+        parent_requested_at = max(
+            nifty_cycle.cycle_requested_at,
+            sensex_cycle.cycle_requested_at,
+            nifty_cycle.market_timestamp,
+            sensex_cycle.market_timestamp,
+        )
+
+        nifty_cycle = replace(
+            nifty_cycle,
+            cycle_requested_at=parent_requested_at,
+            received_at=max(
+                nifty_cycle.received_at,
+                parent_requested_at,
+            ),
+        )
+        sensex_cycle = replace(
+            sensex_cycle,
+            cycle_requested_at=parent_requested_at,
+            received_at=max(
+                sensex_cycle.received_at,
+                parent_requested_at,
+            ),
+        )
+
         parent = TwoMarketParentCycleInputV1(
             parent_cycle_id=(
                 f"task8-parent-{requested.isoformat()}"
@@ -317,8 +343,9 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
             sensex_observation_id=(
                 sensex_cycle.observation_id
             ),
-            requested_at=nifty_cycle.cycle_requested_at,
+            requested_at=parent_requested_at,
             completed_at=max(
+                parent_requested_at,
                 nifty_cycle.received_at,
                 sensex_cycle.received_at,
             ),
