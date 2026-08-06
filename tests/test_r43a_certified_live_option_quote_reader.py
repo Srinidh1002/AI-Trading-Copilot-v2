@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -119,6 +119,9 @@ def reader_for(snapshot, *, contracts=None, response=None, error=None):
                 "tradingsymbol": position.option_symbol,
                 "symboltoken": token,
                 "exchange": exchange,
+                "exchFeedTime": (
+                    "05-Aug-2026 14:59:30"
+                ),
             },
         }
     )
@@ -285,6 +288,9 @@ def test_provider_identity_mismatch_fails_closed(tmp_path):
                 "tradingsymbol": "WRONG-SYMBOL",
                 "symboltoken": "123456",
                 "exchange": "NFO",
+                "exchFeedTime": (
+                    "05-Aug-2026 14:59:30"
+                ),
             },
         },
     )
@@ -294,3 +300,210 @@ def test_provider_identity_mismatch_fails_closed(tmp_path):
         match="provider option symbol",
     ):
         reader(snapshot)
+
+def response_for(snapshot, **changes):
+    position = snapshot.position
+    assert position is not None
+
+    exchange = derivative_exchange_for(
+        position.underlying_symbol,
+        position.exchange,
+    )
+
+    data = {
+        "ltp": position.entry_price + 2.0,
+        "tradingsymbol": position.option_symbol,
+        "symboltoken": "123456",
+        "exchange": exchange,
+        "exchFeedTime": "05-Aug-2026 14:59:30",
+    }
+    data.update(changes)
+
+    return {
+        "status": True,
+        "data": data,
+    }
+
+
+def test_quote_uses_provider_issued_timestamp(tmp_path):
+    snapshot = open_snapshot(tmp_path)
+    reader, _, _ = reader_for(snapshot)
+
+    result = reader(snapshot)
+
+    assert result.provider_timestamp == datetime(
+        2026,
+        8,
+        5,
+        14,
+        59,
+        30,
+        tzinfo=timezone(
+            timedelta(
+                hours=5,
+                minutes=30,
+            )
+        ),
+    )
+
+
+def test_false_provider_status_fails_closed(tmp_path):
+    snapshot = open_snapshot(tmp_path)
+
+    response = response_for(snapshot)
+    response["status"] = False
+
+    reader, _, _ = reader_for(
+        snapshot,
+        response=response,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="status must be true",
+    ):
+        reader(snapshot)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"exchFeedTime": None},
+        {"exchFeedTime": ""},
+        {"exchFeedTime": "bad"},
+        {"exchFeedTime": True},
+    ],
+)
+def test_missing_or_invalid_provider_timestamp_fails_closed(
+    tmp_path,
+    changes,
+):
+    snapshot = open_snapshot(tmp_path)
+
+    reader, _, _ = reader_for(
+        snapshot,
+        response=response_for(
+            snapshot,
+            **changes,
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="provider timestamp",
+    ):
+        reader(snapshot)
+
+
+def test_naive_iso_provider_timestamp_is_rejected(
+    tmp_path,
+):
+    snapshot = open_snapshot(tmp_path)
+
+    reader, _, _ = reader_for(
+        snapshot,
+        response=response_for(
+            snapshot,
+            exchFeedTime="2026-08-05T09:29:30",
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="timezone-aware",
+    ):
+        reader(snapshot)
+
+
+def test_stale_provider_timestamp_fails_closed(
+    tmp_path,
+):
+    snapshot = open_snapshot(tmp_path)
+
+    reader, _, _ = reader_for(
+        snapshot,
+        response=response_for(
+            snapshot,
+            exchFeedTime="2026-08-05T09:24:59+00:00",
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="stale",
+    ):
+        reader(snapshot)
+
+
+def test_future_provider_timestamp_fails_closed(
+    tmp_path,
+):
+    snapshot = open_snapshot(tmp_path)
+
+    reader, _, _ = reader_for(
+        snapshot,
+        response=response_for(
+            snapshot,
+            exchFeedTime="2026-08-05T09:30:06+00:00",
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="future skew",
+    ):
+        reader(snapshot)
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "2026-08-05T09:25:00+00:00",
+        "2026-08-05T09:30:05+00:00",
+    ],
+)
+def test_provider_timestamp_boundaries_are_allowed(
+    tmp_path,
+    timestamp,
+):
+    snapshot = open_snapshot(tmp_path)
+
+    reader, _, _ = reader_for(
+        snapshot,
+        response=response_for(
+            snapshot,
+            exchFeedTime=timestamp,
+        ),
+    )
+
+    result = reader(snapshot)
+
+    assert result.provider_timestamp is not None
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "exchFeedTime",
+        "exchangeTimestamp",
+        "timestamp",
+    ],
+)
+def test_supported_provider_timestamp_fields(
+    tmp_path,
+    field,
+):
+    snapshot = open_snapshot(tmp_path)
+
+    response = response_for(snapshot)
+    value = response["data"].pop("exchFeedTime")
+    response["data"][field] = value
+
+    reader, _, _ = reader_for(
+        snapshot,
+        response=response,
+    )
+
+    result = reader(snapshot)
+
+    assert result.provider_timestamp is not None
