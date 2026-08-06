@@ -35,6 +35,34 @@ def test_one_cycle_observe_only_smoke(tmp_path, monkeypatch):
     monkeypatch.setattr("config.ENABLE_PAPER_TRADING", True)
     monkeypatch.setattr("config.ENABLE_LIVE_TRADING", False)
 
+    class FakeMarketClient:
+        def get_ltp(
+            self,
+            *,
+            exchange,
+            tradingsymbol,
+            symboltoken,
+        ):
+            return {
+                "status": True,
+                "data": {
+                    "ltp": 25000.0,
+                    "tradingsymbol": tradingsymbol,
+                    "symboltoken": symboltoken,
+                    "exchange": exchange,
+                    "exchFeedTime": (
+                        "03-Aug-2026 15:30:00"
+                    ),
+                },
+            }
+
+    monkeypatch.setattr(
+        "services.paper_orchestration."
+        "certified_runtime_composition."
+        "get_market_client",
+        lambda: FakeMarketClient(),
+    )
+
     providers = CertifiedRuntimeProviderBundleV1(
         quote_reader=lambda *_: {
             "ltp": 25000.0,
