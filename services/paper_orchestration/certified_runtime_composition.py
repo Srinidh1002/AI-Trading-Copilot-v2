@@ -297,6 +297,92 @@ def _provider_timestamp_from_quote(
     )
 
 
+def _required_quote_text(
+    value: object,
+    *,
+    name: str,
+) -> str:
+    if value is None:
+        raise ValueError(
+            f"Provider quote {name} is missing."
+        )
+
+    result = str(value).strip()
+
+    if not result:
+        raise ValueError(
+            f"Provider quote {name} is blank."
+        )
+
+    return result
+
+
+def _quote_identity_value(
+    data: Mapping[str, Any],
+    *fields: str,
+) -> object:
+    for field in fields:
+        if field in data:
+            return data[field]
+
+    return None
+
+
+def _validate_spot_quote_identity(
+    *,
+    data: Mapping[str, Any],
+    expected_exchange: str,
+    expected_symbol: str,
+    expected_token: str,
+) -> None:
+    returned_exchange = _required_quote_text(
+        _quote_identity_value(
+            data,
+            "exchange",
+            "exch_seg",
+        ),
+        name="exchange",
+    ).upper()
+
+    returned_symbol = _required_quote_text(
+        _quote_identity_value(
+            data,
+            "tradingsymbol",
+            "tradingSymbol",
+            "symbol",
+        ),
+        name="trading symbol",
+    ).upper()
+
+    returned_token = _required_quote_text(
+        _quote_identity_value(
+            data,
+            "symboltoken",
+            "symbolToken",
+            "token",
+        ),
+        name="symbol token",
+    )
+
+    if returned_exchange != expected_exchange:
+        raise ValueError(
+            "Provider quote exchange does not "
+            "match requested spot identity."
+        )
+
+    if returned_symbol != expected_symbol:
+        raise ValueError(
+            "Provider quote trading symbol does not "
+            "match requested spot identity."
+        )
+
+    if returned_token != expected_token:
+        raise ValueError(
+            "Provider quote symbol token does not "
+            "match requested spot identity."
+        )
+
+
 def _provider_ltp_reader(
     exchange: str,
     symboltoken: str,
@@ -311,13 +397,50 @@ def _provider_ltp_reader(
     )
 
     if not isinstance(response, Mapping):
-        raise TypeError("market client must return a mapping")
+        raise TypeError(
+            "market client must return a mapping"
+        )
+
+    if response.get("status") is not True:
+        raise ValueError(
+            "Provider spot quote status must be true."
+        )
 
     data = response.get("data")
+
     if not isinstance(data, Mapping):
         raise ValueError(
-            "market client response must contain a data mapping"
+            "market client response must contain "
+            "a data mapping"
         )
+
+    expected_exchange = str(
+        exchange
+    ).strip().upper()
+
+    expected_symbol = str(
+        underlying
+    ).strip().upper()
+
+    expected_token = str(
+        symboltoken
+    ).strip()
+
+    if (
+        not expected_exchange
+        or not expected_symbol
+        or not expected_token
+    ):
+        raise ValueError(
+            "Requested spot identity is incomplete."
+        )
+
+    _validate_spot_quote_identity(
+        data=data,
+        expected_exchange=expected_exchange,
+        expected_symbol=expected_symbol,
+        expected_token=expected_token,
+    )
 
     spot_price = _positive_float(
         data.get(

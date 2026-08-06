@@ -26,6 +26,9 @@ def install_client(
 ):
     row = {
         "ltp": 25000.0,
+        "tradingsymbol": "NIFTY",
+        "exchange": "NSE",
+        "symboltoken": "99926000",
         field: timestamp,
     }
 
@@ -161,6 +164,9 @@ def test_missing_provider_timestamp_fails_closed(
         "status": True,
         "data": {
             "ltp": 25000.0,
+            "tradingsymbol": "NIFTY",
+            "exchange": "NSE",
+            "symboltoken": "99926000",
         },
     }
 
@@ -292,3 +298,143 @@ def test_freshness_boundaries_are_inclusive(
         future_boundary["quote_age_seconds"]
         == -5.0
     )
+
+
+def test_false_provider_status_fails_closed(
+    monkeypatch,
+):
+    client = MagicMock()
+
+    client.get_ltp.return_value = {
+        "status": False,
+        "data": {
+            "ltp": 25000.0,
+            "tradingsymbol": "NIFTY",
+            "exchange": "NSE",
+            "symboltoken": "99926000",
+            "exchFeedTime": (
+                "03-Aug-2026 15:29:30"
+            ),
+        },
+    }
+
+    monkeypatch.setattr(
+        runtime,
+        "get_market_client",
+        lambda: client,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="status must be true",
+    ):
+        read_quote()
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "exchange",
+        "tradingsymbol",
+        "symboltoken",
+    ],
+)
+def test_missing_provider_identity_fails_closed(
+    monkeypatch,
+    field,
+):
+    install_client(
+        monkeypatch,
+        timestamp="03-Aug-2026 15:29:30",
+    )
+
+    client = runtime.get_market_client()
+    del client.get_ltp.return_value[
+        "data"
+    ][field]
+
+    with pytest.raises(
+        ValueError,
+        match="missing",
+    ):
+        read_quote()
+
+
+@pytest.mark.parametrize(
+    "field,value,match",
+    [
+        (
+            "exchange",
+            "BSE",
+            "exchange does not match",
+        ),
+        (
+            "tradingsymbol",
+            "SENSEX",
+            "trading symbol does not match",
+        ),
+        (
+            "symboltoken",
+            "99919000",
+            "symbol token does not match",
+        ),
+    ],
+)
+def test_mismatched_provider_identity_fails_closed(
+    monkeypatch,
+    field,
+    value,
+    match,
+):
+    install_client(
+        monkeypatch,
+        timestamp="03-Aug-2026 15:29:30",
+    )
+
+    client = runtime.get_market_client()
+
+    client.get_ltp.return_value[
+        "data"
+    ][field] = value
+
+    with pytest.raises(
+        ValueError,
+        match=match,
+    ):
+        read_quote()
+
+
+def test_provider_identity_aliases_are_supported(
+    monkeypatch,
+):
+    client = MagicMock()
+
+    client.get_ltp.return_value = {
+        "status": True,
+        "data": {
+            "ltp": 25000.0,
+            "tradingSymbol": "NIFTY",
+            "exchange": "NSE",
+            "symbolToken": "99926000",
+            "exchFeedTime": (
+                "03-Aug-2026 15:29:30"
+            ),
+        },
+    }
+
+    monkeypatch.setattr(
+        runtime,
+        "get_market_client",
+        lambda: client,
+    )
+
+    monkeypatch.setattr(
+        runtime,
+        "_aware_now",
+        lambda: NOW,
+    )
+
+    result = read_quote()
+
+    assert result["spot_price"] == 25000.0
+    assert result["quote_age_seconds"] == 30.0
