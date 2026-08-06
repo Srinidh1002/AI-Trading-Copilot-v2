@@ -46,7 +46,7 @@ def test_builds_exact_repository_owned_launcher(tmp_path, monkeypatch):
     market_client = MagicMock()
 
     monkeypatch.setattr(
-        "services.paper_orchestration.certified_runtime_composition.get_market_client",
+        "services.paper_orchestration.certified_runtime_composition.get_certification_market_client",
         lambda: market_client,
     )
 
@@ -79,7 +79,7 @@ def test_composition_uses_separate_journals(tmp_path, monkeypatch):
     market_client = MagicMock()
 
     monkeypatch.setattr(
-        "services.paper_orchestration.certified_runtime_composition.get_market_client",
+        "services.paper_orchestration.certified_runtime_composition.get_certification_market_client",
         lambda: market_client,
     )
 
@@ -103,4 +103,3 @@ def test_composition_uses_separate_journals(tmp_path, monkeypatch):
     assert opportunity_path != monitoring_path
     assert Path(opportunity_path).parent == tmp_path / "runtime"
     assert Path(monitoring_path).parent == tmp_path / "runtime"
-

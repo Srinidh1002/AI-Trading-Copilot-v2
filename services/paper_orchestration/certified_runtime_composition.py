@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import config
 
-from services.broker.shared_client import get_market_client
+from services.broker.shared_client import get_certification_market_client
 from services.paper_orchestration.angel_provider_timestamp import (
     validate_angel_quote_timestamp,
 )
@@ -286,7 +286,7 @@ def _provider_ltp_reader(
     symboltoken: str,
     underlying: str,
 ) -> Mapping[str, Any]:
-    client = get_market_client()
+    client = get_certification_market_client()
 
     response = client.get_ltp(
         exchange=exchange,
@@ -918,7 +918,7 @@ def _observe_only_new_entry_input_factory(
 
 def build_default_runtime_providers(
 ) -> CertifiedRuntimeProviderBundleV1:
-    shared_client = get_market_client()
+    shared_client = get_certification_market_client()
 
     data_service = LiveMultiTimeframeData(
         client=shared_client,
@@ -1063,7 +1063,7 @@ def build_certified_launcher(
         capture_reader=capture_reader,
         india_vix_reader=IndiaVixLiveReader(
             master_fetcher=AngelInstrumentMaster().fetch_instruments,
-            market_client=get_market_client(),
+            market_client=get_certification_market_client(),
             clock=clock,
         ),
         external_context_reader=external_context_authority,
@@ -1207,7 +1207,7 @@ def build_certified_launcher(
             portfolio_id=value.portfolio_id,
             trade_recovery_service=trade_recovery,
             quote_reader=CertifiedLiveOptionQuoteReader(
-                market_client=get_market_client(),
+                market_client=get_certification_market_client(),
                 instrument_master=AngelInstrumentMaster(),
                 clock=clock,
             ),

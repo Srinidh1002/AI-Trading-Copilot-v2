@@ -41,7 +41,7 @@ def install_client(
 
     monkeypatch.setattr(
         runtime,
-        "get_market_client",
+        "get_certification_market_client",
         lambda: client,
     )
 
@@ -172,7 +172,7 @@ def test_missing_provider_timestamp_fails_closed(
 
     monkeypatch.setattr(
         runtime,
-        "get_market_client",
+        "get_certification_market_client",
         lambda: client,
     )
 
@@ -320,7 +320,7 @@ def test_false_provider_status_fails_closed(
 
     monkeypatch.setattr(
         runtime,
-        "get_market_client",
+        "get_certification_market_client",
         lambda: client,
     )
 
@@ -348,7 +348,7 @@ def test_missing_provider_identity_fails_closed(
         timestamp="03-Aug-2026 15:29:30",
     )
 
-    client = runtime.get_market_client()
+    client = runtime.get_certification_market_client()
     del client.get_ltp.return_value[
         "data"
     ][field]
@@ -391,7 +391,7 @@ def test_mismatched_provider_identity_fails_closed(
         timestamp="03-Aug-2026 15:29:30",
     )
 
-    client = runtime.get_market_client()
+    client = runtime.get_certification_market_client()
 
     client.get_ltp.return_value[
         "data"
@@ -424,7 +424,7 @@ def test_provider_identity_aliases_are_supported(
 
     monkeypatch.setattr(
         runtime,
-        "get_market_client",
+        "get_certification_market_client",
         lambda: client,
     )
 

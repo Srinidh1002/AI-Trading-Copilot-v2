@@ -59,7 +59,7 @@ def test_one_cycle_observe_only_smoke(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "services.paper_orchestration."
         "certified_runtime_composition."
-        "get_market_client",
+        "get_certification_market_client",
         lambda: FakeMarketClient(),
     )
 
@@ -95,4 +95,3 @@ def test_one_cycle_observe_only_smoke(tmp_path, monkeypatch):
     )
     assert "RUNTIME_STARTING" in log
     assert "RUNTIME_STOPPED" in log
-

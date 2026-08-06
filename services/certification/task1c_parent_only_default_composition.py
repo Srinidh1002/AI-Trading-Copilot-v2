@@ -5,7 +5,7 @@ import subprocess
 from datetime import datetime, timezone
 
 from services.angel_instrument_master import AngelInstrumentMaster
-from services.broker.shared_client import get_market_client
+from services.broker.shared_client import get_certification_market_client
 from services.certification.task1c_parent_only_live_canary import Task1CParentOnlyDependenciesV1, Task1CParentOnlyExecutionV1
 from services.certification.task8_live_candidate_adapter import adapt_task8_live_candidate
 from services.contracts.paper_orchestration_policy_v1 import PaperOrchestrationPolicyV1
@@ -43,7 +43,7 @@ def build_task1c_parent_only_dependencies() -> Task1CParentOnlyDependenciesV1:
         build_certified_prediction_ledger()
     )
     data_service = providers.analysis_pipeline.data_service
-    vix_reader = IndiaVixLiveReader(master_fetcher=AngelInstrumentMaster().fetch_instruments, market_client=get_market_client(), clock=providers.clock)
+    vix_reader = IndiaVixLiveReader(master_fetcher=AngelInstrumentMaster().fetch_instruments, market_client=get_certification_market_client(), clock=providers.clock)
     counts = {"nifty_spot_calls": 0, "sensex_spot_calls": 0, "nifty_candle_capture_count": 0, "sensex_candle_capture_count": 0, "nifty_option_capture_count": 0, "sensex_option_capture_count": 0, "broader_intelligence_calls": 2}
     substage = {"value": "DEPENDENCY_READY"}
     def mark(value: str) -> None: substage["value"] = value
