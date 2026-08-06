@@ -337,13 +337,25 @@ def run_task8_live_paper_session(
         session_status = "INTERRUPTED"
         blockers.append("SESSION_INTERRUPTED")
     except Exception as exc:
+        from services.certification.task8_canary_failure_evidence import (
+            classify_task8_exception,
+        )
+
+        provider_throttled, failure_reason = (
+            classify_task8_exception(exc)
+        )
+
         session_status = "FAILED"
         blockers.extend(
             (
                 "SESSION_EXECUTION_EXCEPTION",
                 f"SESSION_EXCEPTION_{type(exc).__name__.upper()}",
+                failure_reason,
             )
         )
+
+        if provider_throttled:
+            blockers.append("PROVIDER_THROTTLED")
 
     completed_at = _utc(clock(), "completed_at")
     passed_count = sum(

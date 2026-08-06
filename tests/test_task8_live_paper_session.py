@@ -238,3 +238,42 @@ def test_session_rejects_invalid_cycle_count(tmp_path):
             session_id_factory=lambda: "invalid",
             sleep_function=lambda _: None,
         )
+def test_rate_limit_exception_is_classified_in_session_summary(
+    tmp_path,
+    monkeypatch,
+):
+    from services.broker.market_data_control import (
+        BrokerMarketDataRequestError,
+    )
+
+    error = BrokerMarketDataRequestError(
+        "historical-data",
+        1,
+        "rate_limited",
+        "sanitized provider failure",
+    )
+
+    def fail(_):
+        raise error
+
+    monkeypatch.setattr(
+        session_module,
+        "run_task8_live_paper_canary",
+        fail,
+    )
+
+    report, path = run_task8_live_paper_session(
+        dependency_factory=lambda: _dependencies(1),
+        cycle_count=2,
+        interval_seconds=0,
+        output_directory=tmp_path,
+        clock=lambda: NOW,
+        session_id_factory=lambda: "session-rate-limit",
+        sleep_function=lambda _: None,
+    )
+
+    assert report.session_status == "FAILED"
+    assert "SESSION_EXECUTION_EXCEPTION" in report.blockers
+    assert "HISTORICAL-DATA_RATE_LIMITED" in report.blockers
+    assert "PROVIDER_THROTTLED" in report.blockers
+    assert path.exists()
