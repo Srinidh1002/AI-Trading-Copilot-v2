@@ -174,7 +174,13 @@ def test_empty_option_chain_fails_closed_without_broker_order_methods(monkeypatc
     analysis.analyse.return_value = {"strategy": {"decision": "TRADE", "direction": "BULLISH"}, "technical": {"indicators": {"atr": 100}}, "candlestick": {"support": 24900, "resistance": 25100}, "chart": {}}
     chain = MagicMock()
     chain.build_chain.return_value = {"contracts": []}
-    pipeline = LiveOptionDecisionPipeline(analysis_pipeline=analysis, option_chain_builder=chain, completed_candle_service=MagicMock(), holiday_calendar=set())
+    pipeline = LiveOptionDecisionPipeline(
+        analysis_pipeline=analysis,
+        option_chain_builder=chain,
+        completed_candle_service=MagicMock(),
+        holiday_calendar=set(),
+        market_client=MagicMock(),
+    )
 
     result = pipeline.analyse(exchange="NSE", symboltoken="99926000", underlying="NIFTY", spot_price=25000, capital=10000)
 
