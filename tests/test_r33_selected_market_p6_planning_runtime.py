@@ -90,7 +90,26 @@ def test_default_production_composition_no_longer_uses_lifecycle_placeholder():
     assert dependencies.selected_planner.__name__ == "selected_planner"
     assert "selected-market lifecycle wiring is unavailable" not in source
     assert "execute_selected_market_p6_planning(" in source
-    assert "certified_p6_input_bundle=None" in source
+    assert "certified_p6_input_bundle=p6_bundle" in source
+    assert "build_task8_selected_market_p6_bundle(" in source
+    assert "build_task8_retaining_candidate_reader(" in source
+    assert "certified_p6_input_bundle=None" not in source
+    assert (
+        "execute_task8_selected_market_lifecycle("
+        in source
+    )
+    assert (
+        "persistence_root=("
+        in source
+    )
+    assert (
+        "certified_runtime/task8"
+        in source
+    )
+    assert (
+        "adapt_selected_market_p6_to_cycle_result("
+        not in source
+    )
 
 
 def test_r33_runtime_has_no_broker_or_order_dependency():

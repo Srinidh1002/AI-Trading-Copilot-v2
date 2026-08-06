@@ -32,4 +32,22 @@ def plan_capital_quantity(planning_input):
   weights=planning_input.capital_quantity_policy.target_allocation_weights;allocated,exact,fractions,order,assigned=_allocate_target_lots(lots,weights)
   common.update(target_allocation_enabled=True,target_1_lot_count=allocated[0],target_2_lot_count=allocated[1],target_3_lot_count=allocated[2],runner_lot_count=0)
   base['metadata']=dict(base['metadata'],target_allocation={'enabled':True,'weights':weights,'remainder_priority':('T1','T2','T3'),'exact_shares':exact,'base_counts':tuple(int(x) for x in exact),'fractional_remainders':fractions,'remainder_assignment_order':tuple(('T1','T2','T3')[i] for i in assigned),'final_counts':allocated,'allocation_total':sum(allocated),'runner_lot_count':0})
- return CapitalQuantityPlanningResultV1(status='READY',blockers=(),decision_reasons=(),planned_lot_count=lots,lot_size=s.selected_lot_size,planned_quantity=q,estimated_premium_outlay=lots*c.estimated_one_lot_premium_cost,estimated_risk_amount=lots*c.effective_per_lot_risk_amount,**common,**base)
+ cost_fields={}
+ if evidence is not None:
+  cost_fields=dict(
+   trading_cost_policy_id=planning_input.trading_cost_policy.cost_policy_id,
+   trading_cost_evidence_id=evidence.evidence_id,
+   trading_cost_calculation_mode=planning_input.trading_cost_policy.calculation_mode,
+   estimated_brokerage=evidence.estimated_brokerage,
+   estimated_exchange_transaction_charges=evidence.estimated_exchange_transaction_charges,
+   estimated_clearing_charges=evidence.estimated_clearing_charges,
+   estimated_stt=evidence.estimated_stt,
+   estimated_sebi_charges=evidence.estimated_sebi_charges,
+   estimated_stamp_duty=evidence.estimated_stamp_duty,
+   estimated_gst=evidence.estimated_gst,
+   estimated_slippage=evidence.estimated_slippage,
+   estimated_total_trading_cost=evidence.estimated_total_trading_cost,
+   estimated_total_capital_requirement=evidence.estimated_total_capital_requirement,
+   cost_adjusted_capital_feasible=True,
+  )
+ return CapitalQuantityPlanningResultV1(status='READY',blockers=(),decision_reasons=(),planned_lot_count=lots,lot_size=s.selected_lot_size,planned_quantity=q,estimated_premium_outlay=lots*c.estimated_one_lot_premium_cost,estimated_risk_amount=lots*c.effective_per_lot_risk_amount,**cost_fields,**common,**base)

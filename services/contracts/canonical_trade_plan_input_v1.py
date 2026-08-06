@@ -75,6 +75,10 @@ class CanonicalTradePlanInputV1:
   object.__setattr__(self,'metadata',MappingProxyType(safe))
   if self.execution_mode!='PAPER' or self.live_execution_eligible is not False or self.schema_version!='1.0': raise ValueError('paper')
  @property
+ def direction(self):
+  return self.selected_market_opportunity.trade_opportunity.directional_bias
+
+ @property
  def planning_allowed(self): return not self.blockers and self.selected_market_opportunity.candidate_status in {'READY','READY_WITH_WARNINGS'} and self.selected_market_opportunity.analysis_allowed and self.selected_market_opportunity.new_entries_allowed and self.market_session_validation.paper_execution_allowed
  @property
  def trade_opportunity(self): return self.selected_market_opportunity.trade_opportunity
