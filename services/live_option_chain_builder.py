@@ -23,6 +23,10 @@ from services.option_chain_validator import (
     validate_option_chain,
 )
 
+from services.option_full_response_validator import (
+    validate_option_full_response,
+)
+
 
 class LiveOptionChainBuilder:
     """
@@ -467,58 +471,13 @@ class LiveOptionChainBuilder:
             )
         )
 
-        if not response:
-            raise RuntimeError(
-                "No option market-data response "
-                "was received."
+        market_by_token = (
+            validate_option_full_response(
+                response=response,
+                option_exchange=option_exchange,
+                requested_tokens=tokens,
             )
-
-        fetched = (
-            response
-            .get(
-                "data",
-                {},
-            )
-            .get(
-                "fetched",
-                [],
-            )
-            or []
         )
-
-        if not fetched:
-            raise RuntimeError(
-                "No live option contracts were "
-                "received from the broker."
-            )
-
-        # ---------------------------------
-        # INDEX MARKET DATA BY TOKEN
-        # ---------------------------------
-
-        market_by_token = {}
-
-        for item in fetched:
-
-            if not isinstance(
-                item,
-                dict,
-            ):
-                continue
-
-            token = str(
-                item.get(
-                    "symbolToken",
-                    "",
-                )
-            ).strip()
-
-            if not token:
-                continue
-
-            market_by_token[
-                token
-            ] = item
 
         # ---------------------------------
         # NORMALIZE CONTRACTS
@@ -575,49 +534,17 @@ class LiveOptionChainBuilder:
             # BEST BID
             # ---------------------------------
 
-            bid = 0.0
-
-            if (
-                buy_depth
-                and isinstance(
-                    buy_depth[0],
-                    dict,
-                )
-            ):
-                bid = (
-                    self._safe_float(
-                        buy_depth[
-                            0
-                        ].get(
-                            "price",
-                            0,
-                        )
-                    )
-                )
+            bid = market[
+                "_validated_bid"
+            ]
 
             # ---------------------------------
             # BEST ASK
             # ---------------------------------
 
-            ask = 0.0
-
-            if (
-                sell_depth
-                and isinstance(
-                    sell_depth[0],
-                    dict,
-                )
-            ):
-                ask = (
-                    self._safe_float(
-                        sell_depth[
-                            0
-                        ].get(
-                            "price",
-                            0,
-                        )
-                    )
-                )
+            ask = market[
+                "_validated_ask"
+            ]
 
             lot_size = (
                 self._normalize_lot_size(
@@ -662,12 +589,9 @@ class LiveOptionChainBuilder:
                 ),
 
                 "premium": (
-                    self._safe_float(
-                        market.get(
-                            "ltp",
-                            0,
-                        )
-                    )
+                    market[
+                        "_validated_ltp"
+                    ]
                 ),
 
                 "bid": (
@@ -679,21 +603,15 @@ class LiveOptionChainBuilder:
                 ),
 
                 "volume": (
-                    self._safe_int(
-                        market.get(
-                            "tradeVolume",
-                            0,
-                        )
-                    )
+                    market[
+                        "_validated_volume"
+                    ]
                 ),
 
                 "open_interest": (
-                    self._safe_int(
-                        market.get(
-                            "opnInterest",
-                            0,
-                        )
-                    )
+                    market[
+                        "_validated_open_interest"
+                    ]
                 ),
 
                 # Greeks remain optional until

@@ -169,16 +169,34 @@ def test_build_normalized_chain():
                     "depth": {
                         "buy": [
                             {
-                                "price": 149.5
+                                "price": 149.5,
                             }
                         ],
                         "sell": [
                             {
-                                "price": 150.5
+                                "price": 150.5,
                             }
                         ],
                     },
-                }
+                },
+                {
+                    "symbolToken": "1010",
+                    "ltp": 155.0,
+                    "tradeVolume": 18000,
+                    "opnInterest": 28000,
+                    "depth": {
+                        "buy": [
+                            {
+                                "price": 154.5,
+                            }
+                        ],
+                        "sell": [
+                            {
+                                "price": 155.5,
+                            }
+                        ],
+                    },
+                },
             ],
             "unfetched": [],
         },
@@ -192,82 +210,37 @@ def test_build_normalized_chain():
     result = builder.build_chain(
         underlying="NIFTY",
         spot_price=24206,
-        strikes_each_side=2,
+        strikes_each_side=0,
     )
 
-    assert (
-        result["expiry"]
-        == "14JUL2026"
-    )
+    assert result["expiry"] == "14JUL2026"
+    assert result["requested_contracts"] == 2
+    assert result["received_contracts"] == 2
+    assert result["validated_contracts"] == 2
+    assert result["rejected_contracts"] == 0
+    assert result["integrity_validated"] is True
+    assert len(result["contracts"]) == 2
 
-    assert (
-        result["received_contracts"]
-        == 1
-    )
+    contracts_by_token = {
+        contract["token"]: contract
+        for contract in result["contracts"]
+    }
 
-    assert (
-        result["validated_contracts"]
-        == 1
-    )
+    assert set(contracts_by_token) == {
+        "1009",
+        "1010",
+    }
 
-    assert (
-        result["rejected_contracts"]
-        == 0
-    )
+    contract = contracts_by_token["1009"]
 
-    assert (
-        result["integrity_validated"]
-        is True
-    )
-
-    assert len(
-        result["contracts"]
-    ) == 1
-
-    contract = result[
-        "contracts"
-    ][0]
-
-    assert (
-        contract["premium"]
-        == 150.0
-    )
-
-    assert (
-        contract["bid"]
-        == 149.5
-    )
-
-    assert (
-        contract["ask"]
-        == 150.5
-    )
-
-    assert (
-        contract["open_interest"]
-        == 30000
-    )
-
-    assert (
-        contract["volume"]
-        == 20000
-    )
-
-    assert (
-        contract["lot_size"]
-        == 75
-    )
-
-    assert (
-        contract["option_type"]
-        == "CE"
-    )
-
-    assert (
-        contract["strike"]
-        == 24200.0
-    )
-
+    assert contract["premium"] == 150.0
+    assert contract["bid"] == 149.5
+    assert contract["ask"] == 150.5
+    assert contract["open_interest"] == 30000
+    assert contract["volume"] == 20000
+    assert contract["lot_size"] == 75
+    assert contract["option_type"] == "CE"
+    assert contract["strike"] == 24200.0
 
 def test_invalid_spot_price():
 
