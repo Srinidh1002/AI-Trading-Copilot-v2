@@ -1,12 +1,18 @@
+"""Strict Angel One instrument-master service.
+
+Downloads, validates, filters, and deterministically orders Angel option
+contracts.
+
+Read-only.
+No broker order submission.
 """
-Angel One instrument-master service.
 
-Downloads and filters the Angel One instrument master to discover
-currently listed option contracts and expiries.
+from __future__ import annotations
 
-Read-only. No orders are placed.
-"""
-
+import math
+import time
+from collections.abc import Mapping
+from copy import deepcopy
 from datetime import datetime
 
 import requests
@@ -19,20 +25,233 @@ INSTRUMENT_MASTER_URL = (
 
 
 class AngelInstrumentMaster:
+    """Read-only validated Angel instrument-master repository."""
 
-    def __init__(self, session=None):
+    SOURCE_NAME = "ANGEL_ONE_OPENAPI_SCRIP_MASTER"
+
+    def __init__(
+        self,
+        session=None,
+        *,
+        time_function=time.time,
+    ):
         self.session = (
             session
             if session is not None
             else requests.Session()
         )
 
+        if not callable(time_function):
+            raise TypeError(
+                "time_function must be callable."
+            )
+
+        self.time_function = time_function
         self.instruments = None
+        self._metadata = None
+
+    @staticmethod
+    def _required_text(
+        value,
+        *,
+        field,
+        record_index,
+    ):
+        if not isinstance(value, str):
+            value = str(
+                value
+                if value is not None
+                else ""
+            )
+
+        result = value.strip()
+
+        if not result:
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has blank {field}."
+            )
+
+        return result
+
+    @staticmethod
+    def _positive_float(
+        value,
+        *,
+        field,
+        record_index,
+    ):
+        if isinstance(value, bool):
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has invalid {field}."
+            )
+
+        try:
+            result = float(value)
+        except (
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has invalid {field}."
+            ) from exc
+
+        if (
+            not math.isfinite(result)
+            or result <= 0
+        ):
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has invalid {field}."
+            )
+
+        return result
+
+    @classmethod
+    def _positive_integer(
+        cls,
+        value,
+        *,
+        field,
+        record_index,
+    ):
+        numeric = cls._positive_float(
+            value,
+            field=field,
+            record_index=record_index,
+        )
+
+        integer = int(numeric)
+
+        if numeric != integer:
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has non-integral {field}."
+            )
+
+        return integer
+
+    @classmethod
+    def _validated_option_contract(
+        cls,
+        instrument,
+        *,
+        record_index,
+        underlying,
+        exchange,
+    ):
+        if not isinstance(instrument, Mapping):
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} is not a mapping."
+            )
+
+        token = cls._required_text(
+            instrument.get("token"),
+            field="token",
+            record_index=record_index,
+        )
+
+        symbol = cls._required_text(
+            instrument.get("symbol"),
+            field="symbol",
+            record_index=record_index,
+        ).upper()
+
+        name = cls._required_text(
+            instrument.get("name"),
+            field="name",
+            record_index=record_index,
+        ).upper()
+
+        expiry = cls._required_text(
+            instrument.get("expiry"),
+            field="expiry",
+            record_index=record_index,
+        )
+
+        instrument_type = cls._required_text(
+            instrument.get(
+                "instrumenttype"
+            ),
+            field="instrumenttype",
+            record_index=record_index,
+        ).upper()
+
+        exchange_segment = cls._required_text(
+            instrument.get("exch_seg"),
+            field="exch_seg",
+            record_index=record_index,
+        ).upper()
+
+        if name != underlying:
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} underlying mismatch."
+            )
+
+        if exchange_segment != exchange:
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} exchange mismatch."
+            )
+
+        if instrument_type != "OPTIDX":
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} type mismatch."
+            )
+
+        if symbol.endswith("CE"):
+            option_type = "CE"
+        elif symbol.endswith("PE"):
+            option_type = "PE"
+        else:
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} has invalid option suffix."
+            )
+
+        parsed_expiry = cls._parse_expiry(
+            expiry
+        )
+
+        if parsed_expiry is None:
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} has invalid expiry."
+            )
+
+        strike = cls._positive_float(
+            instrument.get("strike"),
+            field="strike",
+            record_index=record_index,
+        )
+
+        lot_size = cls._positive_integer(
+            instrument.get("lotsize"),
+            field="lotsize",
+            record_index=record_index,
+        )
+
+        validated = deepcopy(
+            dict(instrument)
+        )
+
+        return {
+            "record": validated,
+            "token": token,
+            "symbol": symbol,
+            "expiry_date": parsed_expiry,
+            "strike": strike,
+            "lot_size": lot_size,
+            "option_type": option_type,
+        }
 
     def fetch_instruments(self):
-        """
-        Download the Angel One instrument master.
-        """
+        """Download and minimally validate the Angel instrument master."""
 
         response = self.session.get(
             INSTRUMENT_MASTER_URL,
@@ -41,74 +260,167 @@ class AngelInstrumentMaster:
 
         response.raise_for_status()
 
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception as exc:
+            raise RuntimeError(
+                "Angel instrument-master response "
+                "contains invalid JSON."
+            ) from exc
 
         if not isinstance(data, list):
             raise RuntimeError(
-                "Unexpected Angel One instrument-master format."
+                "Unexpected Angel One "
+                "instrument-master format."
             )
 
-        self.instruments = data
+        if not data:
+            raise RuntimeError(
+                "Angel One instrument master is empty."
+            )
 
-        return data
+        copied = []
+
+        for index, instrument in enumerate(
+            data
+        ):
+            if not isinstance(
+                instrument,
+                Mapping,
+            ):
+                raise RuntimeError(
+                    "Angel instrument-master record "
+                    f"{index} is not a mapping."
+                )
+
+            copied.append(
+                deepcopy(dict(instrument))
+            )
+
+        fetched_at = float(
+            self.time_function()
+        )
+
+        if not math.isfinite(fetched_at):
+            raise RuntimeError(
+                "Instrument-master fetch timestamp "
+                "must be finite."
+            )
+
+        self.instruments = copied
+        self._metadata = {
+            "source": self.SOURCE_NAME,
+            "source_url": (
+                INSTRUMENT_MASTER_URL
+            ),
+            "fetched_at_epoch_seconds": (
+                fetched_at
+            ),
+            "record_count": len(copied),
+            "validated": True,
+        }
+
+        return deepcopy(copied)
 
     def _ensure_loaded(self):
-        """
-        Load instruments if they have not already been fetched.
-        """
-
         if self.instruments is None:
             self.fetch_instruments()
+
+        if not isinstance(
+            self.instruments,
+            list,
+        ):
+            raise RuntimeError(
+                "Angel instrument master must "
+                "be a list."
+            )
+
+    def get_metadata(self):
+        """Return defensive instrument-master provenance metadata."""
+
+        self._ensure_loaded()
+
+        if self._metadata is None:
+            return {
+                "source": self.SOURCE_NAME,
+                "source_url": (
+                    INSTRUMENT_MASTER_URL
+                ),
+                "fetched_at_epoch_seconds": None,
+                "record_count": len(
+                    self.instruments
+                ),
+                "validated": False,
+                "injected_fixture": True,
+            }
+
+        return deepcopy(
+            self._metadata
+        )
 
     def get_option_contracts(
         self,
         underlying,
         exchange="NFO",
     ):
-        """
-        Return listed option contracts for an underlying.
-
-        Example:
-            underlying="NIFTY"
-        """
+        """Return strictly validated and deterministically ordered contracts."""
 
         self._ensure_loaded()
 
-        underlying = underlying.upper()
+        underlying = str(
+            underlying
+        ).strip().upper()
 
-        contracts = []
+        exchange = str(
+            exchange
+        ).strip().upper()
 
-        for instrument in self.instruments:
+        if not underlying:
+            raise ValueError(
+                "underlying is required."
+            )
+
+        if not exchange:
+            raise ValueError(
+                "exchange is required."
+            )
+
+        candidates = []
+
+        for index, instrument in enumerate(
+            self.instruments
+        ):
+            if not isinstance(
+                instrument,
+                Mapping,
+            ):
+                raise RuntimeError(
+                    "Angel instrument-master record "
+                    f"{index} is not a mapping."
+                )
 
             exch_seg = str(
                 instrument.get(
                     "exch_seg",
-                    ""
+                    "",
                 )
-            ).upper()
+            ).strip().upper()
 
             instrument_type = str(
                 instrument.get(
                     "instrumenttype",
-                    ""
+                    "",
                 )
-            ).upper()
-
-            symbol = str(
-                instrument.get(
-                    "symbol",
-                    ""
-                )
-            ).upper()
+            ).strip().upper()
 
             name = str(
                 instrument.get(
                     "name",
-                    ""
+                    "",
                 )
-            ).upper()
+            ).strip().upper()
 
-            if exch_seg != exchange.upper():
+            if exch_seg != exchange:
                 continue
 
             if instrument_type != "OPTIDX":
@@ -117,17 +429,67 @@ class AngelInstrumentMaster:
             if name != underlying:
                 continue
 
-            if not (
-                symbol.endswith("CE")
-                or symbol.endswith("PE")
-            ):
-                continue
-
-            contracts.append(
-                instrument
+            candidates.append(
+                self._validated_option_contract(
+                    instrument,
+                    record_index=index,
+                    underlying=underlying,
+                    exchange=exchange,
+                )
             )
 
-        return contracts
+        seen_tokens = set()
+        seen_symbols = set()
+
+        for candidate in candidates:
+            token_identity = (
+                exchange,
+                candidate["token"],
+            )
+
+            symbol_identity = (
+                exchange,
+                candidate["symbol"],
+            )
+
+            if token_identity in seen_tokens:
+                raise RuntimeError(
+                    "Duplicate Angel option token "
+                    f"for {exchange}: "
+                    f"{candidate['token']}."
+                )
+
+            if symbol_identity in seen_symbols:
+                raise RuntimeError(
+                    "Duplicate Angel option symbol "
+                    f"for {exchange}: "
+                    f"{candidate['symbol']}."
+                )
+
+            seen_tokens.add(
+                token_identity
+            )
+
+            seen_symbols.add(
+                symbol_identity
+            )
+
+        candidates.sort(
+            key=lambda item: (
+                item["expiry_date"],
+                item["strike"],
+                item["option_type"],
+                item["symbol"],
+                item["token"],
+            )
+        )
+
+        return [
+            deepcopy(
+                candidate["record"]
+            )
+            for candidate in candidates
+        ]
 
     def get_available_expiries(
         self,
@@ -135,18 +497,7 @@ class AngelInstrumentMaster:
         exchange="NFO",
         include_expired=False,
     ):
-        """
-        Return sorted unique expiry dates.
-
-        Output format:
-            [
-                {
-                    "date": date_object,
-                    "display": "14JUL2026",
-                    "raw": "14JUL2026"
-                }
-            ]
-        """
+        """Return deterministic unique listed expiries."""
 
         contracts = self.get_option_contracts(
             underlying=underlying,
@@ -158,29 +509,39 @@ class AngelInstrumentMaster:
         expiries = {}
 
         for contract in contracts:
-
             raw_expiry = str(
-                contract.get(
-                    "expiry",
-                    ""
-                )
+                contract["expiry"]
             ).strip()
-
-            if not raw_expiry:
-                continue
 
             parsed_date = self._parse_expiry(
                 raw_expiry
             )
 
             if parsed_date is None:
-                continue
+                raise RuntimeError(
+                    "Validated option contract has "
+                    "an invalid expiry."
+                )
 
             if (
                 not include_expired
                 and parsed_date < today
             ):
                 continue
+
+            existing = expiries.get(
+                parsed_date
+            )
+
+            if (
+                existing is not None
+                and existing["raw"]
+                != raw_expiry
+            ):
+                raise RuntimeError(
+                    "One expiry date has conflicting "
+                    "Angel raw expiry values."
+                )
 
             expiries[parsed_date] = {
                 "date": parsed_date,
@@ -193,7 +554,7 @@ class AngelInstrumentMaster:
             }
 
         return [
-            expiries[expiry]
+            deepcopy(expiries[expiry])
             for expiry in sorted(expiries)
         ]
 
@@ -202,9 +563,7 @@ class AngelInstrumentMaster:
         underlying,
         exchange="NFO",
     ):
-        """
-        Return the nearest currently listed expiry.
-        """
+        """Return the nearest currently listed expiry."""
 
         expiries = self.get_available_expiries(
             underlying=underlying,
@@ -213,16 +572,17 @@ class AngelInstrumentMaster:
 
         if not expiries:
             raise ValueError(
-                f"No active option expiries found for {underlying}."
+                "No active option expiries found "
+                f"for {underlying}."
             )
 
-        return expiries[0]
+        return deepcopy(
+            expiries[0]
+        )
 
     @staticmethod
     def _parse_expiry(value):
-        """
-        Parse common Angel One expiry formats.
-        """
+        """Parse supported Angel expiry formats."""
 
         formats = (
             "%d%b%Y",
@@ -232,11 +592,12 @@ class AngelInstrumentMaster:
             "%d-%b-%y",
         )
 
-        cleaned = (
-            str(value)
-            .strip()
-            .upper()
-        )
+        cleaned = str(
+            value
+        ).strip().upper()
+
+        if not cleaned:
+            return None
 
         for date_format in formats:
             try:
@@ -244,7 +605,6 @@ class AngelInstrumentMaster:
                     cleaned,
                     date_format,
                 ).date()
-
             except ValueError:
                 continue
 
