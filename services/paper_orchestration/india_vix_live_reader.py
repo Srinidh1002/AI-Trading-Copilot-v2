@@ -178,6 +178,11 @@ class IndiaVixLiveReader:
                 if not isinstance(raw, Mapping):
                     raise ValueError("INDIA_VIX_QUOTE_INVALID")
 
+                if raw.get("status") is not True:
+                    raise ValueError(
+                        "INDIA_VIX_QUOTE_STATUS_INVALID"
+                    )
+
                 data = raw.get("data")
                 fetched = (
                     data.get("fetched", ())

@@ -11,14 +11,35 @@ NOW = datetime(2026, 8, 3, 10, 0, tzinfo=timezone.utc)
 
 
 class Client:
-    def __init__(self, row):
+    def __init__(
+        self,
+        row,
+        *,
+        status=True,
+    ):
         self.row = row
+        self.status = status
         self.calls = 0
 
-    def get_market_data(self, mode, exchange_tokens):
+    def get_market_data(
+        self,
+        mode,
+        exchange_tokens,
+    ):
         self.calls += 1
-        assert (mode, exchange_tokens) == ("FULL", {"NSE": ["99926017"]})
-        return {"data": {"fetched": [self.row]}}
+        assert (
+            mode,
+            exchange_tokens,
+        ) == (
+            "FULL",
+            {"NSE": ["99926017"]},
+        )
+        return {
+            "status": self.status,
+            "data": {
+                "fetched": [self.row],
+            },
+        }
 
 
 def master():
@@ -77,3 +98,44 @@ def test_reader_does_not_leak_provider_exception_text():
             raise RuntimeError("password=never-print")
     capture = IndiaVixLiveReader(master_fetcher=master, market_client=BrokenClient(), clock=lambda: NOW).capture("parent-1")
     assert "password" not in capture.to_json().lower()
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        False,
+        None,
+        1,
+        "true",
+    ],
+)
+def test_reader_requires_exact_success_status(
+    status,
+):
+    client = Client(
+        row(),
+        status=status,
+    )
+
+    reader = IndiaVixLiveReader(
+        master_fetcher=master,
+        market_client=client,
+        clock=lambda: NOW,
+    )
+
+    capture = reader.capture("parent-status")
+
+    assert capture.source_status == "UNAVAILABLE"
+    assert capture.current_value is None
+    assert capture.previous_close is None
+    assert capture.provider_timestamp is None
+    assert capture.blockers == (
+        "INDIA_VIX_QUOTE_STATUS_INVALID",
+    )
+    assert normalize_india_vix_capture(
+        capture
+    ) == (
+        None,
+        None,
+    )
+    assert client.calls == 1
