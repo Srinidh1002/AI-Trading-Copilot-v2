@@ -113,17 +113,123 @@ class LiveMultiTimeframeData:
             days=config["lookback_days"]
         )
 
+        capture_key = (
+            str(exchange).strip().upper(),
+            str(symboltoken).strip(),
+            timeframe,
+        )
+
+        requested_until = (
+            end_time.isoformat()
+            if isinstance(end_time, datetime)
+            else None
+        )
+
         if self.cache_enabled:
-            cached_response = self.cache.get(
-                exchange,
-                symboltoken,
-                timeframe,
-                max_age_seconds=self._cache_ttl_seconds(timeframe),
+            metadata_reader = getattr(
+                type(self.cache),
+                "get_with_metadata",
+                None,
             )
-            if cached_response is not None:
-                candles = cached_response.get("data", [])
-                if candles:
-                    self._capture_cache_status[(exchange, symboltoken, timeframe)] = "CACHED"
+
+            if callable(metadata_reader):
+                cached_result = (
+                    self.cache.get_with_metadata(
+                        exchange,
+                        symboltoken,
+                        timeframe,
+                        max_age_seconds=(
+                            self._cache_ttl_seconds(
+                                timeframe
+                            )
+                        ),
+                    )
+                )
+
+                if cached_result is not None:
+                    cached_response = (
+                        cached_result.get(
+                            "response"
+                        )
+                    )
+
+                    cache_metadata = (
+                        cached_result.get(
+                            "metadata"
+                        )
+                    )
+
+                    if (
+                        isinstance(
+                            cached_response,
+                            dict,
+                        )
+                        and isinstance(
+                            cache_metadata,
+                            dict,
+                        )
+                        and cached_response.get(
+                            "data"
+                        )
+                    ):
+                        self._capture_cache_status[
+                            capture_key
+                        ] = {
+                            **cache_metadata,
+                            "cache_status": "HIT",
+                            "captured": True,
+                            "provider_source": (
+                                cache_metadata.get(
+                                    "cache_source",
+                                    "ANGEL_ONE_HISTORICAL",
+                                )
+                            ),
+                            "requested_until": (
+                                requested_until
+                            ),
+                            "cache_write_status": (
+                                "NOT_REQUIRED"
+                            ),
+                        }
+
+                        return cached_response
+            else:
+                cached_response = self.cache.get(
+                    exchange,
+                    symboltoken,
+                    timeframe,
+                    max_age_seconds=(
+                        self._cache_ttl_seconds(
+                            timeframe
+                        )
+                    ),
+                )
+
+                if (
+                    isinstance(
+                        cached_response,
+                        dict,
+                    )
+                    and cached_response.get(
+                        "data"
+                    )
+                ):
+                    self._capture_cache_status[
+                        capture_key
+                    ] = {
+                        "cache_status": "HIT",
+                        "captured": True,
+                        "provider_source": (
+                            "HISTORICAL_CACHE"
+                        ),
+                        "requested_until": (
+                            requested_until
+                        ),
+                        "cache_write_status": (
+                            "NOT_REQUIRED"
+                        ),
+                    }
+
                     return cached_response
 
         response = self.client.get_historical_data(
@@ -148,15 +254,47 @@ class LiveMultiTimeframeData:
                 f"No candle data returned for {timeframe}."
             )
 
+        normalize_angel_candles(
+            candles
+        )
+
+        cache_write_status = "DISABLED"
+        cached_at_epoch_seconds = None
+
         if self.cache_enabled:
             self.cache.set(
                 exchange,
                 symboltoken,
                 timeframe,
                 response,
+                source="ANGEL_ONE_HISTORICAL",
             )
 
-        self._capture_cache_status[(exchange, symboltoken, timeframe)] = "LIVE"
+            cache_write_status = "WRITTEN"
+            cached_at_epoch_seconds = (
+                time.time()
+            )
+
+        self._capture_cache_status[
+            capture_key
+        ] = {
+            "cache_status": "MISS",
+            "captured": True,
+            "provider_source": (
+                "ANGEL_ONE_HISTORICAL"
+            ),
+            "requested_until": (
+                requested_until
+            ),
+            "cache_write_status": (
+                cache_write_status
+            ),
+            "cached_at_epoch_seconds": (
+                cached_at_epoch_seconds
+            ),
+            "age_seconds": 0.0,
+            "expired": False,
+        }
 
         return response
 
@@ -226,7 +364,36 @@ class LiveMultiTimeframeData:
                 raw = response.get("data", [])
                 rows[timeframe] = tuple(tuple(item) for item in raw)
                 dataframes[timeframe] = normalize_angel_candles(raw)
-                metadata[timeframe] = {"captured": True, "cache_status": self._capture_cache_status.get((exchange, symboltoken, timeframe), "UNKNOWN"), "requested_until": end_time.isoformat() if isinstance(end_time, datetime) else None}
+                capture_metadata = (
+                    self._capture_cache_status.get(
+                        (
+                            str(exchange).strip().upper(),
+                            str(symboltoken).strip(),
+                            timeframe,
+                        ),
+                        {
+                            "cache_status": "UNKNOWN",
+                            "captured": True,
+                            "provider_source": "UNKNOWN",
+                            "cache_write_status": "UNKNOWN",
+                        },
+                    )
+                )
+
+                metadata[timeframe] = {
+                    **capture_metadata,
+                    "captured": True,
+                    "requested_until": (
+                        end_time.isoformat()
+                        if isinstance(
+                            end_time,
+                            datetime,
+                        )
+                        else capture_metadata.get(
+                            "requested_until"
+                        )
+                    ),
+                }
             except Exception as exc:
                 rows[timeframe] = ()
                 metadata[timeframe] = {"captured": False, "error": type(exc).__name__}

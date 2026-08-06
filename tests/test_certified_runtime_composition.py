@@ -1,3 +1,4 @@
+from unittest.mock import MagicMock
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,6 +43,13 @@ def providers():
 
 
 def test_builds_exact_repository_owned_launcher(tmp_path, monkeypatch):
+    market_client = MagicMock()
+
+    monkeypatch.setattr(
+        "services.paper_orchestration.certified_runtime_composition.get_market_client",
+        lambda: market_client,
+    )
+
     monkeypatch.setattr("config.BROKER", "PAPER")
     monkeypatch.setattr("config.ENABLE_PAPER_TRADING", True)
     monkeypatch.setattr("config.ENABLE_LIVE_TRADING", False)
@@ -68,6 +76,13 @@ def test_builds_exact_repository_owned_launcher(tmp_path, monkeypatch):
 
 
 def test_composition_uses_separate_journals(tmp_path, monkeypatch):
+    market_client = MagicMock()
+
+    monkeypatch.setattr(
+        "services.paper_orchestration.certified_runtime_composition.get_market_client",
+        lambda: market_client,
+    )
+
     monkeypatch.setattr("config.BROKER", "PAPER")
     monkeypatch.setattr("config.ENABLE_PAPER_TRADING", True)
     monkeypatch.setattr("config.ENABLE_LIVE_TRADING", False)

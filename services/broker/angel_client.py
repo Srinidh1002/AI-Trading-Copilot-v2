@@ -1075,6 +1075,20 @@ class AngelMarketDataClient:
                 "contains no candle data."
             )
 
+        try:
+            from services.data_normalizer import (
+                normalize_angel_candles,
+            )
+
+            normalize_angel_candles(
+                data
+            )
+        except ValueError as exc:
+            raise RuntimeError(
+                "Angel One historical-data response "
+                "contains invalid candle rows."
+            ) from exc
+
         return response
 
     @staticmethod

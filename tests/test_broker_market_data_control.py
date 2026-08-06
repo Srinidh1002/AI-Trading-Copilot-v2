@@ -167,7 +167,7 @@ def test_rate_limited_client_waits_for_controller_cooldown_before_retry():
     )
     api.getCandleData.side_effect = [
         {"status": False, "message": "Access denied because of exceeding access rate"},
-        {"status": True, "data": [["2026-07-13 10:00", 1, 2, 1, 2, 10]]},
+        {"status": True, "data": [["2026-07-13T10:00:00+05:30", 1, 2, 1, 2, 10]]},
     ]
 
     response = client.get_historical_data(

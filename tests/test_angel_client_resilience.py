@@ -979,3 +979,119 @@ def test_get_ltp_rejects_invalid_price(
             "NIFTY",
             "99926000",
         )
+
+
+@pytest.mark.parametrize(
+    "rows",
+    (
+        [
+            [
+                "2026-08-06T09:15:00",
+                100,
+                101,
+                99,
+                100,
+                10,
+            ]
+        ],
+        [
+            [
+                "2026-08-06T09:15:00+05:30",
+                100,
+                99,
+                101,
+                100,
+                10,
+            ]
+        ],
+        [
+            [
+                "2026-08-06T09:15:00+05:30",
+                100,
+                101,
+                99,
+                100,
+                -1,
+            ]
+        ],
+        [
+            [
+                "2026-08-06T09:15:00+05:30",
+                100,
+                101,
+                99,
+                100,
+            ]
+        ],
+        [
+            [
+                "2026-08-06T09:20:00+05:30",
+                100,
+                101,
+                99,
+                100,
+                10,
+            ],
+            [
+                "2026-08-06T09:15:00+05:30",
+                100,
+                101,
+                99,
+                100,
+                10,
+            ],
+        ],
+    ),
+)
+def test_broker_historical_payload_rejects_invalid_candle_rows(
+    rows,
+):
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": rows,
+    }
+
+    with pytest.raises(
+        RuntimeError,
+        match="invalid candle rows",
+    ):
+        AngelMarketDataClient\
+            ._validate_historical_payload(
+                response
+            )
+
+
+def test_broker_historical_payload_accepts_strict_valid_rows():
+    response = {
+        "status": True,
+        "message": "SUCCESS",
+        "errorcode": "",
+        "data": [
+            [
+                "2026-08-06T09:15:00+05:30",
+                100,
+                101,
+                99,
+                100,
+                10,
+            ],
+            [
+                "2026-08-06T09:20:00+05:30",
+                101,
+                102,
+                100,
+                101,
+                20,
+            ],
+        ],
+    }
+
+    assert (
+        AngelMarketDataClient
+        ._validate_historical_payload(
+            response
+        )
+        is response
+    )
