@@ -159,3 +159,150 @@ def test_live_evaluator_rejects_cross_market_external_projection():
     import pytest
     with pytest.raises(ValueError, match="external context identity"):
         evaluate_captured_certified_market_candidate(captured_evidence=nifty, session_validation=session, policy_source=LiveCandidatePolicySourceV1.unavailable(), parent_cycle_id="test-parent-cycle", candidate_id="candidate:cross", observation_id="observation:cross", engines=build_default_live_canonical_evidence_engines(), external_context=shared.shared_external_context.for_market("SENSEX", "BSE"))
+
+
+def test_historical_rate_limit_is_retained_in_typed_unavailable_candidate():
+    from dataclasses import replace
+
+    value = captured(
+        "SENSEX",
+        "BSE",
+        80000.0,
+    )
+    value = replace(
+        value,
+        provider_blockers=(
+            "HISTORICAL-DATA_RATE_LIMITED",
+        ),
+    )
+
+    session = validate_session_timestamp(
+        symbol="SENSEX",
+        exchange="BSE",
+        market_timestamp=NOW,
+        evaluated_at=NOW,
+        validation_mode="LENIENT_ANALYSIS",
+        id_factory=lambda: "session:sensex-rate-limit",
+    )
+
+    result = evaluate_captured_certified_market_candidate(
+        captured_evidence=value,
+        session_validation=session,
+        policy_source=LiveCandidatePolicySourceV1.unavailable(),
+        parent_cycle_id="test-parent-rate-limit",
+        candidate_id="candidate:SENSEX:rate-limit",
+        observation_id="observation:SENSEX:rate-limit",
+        engines=build_default_live_canonical_evidence_engines(),
+    )
+
+    assert result.candidate.eligibility == "UNAVAILABLE"
+    assert (
+        "HISTORICAL-DATA_RATE_LIMITED"
+        in result.candidate.blockers
+    )
+    assert (
+        "CANDIDATE_COMPOSITION_FAILED"
+        not in result.candidate.blockers
+    )
+
+
+def test_parent_keeps_provider_degraded_child_completed_and_fail_closed():
+    from dataclasses import replace
+
+    nifty = captured(
+        "NIFTY",
+        "NSE",
+        25000.0,
+    )
+    sensex = captured(
+        "SENSEX",
+        "BSE",
+        80000.0,
+    )
+    sensex = replace(
+        sensex,
+        provider_blockers=(
+            "HISTORICAL-DATA_RATE_LIMITED",
+        ),
+    )
+
+    nifty_cycle = cycle(
+        "NIFTY",
+        "NSE",
+        nifty,
+    )
+    sensex_cycle = cycle(
+        "SENSEX",
+        "BSE",
+        sensex,
+    )
+
+    captures = {
+        nifty_cycle.observation_id: nifty,
+        sensex_cycle.observation_id: sensex,
+    }
+
+    analysis = Analysis()
+
+    def capture_reader(item):
+        return captures[item.observation_id]
+
+    readers = CertifiedLiveProviderReaders(
+        quote_reader=lambda *_: (
+            _ for _ in ()
+        ).throw(
+            AssertionError("provider call")
+        ),
+        analysis_pipeline=analysis,
+        option_decision_pipeline=Options(),
+        available_capital=10000.0,
+        candidate_reader=adapt_task8_live_candidate,
+        capture_reader=capture_reader,
+    )
+
+    parent = TwoMarketParentCycleInputV1(
+        "parent-rate-limit",
+        "decision-rate-limit",
+        "nifty-child-rate-limit",
+        "sensex-child-rate-limit",
+        nifty_cycle.observation_id,
+        sensex_cycle.observation_id,
+        NOW,
+        NOW,
+        TwoMarketDecisionPolicyV1(
+            180.0,
+            5.0,
+        ),
+    )
+
+    result = run_certified_two_market_parent_runtime(
+        parent,
+        nifty_cycle=nifty_cycle,
+        sensex_cycle=sensex_cycle,
+        readers=readers,
+    )
+
+    sensex_entry = result.entries[1]
+
+    assert (
+        sensex_entry.child.terminal_status
+        == "COMPLETED"
+    )
+    assert sensex_entry.outcome_reason == "INELIGIBLE"
+    assert sensex_entry.child.candidate is not None
+    assert (
+        sensex_entry.child.candidate.eligibility
+        == "UNAVAILABLE"
+    )
+    assert (
+        "HISTORICAL-DATA_RATE_LIMITED"
+        in sensex_entry.child.candidate.blockers
+    )
+    assert (
+        "HISTORICAL-DATA_RATE_LIMITED"
+        in sensex_entry.rationale
+    )
+    assert (
+        "CANDIDATE_COMPOSITION_FAILED"
+        not in sensex_entry.rationale
+    )

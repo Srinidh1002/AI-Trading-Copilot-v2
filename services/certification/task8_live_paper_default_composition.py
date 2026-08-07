@@ -94,6 +94,32 @@ def _git(*args: str) -> str:
     ).strip()
 
 
+def _validate_retained_task8_evaluations(
+    decision,
+    retained_evaluations,
+) -> None:
+    completed_observations = {
+        entry.child.observation_id
+        for entry in decision.entries
+        if entry.child.terminal_status == "COMPLETED"
+    }
+
+    retained_observations = set(retained_evaluations)
+    if retained_observations != completed_observations:
+        missing = sorted(
+            completed_observations
+            - retained_observations
+        )
+        unexpected = sorted(
+            retained_observations
+            - completed_observations
+        )
+        raise RuntimeError(
+            "Task 8 retained evaluation mismatch for "
+            f"completed children; missing={missing}, "
+            f"unexpected={unexpected}"
+        )
+
 def build_task8_dependencies() -> Task8CanaryDependenciesV1:
     """Build the production Task 8 PAPER-only dependency composition."""
 
@@ -399,25 +425,10 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
             )
         )
 
-        expected_observations = {
-            nifty_cycle.observation_id,
-            sensex_cycle.observation_id,
-        }
-
-        if set(retained_evaluations) != expected_observations:
-            missing = sorted(
-                expected_observations
-                - set(retained_evaluations)
-            )
-            unexpected = sorted(
-                set(retained_evaluations)
-                - expected_observations
-            )
-            raise RuntimeError(
-                "Task 8 did not retain exactly one evaluation "
-                f"per child; missing={missing}, "
-                f"unexpected={unexpected}"
-            )
+        _validate_retained_task8_evaluations(
+            decision,
+            retained_evaluations,
+        )
 
         selected_runtime_state["decision"] = decision
         selected_runtime_state["cycles"] = cycles

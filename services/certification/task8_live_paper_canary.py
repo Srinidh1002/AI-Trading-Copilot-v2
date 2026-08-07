@@ -147,6 +147,26 @@ def _cycle_inner_blockers(result: PaperOrchestrationCycleResultV1 | None) -> tup
     return tuple(dict.fromkeys(str(item) for item in failures if str(item)))
 
 
+def _freshness_evidenced(
+    decision: TwoMarketDecisionResultV1,
+) -> bool:
+    for entry in decision.entries:
+        if entry.outcome_reason == "STALE":
+            return False
+
+        child = entry.child
+        if child.terminal_status != "COMPLETED":
+            continue
+
+        candidate = child.candidate
+        if (
+            candidate is None
+            or candidate.market_timestamp > decision.completed_at
+        ):
+            return False
+
+    return True
+
 def run_task8_live_paper_canary(dependencies: Task8CanaryDependenciesV1) -> Task8CanaryReportV1:
     """Execute exactly one parent comparison and selected-only planning.
 
@@ -166,7 +186,7 @@ def run_task8_live_paper_canary(dependencies: Task8CanaryDependenciesV1) -> Task
     if type(decision) is not TwoMarketDecisionResultV1:
         raise TypeError("parent_cycle must return TwoMarketDecisionResultV1")
     nifty, sensex = decision.entries
-    freshness_ok = all(entry.child.terminal_status == "COMPLETED" and entry.child.candidate is not None and entry.child.candidate.market_timestamp <= decision.completed_at for entry in decision.entries)
+    freshness_ok = _freshness_evidenced(decision)
     skew_ok = not any(entry.outcome_reason == "SKEW_BLOCKED" for entry in decision.entries)
     if not freshness_ok:
         blockers.append("FRESHNESS_EVIDENCE_FAILED")

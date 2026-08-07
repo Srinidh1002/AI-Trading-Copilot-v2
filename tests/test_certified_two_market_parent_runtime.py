@@ -240,3 +240,94 @@ def test_runtime_bridge_has_no_four_market_planning_or_execution_dependencies():
         "time.sleep(",
     ):
         assert token not in source
+
+
+def test_analysis_rate_limit_retains_specific_failure_reason():
+    from services.broker.market_data_control import (
+        BrokerMarketDataRequestError,
+    )
+
+    nifty, sensex = cycles()
+
+    def factory(
+        cycle,
+        data,
+        analysis,
+        captured,
+        shared_context,
+        *,
+        parent_cycle_id,
+    ):
+        if cycle.underlying_symbol == "NIFTY":
+            raise BrokerMarketDataRequestError(
+                "historical-data",
+                1,
+                "rate_limited",
+                "sanitized provider failure",
+            )
+        return candidate_for(
+            cycle,
+            data,
+            score=70.0,
+        )
+
+    result = run_certified_two_market_parent_runtime(
+        parent(nifty, sensex),
+        nifty_cycle=nifty,
+        sensex_cycle=sensex,
+        readers=readers(factory),
+    )
+
+    failed = result.entries[0]
+
+    assert failed.child.terminal_status == "FAILED"
+    assert failed.outcome_reason == "CHILD_FAILED"
+    assert failed.child.blockers == (
+        "HISTORICAL-DATA_RATE_LIMITED",
+    )
+    assert failed.child.errors == (
+        "HISTORICAL-DATA_RATE_LIMITED",
+    )
+    assert failed.rationale == (
+        "HISTORICAL-DATA_RATE_LIMITED",
+    )
+
+
+def test_generic_analysis_failure_remains_candidate_composition_failed():
+    nifty, sensex = cycles()
+
+    def factory(
+        cycle,
+        data,
+        analysis,
+        captured,
+        shared_context,
+        *,
+        parent_cycle_id,
+    ):
+        if cycle.underlying_symbol == "NIFTY":
+            raise RuntimeError(
+                "INJECTED_CANDIDATE_COMPOSITION_FAILURE"
+            )
+        return candidate_for(
+            cycle,
+            data,
+            score=70.0,
+        )
+
+    result = run_certified_two_market_parent_runtime(
+        parent(nifty, sensex),
+        nifty_cycle=nifty,
+        sensex_cycle=sensex,
+        readers=readers(factory),
+    )
+
+    failed = result.entries[0]
+
+    assert failed.child.terminal_status == "FAILED"
+    assert failed.child.blockers == (
+        "CANDIDATE_COMPOSITION_FAILED",
+    )
+    assert failed.child.errors == (
+        "CANDIDATE_COMPOSITION_FAILED",
+    )

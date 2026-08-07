@@ -11,6 +11,10 @@ import time
 import os
 from datetime import datetime, timedelta
 
+from services.market_data_failure_evidence import (
+    classify_market_data_exception,
+)
+
 from services.broker.shared_client import (
     get_market_client,
 )
@@ -395,7 +399,15 @@ class LiveMultiTimeframeData:
                     ),
                 }
             except Exception as exc:
+                provider_throttled, failure_reason = (
+                    classify_market_data_exception(exc)
+                )
                 rows[timeframe] = ()
-                metadata[timeframe] = {"captured": False, "error": type(exc).__name__}
+                metadata[timeframe] = {
+                    "captured": False,
+                    "error": type(exc).__name__,
+                    "failure_reason": failure_reason,
+                    "provider_throttled": provider_throttled,
+                }
             if index < len(TIMEFRAME_CONFIG) - 1: time.sleep(1.25)
         return {"dataframes": dataframes, "rows_by_timeframe": rows, "cache_metadata": metadata}

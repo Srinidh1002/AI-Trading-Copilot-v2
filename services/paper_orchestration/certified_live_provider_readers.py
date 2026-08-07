@@ -390,6 +390,14 @@ class CertifiedLiveProviderReaders:
             self._shared_contexts[sensex_cycle.observation_id] = context
         return context
 
+    def captured_evidence_for(
+        self,
+        observation_id: str,
+    ) -> CertifiedLiveCapturedEvidenceV1 | None:
+        """Return an already-captured immutable observation without provider reads."""
+        with self._capture_lock:
+            return self._captures.get(observation_id)
+
     def shared_context_for(self, observation_id: str) -> CertifiedSharedMarketContextV1 | None:
         """Read-only evidence accessor for parent-only certification reports."""
         with self._capture_lock:

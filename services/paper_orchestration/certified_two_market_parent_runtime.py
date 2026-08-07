@@ -21,6 +21,10 @@ from services.paper_orchestration.certified_live_read_authorities import (
     CertifiedLiveDataAuthority,
     CertifiedSessionAuthority,
 )
+from services.market_data_failure_evidence import (
+    classify_market_data_exception,
+    is_market_data_failure_reason,
+)
 from services.paper_orchestration.two_market_parent_cycle_coordinator import (
     ChildEvaluationFailure,
     run_two_market_parent_cycle,
@@ -132,9 +136,52 @@ def run_certified_two_market_parent_runtime(
         except Exception as exc:
             raise ChildEvaluationFailure("session", "SESSION_EVIDENCE_UNAVAILABLE") from exc
         try:
-            analysis = analysis_authority(cycle, data, session, parent_cycle_id=parent.parent_cycle_id)
+            analysis = analysis_authority(
+                cycle,
+                data,
+                session,
+                parent_cycle_id=parent.parent_cycle_id,
+            )
         except Exception as exc:
-            raise ChildEvaluationFailure("candidate_composition", "CANDIDATE_COMPOSITION_FAILED") from exc
+            captured = readers.captured_evidence_for(
+                cycle.observation_id
+            )
+            captured_blockers = (
+                captured.provider_blockers
+                if captured is not None
+                else ()
+            )
+            provider_failure = next(
+                (
+                    blocker
+                    for blocker in captured_blockers
+                    if is_market_data_failure_reason(blocker)
+                ),
+                None,
+            )
+
+            if provider_failure is not None:
+                raise ChildEvaluationFailure(
+                    "candidate_composition",
+                    provider_failure,
+                ) from exc
+
+            provider_throttled, failure_reason = (
+                classify_market_data_exception(exc)
+            )
+            if (
+                provider_throttled
+                or failure_reason != "EXECUTION_EXCEPTION"
+            ):
+                raise ChildEvaluationFailure(
+                    "candidate_composition",
+                    failure_reason,
+                ) from exc
+
+            raise ChildEvaluationFailure(
+                "candidate_composition",
+                "CANDIDATE_COMPOSITION_FAILED",
+            ) from exc
         candidate = analysis.candidate
         if type(candidate) is not MarketAnalysisCandidateV1:
             raise RuntimeError(

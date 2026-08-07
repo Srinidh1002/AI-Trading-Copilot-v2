@@ -510,3 +510,58 @@ def test_invalid_live_candles_are_not_persisted():
         )
 
     assert cache.set_calls == []
+
+
+def test_live_capture_retains_historical_rate_limit_reason(
+    monkeypatch,
+):
+    from services.broker.market_data_control import (
+        BrokerMarketDataRequestError,
+    )
+
+    client = MagicMock()
+    client.get_historical_data.side_effect = (
+        BrokerMarketDataRequestError(
+            "historical-data",
+            1,
+            "rate_limited",
+            "sanitized provider failure",
+        )
+    )
+
+    service = LiveMultiTimeframeData(
+        client=client,
+        cache=make_cache(),
+    )
+
+    monkeypatch.setattr(
+        "services.market.live_multi_timeframe_data.TIMEFRAME_CONFIG",
+        {
+            "5m": {
+                "interval": "FIVE_MINUTE",
+                "lookback_days": 3,
+            }
+        },
+    )
+
+    result = service.fetch_all_with_capture(
+        exchange="NSE",
+        symboltoken="99926000",
+        end_time=datetime(
+            2026,
+            7,
+            10,
+            15,
+            30,
+        ),
+    )
+
+    metadata = result["cache_metadata"]["5m"]
+
+    assert result["rows_by_timeframe"]["5m"] == ()
+    assert metadata["captured"] is False
+    assert (
+        metadata["failure_reason"]
+        == "HISTORICAL-DATA_RATE_LIMITED"
+    )
+    assert metadata["provider_throttled"] is True

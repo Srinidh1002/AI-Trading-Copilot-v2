@@ -6,10 +6,12 @@ existing typed NIFTY/SENSEX coordinator fixtures, never a broker or network.
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from services.certification.task8_live_paper_canary import (
     Task8CanaryDependenciesV1,
+    _freshness_evidenced,
     run_task8_live_paper_canary,
 )
 from services.contracts.two_market_decision_policy_v1 import TwoMarketDecisionPolicyV1
@@ -82,3 +84,67 @@ def test_paper_safety_contract_rejects_broker_submission():
         assert "PAPER-only" in str(exc)
     else:
         raise AssertionError("broker submission must be rejected")
+
+def test_failed_child_does_not_become_freshness_failure():
+    decision = SimpleNamespace(
+        completed_at=NOW,
+        entries=(
+            SimpleNamespace(
+                outcome_reason="CHILD_FAILED",
+                child=SimpleNamespace(
+                    terminal_status="FAILED",
+                    candidate=None,
+                ),
+            ),
+            SimpleNamespace(
+                outcome_reason="INELIGIBLE",
+                child=SimpleNamespace(
+                    terminal_status="COMPLETED",
+                    candidate=SimpleNamespace(
+                        market_timestamp=NOW,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    assert _freshness_evidenced(decision) is True
+
+
+def test_explicit_stale_outcome_fails_freshness():
+    decision = SimpleNamespace(
+        completed_at=NOW,
+        entries=(
+            SimpleNamespace(
+                outcome_reason="STALE",
+                child=SimpleNamespace(
+                    terminal_status="COMPLETED",
+                    candidate=SimpleNamespace(
+                        market_timestamp=NOW,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    assert _freshness_evidenced(decision) is False
+
+
+def test_future_completed_candidate_fails_freshness():
+    future = NOW.replace(year=NOW.year + 1)
+    decision = SimpleNamespace(
+        completed_at=NOW,
+        entries=(
+            SimpleNamespace(
+                outcome_reason="INELIGIBLE",
+                child=SimpleNamespace(
+                    terminal_status="COMPLETED",
+                    candidate=SimpleNamespace(
+                        market_timestamp=future,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    assert _freshness_evidenced(decision) is False

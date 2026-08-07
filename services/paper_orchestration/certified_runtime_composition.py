@@ -421,7 +421,15 @@ def capture_certified_live_evidence(
     if not isinstance(rows, Mapping) or not isinstance(cache_metadata, Mapping):
         raise TypeError("invalid candle capture result")
     candle_blockers = tuple(
-        f"CANDLE_CAPTURE_{timeframe.upper()}_{str(info.get('error')).upper()}"
+        (
+            str(info.get("failure_reason"))
+            if str(info.get("failure_reason", "")).strip()
+            not in {"", "EXECUTION_EXCEPTION"}
+            else (
+                f"CANDLE_CAPTURE_{timeframe.upper()}_"
+                f"{str(info.get('error')).upper()}"
+            )
+        )
         for timeframe, info in cache_metadata.items()
         if isinstance(info, Mapping) and not info.get("captured", False)
     )
