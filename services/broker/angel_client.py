@@ -50,12 +50,31 @@ def _safe_provider_reason(value):
 
 
 def _suppress_smartapi_logs():
-    """SmartAPI may log request headers itself; keep it out of our console."""
-    for name in ("SmartApi", "smartapi", "smartapi-python"):
+    """Prevent SmartAPI SDK loggers from exposing request headers."""
+    logger_names = {
+        "SmartApi",
+        "smartapi",
+        "smartapi-python",
+        "smartConnect",
+        "SmartApi.smartConnect",
+        "logzero_default",
+    }
+
+    logger_names.update(
+        name
+        for name in logging.root.manager.loggerDict
+        if (
+            "smartapi" in name.lower()
+            or "smartconnect" in name.lower()
+        )
+    )
+
+    for name in logger_names:
         logger = logging.getLogger(name)
+        logger.handlers.clear()
         logger.disabled = True
         logger.propagate = False
-
+        logger.setLevel(logging.CRITICAL + 1)
 
 class AngelMarketDataClient:
     """
@@ -101,7 +120,7 @@ class AngelMarketDataClient:
         self.api = SmartConnect(
             api_key=ANGEL_API_KEY
         )
-
+        _suppress_smartapi_logs()
         self.max_retries = (
             max_retries
         )

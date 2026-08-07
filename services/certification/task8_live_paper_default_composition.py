@@ -6,7 +6,12 @@ from dataclasses import replace
 import os
 import subprocess
 from datetime import datetime, timezone
-
+from services.broker.shared_client import (
+    get_certification_market_client,
+)
+from services.broker.two_market_quote_service import (
+    fetch_canonical_two_market_full_quotes,
+)
 import config
 
 from services.analysis.live_market_candidate_evaluator import (
@@ -216,20 +221,46 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
     def parent_cycle():
         retained_evaluations.clear()
 
+        full_quotes = fetch_canonical_two_market_full_quotes(
+            get_certification_market_client(),
+            clock=bundle.clock,
+        )
+
         captures: dict[
             tuple[str, str],
             dict[str, object],
         ] = {}
 
-        for symbol, exchange in _SUPPORTED_MARKETS:
-            spec = market_spec_for(symbol, exchange)
-            captures[(symbol, exchange)] = (
-                bundle.quote_reader(
-                    spec.exchange,
-                    spec.symboltoken,
-                    spec.underlying_symbol,
+        for quote in full_quotes.ordered():
+            captures[
+                (
+                    quote.market,
+                    quote.exchange,
                 )
-            )
+            ] = {
+                "spot_price": quote.ltp,
+                "ltp": quote.ltp,
+                "market_timestamp": (
+                    quote.provider_timestamp
+                ),
+                "received_at": quote.received_at,
+                "timestamp_source": (
+                    "ANGEL_PROVIDER_"
+                    f"{quote.timestamp_field.upper()}"
+                ),
+                "provider_timestamp_field": (
+                    quote.timestamp_field
+                ),
+                "quote_age_seconds": (
+                    quote.quote_age_seconds
+                ),
+                "provider_trading_symbol": (
+                    quote.tradingsymbol
+                ),
+                "provider_response": dict(
+                    quote.payload
+                ),
+            }
 
         requested = datetime.now(timezone.utc)
         cycles = {}
