@@ -28,12 +28,16 @@ class AngelInstrumentMaster:
     """Read-only validated Angel instrument-master repository."""
 
     SOURCE_NAME = "ANGEL_ONE_OPENAPI_SCRIP_MASTER"
+    DEFAULT_MAXIMUM_MASTER_AGE_SECONDS = 24 * 60 * 60
 
     def __init__(
         self,
         session=None,
         *,
         time_function=time.time,
+        maximum_master_age_seconds=(
+            DEFAULT_MAXIMUM_MASTER_AGE_SECONDS
+        ),
     ):
         self.session = (
             session
@@ -46,7 +50,34 @@ class AngelInstrumentMaster:
                 "time_function must be callable."
             )
 
+        if (
+            isinstance(
+                maximum_master_age_seconds,
+                bool,
+            )
+            or not isinstance(
+                maximum_master_age_seconds,
+                (int, float),
+            )
+            or not math.isfinite(
+                float(
+                    maximum_master_age_seconds
+                )
+            )
+            or float(
+                maximum_master_age_seconds
+            )
+            <= 0
+        ):
+            raise ValueError(
+                "maximum_master_age_seconds must "
+                "be finite and greater than zero."
+            )
+
         self.time_function = time_function
+        self.maximum_master_age_seconds = float(
+            maximum_master_age_seconds
+        )
         self.instruments = None
         self._metadata = None
 
@@ -335,6 +366,72 @@ class AngelInstrumentMaster:
                 "be a list."
             )
 
+    def _assert_fresh(self):
+        """Reject stale or future provider-fetched instrument masters.
+
+        Explicitly injected fixtures have no provider metadata and are
+        preserved for deterministic tests.
+        """
+
+        if self._metadata is None:
+            return
+
+        if (
+            self._metadata.get("validated")
+            is not True
+        ):
+            raise RuntimeError(
+                "Angel instrument master is not validated."
+            )
+
+        fetched_at = self._metadata.get(
+            "fetched_at_epoch_seconds"
+        )
+
+        if (
+            isinstance(fetched_at, bool)
+            or not isinstance(
+                fetched_at,
+                (int, float),
+            )
+            or not math.isfinite(
+                float(fetched_at)
+            )
+        ):
+            raise RuntimeError(
+                "Angel instrument-master fetch "
+                "timestamp is invalid."
+            )
+
+        now = float(
+            self.time_function()
+        )
+
+        if not math.isfinite(now):
+            raise RuntimeError(
+                "Instrument-master current timestamp "
+                "must be finite."
+            )
+
+        age_seconds = (
+            now
+            - float(fetched_at)
+        )
+
+        if age_seconds < 0:
+            raise RuntimeError(
+                "Angel instrument-master fetch "
+                "timestamp is in the future."
+            )
+
+        if (
+            age_seconds
+            > self.maximum_master_age_seconds
+        ):
+            raise RuntimeError(
+                "Angel instrument master is stale."
+            )
+
     def get_metadata(self):
         """Return defensive instrument-master provenance metadata."""
 
@@ -366,6 +463,7 @@ class AngelInstrumentMaster:
         """Return strictly validated and deterministically ordered contracts."""
 
         self._ensure_loaded()
+        self._assert_fresh()
 
         underlying = str(
             underlying

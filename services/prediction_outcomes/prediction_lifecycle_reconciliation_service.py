@@ -7,6 +7,9 @@ from datetime import datetime
 from services.contracts.paper_trade_position_v1 import (
     PaperTradePositionV1,
 )
+from services.contracts.paper_trade_pnl_evidence_v1 import (
+    PaperTradePnlEvidenceV1,
+)
 from services.contracts.prediction_lifecycle_outcome_record_v1 import (
     PredictionLifecycleOutcomeRecordV1,
 )
@@ -33,6 +36,9 @@ _TERMINAL_REASON_BY_EVENT = {
     "SESSION_CLOSE": {"SESSION_CLOSE"},
     "EXPIRY": {"EXPIRY_CLOSE"},
     "T3": {"TARGET_3"},
+    "TERMINAL_T1": {"TARGET_1"},
+    "TERMINAL_T2": {"TARGET_2"},
+    "TERMINAL_T3": {"TARGET_3"},
     "EARLY_EXIT": {
         "INVALIDATION",
         "SESSION_CLOSE",
@@ -152,6 +158,7 @@ def _position_identity(
 
 def _fill_checks(
     position: PaperTradePositionV1,
+    pnl_evidence: PaperTradePnlEvidenceV1 | None,
 ) -> tuple[
     bool,
     bool,
@@ -209,14 +216,38 @@ def _fill_checks(
         * item.filled_quantity
         for item in fills
     )
-    costs = (
-        position.entry_fill.estimated_trading_cost
-        + sum(
-            item.estimated_trading_cost
-            for item in fills
+    if pnl_evidence is None:
+        costs = position.entry_fill.estimated_trading_cost + sum(item.estimated_trading_cost for item in fills)
+        expected_net = gross - costs
+        evidence_matches = True
+    else:
+        identity_matches = (
+            pnl_evidence.position_id == position.position_id
+            and pnl_evidence.trade_plan_id == position.trade_plan_id
+            and pnl_evidence.integrated_trade_plan_result_id == position.integrated_trade_plan_result_id
         )
-    )
-    expected_net = gross - costs
+        quantity_evidence_matches = (
+            pnl_evidence.initial_quantity == position.initial_quantity
+            and pnl_evidence.remaining_quantity == position.remaining_quantity
+            and pnl_evidence.exited_quantity == position.initial_quantity - position.remaining_quantity
+        )
+        cost_equation_matches = _close(
+            pnl_evidence.realized_net_pnl_delta,
+            pnl_evidence.realized_gross_pnl_delta - pnl_evidence.allocated_entry_cost_delta - pnl_evidence.exit_trading_cost_delta,
+        )
+        evidence_matches = (
+            identity_matches
+            and quantity_evidence_matches
+            and bool(fills)
+            and pnl_evidence.observation_id == fills[-1].observation_id
+            and pnl_evidence.calculated_at == fills[-1].filled_at
+            and _close(pnl_evidence.realized_gross_pnl_after, gross)
+            and _close(pnl_evidence.realized_net_pnl_after, position.realized_net_pnl)
+            and _close(pnl_evidence.unrealized_pnl_after, position.unrealized_pnl)
+            and _close(pnl_evidence.total_pnl_after, position.total_pnl)
+            and cost_equation_matches
+        )
+        expected_net = pnl_evidence.realized_net_pnl_after
 
     pnl_matches = (
         (
@@ -243,6 +274,7 @@ def _fill_checks(
                 position.total_pnl,
                 expected_net,
             )
+            and evidence_matches
         )
     )
 
@@ -351,6 +383,7 @@ def reconcile_prediction_lifecycle(
     outcome: PredictionLifecycleOutcomeRecordV1,
     position: PaperTradePositionV1 | None,
     reconciled_at: datetime,
+    pnl_evidence: PaperTradePnlEvidenceV1 | None = None,
 ) -> PredictionLifecycleReconciliationResultV1:
     """Reconcile prediction outcome with immutable PAPER position truth."""
 
@@ -366,6 +399,10 @@ def reconcile_prediction_lifecycle(
         and type(position) is not PaperTradePositionV1
     ):
         raise TypeError("position")
+    if pnl_evidence is not None and type(pnl_evidence) is not PaperTradePnlEvidenceV1:
+        raise TypeError("pnl_evidence")
+    if pnl_evidence is not None and position is None:
+        raise ValueError("pnl_evidence requires position")
 
     at = _aware(reconciled_at, "reconciled_at")
     identity_matches = _prediction_outcome_identity(
@@ -548,7 +585,7 @@ def reconcile_prediction_lifecycle(
         )
 
     sequence_matches, quantity_matches, pnl_matches, fills = (
-        _fill_checks(position)
+        _fill_checks(position, pnl_evidence)
     )
     entry_matches = (
         outcome.entry_occurred

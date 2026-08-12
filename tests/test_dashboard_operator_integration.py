@@ -144,10 +144,9 @@ def test_operator_view_model_takes_read_only_render_path(monkeypatch):
     assert rendered[0][1].view_model_id == "view-1"
 
 
-def test_missing_operator_view_preserves_existing_dashboard(monkeypatch):
+def test_missing_operator_view_uses_typed_task9_prepublication_shell(monkeypatch):
     fake_st = FakeStreamlit({})
-    plan_calls = []
-    operational_calls = []
+    rendered = []
 
     monkeypatch.setattr(dashboard_v2, "st", fake_st)
     monkeypatch.setattr(
@@ -155,36 +154,20 @@ def test_missing_operator_view_preserves_existing_dashboard(monkeypatch):
         "synchronize_registered_dashboard_publication",
         lambda state: None,
     )
-    monkeypatch.setattr(
-        dashboard_v2,
-        "get_plan_position_views",
-        lambda state: ("opportunity", "plan", "position"),
-    )
-    monkeypatch.setattr(
-        dashboard_v2,
-        "get_operational_views",
-        lambda state: ("options", "runtime"),
-    )
-    monkeypatch.setattr(
-        dashboard_v2,
-        "render_plan_and_position_dashboard",
-        lambda *args, **kwargs: plan_calls.append(
-            (args, kwargs)
-        ),
-    )
-    monkeypatch.setattr(
-        dashboard_v2,
-        "render_operational_dashboard",
-        lambda *args, **kwargs: operational_calls.append(
-            (args, kwargs)
-        ),
-    )
+    monkeypatch.setattr(dashboard_v2, "render_dashboard_navigation", lambda st: "🎯 Trade Now")
+    monkeypatch.setattr(dashboard_v2, "render_trade_now_dashboard", lambda *, st, view: rendered.append(view))
+    monkeypatch.setattr(dashboard_v2, "get_plan_position_views", lambda state: pytest.fail("legacy fallback must not run"))
+    monkeypatch.setattr(dashboard_v2, "get_operational_views", lambda state: pytest.fail("legacy fallback must not run"))
 
     dashboard_v2.home()
 
-    assert len(plan_calls) == 1
-    assert len(operational_calls) == 1
-    assert ("title", "🤖 AI Trading Copilot V2") in fake_st.events
+    assert len(rendered) == 1
+    shell = rendered[0]
+    assert shell.view_id == "task9-dashboard-shell-v1"
+    assert shell.market_session_state == "NOT_YET_PUBLISHED"
+    assert shell.broker_order_submission is False
+    assert shell.live_execution_eligible is False
+    assert ("title", "AI TRADING COPILOT") in fake_st.events
 
 
 def test_invalid_operator_publication_fails_closed(monkeypatch):

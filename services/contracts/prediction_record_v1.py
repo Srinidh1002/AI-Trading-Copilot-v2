@@ -11,7 +11,7 @@ from typing import ClassVar
 _IDENTITIES = {("NIFTY", "NSE"), ("SENSEX", "BSE")}
 _TERMINAL_STATUSES = {"COMPLETED", "FAILED", "UNAVAILABLE"}
 _DIRECTIONS = {"BULLISH", "BEARISH", "NEUTRAL", "UNAVAILABLE", "CONFLICTING"}
-_ACTIONS = {"CALL", "PUT", "WAIT"}
+_ACTIONS = {"CALL", "PUT", "WAIT", "NO_TRADE"}
 _ELIGIBILITY = {"ELIGIBLE", "INELIGIBLE", "UNAVAILABLE", "CONFLICTING"}
 _PARENT_DECISIONS = {"SELECTED", "NO_TRADE"}
 _OUTCOME_REASONS = {"SELECTED", "INELIGIBLE", "STALE", "SKEW_BLOCKED", "CHILD_FAILED", "LOWER_RANK", "TIE_BREAK_LOSS"}
@@ -77,6 +77,9 @@ class PredictionRecordV1:
     live_execution_eligible: bool = False
     broker_order_submission: bool = False
     schema_version: str = SCHEMA_VERSION
+    # The parent decision completion is the authoritative instant at which this
+    # prediction exists.  None is retained only for legacy persisted records.
+    observed_at: datetime | None = None
 
     def __post_init__(self) -> None:
         for name in ("prediction_id", "parent_cycle_id", "decision_result_id", "child_result_id", "observation_id"):
@@ -91,8 +94,12 @@ class PredictionRecordV1:
         completed = _aware(self.completed_at, "completed_at")
         received = _aware(self.received_at, "received_at")
         market = None if self.market_timestamp is None else _aware(self.market_timestamp, "market_timestamp")
+        observed = None if self.observed_at is None else _aware(self.observed_at, "observed_at")
         if requested > completed or requested > received or (market is not None and market > received):
             raise ValueError("timestamp ordering")
+        if observed is not None and observed < requested:
+            raise ValueError("observed_at must not precede requested_at")
+        object.__setattr__(self, "observed_at", observed)
 
         if (
             type(self.start_underlying_price) not in (int, float)
@@ -132,12 +139,14 @@ class PredictionRecordV1:
             raise ValueError("parent_selected coherence")
         if decision == "NO_TRADE" and self.parent_selected:
             raise ValueError("NO_TRADE cannot select prediction")
-        if action == "WAIT" and self.parent_selected:
-            raise ValueError("selected prediction cannot WAIT")
+        if action in {"WAIT", "NO_TRADE"} and self.parent_selected:
+            raise ValueError("selected prediction cannot be non-entry")
+        if action == "NO_TRADE" and decision != "NO_TRADE":
+            raise ValueError("NO_TRADE requires NO_TRADE parent decision")
         if status != "COMPLETED":
-            if self.candidate_id is not None or action != "WAIT" or any(value != 0.0 for value in (self.confidence, self.score, self.rank_value)):
+            if self.candidate_id is not None or action not in {"WAIT", "NO_TRADE"} or any(value != 0.0 for value in (self.confidence, self.score, self.rank_value)):
                 raise ValueError("non-completed prediction coherence")
-        if self.candidate_id is None and action != "WAIT":
+        if self.candidate_id is None and action not in {"WAIT", "NO_TRADE"}:
             raise ValueError("action requires candidate")
         if not self.eligible_for_comparison and self.rank_value != 0.0:
             raise ValueError("ineligible comparison must use zero rank")
@@ -149,8 +158,9 @@ class PredictionRecordV1:
 
     def to_dict(self) -> dict[str, object]:
         value = asdict(self)
-        for name in ("requested_at", "completed_at", "received_at"):
-            value[name] = getattr(self, name).isoformat()
+        for name in ("requested_at", "completed_at", "received_at", "observed_at"):
+            timestamp = getattr(self, name)
+            value[name] = timestamp.isoformat() if timestamp is not None else None
         value["market_timestamp"] = self.market_timestamp.isoformat() if self.market_timestamp else None
         for name in ("rationale", "blockers", "warnings", "errors"):
             value[name] = list(getattr(self, name))
@@ -177,6 +187,14 @@ def prediction_record_from_dict(value: object) -> PredictionRecordV1:
             payload[name] = datetime.fromisoformat(raw)
         except ValueError as exc:
             raise ValueError(f"invalid {name}") from exc
+    raw_observed = payload.get("observed_at")
+    if raw_observed is not None:
+        if type(raw_observed) is not str:
+            raise ValueError("observed_at must be an ISO datetime string or null")
+        try:
+            payload["observed_at"] = datetime.fromisoformat(raw_observed)
+        except ValueError as exc:
+            raise ValueError("invalid observed_at") from exc
     raw_market = payload.get("market_timestamp")
     if raw_market is not None:
         if type(raw_market) is not str:

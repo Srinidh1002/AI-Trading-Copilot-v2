@@ -325,3 +325,44 @@ def test_bundle_ranking_object_tamper_stops_before_p6():
         )
 
     assert calls == []
+def test_p6_identity_validation_uses_canonical_direction_property():
+    decision = selected_decision()
+    cycle = _selected_cycle(decision)
+    bundle = _bundle(decision)
+
+    canonical = (
+        bundle
+        .capital_quantity_input
+        .canonical_trade_plan_input
+    )
+
+    opportunity = type(
+        "MarketOpportunityWrapper",
+        (),
+        {
+            "trade_opportunity": type(
+                "TradeOpportunity",
+                (),
+                {
+                    "directional_bias": (
+                        canonical.direction
+                    ),
+                },
+            )(),
+        },
+    )()
+
+    object.__setattr__(
+        canonical,
+        "selected_market_opportunity",
+        opportunity,
+    )
+
+    result = _execute(
+        decision=decision,
+        cycle=cycle,
+        bundle=bundle,
+    )
+
+    assert result.status == "READY"
+    assert result.blockers == ()

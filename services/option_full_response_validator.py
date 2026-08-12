@@ -10,6 +10,10 @@ import math
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 
+from services.paper_orchestration.angel_provider_timestamp import (
+    validate_angel_quote_timestamp,
+)
+
 
 class OptionFullResponseValidationError(RuntimeError):
     """Raised when an Angel FULL option response fails closed."""
@@ -202,6 +206,9 @@ def validate_option_full_response(
     response: object,
     option_exchange: str,
     requested_tokens: Sequence[str],
+    received_at=None,
+    maximum_quote_age_seconds: float = 300.0,
+    maximum_future_skew_seconds: float = 5.0,
 ) -> dict[str, dict[str, object]]:
     """Validate exact one-for-one FULL coverage for requested option tokens."""
 
@@ -387,6 +394,39 @@ def validate_option_full_response(
         )
         copied["_validated_bid"] = bid
         copied["_validated_ask"] = ask
+
+        if received_at is not None:
+            try:
+                timestamp = validate_angel_quote_timestamp(
+                    data=item,
+                    received_at=received_at,
+                    maximum_age_seconds=(
+                        maximum_quote_age_seconds
+                    ),
+                    maximum_future_skew_seconds=(
+                        maximum_future_skew_seconds
+                    ),
+                )
+            except (
+                TypeError,
+                ValueError,
+            ) as exc:
+                raise OptionFullResponseValidationError(
+                    f"{identity[1]} option quote timestamp "
+                    f"is invalid: {exc}"
+                ) from exc
+
+            copied[
+                "_validated_provider_timestamp"
+            ] = timestamp.provider_timestamp
+
+            copied[
+                "_validated_provider_timestamp_field"
+            ] = timestamp.timestamp_field
+
+            copied[
+                "_validated_provider_timestamp_age_seconds"
+            ] = timestamp.age_seconds
 
         validated[identity] = copied
 

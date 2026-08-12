@@ -15,7 +15,8 @@ class MarketSessionPolicy:
     pre_open_order_entry_end: time = time(9, 8)
     pre_open_matching_end: time = time(9, 12)
     regular_open: time = time(9, 15)
-    regular_close: time = time(15, 30)
+    new_entry_cutoff: time = time(15, 20)
+    regular_close: time = time(15, 40)
     max_snapshot_age_seconds: float = 300.0
     max_future_skew_seconds: float = 5.0
 
@@ -33,6 +34,7 @@ class MarketSessionPolicy:
             self.pre_open_order_entry_end,
             self.pre_open_matching_end,
             self.regular_open,
+            self.new_entry_cutoff,
             self.regular_close,
         )
 
@@ -49,6 +51,7 @@ class MarketSessionPolicy:
             <= self.pre_open_order_entry_end
             <= self.pre_open_matching_end
             <= self.regular_open
+            < self.new_entry_cutoff
             < self.regular_close
         ):
             raise ValueError(

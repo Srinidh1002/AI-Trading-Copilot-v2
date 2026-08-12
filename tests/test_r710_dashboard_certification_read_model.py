@@ -92,7 +92,7 @@ def test_projection_exposes_certification_dashboard_metrics():
     assert view.maximum_drawdown_percent == (
         monthly.maximum_drawdown_percent
     )
-    assert view.official_prediction_count == 2
+    assert view.official_prediction_count == 1
     assert view.pending_prediction_count == 0
     assert view.excluded_prediction_count == 0
     assert view.closed_trade_count == 1
@@ -102,7 +102,8 @@ def test_projection_exposes_certification_dashboard_metrics():
     assert dict(view.action_distribution) == {
         "CALL": 1,
         "PUT": 0,
-        "WAIT": 1,
+        "WAIT": 0,
+        "NO_TRADE": 1,
     }
     assert {
         key: count
@@ -150,5 +151,8 @@ def test_projection_rejects_unrelated_period_reports():
             weekly_report=unrelated,
             monthly_report=monthly,
         )
+
+
+
 
 

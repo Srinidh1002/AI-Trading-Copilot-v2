@@ -118,9 +118,19 @@ class OptionChainEngine:
             flow_input
         )
 
+        option_exchange = {
+            "NIFTY": "NFO",
+            "SENSEX": "BFO",
+        }.get(
+            str(
+                underlying
+            ).strip().upper()
+        )
+
         greeks = self.greeks.analyze(
             underlying,
             expiry,
+            option_exchange,
         )
 
         current_snapshot = {

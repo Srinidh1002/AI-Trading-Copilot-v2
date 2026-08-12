@@ -196,6 +196,9 @@ def test_metadata_is_normalized_and_defensive():
 
     assert result.metadata == {
         "calendar_source": "EMPTY",
+        "new_entry_cutoff": "15:20",
+        "regular_close": "15:40",
+        "regular_new_entry_window_open": True,
         "validation_mode": "LENIENT_ANALYSIS",
     }
 

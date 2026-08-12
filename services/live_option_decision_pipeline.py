@@ -145,15 +145,12 @@ class LiveOptionDecisionPipeline:
             )
         )
 
-        self.completed_candle_service = (
-            completed_candle_service
-            if completed_candle_service is not None
-            else CompletedCandleService(
-                market_client=(
-                    shared_market_client
-                )
-            )
-        )
+        # Certified Task 8/9 calls only ``capture_option_inputs`` and must
+        # never construct the legacy full-decision historical fallback.
+        # Preserve the direct legacy API by creating it only if full analysis
+        # actually asks for a completed candle.
+        self._completed_candle_service = completed_candle_service
+        self._completed_candle_market_client = shared_market_client
 
         self.holiday_calendar = (
             holiday_calendar
@@ -166,6 +163,16 @@ class LiveOptionDecisionPipeline:
         self.persist_audit = bool(
             persist_audit
         )
+
+    @property
+    def completed_candle_service(self):
+        """Compatibility-only full-analysis fallback, constructed on demand."""
+
+        if self._completed_candle_service is None:
+            self._completed_candle_service = CompletedCandleService(
+                market_client=self._completed_candle_market_client,
+            )
+        return self._completed_candle_service
 
     def capture_option_inputs(
         self,
@@ -191,10 +198,33 @@ class LiveOptionDecisionPipeline:
             )
             if not isinstance(chain, Mapping):
                 raise TypeError("option chain builder must return a mapping")
-            blockers = ()
+            greek_capture = chain.get("greek_capture", {})
+            if not isinstance(greek_capture, Mapping):
+                greek_capture = {}
+            greek_state = str(greek_capture.get("state", "")).upper()
+            greek_reason = str(greek_capture.get("reason", "")).strip()
+            # NIFTY is provider-supported: a failed Greek capture must be
+            # visible to the certified candidate as unavailable evidence and
+            # cannot silently degrade into a trade.  SENSEX capability absence
+            # remains truthful but non-fabricated provider-capability evidence.
+            blockers = (
+                (greek_reason,)
+                if greek_state in {
+                    "PROVIDER_FAILURE",
+                    "DATA_UNAVAILABLE",
+                    "DATA_MALFORMED",
+                } and greek_reason
+                else ()
+            )
+            warnings = (
+                (greek_reason,)
+                if greek_state == "UNSUPPORTED_BY_PROVIDER" and greek_reason
+                else ()
+            )
         except Exception as exc:
             chain = {"underlying": underlying, "spot_price": spot_price, "contracts": ()}
             blockers = (f"OPTION_CAPTURE_{type(exc).__name__.upper()}",)
+            warnings = ()
         return LiveOptionCaptureResultV1(
             underlying_symbol=str(underlying).strip().upper(),
             option_exchange=str(option_exchange).strip().upper(),
@@ -202,7 +232,16 @@ class LiveOptionDecisionPipeline:
             provider_timestamp=provider_timestamp,
             evaluated_at=evaluated_at,
             blockers=blockers,
-            metadata={"capture_source": "LIVE_OPTION_CHAIN_BUILDER"},
+            warnings=warnings,
+            metadata={
+                "capture_source": "LIVE_OPTION_CHAIN_BUILDER",
+                "greek_capture": (
+                    dict(chain.get("greek_capture", {}))
+                    if isinstance(chain, Mapping)
+                    and isinstance(chain.get("greek_capture", {}), Mapping)
+                    else {}
+                ),
+            },
         )
 
     @staticmethod

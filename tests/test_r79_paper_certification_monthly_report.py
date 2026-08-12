@@ -48,11 +48,11 @@ def test_monthly_report_reconciles_daily_weekly_and_capital_curve():
     assert {
         item.confidence_band
         for item in report.confidence_calibration
-    } == {"HIGH", "LOW"}
+    } == {"HIGH"}
     assert {
         item.key
         for item in report.regime_contribution
-    } == {"RANGE", "TRENDING"}
+    } == {"TRENDING"}
     assert {
         item.key
         for item in report.engine_contribution
@@ -63,3 +63,5 @@ def test_monthly_report_reconciles_daily_weekly_and_capital_curve():
     } == {"LIQUIDITY", "MOMENTUM"}
     assert report.unresolved_audit == ()
     assert report.excluded_record_audit == ()
+
+

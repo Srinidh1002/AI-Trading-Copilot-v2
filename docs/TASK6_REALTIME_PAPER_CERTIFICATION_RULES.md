@@ -44,3 +44,13 @@ counted, all PAPER trades reconcile, no critical safety incident remains
 unresolved, daily and weekly reports exist, a monthly report exists when the
 calendar duration permits, the final full suite is green, and a final PAPER
 certification report is accepted.
+# Task 9 prediction lifecycle timing
+
+`task9-prediction-lifecycle-timing.v1` is the upstream authority for prediction
+lifecycle timing. At parent-decision projection, the persisted prediction
+`observed_at` is the completed parent-decision instant. CALL and PUT have a
+five-minute inclusive entry window and a fifteen-minute inclusive evaluation
+window. WAIT/NO_TRADE have no actionable entry duration (their entry end equals
+their start) and the same fifteen-minute evaluation window. Existing per-market
+session policy caps entry at the same-session new-entry cutoff and evaluation at
+the same-session close; no next-day window is manufactured.

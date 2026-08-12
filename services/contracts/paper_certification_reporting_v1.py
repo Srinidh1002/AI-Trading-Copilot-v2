@@ -10,7 +10,7 @@ from typing import ClassVar
 
 
 _MARKETS = {"NIFTY", "SENSEX"}
-_ACTIONS = {"CALL", "PUT", "WAIT"}
+_ACTIONS = {"CALL", "PUT", "WAIT", "NO_TRADE"}
 _REPORT_STATUSES = {"RECONCILED"}
 _INCIDENT_TYPES = {"DATA_PROVIDER", "LIFECYCLE", "SYSTEM"}
 _SEVERITIES = {"INFO", "WARNING", "ERROR", "CRITICAL"}
@@ -787,6 +787,7 @@ class PaperCertificationDailyReportV1:
     ending_capital: float
     source_prediction_count: int
     official_prediction_count: int
+    completed_non_trade_count: int
     completed_outcome_count: int
     pending_outcome_count: int
     excluded_prediction_count: int
@@ -847,6 +848,7 @@ class PaperCertificationDailyReportV1:
         for name in (
             "source_prediction_count",
             "official_prediction_count",
+            "completed_non_trade_count",
             "completed_outcome_count",
             "pending_outcome_count",
             "excluded_prediction_count",
@@ -865,6 +867,7 @@ class PaperCertificationDailyReportV1:
 
         if (
             self.official_prediction_count
+            + self.completed_non_trade_count
             + self.pending_outcome_count
             + self.excluded_prediction_count
             != self.source_prediction_count
@@ -922,6 +925,12 @@ class PaperCertificationDailyReportV1:
             if item.officially_counted
         ) != self.official_prediction_count:
             raise ValueError("daily official count mismatch")
+        if sum(
+            item.counting_status in {"INCLUDED_NON_TRADE", "INCLUDED_WAIT"}
+            and item.action in {"NO_TRADE", "WAIT"}
+            for item in self.prediction_facts
+        ) != self.completed_non_trade_count:
+            raise ValueError("daily completed non-trade count mismatch")
         if len(self.excluded_audit) != self.excluded_prediction_count:
             raise ValueError("daily excluded audit mismatch")
         if len(self.unresolved_audit) != self.pending_outcome_count:
@@ -1022,6 +1031,7 @@ class PaperCertificationDailyReportV1:
             "ending_capital": self.ending_capital,
             "source_prediction_count": self.source_prediction_count,
             "official_prediction_count": self.official_prediction_count,
+            "completed_non_trade_count": self.completed_non_trade_count,
             "completed_outcome_count": self.completed_outcome_count,
             "pending_outcome_count": self.pending_outcome_count,
             "excluded_prediction_count": self.excluded_prediction_count,

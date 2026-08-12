@@ -19,6 +19,9 @@ _EVENT_TYPES = {
     "T1",
     "T2",
     "T3",
+    "TERMINAL_T1",
+    "TERMINAL_T2",
+    "TERMINAL_T3",
     "STOP",
     "EARLY_EXIT",
     "INVALIDATED",
@@ -205,7 +208,7 @@ class PredictionObservationV1:
                 )
 
         if (
-            event in {"ENTRY", "T1", "T2", "T3", "STOP", "EARLY_EXIT"}
+            event in {"ENTRY", "T1", "T2", "T3", "TERMINAL_T1", "TERMINAL_T2", "TERMINAL_T3", "STOP", "EARLY_EXIT"}
             and self.option_premium is None
         ):
             raise ValueError(

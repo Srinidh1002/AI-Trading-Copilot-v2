@@ -1,6 +1,7 @@
 """Repository-default Task 8 live PAPER composition."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import replace
 
 import os
@@ -19,6 +20,15 @@ from services.analysis.live_market_candidate_evaluator import (
 )
 from services.certification.task8_live_candidate_adapter import (
     build_task8_retaining_candidate_reader,
+)
+from services.certification.task9_cycle_market_evidence_handoff import (
+    Task9CycleMarketEvidenceV1,
+)
+from services.certification.task9_live_spot_quote_projection import (
+    project_task9_live_spot_quote_with_quality,
+)
+from services.certification.task9_prediction_lifecycle_timing import (
+    resolve_prediction_lifecycle_window,
 )
 from services.certification.task8_live_paper_canary import (
     Task8CanaryDependenciesV1,
@@ -41,6 +51,7 @@ from services.contracts.two_market_parent_cycle_input_v1 import (
 from services.market_session.validator import (
     validate_session_timestamp,
 )
+from services.market_session.policies import MarketSessionPolicy
 from services.paper_orchestration.authoritative_two_market_entry_point import (
     run_authoritative_two_market_parent_cycle,
 )
@@ -85,6 +96,38 @@ _SUPPORTED_MARKETS = (
     ("SENSEX", "BSE"),
 )
 
+_TASK9_PROVIDER_DIAGNOSTIC_FIELDS = (
+    "exchange",
+    "timeframe",
+    "provider_attempted",
+    "provider_result",
+    "failure_reason",
+)
+
+
+def _retain_task9_request_diagnostics(
+    retained_request_diagnostics,
+    *,
+    observation_id,
+    capture,
+) -> None:
+    """Retain only typed/sanitized historical provider diagnostics by observation."""
+
+    metadata = getattr(capture, "cache_metadata", {})
+    diagnostics = (
+        metadata.get("request_diagnostics", {})
+        if isinstance(metadata, Mapping)
+        else {}
+    )
+    retained_request_diagnostics[observation_id] = {
+        key: {
+            field: value.get(field)
+            for field in _TASK9_PROVIDER_DIAGNOSTIC_FIELDS
+        }
+        for key, value in diagnostics.items()
+        if isinstance(value, Mapping)
+    } if isinstance(diagnostics, Mapping) else {}
+
 
 def _git(*args: str) -> str:
     return subprocess.check_output(
@@ -120,7 +163,120 @@ def _validate_retained_task8_evaluations(
             f"unexpected={unexpected}"
         )
 
-def build_task8_dependencies() -> Task8CanaryDependenciesV1:
+
+def _emit_task9_cycle_market_evidence(
+    *,
+    sink,
+    cycles,
+    evaluations,
+    predictions,
+    lifecycle_windows,
+    selected_market,
+    selected_planning,
+    selected_paper_observation,
+    retained_request_diagnostics=None,
+) -> None:
+    """Emit pure Task 9 evidence from exact retained parent-cycle objects."""
+
+    for identity in _SUPPORTED_MARKETS:
+        retained_cycle = cycles.get(identity)
+        if retained_cycle is None:
+            raise RuntimeError("retained cycle missing for Task 9 evidence")
+        retained_evaluation = evaluations.get(
+            retained_cycle.observation_id
+        )
+        retained_prediction = predictions.get(identity)
+        lifecycle_window = lifecycle_windows.get(identity)
+        if retained_prediction is None:
+            raise RuntimeError(
+                "retained prediction missing for Task 9 evidence"
+            )
+        if lifecycle_window is None:
+            raise RuntimeError(
+                "retained lifecycle window missing for Task 9 evidence"
+            )
+
+        if retained_prediction.observation_id != retained_cycle.observation_id:
+            raise RuntimeError("retained prediction/cycle observation mismatch")
+
+        if retained_prediction.terminal_status == "COMPLETED":
+            if type(retained_evaluation) is not (
+                LiveMarketCandidateEvaluationResultV1
+            ):
+                raise RuntimeError(
+                    "retained evaluation missing for Task 9 evidence"
+                )
+            market_quote, data_quality = (
+                project_task9_live_spot_quote_with_quality(
+                    spot=retained_evaluation.observation.spot,
+                )
+            )
+        else:
+            if retained_prediction.terminal_status not in {
+                "FAILED",
+                "UNAVAILABLE",
+            }:
+                raise RuntimeError("unsupported retained prediction status")
+            if retained_evaluation is not None:
+                raise RuntimeError(
+                    "failed Task 8 child unexpectedly retained evaluation"
+                )
+            market_quote = None
+            data_quality = None
+
+        incidents = []
+        diagnostics = (retained_request_diagnostics or {}).get(retained_cycle.observation_id, {})
+        for timeframe, item in (
+            diagnostics.items()
+            if isinstance(diagnostics, Mapping)
+            else ()
+        ):
+            if (
+                isinstance(item, Mapping)
+                and timeframe in {"5m", "15m", "1h", "1d"}
+                and item.get("timeframe") == timeframe
+                and item.get("provider_attempted") is True
+                and item.get("provider_result") == "RATE_LIMITED"
+                and item.get("failure_reason")
+                == "HISTORICAL-DATA_RATE_LIMITED"
+            ):
+                from services.certification.task9_cycle_market_evidence_handoff import Task9ProviderIncidentV1
+                incidents.append(Task9ProviderIncidentV1(f"task9-provider-incident:{retained_cycle.observation_id}:{identity[1]}:historical-data:{timeframe}:HISTORICAL-DATA_RATE_LIMITED", "historical-data", identity[1], timeframe, "HISTORICAL-DATA_RATE_LIMITED", "RATE_LIMITED", True))
+        sink(
+            Task9CycleMarketEvidenceV1(
+                prediction=retained_prediction,
+                cycle=retained_cycle,
+                evaluation=retained_evaluation,
+                market_quote=market_quote,
+                data_quality=data_quality,
+                lifecycle_window=lifecycle_window,
+                selected_planning=(
+                    selected_planning
+                    if (
+                        retained_prediction.terminal_status == "COMPLETED"
+                        and identity == selected_market
+                    )
+                    else None
+                ),
+                paper_observation=(
+                    selected_paper_observation
+                    if (
+                        retained_prediction.terminal_status == "COMPLETED"
+                        and identity == selected_market
+                    )
+                    else None
+                ),
+                provider_incidents=tuple({item.incident_id: item for item in incidents}.values()),
+            )
+        )
+
+
+def build_task8_dependencies(
+    *,
+    task9_cycle_evidence_sink=None,
+    historical_request_interval_seconds=None,
+    precomposed_timeframe_provider_factory=None,
+) -> Task8CanaryDependenciesV1:
     """Build the production Task 8 PAPER-only dependency composition."""
 
     validate_repository_paper_safety(
@@ -132,7 +288,14 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         broker_order_submission=False,
     )
 
-    providers = build_default_runtime_providers()
+    if task9_cycle_evidence_sink is not None and not callable(task9_cycle_evidence_sink):
+        raise TypeError("task9_cycle_evidence_sink")
+    provider_kwargs = {}
+    if historical_request_interval_seconds is not None:
+        provider_kwargs["historical_request_interval_seconds"] = (
+            historical_request_interval_seconds
+        )
+    providers = build_default_runtime_providers(**provider_kwargs)
 
     parent_journal_adapter = (
         build_certified_parent_journal_adapter(
@@ -145,6 +308,26 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         str,
         LiveMarketCandidateEvaluationResultV1,
     ] = {}
+    retained_request_diagnostics: dict[str, object] = {}
+    retained_predictions: dict[tuple[str, str], object] = {}
+    retained_lifecycle_windows: dict[tuple[str, str], object] = {}
+
+    def retain_predictions(records) -> None:
+        if type(records) is not tuple or len(records) != 2:
+            raise ValueError("authoritative parent must retain two predictions")
+        retained_predictions.clear()
+        retained_lifecycle_windows.clear()
+        for item in records:
+            identity = (item.underlying_symbol, item.exchange)
+            if identity in retained_predictions:
+                raise ValueError("duplicate authoritative prediction market")
+            retained_predictions[identity] = item
+            retained_lifecycle_windows[identity] = (
+                resolve_prediction_lifecycle_window(
+                    prediction_record=item,
+                    session_policy=MarketSessionPolicy(),
+                )
+            )
 
     def retain_evaluation(
         observation_id: str,
@@ -180,6 +363,20 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
     )
 
     data_service = bundle.analysis_pipeline.data_service
+    precomposed_timeframe_provider = (
+        precomposed_timeframe_provider_factory(data_service)
+        if precomposed_timeframe_provider_factory is not None
+        else None
+    )
+
+    def capture_and_retain(cycle, *, candle_cutoff=None):
+        capture = capture_certified_live_evidence(cycle_input=cycle, data_service=data_service, option_decision_pipeline=bundle.option_decision_pipeline, candle_cutoff=candle_cutoff, precomposed_timeframe_provider=precomposed_timeframe_provider)
+        _retain_task9_request_diagnostics(
+            retained_request_diagnostics,
+            observation_id=cycle.observation_id,
+            capture=capture,
+        )
+        return capture
 
     external_context_authority = (
         ExternalContextSourceAuthority(
@@ -197,17 +394,7 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         ),
         available_capital=10_000.0,
         candidate_reader=retaining_candidate_reader,
-        capture_reader=(
-            lambda cycle, *, candle_cutoff=None:
-            capture_certified_live_evidence(
-                cycle_input=cycle,
-                data_service=data_service,
-                option_decision_pipeline=(
-                    bundle.option_decision_pipeline
-                ),
-                candle_cutoff=candle_cutoff,
-            )
-        ),
+        capture_reader=capture_and_retain,
         external_context_reader=external_context_authority,
     )
 
@@ -246,6 +433,7 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
 
     def parent_cycle():
         retained_evaluations.clear()
+        retained_request_diagnostics.clear()
 
         full_quotes = fetch_canonical_two_market_full_quotes(
             get_certification_market_client(),
@@ -422,6 +610,7 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
                     parent_journal_adapter
                 ),
                 prediction_ledger=prediction_ledger,
+                prediction_records_sink=retain_predictions,
             )
         )
 
@@ -435,6 +624,26 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         selected_runtime_state["evaluations"] = dict(
             retained_evaluations
         )
+        selected_runtime_state["predictions"] = dict(retained_predictions)
+        selected_runtime_state["lifecycle_windows"] = dict(
+            retained_lifecycle_windows
+        )
+
+        if (
+            task9_cycle_evidence_sink is not None
+            and decision.selected_market is None
+        ):
+            _emit_task9_cycle_market_evidence(
+                sink=task9_cycle_evidence_sink,
+                cycles=cycles,
+                evaluations=retained_evaluations,
+                predictions=retained_predictions,
+                lifecycle_windows=retained_lifecycle_windows,
+                selected_market=None,
+                selected_planning=None,
+                selected_paper_observation=None,
+                retained_request_diagnostics=retained_request_diagnostics,
+            )
 
         return decision
 
@@ -446,11 +655,17 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         evaluations = selected_runtime_state.get(
             "evaluations"
         )
+        predictions = selected_runtime_state.get("predictions")
+        lifecycle_windows = selected_runtime_state.get(
+            "lifecycle_windows"
+        )
 
         if (
             decision is None
             or not isinstance(cycles, dict)
             or not isinstance(evaluations, dict)
+            or not isinstance(predictions, dict)
+            or not isinstance(lifecycle_windows, dict)
         ):
             raise RuntimeError(
                 "authoritative parent cycle must run "
@@ -472,6 +687,9 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
         evaluation = evaluations.get(
             selected_cycle.observation_id
         )
+        prediction = predictions.get(market)
+        if prediction is None:
+            raise RuntimeError("selected exact prediction was not retained")
         if type(evaluation) is not (
             LiveMarketCandidateEvaluationResultV1
         ):
@@ -512,7 +730,12 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
             )
         )
 
-        return execute_task8_selected_market_lifecycle(
+        retained_paper_observation = []
+        def retain_paper_observation(observation):
+            retained_paper_observation.append(observation)
+            selected_runtime_state["paper_observation"] = observation
+
+        result = execute_task8_selected_market_lifecycle(
             selected_cycle=selected_cycle,
             selected_planning=selected_planning,
             available_capital=readers.available_capital,
@@ -524,7 +747,26 @@ def build_task8_dependencies() -> Task8CanaryDependenciesV1:
             portfolio_id=(
                 "task8-certified-paper-portfolio"
             ),
+            prediction_id=prediction.prediction_id,
+            task9_observation_sink=retain_paper_observation,
         )
+        if task9_cycle_evidence_sink is not None:
+            if len(retained_paper_observation) != 1:
+                raise RuntimeError("selected PAPER observation was not retained")
+            _emit_task9_cycle_market_evidence(
+                sink=task9_cycle_evidence_sink,
+                cycles=cycles,
+                evaluations=evaluations,
+                predictions=predictions,
+                lifecycle_windows=lifecycle_windows,
+                selected_market=market,
+                selected_planning=selected_planning,
+                selected_paper_observation=(
+                    retained_paper_observation[0]
+                ),
+                retained_request_diagnostics=retained_request_diagnostics,
+            )
+        return result
 
     return Task8CanaryDependenciesV1(
         branch=_git("branch", "--show-current"),

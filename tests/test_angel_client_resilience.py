@@ -5,6 +5,9 @@ import pytest
 from services.broker.angel_client import (
     AngelMarketDataClient,
 )
+from services.broker.market_data_control import (
+    BrokerMarketDataRequestError,
+)
 
 
 def make_client(
@@ -147,6 +150,38 @@ def test_repeated_timeout_fails_safely():
     assert (
         api.getMarketData.call_count
         == 3
+    )
+
+
+@pytest.mark.parametrize(
+    ("response", "expected_kind"),
+    (
+        ({"status": False, "errorcode": "AG8002", "message": "Token expired"}, "AUTH_EXPIRED"),
+        ({"status": False, "errorcode": "AB1004", "message": "Temporary failure"}, "PROVIDER_TRANSIENT"),
+        ({"status": False, "statusCode": 403, "message": "Forbidden"}, "UNKNOWN_PROVIDER_ERROR"),
+    ),
+)
+def test_final_provider_response_failure_retains_normalized_kind(response, expected_kind):
+    client, api = make_client(max_retries=1)
+    if expected_kind == "AUTH_EXPIRED":
+        api.getMarketData.side_effect = [response, response]
+
+        def fresh_login(*, force=False):
+            client.authenticated = True
+            client.session = {"status": True}
+            return client.session
+
+        client.login = MagicMock(side_effect=fresh_login)
+    else:
+        api.getMarketData.return_value = response
+
+    with pytest.raises(BrokerMarketDataRequestError) as raised:
+        client.get_market_data("LTP", {"NSE": ["99926000"]})
+
+    assert raised.value.failure["failure_type"] == "provider_failure"
+    assert raised.value.failure["provider_failure_kind"] == expected_kind
+    assert api.getMarketData.call_count == (
+        2 if expected_kind == "AUTH_EXPIRED" else 1
     )
 
 
@@ -294,9 +329,8 @@ def test_failed_api_response_is_rejected():
     }
 
     with pytest.raises(
-        RuntimeError,
-        match="Invalid request",
-    ):
+        BrokerMarketDataRequestError,
+    ) as exc_info:
         client.get_market_data(
             mode="LTP",
             exchange_tokens={
@@ -305,6 +339,15 @@ def test_failed_api_response_is_rejected():
                 ]
             },
         )
+
+    failure = exc_info.value.failure
+    assert failure["request_name"] == "market-data"
+    assert failure["attempts"] == 1
+    assert failure["failure_type"] == "provider_failure"
+    assert failure["provider_failure_kind"] == "UNKNOWN_PROVIDER_ERROR"
+    assert "Invalid request" not in str(exc_info.value)
+    assert "Invalid request" not in failure["detail"]
+    assert "Provider returned an unsuccessful response." in failure["detail"]
 
 
 def test_invalid_market_data_mode():
@@ -408,12 +451,6 @@ def test_invalid_backoff_multiplier():
             "errorCode": "AB1021",
             "data": None,
         },
-        {
-            "status": False,
-            "message": "HTTP 403 Forbidden",
-            "errorcode": "",
-            "data": None,
-        },
     ),
 )
 def test_documented_angel_rate_limit_responses_are_classified(
@@ -452,7 +489,7 @@ class _ForbiddenException(RuntimeError):
     status_code = 403
 
 
-def test_http_403_exception_is_classified_as_rate_limit():
+def test_bare_http_403_exception_is_not_assumed_to_be_rate_limit():
     exception = _ForbiddenException(
         "Access denied"
     )
@@ -462,7 +499,7 @@ def test_http_403_exception_is_classified_as_rate_limit():
         ._is_rate_limit_error(
             exception=exception,
         )
-        is True
+        is False
     )
 
 
@@ -620,6 +657,24 @@ def test_success_response_without_data_is_rejected(
         )
 
 
+@pytest.mark.parametrize("data", (None, "null", " NULL "))
+def test_success_response_with_documented_null_data_is_rejected_when_required(data):
+    with pytest.raises(RuntimeError, match="without usable data"):
+        AngelMarketDataClient._validate_response(
+            {"status": True, "data": data},
+            "market-data",
+        )
+
+
+def test_mutation_style_null_data_can_remain_valid_when_endpoint_allows_it():
+    response = {"status": True, "data": None}
+    assert AngelMarketDataClient._validate_response(
+        response,
+        "mutation",
+        require_data=False,
+    ) is response
+
+
 @pytest.mark.parametrize(
     "error_code",
     (
@@ -766,6 +821,44 @@ def test_historical_payload_requires_non_empty_list(
             ._validate_historical_payload(
                 response
             )
+
+
+@pytest.mark.parametrize(
+    ("data", "expected_failure_type"),
+    (
+        ({}, "invalid_response"),
+        ([], "empty_data"),
+        ([["not-a-timestamp", 100, 101, 99, 100, 1]], "normalization_failed"),
+    ),
+)
+def test_historical_payload_failures_are_typed(data, expected_failure_type):
+    with pytest.raises(BrokerMarketDataRequestError) as raised:
+        AngelMarketDataClient._validate_historical_payload(
+            {"status": True, "data": data}
+        )
+
+    assert raised.value.failure["failure_type"] == expected_failure_type
+
+
+@pytest.mark.parametrize(
+    ("data", "expected_failure_type"),
+    (
+        ({}, "invalid_response"),
+        ([], "empty_data"),
+        (["invalid-row"], "normalization_failed"),
+    ),
+)
+def test_historical_endpoint_propagates_typed_payload_failure(data, expected_failure_type):
+    client, api = make_client(max_retries=1)
+    api.getCandleData.return_value = {"status": True, "data": data}
+
+    with pytest.raises(BrokerMarketDataRequestError) as raised:
+        client.get_historical_data(
+            "NSE", "99926000", "FIVE_MINUTE", "2026-08-10 12:55", "2026-08-10 13:00"
+        )
+
+    assert raised.value.failure["failure_type"] == expected_failure_type
+    api.getCandleData.assert_called_once()
 
 
 def test_historical_payload_accepts_candle_rows():

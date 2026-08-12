@@ -39,6 +39,15 @@ class DashboardDecisionHistoryRowV1:
             _optional_number(self.reference_price, "reference_price"),
         )
 
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "source_id": self.source_id,
+            "observed_at": self.observed_at.isoformat(),
+            "action": self.action,
+            "confidence": self.confidence,
+            "reference_price": self.reference_price,
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class DashboardDecisionHistoryViewV1:
@@ -75,3 +84,15 @@ class DashboardDecisionHistoryViewV1:
             "warnings",
             _diag(self.warnings, "warnings"),
         )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "source_id": self.source_id,
+            "source_updated_at": self.source_updated_at.isoformat(),
+            "rows": [item.to_dict() for item in self.rows],
+            "is_truncated": self.is_truncated,
+            "warnings": list(self.warnings),
+            "execution_mode": self.execution_mode,
+            "live_execution_eligible": self.live_execution_eligible,
+            "schema_version": self.schema_version,
+        }

@@ -360,11 +360,30 @@ def build_daily(
     include_excluded=False,
 ):
     call = call_prediction()
-    wait = wait_prediction()
+    no_trade = replace(
+        wait_prediction(),
+        prediction_id="prediction:parent-no-trade:NIFTY:NSE",
+        parent_cycle_id="parent-no-trade",
+        decision_result_id="decision-no-trade",
+        child_result_id="child-no-trade",
+        observation_id="observation-no-trade",
+        predicted_action="NO_TRADE",
+    )
     replay = excluded_prediction() if include_excluded else None
     position = stopped_position()
     call_result = call_outcome(call, position)
-    wait_result = wait_outcome(wait)
+    no_trade_result = replace(
+        wait_outcome(no_trade),
+        outcome_id="lifecycle-outcome-no-trade",
+    )
+    no_trade_decision = replace(
+        counting_decision(no_trade, "b"),
+        status="INCLUDED_NON_TRADE",
+        countable=False,
+        pending=False,
+        outcome_id=no_trade_result.outcome_id,
+        reason_codes=(),
+    )
 
     contexts = (
         PredictionCertificationAnalyticsContextV1(
@@ -385,7 +404,7 @@ def build_daily(
             ),
         ),
         PredictionCertificationAnalyticsContextV1(
-            prediction_id=wait.prediction_id,
+            prediction_id=no_trade.prediction_id,
             confidence_band="LOW",
             regime="RANGE",
             time_of_day="OPENING",
@@ -401,26 +420,26 @@ def build_daily(
         generated_at=NOW + timedelta(hours=1),
         starting_capital=starting_capital,
         predictions=(
-            (call, wait, replay)
+            (call, no_trade, replay)
             if replay is not None
-            else (call, wait)
+            else (call, no_trade)
         ),
         counting_decisions=(
             (
                 counting_decision(call, "a"),
-                counting_decision(wait, "b"),
+                no_trade_decision,
                 excluded_counting_decision(replay),
             )
             if replay is not None
             else (
                 counting_decision(call, "a"),
-                counting_decision(wait, "b"),
+                no_trade_decision,
             )
         ),
-        lifecycle_outcomes=(call_result, wait_result),
+        lifecycle_outcomes=(call_result, no_trade_result),
         reconciliations=(
             reconciliation(call, call_result, position),
-            reconciliation(wait, wait_result),
+            reconciliation(no_trade, no_trade_result),
         ),
         positions=(position,),
         analytics_contexts=contexts,

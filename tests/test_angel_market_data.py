@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+from datetime import date
 
 import pytest
 
@@ -178,7 +179,8 @@ def test_login_rejects_incomplete_session_tokens(
         RuntimeError,
         match=(
             "invalid session data|"
-            "incomplete authentication data"
+            "incomplete authentication data|"
+            "successful login response without usable data"
         ),
     ):
         client.login()
@@ -223,3 +225,53 @@ def test_failed_login_never_preserves_previous_session(
 
     assert client.authenticated is False
     assert client.session is None
+
+
+@patch("services.broker.angel_client.pyotp.TOTP")
+@patch("services.broker.angel_client.SmartConnect")
+def test_same_day_session_is_reused_without_another_login(
+    mock_smart_connect,
+    mock_totp,
+):
+    api = MagicMock()
+    mock_smart_connect.return_value = api
+    mock_totp.return_value.now.return_value = "123456"
+    api.generateSession.return_value = {
+        "status": True,
+        "data": {"jwtToken": "jwt", "refreshToken": "refresh", "feedToken": "feed"},
+    }
+    client = AngelMarketDataClient(current_date=lambda: date(2026, 8, 10))
+
+    client.login()
+    client.login()
+
+    api.generateSession.assert_called_once()
+
+
+@patch("services.broker.angel_client.pyotp.TOTP")
+@patch("services.broker.angel_client.SmartConnect")
+def test_prior_day_session_is_discarded_before_authenticated_request(
+    mock_smart_connect,
+    mock_totp,
+):
+    api = MagicMock()
+    mock_smart_connect.return_value = api
+    mock_totp.return_value.now.return_value = "123456"
+    api.generateSession.return_value = {
+        "status": True,
+        "data": {"jwtToken": "jwt", "refreshToken": "refresh", "feedToken": "feed"},
+    }
+    api.getMarketData.return_value = {
+        "status": True,
+        "data": {"fetched": [], "unfetched": []},
+    }
+    current_day = [date(2026, 8, 10)]
+    client = AngelMarketDataClient(current_date=lambda: current_day[0])
+
+    client.login()
+    current_day[0] = date(2026, 8, 11)
+    client.get_market_data("FULL", {"NSE": ["99926000"]})
+
+    assert api.generateSession.call_count == 2
+    assert api.generateToken.call_count == 0
+    api.getMarketData.assert_called_once()

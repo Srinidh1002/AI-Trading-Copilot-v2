@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import services.live_option_decision_pipeline as pipeline_module
 from services.contracts.live_option_capture_result_v1 import LiveOptionCaptureResultV1
 from services.live_option_decision_pipeline import LiveOptionDecisionPipeline
 from services.market.live_multi_timeframe_data import LiveMultiTimeframeData
@@ -35,6 +36,31 @@ def test_option_capture_is_single_read_and_contains_no_decision_fields():
     assert "confidence" not in captured.option_chain
     assert "ranking" not in captured.option_chain
     assert captured.to_dict()["contract_count"] == 1
+
+
+def test_certified_option_capture_does_not_construct_legacy_candle_fallback(
+    monkeypatch,
+):
+    class UnexpectedLegacyCandleService:
+        def __init__(self, **_kwargs):
+            raise AssertionError("certified capture reached legacy candle fallback")
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "CompletedCandleService",
+        UnexpectedLegacyCandleService,
+    )
+    captured = pipeline_module.LiveOptionDecisionPipeline(
+        option_chain_builder=ChainBuilder(),
+        market_client=object(),
+    ).capture_option_inputs(
+        underlying="NIFTY",
+        spot_price=25000.0,
+        option_exchange="NFO",
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+    )
+    assert captured.contracts == ({"token": "1"},)
 
 
 def test_option_capture_preserves_provider_failure_without_random_values():

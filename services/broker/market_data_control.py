@@ -5,7 +5,7 @@ The controller enforces:
 - global minimum request spacing;
 - endpoint-specific spacing;
 - rolling historical-data request budgets;
-- provider rate-limit cooldowns;
+- endpoint-scoped provider rate-limit cooldowns;
 - short-lived in-process response caching.
 
 Read-only.
@@ -101,13 +101,30 @@ class BrokerMarketDataRequestError(RuntimeError):
         attempts,
         failure_type,
         detail,
+        *,
+        provider_failure_kind=None,
     ):
+        if provider_failure_kind is not None:
+            from services.broker.angel_provider_failure import (
+                is_valid_angel_provider_failure_kind,
+            )
+
+            if not is_valid_angel_provider_failure_kind(
+                provider_failure_kind
+            ):
+                raise ValueError("provider_failure_kind")
+
         self.failure = {
             "request_name": request_name,
             "attempts": attempts,
             "failure_type": failure_type,
             "detail": str(detail),
         }
+
+        if provider_failure_kind is not None:
+            self.failure["provider_failure_kind"] = (
+                provider_failure_kind.strip().upper()
+            )
 
         super().__init__(
             f"Angel One {request_name} "
@@ -120,12 +137,14 @@ class MarketDataRequestController:
     """Thread-safe request pacing and rolling-budget controller."""
 
     HISTORICAL_REQUEST_TYPE = "historical-data"
+    MARKET_QUOTE_REQUEST_TYPE = "market-data"
 
     def __init__(
         self,
         *,
         min_request_interval_seconds=None,
         historical_request_interval_seconds=None,
+        market_quote_request_interval_seconds=None,
         historical_requests_per_second=None,
         historical_requests_per_minute=None,
         historical_requests_per_hour=None,
@@ -155,6 +174,18 @@ class MarketDataRequestController:
                     historical_request_interval_seconds,
                 ),
                 "historical_request_interval_seconds",
+            )
+        )
+
+        self.market_quote_request_interval_seconds = (
+            _non_negative_float(
+                configured_value(
+                    "ANGEL_MARKET_QUOTE_MIN_REQUEST_INTERVAL_SECONDS",
+                    0.0,
+                    float,
+                    market_quote_request_interval_seconds,
+                ),
+                "market_quote_request_interval_seconds",
             )
         )
 
@@ -238,7 +269,9 @@ class MarketDataRequestController:
         self._last_request_at = None
         self._last_request_by_type = {}
 
-        self._cooldown_until = 0.0
+        # Cooldowns are endpoint-scoped.  A historical provider throttle must
+        # not delay live spot/FULL quote or option-Greeks evidence.
+        self._cooldown_until = {}
         self._cache = {}
 
         self._historical_request_times = deque()
@@ -254,6 +287,12 @@ class MarketDataRequestController:
             return max(
                 self.min_request_interval_seconds,
                 self.historical_request_interval_seconds,
+            )
+
+        if request_type == self.MARKET_QUOTE_REQUEST_TYPE:
+            return max(
+                self.min_request_interval_seconds,
+                self.market_quote_request_interval_seconds,
             )
 
         return self.min_request_interval_seconds
@@ -347,7 +386,7 @@ class MarketDataRequestController:
         waits = [
             max(
                 0.0,
-                self._cooldown_until - now,
+                self._cooldown_until.get(request_type, 0.0) - now,
             )
         ]
 
@@ -549,8 +588,8 @@ class MarketDataRequestController:
         )
 
         with self._lock:
-            self._cooldown_until = max(
-                self._cooldown_until,
+            self._cooldown_until[request_type] = max(
+                self._cooldown_until.get(request_type, 0.0),
                 now + cooldown,
             )
 
@@ -599,7 +638,7 @@ class MarketDataRequestController:
         request_type,
     ):
         with self._lock:
-            self._cooldown_until = 0.0
+            self._cooldown_until[request_type] = 0.0
 
         LOGGER.debug(
             "broker_request "

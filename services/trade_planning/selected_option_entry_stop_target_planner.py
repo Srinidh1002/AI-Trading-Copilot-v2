@@ -234,13 +234,16 @@ def plan_selected_option_entry_stop_targets(
         ask_price=affordability.ask_price,
         signal_reference_price=signal,
         option_mid_price=option_mid,
-        option_quote_timestamp=affordability.evaluated_at,
+        option_quote_timestamp=affordability.quote_timestamp,
         maximum_entry_premium=trade_plan_input.maximum_entry_premium,
         maximum_spread_fraction=trade_plan_input.maximum_spread_fraction,
         planning_allowed=not coherence_blockers,
         blockers=tuple(coherence_blockers),
         warnings=affordability.warnings,
-        source_timestamps={"affordability": affordability.evaluated_at},
+        source_timestamps={
+            "affordability": affordability.evaluated_at,
+            "option_quote": affordability.quote_timestamp,
+        },
         metadata={
             "affordability_result_id": affordability.affordability_result_id,
             "contract_id": affordability.contract_id,

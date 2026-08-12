@@ -26,6 +26,9 @@ from services.paper_orchestration.certified_two_market_parent_runtime import (
 from services.paper_orchestration.prediction_ledger import (
     PredictionLedger,
 )
+from services.certification.task9_prediction_lifecycle_context_store import (
+    Task9PredictionLifecycleContextStore,
+)
 from services.paper_orchestration.prediction_record_projector import (
     project_parent_decision_predictions,
 )
@@ -65,6 +68,8 @@ def run_authoritative_two_market_parent_cycle(
         TwoMarketParentCycleJournalAdapter | None
     ) = None,
     prediction_ledger: PredictionLedger | None = None,
+    prediction_lifecycle_context_store: Task9PredictionLifecycleContextStore | None = None,
+    prediction_records_sink=None,
     substage_callback=None,
 ) -> TwoMarketDecisionResultV1:
     """Execute the approved NIFTY/SENSEX PAPER parent path.
@@ -102,6 +107,14 @@ def run_authoritative_two_market_parent_cycle(
         and type(prediction_ledger) is not PredictionLedger
     ):
         raise TypeError("prediction_ledger")
+    if (
+        prediction_lifecycle_context_store is not None
+        and type(prediction_lifecycle_context_store)
+        is not Task9PredictionLifecycleContextStore
+    ):
+        raise TypeError("prediction_lifecycle_context_store")
+    if prediction_records_sink is not None and not callable(prediction_records_sink):
+        raise TypeError("prediction_records_sink")
 
     decision = run_certified_two_market_parent_runtime(
         parent,
@@ -111,6 +124,11 @@ def run_authoritative_two_market_parent_cycle(
         substage_callback=substage_callback,
     )
 
+    def persist_lifecycle_windows(windows):
+        if prediction_lifecycle_context_store is not None:
+            for window in windows:
+                prediction_lifecycle_context_store.save(window)
+
     prediction_records = (
         project_parent_decision_predictions(
             decision,
@@ -118,8 +136,16 @@ def run_authoritative_two_market_parent_cycle(
                 ("NIFTY", "NSE"): _cycle_start_price(nifty_cycle),
                 ("SENSEX", "BSE"): _cycle_start_price(sensex_cycle),
             },
+            lifecycle_window_sink=(
+                persist_lifecycle_windows
+                if prediction_lifecycle_context_store is not None
+                else None
+            ),
         )
-        if prediction_ledger is not None
+        if (
+            prediction_ledger is not None
+            or prediction_lifecycle_context_store is not None
+        )
         else None
     )
 
@@ -136,6 +162,9 @@ def run_authoritative_two_market_parent_cycle(
         prediction_ledger.save_pair(
             prediction_records
         )
+
+    if prediction_records_sink is not None and prediction_records is not None:
+        prediction_records_sink(prediction_records)
 
     return decision
 

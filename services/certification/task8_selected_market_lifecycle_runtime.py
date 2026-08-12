@@ -16,6 +16,7 @@ Execution order:
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -133,6 +134,10 @@ def execute_task8_selected_market_lifecycle(
         "data/paper_trading/certified_runtime/task8"
     ),
     portfolio_id: str = "task8-certified-paper-portfolio",
+    prediction_id: str | None = None,
+    task9_binding_persistor=None,
+    task9_observation_sink=None,
+    task9_pending_entry_persistor=None,
 ) -> PaperOrchestrationCycleResultV1:
     """Execute selected-only P7/P8 and persist exact PAPER state.
 
@@ -166,6 +171,16 @@ def execute_task8_selected_market_lifecycle(
         raise ValueError(
             "portfolio_id must be non-empty"
         )
+    if prediction_id is not None and (
+        type(prediction_id) is not str or not prediction_id.strip()
+    ):
+        raise ValueError("prediction_id")
+    if task9_binding_persistor is not None and not callable(task9_binding_persistor):
+        raise TypeError("task9_binding_persistor")
+    if task9_observation_sink is not None and not callable(task9_observation_sink):
+        raise TypeError("task9_observation_sink")
+    if task9_pending_entry_persistor is not None and not callable(task9_pending_entry_persistor):
+        raise TypeError("task9_pending_entry_persistor")
 
     now = _aware(
         evaluated_at,
@@ -239,6 +254,14 @@ def execute_task8_selected_market_lifecycle(
             planning_result,
         )
     )
+    if prediction_id is not None:
+        new_entry_input = replace(
+            new_entry_input,
+            prediction_id=prediction_id,
+        )
+
+    if task9_observation_sink is not None:
+        task9_observation_sink(new_entry_input.observation)
 
     lifecycle_executor = NewEntryPaperLifecycleExecutor(
         portfolio_persistence_service=(
@@ -251,6 +274,10 @@ def execute_task8_selected_market_lifecycle(
     lifecycle_result = lifecycle_executor.execute(
         new_entry_input
     )
+    if lifecycle_result.status == "OPEN" and task9_binding_persistor is not None:
+        task9_binding_persistor(new_entry_input, lifecycle_result)
+    if lifecycle_result.status == "WAITING_FOR_ENTRY" and task9_pending_entry_persistor is not None:
+        task9_pending_entry_persistor(new_entry_input, lifecycle_result)
     if type(lifecycle_result) is not (
         NewEntryPaperLifecycleResultV1
     ):

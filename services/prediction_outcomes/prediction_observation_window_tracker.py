@@ -20,6 +20,9 @@ _TERMINAL_EVENTS = {
     "INVALIDATED",
     "SESSION_CLOSE",
     "EXPIRY",
+    "TERMINAL_T1",
+    "TERMINAL_T2",
+    "TERMINAL_T3",
 }
 
 

@@ -1,5 +1,6 @@
 """Task 3C selected-option affordability and risk planning."""
 from dataclasses import replace
+from datetime import timedelta
 import ast
 from pathlib import Path
 
@@ -61,6 +62,37 @@ def test_ready_for_both_markets_and_directions(symbol, direction, right):
     assert result.execution_mode == "PAPER"
     assert result.live_execution_eligible is False
     assert result.broker_order_submission is False
+
+
+def test_certified_quote_timestamp_is_preserved():
+    certification = certified()
+    quote_timestamp = (
+        certification.evaluated_at
+        - timedelta(seconds=15)
+    )
+
+    contract = replace(
+        certification.selected_contract,
+        market_timestamp=quote_timestamp,
+    )
+    candidate = replace(
+        certification.selected_candidate,
+        contract=contract,
+    )
+
+    certification = replace(
+        certification,
+        selected_contract=contract,
+        selected_candidate=candidate,
+        quote_timestamp=quote_timestamp,
+        contract_age_seconds=15.0,
+        quote_age_seconds=15.0,
+    )
+
+    result = plan(certification)
+
+    assert result.quote_timestamp == quote_timestamp
+    assert result.quote_timestamp != result.evaluated_at
 
 
 def test_full_task_3a_and_3b_trace_is_preserved():

@@ -1,11 +1,22 @@
 """Immutable PAPER-only dashboard read-model contracts."""
 
 from .dashboard_cycle_view_v1 import DashboardCycleViewV1
+from .dashboard_application_view_v1 import (
+    DashboardApplicationViewV1,
+    DashboardManualLivePlannerStateV1,
+)
+from services.dashboard_read_models.task9_external_provider_blocker_view import (
+    read_task9_external_provider_blocker,
+)
 from .dashboard_market_state_v1 import DashboardMarketStateV1
 from .dashboard_opportunity_view_v1 import DashboardOpportunityViewV1
 from .dashboard_paper_fill_view_v1 import DashboardPaperFillViewV1
 from .dashboard_paper_position_detail_view_v1 import (
     DashboardPaperPositionDetailViewV1,
+)
+from .task9_dashboard_shell import (
+    build_task9_dashboard_shell_view,
+    is_task9_dashboard_prepublication_shell,
 )
 from .dashboard_paper_position_view_v1 import DashboardPaperPositionViewV1
 from .dashboard_plan_position_projection_adapters import (
@@ -35,6 +46,8 @@ from .dashboard_validation_summary_v1 import DashboardValidationSummaryV1
 
 __all__ = [
     "DashboardCycleViewV1",
+    "DashboardApplicationViewV1",
+    "DashboardManualLivePlannerStateV1",
     "DashboardMarketStateV1",
     "DashboardOpportunityViewV1",
     "DashboardPaperFillViewV1",

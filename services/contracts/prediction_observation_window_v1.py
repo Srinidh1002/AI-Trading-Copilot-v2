@@ -15,6 +15,9 @@ from services.contracts.prediction_observation_v1 import (
 
 _TERMINAL_EVENTS = {
     "T3",
+    "TERMINAL_T1",
+    "TERMINAL_T2",
+    "TERMINAL_T3",
     "STOP",
     "EARLY_EXIT",
     "INVALIDATED",

@@ -103,14 +103,10 @@ from services.decision_explanation import (
     DecisionExplanation,
 )
 
-# P2-7 canonical CLI migration.  Direct execution defaults to the explicit
-# canonical command service.  The historical monolithic path remains available
-# only when the temporary non-secret rollback mode is requested.
-if (
-    __name__ == "__main__"
-    and os.getenv("CLI_ANALYSIS_MODE", "canonical").strip().lower()
-    != "legacy"
-):
+# P2-7 canonical CLI migration. Direct invocation is structurally pinned to
+# the canonical command service; the legacy full-analysis implementation is
+# retained only as a compatibility API, never as an operator CLI rollback.
+if __name__ == "__main__":
     from services.canonical.live_option_cli_service import main as canonical_main
 
     raise SystemExit(canonical_main())

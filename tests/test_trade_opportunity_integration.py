@@ -780,3 +780,24 @@ def test_clock_must_return_timezone_aware_datetime():
                 0,
             )
         )
+def test_duplicate_warning_variants_are_deduplicated_case_insensitively():
+    result = run_integration(
+        decision=make_decision(
+            warnings=(
+                "No exchange holiday calendar was supplied.",
+            ),
+        ),
+        session_validation=make_session(
+            warnings=(
+                "NO EXCHANGE HOLIDAY CALENDAR WAS SUPPLIED.",
+            ),
+        ),
+    )
+
+    assert (
+        result.opportunity_status
+        == "READY_WITH_WARNINGS"
+    )
+    assert result.warnings == (
+        "NO EXCHANGE HOLIDAY CALENDAR WAS SUPPLIED.",
+    )

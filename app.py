@@ -3,6 +3,9 @@ import streamlit as st
 from dashboard.dashboard_v2 import home
 
 
+DASHBOARD_AUTO_REFRESH_SECONDS = 15
+
+
 if "validation_started" not in st.session_state:
     st.session_state.validation_started = True
 
@@ -36,4 +39,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-home()
+
+@st.fragment(run_every=DASHBOARD_AUTO_REFRESH_SECONDS)
+def _render_dashboard() -> None:
+    """Refresh only the read-only dashboard presentation on a low cadence."""
+    home()
+
+
+_render_dashboard()

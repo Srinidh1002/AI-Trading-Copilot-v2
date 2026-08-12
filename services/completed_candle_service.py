@@ -23,7 +23,20 @@ from datetime import (
     datetime,
     timedelta,
 )
+from pathlib import Path
 
+from services.broker.market_data_control import (
+    BrokerMarketDataRequestError,
+)
+from services.historical_provider_cooldown import (
+    HistoricalProviderCooldown,
+)
+from services.historical_request_gate import (
+    HistoricalRequestGate,
+)
+from services.market_data_failure_evidence import (
+    classify_market_data_exception,
+)
 from services.market_data_validator import (
     MarketDataValidationError,
     validate_candle,
@@ -46,8 +59,30 @@ class CompletedCandleService:
     def __init__(
         self,
         market_client,
+        *,
+        provider_cooldown=None,
+        historical_request_gate=None,
     ):
         self.market_client = market_client
+        control_root = Path("data/market_data_cache")
+        self.provider_cooldown = (
+            provider_cooldown
+            if provider_cooldown is not None
+            else HistoricalProviderCooldown(
+                control_root / "angel_historical_provider_cooldown.json"
+            )
+        )
+        self.historical_request_gate = (
+            historical_request_gate
+            if historical_request_gate is not None
+            else HistoricalRequestGate(
+                control_root / "angel_historical_request_gate.json"
+            )
+        )
+        if not callable(getattr(self.provider_cooldown, "active", None)):
+            raise TypeError("provider_cooldown")
+        if not callable(getattr(self.historical_request_gate, "acquire", None)):
+            raise TypeError("historical_request_gate")
 
     @staticmethod
     def _parse_timestamp(
@@ -248,9 +283,19 @@ class CompletedCandleService:
         returns no candle data.
         """
 
-        response = (
-            self.market_client
-            .get_historical_data(
+        cooldown = self.provider_cooldown.active()
+        if cooldown is not None:
+            raise BrokerMarketDataRequestError(
+                "historical-data",
+                0,
+                "rate_limited",
+                "persisted historical cooldown",
+            )
+
+        self.historical_request_gate.acquire()
+
+        try:
+            response = self.market_client.get_historical_data(
                 exchange=exchange,
                 symboltoken=symboltoken,
                 interval=interval,
@@ -265,7 +310,26 @@ class CompletedCandleService:
                     )
                 ),
             )
-        )
+        except Exception as exc:
+            provider_throttled, failure_reason = (
+                classify_market_data_exception(exc)
+            )
+            if provider_throttled:
+                controller = getattr(
+                    self.market_client,
+                    "request_controller",
+                    None,
+                )
+                duration = getattr(
+                    controller,
+                    "rate_limit_cooldown_seconds",
+                    0.0,
+                )
+                self.provider_cooldown.record_rate_limit(
+                    reason=failure_reason,
+                    cooldown_seconds=duration,
+                )
+            raise
 
         if not response:
             return []

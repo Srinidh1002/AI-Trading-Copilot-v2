@@ -9,6 +9,9 @@ from .dashboard_publication_envelope_v1 import (
 from .dashboard_publication_snapshot_v1 import (
     DashboardPublicationSnapshotV1,
 )
+from .dashboard_publication_persistent_store import (
+    DashboardPublicationPersistentStore,
+)
 
 
 def _aware(value: object, name: str) -> datetime:
@@ -33,9 +36,33 @@ def _error_text(value: object) -> str:
 class DashboardPublicationStore:
     """Thread-safe last-known-good publication store."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        persistent_store: DashboardPublicationPersistentStore | None = None,
+    ) -> None:
+        if (
+            persistent_store is not None
+            and type(persistent_store) is not DashboardPublicationPersistentStore
+        ):
+            raise TypeError("persistent_store")
         self._lock = threading.RLock()
-        self._snapshot = DashboardPublicationSnapshotV1.empty()
+        self.persistent_store = persistent_store
+        recovered = (
+            persistent_store.recover()
+            if persistent_store is not None
+            else None
+        )
+        self._snapshot = (
+            DashboardPublicationSnapshotV1.empty()
+            if recovered is None
+            else recovered
+        )
+
+    def _persist(self, snapshot: DashboardPublicationSnapshotV1) -> DashboardPublicationSnapshotV1:
+        if self.persistent_store is not None:
+            self.persistent_store.persist(snapshot)
+        return snapshot
 
     def get_snapshot(self) -> DashboardPublicationSnapshotV1:
         with self._lock:
@@ -79,7 +106,7 @@ class DashboardPublicationStore:
                             publication_count=current.publication_count,
                             failed_attempt_count=current.failed_attempt_count,
                         )
-                        return self._snapshot
+                        return self._persist(self._snapshot)
                     raise ValueError(
                         "same publication_sequence has different content"
                     )
@@ -93,7 +120,7 @@ class DashboardPublicationStore:
                 publication_count=current.publication_count + 1,
                 failed_attempt_count=current.failed_attempt_count,
             )
-            return self._snapshot
+            return self._persist(self._snapshot)
 
     def record_failure(
         self,
@@ -125,7 +152,7 @@ class DashboardPublicationStore:
                 publication_count=current.publication_count,
                 failed_attempt_count=current.failed_attempt_count + 1,
             )
-            return self._snapshot
+            return self._persist(self._snapshot)
 
     def reset(
         self,
@@ -145,4 +172,4 @@ class DashboardPublicationStore:
                 publication_count=0,
                 failed_attempt_count=current.failed_attempt_count,
             )
-            return self._snapshot
+            return self._persist(self._snapshot)

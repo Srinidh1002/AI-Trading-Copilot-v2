@@ -112,6 +112,53 @@ def test_risk_authority_limits_lots():
     assert result.estimated_maximum_loss == 300.0
 
 
+@pytest.mark.parametrize(
+    ("maximum_new_loss", "planned_lots", "expected_allocation"),
+    (
+        (550.0, 1, (0, 1, 0)),
+        (650.0, 2, (1, 1, 0)),
+        (950.0, 3, (1, 1, 1)),
+    ),
+)
+def test_whole_lot_target_allocation_supports_one_two_and_three_lot_paper_plans(
+    maximum_new_loss, planned_lots, expected_allocation,
+):
+    affordability, task4 = upstream()
+    result = assemble(replace(affordability, maximum_new_loss=maximum_new_loss), task4)
+
+    allocations = (
+        result.target_1_lot_count,
+        result.target_2_lot_count,
+        result.target_3_lot_count,
+    )
+    assert result.status == "READY"
+    assert result.planned_lot_count == planned_lots
+    assert allocations == expected_allocation
+    assert all(type(value) is int and value >= 0 for value in allocations)
+    assert sum(allocations) + result.runner_lot_count == result.planned_lot_count
+
+
+def test_zero_affordable_or_zero_risk_lots_remain_blocked():
+    affordability, task4 = upstream()
+    no_capital = replace(
+        affordability,
+        status="BLOCKED",
+        planning_allowed=False,
+        maximum_affordable_lots=0,
+        blockers=("CAPITAL_INSUFFICIENT_FOR_ONE_LOT",),
+    )
+    no_risk = replace(
+        affordability,
+        status="BLOCKED",
+        planning_allowed=False,
+        maximum_new_loss=0.0,
+        blockers=("MAXIMUM_DAILY_LOSS_EXHAUSTED",),
+    )
+
+    assert assemble(no_capital, task4).status == "UNAVAILABLE"
+    assert assemble(no_risk, task4).status == "UNAVAILABLE"
+
+
 def test_minimum_lot_count_failure_blocks():
     affordability, task4 = upstream()
     limited = replace(

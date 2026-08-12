@@ -95,6 +95,7 @@ class NewEntryPaperLifecycleInputV1:
     portfolio_policy: PaperPortfolioPolicyV1
     lifecycle_policy: PaperTradeLifecyclePolicyV1
     observation: PaperMarketObservationV1
+    prediction_id: str | None = None
     execution_mode: str = "PAPER"
     live_execution_eligible: bool = False
     schema_version: str = "new_entry_paper_lifecycle_input.v1"
@@ -173,6 +174,12 @@ class NewEntryPaperLifecycleInputV1:
             raise ValueError("live execution is not eligible")
         if self.schema_version != "new_entry_paper_lifecycle_input.v1":
             raise ValueError("unsupported schema_version")
+        if self.prediction_id is not None:
+            object.__setattr__(
+                self,
+                "prediction_id",
+                _text(self.prediction_id, "prediction_id"),
+            )
 
 
 @dataclass(frozen=True, slots=True)

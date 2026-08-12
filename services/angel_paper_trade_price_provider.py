@@ -5,8 +5,8 @@ Responsibilities:
 - Accept one paper-trade dictionary.
 - Extract and validate the option symbol token.
 - Resolve the market-data exchange.
-- Request the current LTP from AngelMarketDataClient.
-- Validate the broker response.
+- Request a FULL live quote from AngelMarketDataClient.
+- Validate the broker response and provider-issued timestamp.
 - Return one positive finite option price.
 
 IMPORTANT:
@@ -16,6 +16,12 @@ IMPORTANT:
 """
 
 import math
+from datetime import datetime, timezone
+
+from services.paper_orchestration.angel_provider_timestamp import (
+    DEFAULT_MAXIMUM_FUTURE_SKEW_SECONDS,
+    validate_angel_quote_timestamp,
+)
 
 
 class AngelPaperTradePriceProvider:
@@ -24,6 +30,12 @@ class AngelPaperTradePriceProvider:
         self,
         market_data_client,
         default_option_exchange="NFO",
+        *,
+        maximum_quote_age_seconds=1.0,
+        maximum_future_skew_seconds=(
+            DEFAULT_MAXIMUM_FUTURE_SKEW_SECONDS
+        ),
+        clock=None,
     ):
         if market_data_client is None:
             raise ValueError(
@@ -63,6 +75,47 @@ class AngelPaperTradePriceProvider:
         self.default_option_exchange = (
             default_option_exchange
         )
+
+        for name, value in (
+            (
+                "maximum_quote_age_seconds",
+                maximum_quote_age_seconds,
+            ),
+            (
+                "maximum_future_skew_seconds",
+                maximum_future_skew_seconds,
+            ),
+        ):
+            if (
+                isinstance(value, bool)
+                or not isinstance(
+                    value,
+                    (int, float),
+                )
+                or not math.isfinite(float(value))
+                or float(value) < 0
+            ):
+                raise ValueError(
+                    f"{name} must be finite and non-negative."
+                )
+
+        self.maximum_quote_age_seconds = float(
+            maximum_quote_age_seconds
+        )
+
+        self.maximum_future_skew_seconds = float(
+            maximum_future_skew_seconds
+        )
+
+        if clock is None:
+            clock = lambda: datetime.now(timezone.utc)
+
+        if not callable(clock):
+            raise TypeError(
+                "clock must be callable."
+            )
+
+        self.clock = clock
 
     # ---------------------------------------------------------
     # TOKEN
@@ -213,10 +266,11 @@ class AngelPaperTradePriceProvider:
     # RESPONSE EXTRACTION
     # ---------------------------------------------------------
 
-    @classmethod
     def _extract_ltp(
-        cls,
+        self,
         response,
+        *,
+        received_at,
     ):
         if not isinstance(
             response,
@@ -270,7 +324,18 @@ class AngelPaperTradePriceProvider:
                 "Broker fetched record does not contain ltp."
             )
 
-        return cls._validate_price(
+        validate_angel_quote_timestamp(
+            data=first_record,
+            received_at=received_at,
+            maximum_age_seconds=(
+                self.maximum_quote_age_seconds
+            ),
+            maximum_future_skew_seconds=(
+                self.maximum_future_skew_seconds
+            ),
+        )
+
+        return self._validate_price(
             first_record.get(
                 "ltp"
             )
@@ -298,7 +363,7 @@ class AngelPaperTradePriceProvider:
 
         response = (
             self.market_data_client.get_market_data(
-                mode="LTP",
+                mode="FULL",
                 exchange_tokens={
                     exchange: [
                         symboltoken
@@ -307,8 +372,11 @@ class AngelPaperTradePriceProvider:
             )
         )
 
+        received_at = self.clock()
+
         return self._extract_ltp(
-            response
+            response,
+            received_at=received_at,
         )
 
     # ---------------------------------------------------------

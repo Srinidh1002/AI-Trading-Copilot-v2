@@ -4,6 +4,8 @@ import services.dashboard_read_models as read_models
 def test_public_api_matches_current_dashboard_boundary():
     assert tuple(read_models.__all__) == (
         "DashboardCycleViewV1",
+        "DashboardApplicationViewV1",
+        "DashboardManualLivePlannerStateV1",
         "DashboardMarketStateV1",
         "DashboardOpportunityViewV1",
         "DashboardPaperFillViewV1",

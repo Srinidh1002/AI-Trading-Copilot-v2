@@ -11,7 +11,7 @@ from services.contracts.prediction_lifecycle_outcome_record_v1 import (
 )
 
 
-_TARGET_LEVEL = {"T1": 1, "T2": 2, "T3": 3}
+_TARGET_LEVEL = {"T1": 1, "T2": 2, "T3": 3, "TERMINAL_T1": 1, "TERMINAL_T2": 2, "TERMINAL_T3": 3}
 
 
 def _movement(value):
@@ -200,6 +200,25 @@ def _directional(value):
             )
 
         highest_target = max(highest_target, group_highest)
+        terminal_target = next(
+            (
+                event
+                for event in ("TERMINAL_T1", "TERMINAL_T2", "TERMINAL_T3")
+                if event in events
+            ),
+            None,
+        )
+        if terminal_target is not None:
+            return _record(
+                value=value,
+                status="RESOLVED",
+                outcome=_target_outcome(_TARGET_LEVEL[terminal_target]),
+                highest_target=_TARGET_LEVEL[terminal_target],
+                terminal_event_type=terminal_target,
+                terminal_event_at=observed_at,
+                terminal_option_premium=_premium(group),
+            )
+
         if highest_target == 3:
             return _record(
                 value=value,

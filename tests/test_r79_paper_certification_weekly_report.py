@@ -29,7 +29,7 @@ def test_weekly_report_aggregates_only_reconciled_daily_reports():
         "daily-1",
         "daily-2",
     )
-    assert report.official_prediction_count == 4
+    assert report.official_prediction_count == 2
     assert report.closed_position_count == 2
     assert report.net_pnl == first.net_pnl + second.net_pnl
     assert report.ending_capital == second.ending_capital
@@ -40,11 +40,11 @@ def test_weekly_report_aggregates_only_reconciled_daily_reports():
     assert {
         item.key
         for item in report.confidence_band_performance
-    } == {"HIGH", "LOW"}
+    } == {"HIGH"}
     assert {
         item.key
         for item in report.regime_performance
-    } == {"RANGE", "TRENDING"}
+    } == {"TRENDING"}
     assert {
         item.key
         for item in report.policy_version_performance
@@ -77,3 +77,6 @@ def test_weekly_report_rejects_capital_discontinuity():
             generated_at=second.generated_at,
             daily_reports=(first, second),
         )
+
+
+

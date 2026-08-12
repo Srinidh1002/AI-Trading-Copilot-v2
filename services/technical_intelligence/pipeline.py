@@ -7,12 +7,12 @@ def build_canonical_technical_intelligence(*,candle_series_by_timeframe,multi_ti
  if policy is None:policy=DEFAULT_TECHNICAL_INTELLIGENCE_POLICY
  if not isinstance(policy,TechnicalIntelligencePolicyV1) or (clock is not None and not callable(clock)):raise ValueError("Invalid pipeline policy.")
  lookup={x.timeframe:x for x in candle_series_by_timeframe}
- if len(lookup)!=len(candle_series_by_timeframe) or tuple(sorted(lookup))!=tuple(sorted(policy.required_timeframes)):raise ValueError("Series timeframe set mismatch.")
+ if len(lookup)!=len(candle_series_by_timeframe) or any(t not in lookup for t in policy.mandatory_timeframes) or any(t not in policy.required_timeframes for t in lookup):raise ValueError("Series timeframe set mismatch.")
  evidence={x.timeframe:x for x in multi_timeframe_snapshot.timeframe_evidence};
- if tuple(evidence)!=policy.required_timeframes:raise ValueError("Snapshot timeframe evidence mismatch.")
+ if tuple(evidence)!=tuple(t for t in policy.required_timeframes if t in evidence) or set(evidence)!=set(lookup):raise ValueError("Snapshot timeframe evidence mismatch.")
  now=(clock() if clock else datetime.now(timezone.utc));
  if not isinstance(now,datetime) or now.tzinfo is None:raise ValueError("Clock must be timezone-aware.")
  from .timeframe_analysis import analyze_timeframe_technical_evidence
  from .aggregation import aggregate_technical_intelligence
- values=tuple(analyze_timeframe_technical_evidence(candle_series=lookup[t],timeframe_evidence=evidence[t],policy=policy,clock=lambda:now,timeframe_technical_evidence_id_factory=timeframe_technical_evidence_id_factory) for t in policy.required_timeframes)
+ values=tuple(analyze_timeframe_technical_evidence(candle_series=lookup[t],timeframe_evidence=evidence[t],policy=policy,clock=lambda:now,timeframe_technical_evidence_id_factory=timeframe_technical_evidence_id_factory) for t in policy.required_timeframes if t in lookup)
  return aggregate_technical_intelligence(multi_timeframe_snapshot=multi_timeframe_snapshot,multi_timeframe_quality_result=multi_timeframe_quality_result,timeframe_technical_evidence=values,policy=policy,clock=lambda:now,technical_intelligence_result_id_factory=technical_intelligence_result_id_factory)

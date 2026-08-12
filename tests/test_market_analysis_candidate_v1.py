@@ -189,6 +189,45 @@ def test_eligible_candidate_accepts_each_ready_canonical_contract(field_name):
     assert getattr(build(), field_name) is not None
 
 
+def test_ready_with_warnings_option_chain_and_ranking_remain_eligible_without_losing_warnings():
+    chain = replace(
+        option_chain("NIFTY", "NSE"),
+        intelligence_status="READY_WITH_WARNINGS",
+        warnings=("PARTIAL_OPTIONAL_METRIC",),
+    )
+    ranking = replace(
+        option_contract_eligibility("NIFTY", "NSE"),
+        ranking_status="RANKED_WITH_WARNINGS",
+        warnings=("LIQUIDITY_WARNING",),
+    )
+
+    value = build(
+        option_chain=chain,
+        option_contract_eligibility=ranking,
+        warnings=("OPTION_EVIDENCE_WARNING",),
+    )
+
+    assert value.eligibility == "ELIGIBLE"
+    assert value.option_chain.intelligence_status == "READY_WITH_WARNINGS"
+    assert value.option_chain.warnings == ("PARTIAL_OPTIONAL_METRIC",)
+    assert value.option_contract_eligibility.ranking_status == "RANKED_WITH_WARNINGS"
+    assert value.option_contract_eligibility.warnings == ("LIQUIDITY_WARNING",)
+    assert value.warnings == ("OPTION_EVIDENCE_WARNING",)
+
+
+@pytest.mark.parametrize(
+    "field_name,invalid",
+    (
+        ("option_chain", lambda: replace(option_chain("NIFTY", "NSE"), intelligence_status="INSUFFICIENT_METRICS", aggregate_bias="UNAVAILABLE", aggregate_strength=0.0, blockers=("INSUFFICIENT",))),
+        ("option_chain", lambda: OptionChainIntelligenceResultV1("chain-unavailable", REQUESTED, None, None, "NIFTY", "NSE", None, (), "UNAVAILABLE", "UNAVAILABLE", 0.0, (), (), (), (), 0, 0, blockers=("UNAVAILABLE",))),
+        ("option_contract_eligibility", lambda: OptionContractRankingResultV1("ranking-blocked", REQUESTED, "universe", "chain", "NIFTY", "NSE", "NEUTRAL", None, "BLOCKED", (), blockers=("BLOCKED",))),
+    ),
+)
+def test_nonready_or_blocked_option_evidence_remains_ineligible(field_name, invalid):
+    with pytest.raises(ValueError, match="non-ready evidence"):
+        build(**{field_name: invalid()})
+
+
 @pytest.mark.parametrize("field_name", ("freshness", "data_quality", "session", "technical", "multi_timeframe", "regime", "option_chain", "option_contract_eligibility"))
 def test_nonready_canonical_contract_rejects_eligible_and_requires_reason_when_ineligible(field_name):
     nonready = nonready_canonical_input(field_name)

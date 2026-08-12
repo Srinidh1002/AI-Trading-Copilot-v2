@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from services.angel_paper_trade_price_provider import (
@@ -36,12 +38,20 @@ class FakeMarketDataClient:
 
 def valid_response(
     ltp=125.50,
+    *,
+    timestamp=None,
 ):
+    if timestamp is None:
+        timestamp = datetime.now(
+            timezone.utc
+        ).isoformat()
+
     return {
         "data": {
             "fetched": [
                 {
-                    "ltp": ltp
+                    "ltp": ltp,
+                    "exchFeedTime": timestamp,
                 }
             ]
         }
@@ -136,7 +146,7 @@ def test_fetches_ltp():
     assert price == 125.50
 
 
-def test_uses_ltp_mode():
+def test_uses_full_mode():
 
     client = (
         FakeMarketDataClient(
@@ -158,7 +168,7 @@ def test_uses_ltp_mode():
         client.calls[0][
             "mode"
         ]
-        == "LTP"
+        == "FULL"
     )
 
 

@@ -97,10 +97,24 @@ def normalize_angel_option_chain(*, contracts: object, market_spec: CertifiedInd
         last = _num(raw.get("premium", raw.get("ltp")), "premium"); volume = _num(raw.get("volume", raw.get("tradeVolume")), "volume"); oi = _num(raw.get("open_interest", raw.get("opnInterest")), "open_interest")
         change = _num(raw.get("change_in_open_interest"), "change_in_open_interest", signed=True)
         iv = _num(raw.get("iv", raw.get("implied_volatility")), "iv")
+
+        raw_quote_timestamp = raw.get(
+            "provider_timestamp"
+        )
+
+        quote_timestamp = (
+            provider_timestamp
+            if raw_quote_timestamp is None
+            else _aware(
+                raw_quote_timestamp,
+                "provider_timestamp",
+            )
+        )
+
         identity = (expiry, strike, option_type)
         if identity in identities: raise ValueError("duplicate contract identity")
         identities.add(identity)
-        values.append(OptionContractV1(token, spec.underlying_symbol, spec.exchange, symbol, option_type, strike, expiry, lot, provider_timestamp, instrument_token=token, tick_size=tick, last_price=last, bid_price=bid, ask_price=ask, open_interest=oi, volume=volume, implied_volatility=iv, metadata={"derivative_segment": segment, **{key: raw[key] for key in ("delta", "gamma", "theta", "vega") if key in raw and raw[key] is not None}}))
+        values.append(OptionContractV1(token, spec.underlying_symbol, spec.exchange, symbol, option_type, strike, expiry, lot, quote_timestamp, instrument_token=token, tick_size=tick, last_price=last, bid_price=bid, ask_price=ask, open_interest=oi, volume=volume, implied_volatility=iv, metadata={"derivative_segment": segment, **{key: raw[key] for key in ("delta", "gamma", "theta", "vega") if key in raw and raw[key] is not None}}))
         records.append({"strike": strike, "option_type": option_type, "ltp": last, "bid_price": bid, "ask_price": ask, "bid_quantity": _num(raw.get("bid_quantity"), "bid_quantity", integer=True), "ask_quantity": _num(raw.get("ask_quantity"), "ask_quantity", integer=True), "volume": int(volume) if volume is not None else None, "open_interest": int(oi) if oi is not None else None, "change_in_open_interest": int(change) if change is not None else None, "implied_volatility": iv, "underlying_value": spot, "source_record_id": token, "is_complete": True})
     snapshot = normalize_option_chain_records(underlying_symbol=spec.underlying_symbol, exchange=spec.exchange, expiry=expiry_value, underlying_value=spot, source_timestamp=provider_timestamp, provider_name="ANGEL_ONE", records=tuple(records), clock=lambda: evaluated_at)
     universe = OptionContractUniverseV1(f"angel-universe:{spec.symboltoken}:{provider_timestamp.isoformat()}", spec.underlying_symbol, spec.exchange, evaluated_at, spot, tuple(values), "ANGEL_ONE", True)

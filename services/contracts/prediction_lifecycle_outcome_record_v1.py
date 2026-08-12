@@ -10,7 +10,7 @@ from typing import ClassVar
 
 
 _IDENTITIES = {("NIFTY", "NSE"), ("SENSEX", "BSE")}
-_ACTIONS = {"CALL", "PUT", "WAIT"}
+_ACTIONS = {"CALL", "PUT", "WAIT", "NO_TRADE"}
 _STATUSES = {"RESOLVED", "UNRESOLVED", "DATA_UNAVAILABLE"}
 _OUTCOMES = {
     "T1_HIT",
@@ -242,7 +242,7 @@ class PredictionLifecycleOutcomeRecordV1:
         }
         if action in {"CALL", "PUT"} and outcome not in directional:
             raise ValueError("directional outcome vocabulary")
-        if action == "WAIT" and outcome not in abstention:
+        if action in {"WAIT", "NO_TRADE"} and outcome not in abstention:
             raise ValueError("abstention outcome vocabulary")
 
         expected_target = {"T1_HIT": 1, "T2_HIT": 2, "T3_HIT": 3}.get(outcome)
@@ -262,8 +262,8 @@ class PredictionLifecycleOutcomeRecordV1:
             and self.highest_target_reached != 0
         ):
             raise ValueError("non-target outcome cannot retain target credit")
-        if action == "WAIT" and self.entry_occurred:
-            raise ValueError("WAIT cannot contain entry")
+        if action in {"WAIT", "NO_TRADE"} and self.entry_occurred:
+            raise ValueError("abstention action cannot contain entry")
 
         if (
             self.execution_mode != "PAPER"

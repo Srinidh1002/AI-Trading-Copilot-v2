@@ -9,7 +9,8 @@ def test_daily_report_reconciles_authoritative_sources():
     report = build_daily()
 
     assert report.source_prediction_count == 2
-    assert report.official_prediction_count == 2
+    assert report.official_prediction_count == 1
+    assert report.completed_non_trade_count == 1
     assert report.completed_outcome_count == 2
     assert report.pending_outcome_count == 0
     assert report.excluded_prediction_count == 0
@@ -26,7 +27,8 @@ def test_daily_report_reconciles_authoritative_sources():
     actions = dict(report.action_distribution)
     assert actions["CALL"] == 1
     assert actions["PUT"] == 0
-    assert actions["WAIT"] == 1
+    assert actions["WAIT"] == 0
+    assert actions["NO_TRADE"] == 1
     selected = dict(report.selected_market_distribution)
     assert selected == {"NIFTY": 1, "SENSEX": 0}
     outcomes = dict(report.outcome_distribution)
@@ -57,7 +59,8 @@ def test_excluded_replay_is_audited_not_marked_pending():
     report = build_daily(include_excluded=True)
 
     assert report.source_prediction_count == 3
-    assert report.official_prediction_count == 2
+    assert report.official_prediction_count == 1
+    assert report.completed_non_trade_count == 1
     assert report.pending_outcome_count == 0
     assert report.excluded_prediction_count == 1
     assert report.excluded_audit[0].status == "EXCLUDED_REPLAY"

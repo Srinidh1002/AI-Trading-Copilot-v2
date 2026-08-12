@@ -4,10 +4,18 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 
+from services.certification.task9_prediction_lifecycle_timing import (
+    resolve_prediction_lifecycle_window,
+)
+from services.contracts.prediction_lifecycle_timing_v1 import (
+    PredictionLifecycleTimingPolicyV1,
+    PredictionLifecycleWindowV1,
+)
 from services.contracts.prediction_record_v1 import PredictionRecordV1
 from services.contracts.two_market_decision_result_v1 import (
     TwoMarketDecisionResultV1,
 )
+from services.market_session.policies import BSE_SENSEX_POLICY, NSE_NIFTY_POLICY
 
 
 def _predicted_action(direction: str, *, selected: bool) -> str:
@@ -26,6 +34,7 @@ def project_parent_decision_predictions(
     decision: TwoMarketDecisionResultV1,
     *,
     start_underlying_prices: Mapping[tuple[str, str], float],
+    lifecycle_window_sink=None,
 ) -> tuple[PredictionRecordV1, PredictionRecordV1]:
     """Project one parent decision into exact ordered NIFTY/SENSEX records."""
 
@@ -33,6 +42,8 @@ def project_parent_decision_predictions(
         raise TypeError("decision")
     if not isinstance(start_underlying_prices, Mapping):
         raise TypeError("start_underlying_prices")
+    if lifecycle_window_sink is not None and not callable(lifecycle_window_sink):
+        raise TypeError("lifecycle_window_sink")
     expected_identities = (("NIFTY", "NSE"), ("SENSEX", "BSE"))
     if set(start_underlying_prices) != set(expected_identities):
         raise ValueError("exact NIFTY/SENSEX start prices required")
@@ -83,6 +94,7 @@ def project_parent_decision_predictions(
                 exchange=child.exchange,
                 requested_at=decision.requested_at,
                 completed_at=decision.completed_at,
+                observed_at=decision.completed_at,
                 market_timestamp=market_timestamp,
                 received_at=child.received_at,
                 start_underlying_price=normalized_prices[(child.underlying_symbol, child.exchange)],
@@ -133,5 +145,17 @@ def project_parent_decision_predictions(
         for item in result
     ) != (("NIFTY", "NSE"), ("SENSEX", "BSE")):
         raise ValueError("exact ordered NIFTY/SENSEX pair required")
+
+    if lifecycle_window_sink is not None:
+        policies = {("NIFTY", "NSE"): NSE_NIFTY_POLICY, ("SENSEX", "BSE"): BSE_SENSEX_POLICY}
+        windows: tuple[PredictionLifecycleWindowV1, PredictionLifecycleWindowV1] = tuple(
+            resolve_prediction_lifecycle_window(
+                prediction_record=record,
+                session_policy=policies[(record.underlying_symbol, record.exchange)],
+                timing_policy=PredictionLifecycleTimingPolicyV1(),
+            )
+            for record in result
+        )
+        lifecycle_window_sink(windows)
 
     return result

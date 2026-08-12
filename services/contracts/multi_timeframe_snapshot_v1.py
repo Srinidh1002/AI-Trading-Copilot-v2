@@ -7,5 +7,7 @@ class MultiTimeframeSnapshotV1:
  def __post_init__(self):
   names=tuple(v.timeframe for v in self.timeframe_evidence)
   if not self.multi_timeframe_snapshot_id or not isinstance(self.created_at,datetime) or not self.created_at.tzinfo or self.anchor_timeframe not in self.required_timeframes or len(set(names))!=len(names) or any((v.underlying_symbol,v.exchange)!=(self.underlying_symbol,self.exchange) or v.timeframe not in self.required_timeframes for v in self.timeframe_evidence) or names!=tuple(t for t in self.required_timeframes if t in names) or self.execution_mode!="PAPER" or self.live_execution_eligible is not False:raise ValueError("Invalid multi-timeframe snapshot.")
-  if set(self.required_timeframes)-set(names) and not self.blockers:raise ValueError("Missing timeframe requires blocker.")
+  missing=set(self.required_timeframes)-set(names)
+  if "5m" in missing and not self.blockers:raise ValueError("Missing mandatory timeframe requires blocker.")
+  if missing-{"5m"} and not self.warnings:raise ValueError("Missing optional timeframe requires warning.")
   object.__setattr__(self,"blockers",tuple(self.blockers));object.__setattr__(self,"warnings",tuple(self.warnings))

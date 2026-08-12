@@ -1,12 +1,16 @@
-from datetime import datetime
+from datetime import datetime, time
 from unittest.mock import MagicMock
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pytest
 
 from services.market.live_multi_timeframe_data import (
     LiveMultiTimeframeData,
+    required_closed_candle_at,
 )
+from services.market_session.policies import MarketSessionPolicy
+from services.market_session.validator import validate_session_timestamp
 
 
 def candle_data():
@@ -39,6 +43,76 @@ def make_cache():
     cache.get.return_value = None
 
     return cache
+
+
+@pytest.mark.parametrize(
+    ("exchange", "expected_start"),
+    (
+        ("NSE", time(15, 25)),
+        ("BSE", time(15, 25)),
+        ("NFO", time(15, 35)),
+        ("BFO", time(15, 35)),
+    ),
+)
+def test_after_hours_closed_candle_uses_exchange_historical_close(
+    exchange,
+    expected_start,
+):
+    result = required_closed_candle_at(
+        "5m",
+        datetime(2026, 7, 10, 16, 0, tzinfo=ZoneInfo("Asia/Kolkata")),
+        exchange=exchange,
+    )
+
+    assert result.time() == expected_start
+
+
+def test_historical_intraday_and_previous_session_boundaries_remain_exchange_aware():
+    assert required_closed_candle_at(
+        "5m",
+        datetime(2026, 7, 10, 10, 17, tzinfo=ZoneInfo("Asia/Kolkata")),
+        exchange="NSE",
+    ).time() == time(10, 10)
+    assert required_closed_candle_at(
+        "5m",
+        datetime(2026, 1, 26, 10, 17, tzinfo=ZoneInfo("Asia/Kolkata")),
+        exchange="NSE",
+    ) == datetime(2026, 1, 23, 15, 25, tzinfo=ZoneInfo("Asia/Kolkata"))
+
+
+def test_unknown_historical_exchange_fails_closed():
+    with pytest.raises(ValueError, match="unsupported historical candle exchange"):
+        required_closed_candle_at(
+            "5m",
+            datetime(2026, 7, 10, 16, 0, tzinfo=ZoneInfo("Asia/Kolkata")),
+            exchange="UNKNOWN",
+        )
+
+
+def test_task9_execution_session_policy_remains_fno_authority():
+    policy = MarketSessionPolicy()
+    assert policy.new_entry_cutoff == time(15, 20)
+    assert policy.regular_close == time(15, 40)
+
+    result = validate_session_timestamp(
+        symbol="NIFTY",
+        exchange="NSE",
+        market_timestamp=datetime(2026, 7, 10, 15, 35, tzinfo=ZoneInfo("Asia/Kolkata")),
+        evaluated_at=datetime(2026, 7, 10, 15, 35, tzinfo=ZoneInfo("Asia/Kolkata")),
+        validation_mode="STRICT_EXECUTION",
+        id_factory=lambda: "historical-session-separation",
+    )
+    assert result.session_state == "REGULAR"
+
+    post_close = validate_session_timestamp(
+        symbol="NIFTY",
+        exchange="NSE",
+        market_timestamp=datetime(2026, 7, 10, 15, 41, tzinfo=ZoneInfo("Asia/Kolkata")),
+        evaluated_at=datetime(2026, 7, 10, 15, 41, tzinfo=ZoneInfo("Asia/Kolkata")),
+        validation_mode="STRICT_EXECUTION",
+        id_factory=lambda: "historical-session-separation-post-close",
+    )
+    assert post_close.session_state == "POST_CLOSE"
 
 
 def test_fetch_single_timeframe():
@@ -283,6 +357,7 @@ class MetadataCache:
         timeframe,
         *,
         max_age_seconds,
+        required_until=None,
     ):
         return self.result
 
@@ -294,6 +369,7 @@ class MetadataCache:
         response,
         *,
         source,
+        requested_until=None,
     ):
         self.set_calls.append(
             {
@@ -306,6 +382,60 @@ class MetadataCache:
         )
 
         return response
+
+
+class ClosedCoverageMetadataCache(MetadataCache):
+    def __init__(self, result=None):
+        super().__init__(result=result)
+        self.required_closed_at = None
+
+    def get_with_metadata(
+        self,
+        exchange,
+        symboltoken,
+        timeframe,
+        *,
+        max_age_seconds,
+        required_until=None,
+        required_closed_at=None,
+    ):
+        self.required_closed_at = required_closed_at
+        return self.result
+
+
+class KwargsMetadataCache(MetadataCache):
+    def __init__(self, result=None):
+        super().__init__(result=result)
+        self.reader_kwargs = None
+
+    def get_with_metadata(
+        self,
+        exchange,
+        symboltoken,
+        timeframe,
+        **kwargs,
+    ):
+        self.reader_kwargs = kwargs
+        return self.result
+
+
+class InternalTypeErrorMetadataCache(MetadataCache):
+    def __init__(self, result=None):
+        super().__init__(result=result)
+        self.calls = 0
+
+    def get_with_metadata(
+        self,
+        exchange,
+        symboltoken,
+        timeframe,
+        *,
+        max_age_seconds,
+        required_until=None,
+        required_closed_at=None,
+    ):
+        self.calls += 1
+        raise TypeError("cache implementation failure")
 
 
 def test_capture_metadata_preserves_persistent_cache_provenance(
@@ -510,6 +640,89 @@ def test_invalid_live_candles_are_not_persisted():
         )
 
     assert cache.set_calls == []
+
+
+def test_legacy_metadata_cache_uses_naive_end_time_contract():
+    cache = MetadataCache()
+    client = MagicMock()
+    client.get_historical_data.return_value = candle_data()
+
+    service = LiveMultiTimeframeData(client=client, cache=cache)
+
+    service.fetch_timeframe_raw(
+        exchange="NSE",
+        symboltoken="99926000",
+        timeframe="5m",
+        end_time=datetime(2026, 7, 10, 15, 30),
+    )
+
+    assert len(cache.set_calls) == 1
+
+
+def test_legacy_metadata_cache_uses_aware_end_time_contract():
+    cache = MetadataCache()
+    client = MagicMock()
+    client.get_historical_data.return_value = candle_data()
+
+    service = LiveMultiTimeframeData(client=client, cache=cache)
+
+    service.fetch_timeframe_raw(
+        exchange="NSE",
+        symboltoken="99926000",
+        timeframe="5m",
+        end_time=datetime(2026, 7, 10, 15, 30, tzinfo=ZoneInfo("Asia/Kolkata")),
+    )
+
+    assert len(cache.set_calls) == 1
+
+
+def test_closed_coverage_cache_receives_required_closed_at():
+    cache = ClosedCoverageMetadataCache()
+    client = MagicMock()
+    client.get_historical_data.return_value = candle_data()
+
+    service = LiveMultiTimeframeData(client=client, cache=cache)
+
+    service.fetch_timeframe_raw(
+        exchange="NSE",
+        symboltoken="99926000",
+        timeframe="5m",
+        end_time=datetime(2026, 7, 10, 15, 30, tzinfo=ZoneInfo("Asia/Kolkata")),
+    )
+
+    assert cache.required_closed_at == "2026-07-10T15:25:00+05:30"
+
+
+def test_kwargs_metadata_cache_receives_required_closed_at():
+    cache = KwargsMetadataCache()
+    client = MagicMock()
+    client.get_historical_data.return_value = candle_data()
+
+    service = LiveMultiTimeframeData(client=client, cache=cache)
+
+    service.fetch_timeframe_raw(
+        exchange="NSE",
+        symboltoken="99926000",
+        timeframe="5m",
+        end_time=datetime(2026, 7, 10, 15, 30, tzinfo=ZoneInfo("Asia/Kolkata")),
+    )
+
+    assert cache.reader_kwargs["required_closed_at"] == "2026-07-10T15:25:00+05:30"
+
+
+def test_internal_cache_type_error_is_not_retried_as_legacy_api():
+    cache = InternalTypeErrorMetadataCache()
+    service = LiveMultiTimeframeData(client=MagicMock(), cache=cache)
+
+    with pytest.raises(TypeError, match="cache implementation failure"):
+        service.fetch_timeframe_raw(
+            exchange="NSE",
+            symboltoken="99926000",
+            timeframe="5m",
+            end_time=datetime(2026, 7, 10, 15, 30, tzinfo=ZoneInfo("Asia/Kolkata")),
+        )
+
+    assert cache.calls == 1
 
 
 def test_live_capture_retains_historical_rate_limit_reason(

@@ -11,8 +11,12 @@ from services.dashboard_publication import (
 from services.dashboard_publication.dashboard_publication_registry import (
     get_registered_dashboard_publication_snapshot,
 )
+from services.dashboard_publication.dashboard_publication_persistent_store import (
+    DashboardPublicationPersistentStore,
+)
 
 from .dashboard_read_model_state import (
+    APPLICATION_VIEW_STATE_KEY,
     OPPORTUNITY_STATE_KEY,
     PAPER_POSITION_STATE_KEY,
     TRADE_PLAN_STATE_KEY,
@@ -51,6 +55,9 @@ OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY = (
 )
 OPERATOR_APPLICATION_VIEW_MODEL_SEQUENCE_STATE_KEY = (
     "operator_application_view_model_sequence"
+)
+DEFAULT_TASK9_PUBLICATION_ROOT = (
+    "data/paper_trading/certified_runtime/task9"
 )
 
 
@@ -109,6 +116,8 @@ def synchronize_dashboard_publication(
     state[R4_PAPER_LIFECYCLE_VIEW_STATE_KEY] = (
         envelope.r4_paper_lifecycle
     )
+    if envelope.application_view is not None:
+        state[APPLICATION_VIEW_STATE_KEY] = envelope.application_view
 
     state[PUBLICATION_ID_STATE_KEY] = envelope.publication_id
     state[PUBLICATION_SEQUENCE_STATE_KEY] = envelope.publication_sequence
@@ -183,10 +192,27 @@ def get_operator_application_view_model(
 
 def synchronize_registered_dashboard_publication(
     state: MutableMapping[str, object],
+    *,
+    persistence_root: str = DEFAULT_TASK9_PUBLICATION_ROOT,
 ) -> bool:
-    """Synchronize from the process-local registered publication store."""
+    """Use local publication first, then the durable Task 9 snapshot.
+
+    Missing or invalid disk state never clears an existing valid session view.
+    """
 
     snapshot = get_registered_dashboard_publication_snapshot()
+    if snapshot is not None:
+        return synchronize_dashboard_publication(state, snapshot)
+    try:
+        snapshot = DashboardPublicationPersistentStore(
+            persistence_root
+        ).recover()
+    except ValueError as exc:
+        state[PUBLICATION_ATTEMPT_STATUS_STATE_KEY] = (
+            "FAILED_ATTEMPT_PRESERVED"
+        )
+        state[PUBLICATION_ATTEMPT_ERROR_STATE_KEY] = str(exc)
+        return False
     if snapshot is None:
         return False
     return synchronize_dashboard_publication(state, snapshot)

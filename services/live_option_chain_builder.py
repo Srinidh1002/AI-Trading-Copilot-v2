@@ -11,6 +11,10 @@ Builds a normalized and integrity-validated option chain using:
 Read-only. No orders are placed.
 """
 
+from collections.abc import Mapping
+from datetime import datetime, timezone
+import math
+
 from services.angel_instrument_master import (
     AngelInstrumentMaster,
 )
@@ -25,6 +29,9 @@ from services.option_chain_validator import (
 
 from services.option_full_response_validator import (
     validate_option_full_response,
+)
+from services.options.angel_option_provider_capabilities import (
+    angel_option_provider_capabilities,
 )
 
 
@@ -48,6 +55,9 @@ class LiveOptionChainBuilder:
         self,
         instrument_master=None,
         market_client=None,
+        clock=None,
+        maximum_quote_age_seconds=300.0,
+        maximum_future_skew_seconds=5.0,
     ):
         self.instrument_master = (
             instrument_master
@@ -60,6 +70,32 @@ class LiveOptionChainBuilder:
             if market_client is not None
             else get_market_client()
         )
+
+        self.clock = (
+            clock
+            if clock is not None
+            else lambda: datetime.now(timezone.utc)
+        )
+
+        if not callable(self.clock):
+            raise TypeError("clock must be callable")
+
+        self.maximum_quote_age_seconds = float(
+            maximum_quote_age_seconds
+        )
+        self.maximum_future_skew_seconds = float(
+            maximum_future_skew_seconds
+        )
+
+        if self.maximum_quote_age_seconds < 0:
+            raise ValueError(
+                "maximum_quote_age_seconds cannot be negative"
+            )
+
+        if self.maximum_future_skew_seconds < 0:
+            raise ValueError(
+                "maximum_future_skew_seconds cannot be negative"
+            )
 
     @staticmethod
     def _normalize_strike(
@@ -177,6 +213,173 @@ class LiveOptionChainBuilder:
             return int(
                 default
             )
+
+    @staticmethod
+    def _greek_number(value, field_name, *, signed=False):
+        """Return a finite provider Greek, or reject the provider row.
+
+        Greek values are enrichment only.  They must never be coerced to a
+        synthetic zero because zero would be indistinguishable from live
+        provider evidence downstream.
+        """
+        if isinstance(value, bool):
+            raise ValueError(field_name)
+        try:
+            result = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(field_name) from exc
+        if not math.isfinite(result) or (not signed and result < 0):
+            raise ValueError(field_name)
+        return result
+
+    @staticmethod
+    def _greek_option_type(value):
+        result = str(value or "").strip().upper()
+        if result == "CALL":
+            result = "CE"
+        elif result == "PUT":
+            result = "PE"
+        if result not in {"CE", "PE"}:
+            raise ValueError("optionType")
+        return result
+
+    @staticmethod
+    def _greek_strike(value):
+        if isinstance(value, bool):
+            raise ValueError("strikePrice")
+        try:
+            result = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("strikePrice") from exc
+        if not math.isfinite(result) or result <= 0:
+            raise ValueError("strikePrice")
+        return result
+
+    def _capture_greek_rows(
+        self,
+        *,
+        underlying,
+        option_exchange,
+        expiry,
+    ):
+        """Read one nearest-expiry Greek capture from this builder's client.
+
+        This deliberately uses ``self.market_client`` rather than constructing
+        ``AngelOptionClient``: certification injects its shared client here,
+        preserving the one process-wide Angel request controller/session
+        authority.  ``AngelMarketDataClient`` also caches this exact request
+        key, preventing duplicate requests by concurrent/reused captures.
+        """
+        capability = angel_option_provider_capabilities(
+            underlying,
+            option_exchange,
+        )
+        if not capability.option_greeks_supported:
+            return (), {
+                "state": "UNSUPPORTED_BY_PROVIDER",
+                "reason": "OPTION_GREEKS_PROVIDER_CAPABILITY_UNAVAILABLE",
+            }
+        try:
+            response = self.market_client.get_option_greeks(
+                capability.underlying_symbol,
+                expiry,
+            )
+        except Exception as exc:
+            return (), {
+                "state": "PROVIDER_FAILURE",
+                "reason": "OPTION_GREEKS_PROVIDER_FAILURE_"
+                + type(exc).__name__.upper(),
+            }
+        if not isinstance(response, Mapping):
+            return (), {
+                "state": "DATA_UNAVAILABLE",
+                "reason": "OPTION_GREEKS_DATA_UNAVAILABLE",
+            }
+        rows = response.get("data")
+        if not isinstance(rows, list) or not rows:
+            return (), {
+                "state": "DATA_UNAVAILABLE",
+                "reason": "OPTION_GREEKS_DATA_UNAVAILABLE",
+            }
+        if not all(isinstance(row, Mapping) for row in rows):
+            return (), {
+                "state": "DATA_MALFORMED",
+                "reason": "OPTION_GREEKS_DATA_MALFORMED",
+            }
+        return tuple(rows), {"state": "SUPPORTED", "reason": None}
+
+    def _enrich_with_greeks(
+        self,
+        *,
+        contracts,
+        greek_rows,
+        greek_capture,
+        expiry,
+    ):
+        """Strictly join provider Greeks without modifying FULL quote fields.
+
+        Angel's Greek payload is scoped to the exact requested expiry.  Rows
+        identify a contract by provider token when supplied, otherwise by
+        provider trading symbol, otherwise by the exact
+        (requested-expiry, strikePrice, optionType) tuple.  There is no
+        positional or nearest-strike matching.
+        """
+        if greek_capture["state"] != "SUPPORTED":
+            return contracts, greek_capture
+
+        by_token = {str(item["token"]): item for item in contracts}
+        by_symbol = {str(item["symbol"]).strip().upper(): item for item in contracts}
+        by_strike_type = {
+            (float(item["strike"]), str(item["option_type"]).upper()): item
+            for item in contracts
+        }
+        matches = {}
+        try:
+            for row in greek_rows:
+                token = str(row.get("symbolToken", row.get("symboltoken", row.get("token", "")))).strip()
+                symbol = str(row.get("tradingSymbol", row.get("tradingsymbol", row.get("symbol", "")))).strip().upper()
+                strike = self._greek_strike(row.get("strikePrice", row.get("strike")))
+                option_type = self._greek_option_type(row.get("optionType", row.get("option_type")))
+                candidate = by_token.get(token) if token else None
+                if not token and symbol:
+                    candidate = by_symbol.get(symbol)
+                if candidate is None and not token and not symbol:
+                    candidate = by_strike_type.get((strike, option_type))
+                if candidate is None:
+                    continue
+                # Any supplied secondary identity must corroborate the match.
+                if (token and token != candidate["token"]) or (symbol and symbol != str(candidate["symbol"]).strip().upper()):
+                    continue
+                if (strike, option_type) != (float(candidate["strike"]), str(candidate["option_type"]).upper()):
+                    continue
+                values = {
+                    "delta": self._greek_number(row.get("delta"), "delta", signed=True),
+                    "gamma": self._greek_number(row.get("gamma"), "gamma"),
+                    "theta": self._greek_number(row.get("theta"), "theta", signed=True),
+                    "vega": self._greek_number(row.get("vega"), "vega"),
+                    "iv": self._greek_number(row.get("impliedVolatility", row.get("iv")), "impliedVolatility"),
+                }
+                key = candidate["token"]
+                # Ambiguous duplicate Greek identities fail closed for that
+                # contract; no provider row wins by array order.
+                if key in matches:
+                    matches[key] = None
+                else:
+                    matches[key] = values
+        except ValueError:
+            return contracts, {
+                "state": "DATA_MALFORMED",
+                "reason": "OPTION_GREEKS_DATA_MALFORMED",
+            }
+
+        enriched = []
+        for contract in contracts:
+            values = matches.get(contract["token"])
+            enriched.append({**contract, **values} if values is not None else contract)
+        return enriched, {
+            "state": "SUPPORTED" if any(value is not None for value in matches.values()) else "DATA_UNAVAILABLE",
+            "reason": None if any(value is not None for value in matches.values()) else "OPTION_GREEKS_NO_EXACT_MATCH",
+        }
 
     def get_nearby_contracts(
         self,
@@ -471,11 +674,30 @@ class LiveOptionChainBuilder:
             )
         )
 
+        received_at = self.clock()
+
+        if (
+            not isinstance(received_at, datetime)
+            or received_at.tzinfo is None
+            or received_at.utcoffset() is None
+        ):
+            raise ValueError(
+                "option quote receipt timestamp "
+                "must be timezone-aware"
+            )
+
         market_by_token = (
             validate_option_full_response(
                 response=response,
                 option_exchange=option_exchange,
                 requested_tokens=tokens,
+                received_at=received_at,
+                maximum_quote_age_seconds=(
+                    self.maximum_quote_age_seconds
+                ),
+                maximum_future_skew_seconds=(
+                    self.maximum_future_skew_seconds
+                ),
             )
         )
 
@@ -614,6 +836,24 @@ class LiveOptionChainBuilder:
                     ]
                 ),
 
+                "provider_timestamp": (
+                    market[
+                        "_validated_provider_timestamp"
+                    ]
+                ),
+
+                "provider_timestamp_field": (
+                    market[
+                        "_validated_provider_timestamp_field"
+                    ]
+                ),
+
+                "provider_timestamp_age_seconds": (
+                    market[
+                        "_validated_provider_timestamp_age_seconds"
+                    ]
+                ),
+
                 # Greeks remain optional until
                 # supplied by a Greeks service.
                 "delta": None,
@@ -637,6 +877,18 @@ class LiveOptionChainBuilder:
         # MANDATORY OPTION-CHAIN
         # INTEGRITY VALIDATION
         # ---------------------------------
+
+        greek_rows, greek_capture = self._capture_greek_rows(
+            underlying=selection["underlying"],
+            option_exchange=option_exchange,
+            expiry=selection["expiry"]["display"],
+        )
+        normalized, greek_capture = self._enrich_with_greeks(
+            contracts=normalized,
+            greek_rows=greek_rows,
+            greek_capture=greek_capture,
+            expiry=selection["expiry"]["display"],
+        )
 
         validated_contracts = (
             validate_option_chain(
@@ -699,4 +951,8 @@ class LiveOptionChainBuilder:
             ),
 
             "integrity_validated": True,
+
+            # Sanitized capture evidence only.  Raw provider payloads and
+            # credentials are never retained in the certified capture.
+            "greek_capture": greek_capture,
         }

@@ -1,6 +1,17 @@
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
+
+
+NOW = datetime(
+    2026,
+    7,
+    14,
+    10,
+    0,
+    tzinfo=timezone.utc,
+)
 
 from services.live_option_chain_builder import (
     LiveOptionChainBuilder,
@@ -166,6 +177,7 @@ def test_build_normalized_chain():
                     "ltp": 150.0,
                     "tradeVolume": 20000,
                     "opnInterest": 30000,
+                    "exchangeTimestamp": NOW.isoformat(),
                     "depth": {
                         "buy": [
                             {
@@ -184,6 +196,7 @@ def test_build_normalized_chain():
                     "ltp": 155.0,
                     "tradeVolume": 18000,
                     "opnInterest": 28000,
+                    "exchangeTimestamp": NOW.isoformat(),
                     "depth": {
                         "buy": [
                             {
@@ -205,6 +218,7 @@ def test_build_normalized_chain():
     builder = LiveOptionChainBuilder(
         instrument_master=master,
         market_client=market_client,
+        clock=lambda: NOW,
     )
 
     result = builder.build_chain(
@@ -241,6 +255,15 @@ def test_build_normalized_chain():
     assert contract["lot_size"] == 75
     assert contract["option_type"] == "CE"
     assert contract["strike"] == 24200.0
+    assert contract["provider_timestamp"] == NOW
+    assert (
+        contract["provider_timestamp_field"]
+        == "exchangeTimestamp"
+    )
+    assert (
+        contract["provider_timestamp_age_seconds"]
+        == 0.0
+    )
 
 def test_invalid_spot_price():
 

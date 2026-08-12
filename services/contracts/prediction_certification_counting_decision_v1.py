@@ -10,6 +10,8 @@ from typing import ClassVar
 
 _STATUSES = {
     "INCLUDED",
+    "INCLUDED_NON_TRADE",
+    "INCLUDED_WAIT",
     "PENDING_OUTCOME",
     "EXCLUDED_REPLAY",
     "EXCLUDED_BACKTEST",
@@ -21,7 +23,9 @@ _STATUSES = {
     "EXCLUDED_VERSION_MISMATCH",
     "EXCLUDED_OUT_OF_SESSION",
     "EXCLUDED_INVALID_EVIDENCE",
+    "EXCLUDED_CHILD_FAILURE",
     "EXCLUDED_DATA_INCIDENT",
+    "EXCLUDED_DATA_UNAVAILABLE",
     "EXCLUDED_TERMINAL_PREDICTION",
     "EXCLUDED_UNEVALUABLE_OUTCOME",
 }
@@ -156,6 +160,16 @@ class PredictionCertificationCountingDecisionV1:
             ):
                 raise ValueError(
                     "INCLUDED decision coherence"
+                )
+        elif status in {"INCLUDED_NON_TRADE", "INCLUDED_WAIT"}:
+            if (
+                self.countable is not False
+                or self.pending is not False
+                or reasons
+                or self.outcome_id is None
+            ):
+                raise ValueError(
+                    f"{status} decision coherence"
                 )
         elif status == "PENDING_OUTCOME":
             if (

@@ -316,6 +316,11 @@ def test_real_retained_evaluation_constructs_exact_p6_bundle():
         .available_capital
         == 10000.0
     )
+    assert bundle.planning_policy.minimum_lot_count == 1
+    assert bundle.planning_policy.maximum_lot_count == 3
+    assert bundle.planning_policy.allow_partial_target_lots is True
+    assert bundle.planning_policy.minimum_lots_for_three_targets == 3
+    assert bundle.planning_policy.insufficient_target_lot_behavior == "ALLOW"
 
 
 

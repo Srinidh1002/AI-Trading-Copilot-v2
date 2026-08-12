@@ -92,6 +92,7 @@ class SelectedOptionAffordabilityRiskResultV1:
     premium: float | None
     bid_price: float | None
     ask_price: float | None
+    quote_timestamp: datetime | None
     evaluated_at: datetime
     status: str
     planning_allowed: bool
@@ -144,6 +145,16 @@ class SelectedOptionAffordabilityRiskResultV1:
             "evaluated_at",
             _aware(self.evaluated_at, "evaluated_at"),
         )
+
+        if self.quote_timestamp is not None:
+            object.__setattr__(
+                self,
+                "quote_timestamp",
+                _aware(
+                    self.quote_timestamp,
+                    "quote_timestamp",
+                ),
+            )
 
         status = _text(self.status, "status").upper()
         if status not in _STATUSES:
@@ -244,6 +255,7 @@ class SelectedOptionAffordabilityRiskResultV1:
             self.premium,
             self.bid_price,
             self.ask_price,
+            self.quote_timestamp,
         )
         authority_group = (
             self.authority_input_id,

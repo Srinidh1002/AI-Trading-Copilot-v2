@@ -7,13 +7,25 @@ PACKAGE = ROOT / "services" / "dashboard_read_models"
 
 
 def imported_modules(path: Path) -> set[str]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+    tree = ast.parse(
+        path.read_text(encoding="utf-8")
+    )
+
     modules: set[str] = set()
+
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            modules.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.update(
+                alias.name
+                for alias in node.names
+            )
+
+        elif (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+        ):
             modules.add(node.module)
+
     return modules
 
 
@@ -37,7 +49,10 @@ def test_read_model_package_has_no_forbidden_imports():
     for path in PACKAGE.glob("*.py"):
         for module in imported_modules(path):
             assert not any(
-                module == item or module.startswith(item + ".")
+                module == item
+                or module.startswith(
+                    item + "."
+                )
                 for item in forbidden
             ), f"{path.name}: {module}"
 
@@ -51,9 +66,14 @@ def test_read_model_package_does_not_generate_current_time():
     )
 
     for path in PACKAGE.glob("*.py"):
-        source = path.read_text(encoding="utf-8")
+        source = path.read_text(
+            encoding="utf-8"
+        )
+
         for token in forbidden_tokens:
-            assert token not in source, f"{path.name}: {token}"
+            assert token not in source, (
+                f"{path.name}: {token}"
+            )
 
 
 def test_public_exports_are_explicit():
@@ -61,6 +81,8 @@ def test_public_exports_are_explicit():
 
     assert set(read_models.__all__) == {
         "DashboardCycleViewV1",
+        "DashboardApplicationViewV1",
+        "DashboardManualLivePlannerStateV1",
         "DashboardMarketStateV1",
         "DashboardOpportunityViewV1",
         "DashboardPaperFillViewV1",

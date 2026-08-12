@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from services.contracts.prediction_record_v1 import PredictionRecordV1
+from services.contracts.prediction_record_v1 import prediction_record_from_dict
 
 
 class PredictionLedger:
@@ -144,6 +145,13 @@ class PredictionLedger:
 
         value = self._read_document()["records"].get(key)
         return None if value is None else dict(value)
+
+    def recover(self, prediction_id: str) -> PredictionRecordV1 | None:
+        """Recover the exact durable prediction record by its only lookup key."""
+        raw = self.get_raw(prediction_id)
+        if raw is None:
+            return None
+        return prediction_record_from_dict(raw)
 
     def classify(
         self,

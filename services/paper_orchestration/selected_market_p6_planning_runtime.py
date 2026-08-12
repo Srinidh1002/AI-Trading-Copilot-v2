@@ -125,7 +125,7 @@ def _validate_bundle(
     if (
         canonical.underlying_symbol,
         canonical.exchange,
-        getattr(canonical.selected_market_opportunity, "directional_bias", None),
+        canonical.direction,
     ) != expected:
         raise ValueError("P6 bundle selected market identity mismatch")
     selection = bundle.option_selection_input

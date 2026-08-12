@@ -55,6 +55,7 @@ _OUTCOMES = {
     "DATA_UNAVAILABLE",
     "UNRESOLVED",
     "PENDING",
+    "CHILD_FAILURE",
 }
 
 
@@ -121,6 +122,7 @@ def build_paper_certification_daily_report(
         PredictionLifecycleReconciliationResultV1, ...
     ],
     positions: tuple[PaperTradePositionV1, ...],
+    prediction_position_ids: tuple[tuple[str, str], ...] = (),
     analytics_contexts: tuple[
         PredictionCertificationAnalyticsContextV1, ...
     ] = (),
@@ -156,6 +158,16 @@ def build_paper_certification_daily_report(
         PaperTradePositionV1,
         "positions",
     )
+    if (
+        type(prediction_position_ids) is not tuple
+        or any(
+            type(item) is not tuple
+            or len(item) != 2
+            or any(type(value) is not str or not value for value in item)
+            for item in prediction_position_ids
+        )
+    ):
+        raise TypeError("prediction_position_ids")
     analytics_contexts = _typed_tuple(
         analytics_contexts,
         PredictionCertificationAnalyticsContextV1,
@@ -215,6 +227,11 @@ def build_paper_certification_daily_report(
         lambda item: item.position_id,
         "position_id",
     )
+    bound_position_by_prediction = _unique(
+        prediction_position_ids,
+        lambda item: item[0],
+        "prediction position binding",
+    )
     context_by_prediction = _unique(
         analytics_contexts,
         lambda item: item.prediction_id,
@@ -252,6 +269,15 @@ def build_paper_certification_daily_report(
         raise ValueError(
             "reconciliation references unknown position"
         )
+    if not set(bound_position_by_prediction).issubset(prediction_ids):
+        raise ValueError("position binding references unknown prediction")
+    bound_position_ids = {
+        item[1] for item in prediction_position_ids
+    }
+    if len(bound_position_ids) != len(prediction_position_ids):
+        raise ValueError("one PAPER position cannot bind multiple predictions")
+    if not bound_position_ids.issubset(position_by_id):
+        raise ValueError("position binding references unknown position")
 
     for prediction in ordered_predictions:
         if prediction.completed_at.date() != session_date:
@@ -329,6 +355,9 @@ def build_paper_certification_daily_report(
             and reconciliation.position_id is not None
             else None
         )
+        if position is None:
+            bound = bound_position_by_prediction.get(prediction_id)
+            position = position_by_id.get(bound[1]) if bound is not None else None
 
         lifecycle_status = (
             outcome.evaluation_status
@@ -338,7 +367,11 @@ def build_paper_certification_daily_report(
         outcome_name = (
             outcome.outcome
             if outcome is not None
-            else "PENDING"
+            else (
+                "CHILD_FAILURE"
+                if decision.status == "EXCLUDED_CHILD_FAILURE"
+                else "PENDING"
+            )
         )
         reconciliation_status = (
             reconciliation.status
@@ -357,6 +390,8 @@ def build_paper_certification_daily_report(
 
         if officially_counted:
             classification = "OFFICIAL"
+        elif decision.status in {"INCLUDED_NON_TRADE", "INCLUDED_WAIT"}:
+            classification = "NON_TRADE"
         elif not decision.countable and not decision.pending:
             classification = "EXCLUDED"
             reasons = list(decision.reason_codes)
@@ -481,9 +516,8 @@ def build_paper_certification_daily_report(
                 outcome=outcome_name,
                 reconciliation_status=reconciliation_status,
                 entry_occurred=(
-                    outcome.entry_occurred
-                    if outcome is not None
-                    else False
+                    position is not None
+                    or (outcome.entry_occurred if outcome is not None else False)
                 ),
                 closed_position=closed,
                 success=(
@@ -562,6 +596,11 @@ def build_paper_certification_daily_report(
         ending_capital=starting_capital + net_pnl,
         source_prediction_count=len(facts),
         official_prediction_count=official_count,
+        completed_non_trade_count=sum(
+            item.counting_status in {"INCLUDED_NON_TRADE", "INCLUDED_WAIT"}
+            and item.action in {"NO_TRADE", "WAIT"}
+            for item in facts
+        ),
         completed_outcome_count=completed_count,
         pending_outcome_count=len(unresolved),
         excluded_prediction_count=len(excluded),
@@ -585,7 +624,7 @@ def build_paper_certification_daily_report(
         ),
         action_distribution=_distribution(
             (item.action for item in facts),
-            ("CALL", "PUT", "WAIT"),
+            ("CALL", "PUT", "WAIT", "NO_TRADE"),
         ),
         selected_market_distribution=_distribution(
             selected_markets,

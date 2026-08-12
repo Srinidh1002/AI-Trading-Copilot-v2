@@ -394,6 +394,7 @@ def capture_certified_live_evidence(
     data_service: LiveMultiTimeframeData,
     option_decision_pipeline: LiveOptionDecisionPipeline,
     candle_cutoff: datetime | None = None,
+    precomposed_timeframe_provider=None,
 ) -> CertifiedLiveCapturedEvidenceV1:
     """Capture one certified market's read-only inputs for later reuse."""
     if type(cycle_input) is not PaperOrchestrationCycleInputV1:
@@ -413,11 +414,21 @@ def capture_certified_live_evidence(
         candle_cutoff = _aware_datetime(candle_cutoff, "candle_cutoff")
         if candle_cutoff > market_timestamp:
             raise ValueError("candle_cutoff cannot follow market_timestamp")
-    captured = data_service.fetch_all_with_capture(spec.exchange, spec.symboltoken, end_time=candle_cutoff or market_timestamp)
+    if precomposed_timeframe_provider is None:
+        captured = data_service.fetch_all_with_capture(spec.exchange, spec.symboltoken, end_time=candle_cutoff or market_timestamp)
+    else:
+        if not callable(precomposed_timeframe_provider):
+            raise TypeError("precomposed_timeframe_provider")
+        captured = precomposed_timeframe_provider(
+            exchange=spec.exchange,
+            symboltoken=spec.symboltoken,
+            end_time=candle_cutoff or market_timestamp,
+        )
     if not isinstance(captured, Mapping):
         raise TypeError("fetch_all_with_capture must return a mapping")
     rows = captured.get("rows_by_timeframe", {})
     cache_metadata = captured.get("cache_metadata", {})
+    request_diagnostics = captured.get("request_diagnostics", {})
     if not isinstance(rows, Mapping) or not isinstance(cache_metadata, Mapping):
         raise TypeError("invalid candle capture result")
     candle_blockers = tuple(
@@ -431,7 +442,13 @@ def capture_certified_live_evidence(
             )
         )
         for timeframe, info in cache_metadata.items()
-        if isinstance(info, Mapping) and not info.get("captured", False)
+        if timeframe == "5m" and isinstance(info, Mapping) and not info.get("captured", False)
+    )
+    candle_warnings = tuple(
+        str(info.get("warning"))
+        for timeframe, info in cache_metadata.items()
+        if timeframe != "5m" and isinstance(info, Mapping)
+        and type(info.get("warning")) is str and info["warning"].strip()
     )
     option_capture = option_decision_pipeline.capture_option_inputs(
         underlying=spec.underlying_symbol,
@@ -451,8 +468,8 @@ def capture_certified_live_evidence(
         provider_timestamp=market_timestamp,
         evaluated_at=evaluated_at,
         provider_blockers=candle_blockers + option_capture.blockers,
-        provider_warnings=option_capture.warnings,
-        cache_metadata={"candles": cache_metadata, "options": option_capture.metadata, "shared_candle_cutoff": candle_cutoff.isoformat() if candle_cutoff else None},
+        provider_warnings=candle_warnings + option_capture.warnings,
+        cache_metadata={"candles": cache_metadata, "request_diagnostics": request_diagnostics if isinstance(request_diagnostics, Mapping) else {}, "options": option_capture.metadata, "shared_candle_cutoff": candle_cutoff.isoformat() if candle_cutoff else None},
     )
 
 
@@ -925,13 +942,20 @@ def _observe_only_new_entry_input_factory(
 
 
 def build_default_runtime_providers(
+    *,
+    historical_request_interval_seconds: float | None = None,
 ) -> CertifiedRuntimeProviderBundleV1:
     shared_client = get_certification_market_client()
 
-    data_service = LiveMultiTimeframeData(
-        client=shared_client,
-        cache_enabled=True,
-    )
+    data_service_kwargs = {
+        "client": shared_client,
+        "cache_enabled": True,
+    }
+    if historical_request_interval_seconds is not None:
+        data_service_kwargs["historical_request_interval_seconds"] = (
+            historical_request_interval_seconds
+        )
+    data_service = LiveMultiTimeframeData(**data_service_kwargs)
 
     analysis_pipeline = LiveAnalysisPipeline(
         data_service=data_service,

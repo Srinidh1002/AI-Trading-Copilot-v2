@@ -167,13 +167,13 @@ def _eligible_ready(name: str, value: object) -> bool:
         )
     if name == "option_chain":
         return (
-            value.intelligence_status == "READY"
+            value.intelligence_status in {"READY", "READY_WITH_WARNINGS"}
             and bool(value.metrics)
             and not value.blockers
         )
     if name == "option_contract_eligibility":
         return (
-            value.ranking_status == "RANKED"
+            value.ranking_status in {"RANKED", "RANKED_WITH_WARNINGS"}
             and value.selected_candidate is not None
             and not value.blockers
         )

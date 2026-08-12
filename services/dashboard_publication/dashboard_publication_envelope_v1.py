@@ -8,6 +8,7 @@ from services.contracts.paper_orchestration_cycle_result_v1 import (
     PaperOrchestrationCycleResultV1,
 )
 from services.dashboard_read_models import (
+    DashboardApplicationViewV1,
     DashboardOpportunityViewV1,
     DashboardPaperPositionDetailViewV1,
     DashboardTradePlanViewV1,
@@ -75,6 +76,7 @@ class DashboardPublicationEnvelopeV1:
     option_intelligence: DashboardOptionIntelligenceViewV1 | None = None
     runtime_operations: DashboardRuntimeOperationsViewV1 | None = None
     r4_paper_lifecycle: R4PaperLifecycleDashboardViewV1 | None = None
+    application_view: DashboardApplicationViewV1 | None = None
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
@@ -165,6 +167,7 @@ class DashboardPublicationEnvelopeV1:
                 R4PaperLifecycleDashboardViewV1,
                 "r4_paper_lifecycle",
             ),
+            (self.application_view, DashboardApplicationViewV1, "application_view"),
         )
         for value, expected, name in exact_optional:
             if value is not None and type(value) is not expected:
@@ -260,6 +263,11 @@ class DashboardPublicationEnvelopeV1:
             "r4_paper_lifecycle": (
                 self.r4_paper_lifecycle.to_dict()
                 if self.r4_paper_lifecycle is not None
+                else None
+            ),
+            "application_view": (
+                self.application_view.to_dict()
+                if self.application_view is not None
                 else None
             ),
             "blockers": list(self.blockers),

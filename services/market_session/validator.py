@@ -182,6 +182,7 @@ def validate_session_timestamp(
     session_phase = "CLOSED_ALL_DAY"
     trading_day_status = "TRADING_DAY"
     session_allows_analysis = False
+    regular_new_entry_window_open = False
 
     if identity is None:
         blockers.append(
@@ -248,6 +249,16 @@ def validate_session_timestamp(
             session_state = "REGULAR"
             session_phase = "REGULAR_TRADING"
             session_allows_analysis = True
+            regular_new_entry_window_open = (
+                market_clock
+                <= selected_policy.new_entry_cutoff
+            )
+
+            if not regular_new_entry_window_open:
+                warnings.append(
+                    "New PAPER entries are closed "
+                    "after the session entry cutoff."
+                )
 
         elif (
             selected_policy.pre_open_start
@@ -340,6 +351,10 @@ def validate_session_timestamp(
             mode != "STRICT_EXECUTION"
             or calendar_trusted
         )
+        and (
+            session_state != "REGULAR"
+            or regular_new_entry_window_open
+        )
     )
 
     validation_identifier = (
@@ -403,6 +418,19 @@ def validate_session_timestamp(
                 "CUSTOM",
             ),
             "validation_mode": mode,
+            "new_entry_cutoff": (
+                selected_policy
+                .new_entry_cutoff
+                .strftime("%H:%M")
+            ),
+            "regular_close": (
+                selected_policy
+                .regular_close
+                .strftime("%H:%M")
+            ),
+            "regular_new_entry_window_open": (
+                regular_new_entry_window_open
+            ),
         },
     )
 

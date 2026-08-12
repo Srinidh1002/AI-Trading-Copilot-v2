@@ -126,3 +126,24 @@ def test_projection_retains_exact_start_prices():
     decision = run_two_market_parent_cycle(parent(), child_evaluator=lambda symbol, exchange, observation_id: candidate_for(symbol, observation_id, score=80.0 if symbol == "NIFTY" else 60.0))
     records = project_parent_decision_predictions(decision, start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0})
     assert tuple(item.start_underlying_price for item in records) == (25000.0, 80000.0)
+
+
+def test_projection_creates_independent_lifecycle_windows_for_selected_and_wait():
+    decision = run_two_market_parent_cycle(
+        parent(),
+        child_evaluator=lambda symbol, exchange, observation_id: candidate_for(
+            symbol, observation_id, score=80.0 if symbol == "NIFTY" else 60.0,
+            direction="BULLISH" if symbol == "NIFTY" else "BEARISH",
+        ),
+    )
+    captured = []
+    records = project_parent_decision_predictions(
+        decision,
+        start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0},
+        lifecycle_window_sink=lambda windows: captured.extend(windows),
+    )
+
+    assert tuple(item.observed_at for item in records) == (decision.completed_at, decision.completed_at)
+    assert tuple(window.prediction_id for window in captured) == tuple(record.prediction_id for record in records)
+    assert tuple(window.action for window in captured) == ("CALL", "WAIT")
+    assert captured[1].entry_window_ends_at == captured[1].window_starts_at

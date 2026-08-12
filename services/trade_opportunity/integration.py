@@ -513,7 +513,13 @@ def build_canonical_trade_opportunity(
                 sorted(set(blockers))
             ),
             warnings=tuple(
-                sorted(set(warnings))
+                sorted(
+                    {
+                        str(item).strip().upper()
+                        for item in warnings
+                        if str(item).strip()
+                    }
+                )
             ),
         )
 
@@ -555,7 +561,13 @@ def build_canonical_trade_opportunity(
             sorted(set(supporting))
         ),
         warnings=tuple(
-            sorted(set(warnings))
+            sorted(
+                {
+                    str(item).strip().upper()
+                    for item in warnings
+                    if str(item).strip()
+                }
+            )
         ),
     )
 
