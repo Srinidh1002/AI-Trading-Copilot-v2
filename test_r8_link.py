@@ -62,11 +62,15 @@ try:
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 
-print("\n[6] Immutability - Day-1 prediction JSONL unchanged vs archive")
-live_h = sha256("data/paper_trades/nifty_predictions.jsonl")
-arc_h  = sha256("data/paper_trades/_archived_NS_precert_20260915/nifty_predictions.jsonl")
-if live_h and arc_h:
-    ok("live == archived", live_h == arc_h, f"{live_h[:16]}... == {arc_h[:16]}...")
+print("\n[6] Immutability - active V1 genesis + archived Day-1 unchanged")
+_live_h = sha256("data/paper_trades/nifty_predictions.jsonl")
+_arc_h  = sha256("data/paper_trades/_archived_NS_precert_20260915/nifty_predictions.jsonl")
+ok("active V1 genesis",
+   _live_h is not None and _live_h.startswith("e3b0c442"),
+   f"{_live_h[:16] if _live_h else 'MISS'}...")
+ok("archived Day-1",
+   _arc_h is not None and _arc_h.startswith("5fe634be"),
+   f"{_arc_h[:16] if _arc_h else 'MISS'}...")
 
 n_pass = sum(1 for _, c in passed if c)
 n_fail = sum(1 for _, c in passed if not c)

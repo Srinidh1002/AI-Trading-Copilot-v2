@@ -33,6 +33,9 @@ print("=" * 80)
 b = _bot("NIFTY")
 
 # helper: synthetic countable trade
+from certification_phase import CERT_PHASE_EARLY
+
+
 def make_trade(**overrides):
     t = {
         "trade_id": "TRD_TEST_001",
@@ -46,6 +49,9 @@ def make_trade(**overrides):
         "strategy_version": STRATEGY_VERSION,
         "certification_epoch": CERTIFICATION_EPOCH,
         "first_touch_result": "T1_FIRST",
+        "certification_trade_date": "2026-09-16",
+        "certification_regime": "TRENDING_UP",
+        "certification_session_phase": CERT_PHASE_EARLY,
     }
     t.update(overrides)
     return t
@@ -242,13 +248,21 @@ ok("T3 50", b.T3_PERCENT == 50)
 ok("SL 5", b.STOP_LOSS_PERCENT == 5)
 
 print("\n[23] Day-1 files unchanged")
-for fname, prefix in [
-    ("data/paper_trades/nifty_experimental.json",  "106e57f3"),
-    ("data/paper_trades/sensex_experimental.json", "a1239db0"),
+for label, active_fname, arch_fname, v1_prefix, day1_prefix in [
+    ("nifty_experimental",
+     "data/paper_trades/nifty_experimental.json",
+     "data/paper_trades/_archived_NS_precert_20260915/nifty_experimental.json",
+     "3d8fdbe6", "106e57f3"),
+    ("sensex_experimental",
+     "data/paper_trades/sensex_experimental.json",
+     "data/paper_trades/_archived_NS_precert_20260915/sensex_experimental.json",
+     "e58bd4a2", "a1239db0"),
 ]:
-    h = sha256(fname)
-    ok(f"{fname} unchanged", h and h.startswith(prefix),
-       f"{h[:16] if h else 'MISSING'}...")
+    h_act = sha256(active_fname)
+    h_arc = sha256(arch_fname)
+    ok(f"{label} unchanged",
+       (h_act and h_act.startswith(v1_prefix)) and (h_arc and h_arc.startswith(day1_prefix)),
+       f"active={h_act[:8] if h_act else 'MISS'} archive={h_arc[:8] if h_arc else 'MISS'}")
 
 n_pass = sum(1 for _, c in passed if c)
 n_fail = sum(1 for _, c in passed if not c)

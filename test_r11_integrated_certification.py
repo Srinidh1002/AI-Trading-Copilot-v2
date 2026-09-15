@@ -18,6 +18,7 @@ from target_focused_bot import (
 from first_touch_tracker import (
     EquityFirstTouchTracker, NONE, T1_FIRST, SL_FIRST, AMBIGUOUS,
 )
+from certification_phase import CERT_PHASE_EARLY
 
 # ---------- isolation ----------
 _TMP = tempfile.mkdtemp(prefix="r11_isolated_")
@@ -52,6 +53,9 @@ def make_trade(**kw):
         "strategy_version": STRATEGY_VERSION,
         "certification_epoch": CERTIFICATION_EPOCH,
         "first_touch_result": "T1_FIRST",
+        "certification_trade_date": "2026-09-16",
+        "certification_regime": "TRENDING_UP",
+        "certification_session_phase": CERT_PHASE_EARLY,
     }
     t.update(kw)
     return t
@@ -304,16 +308,19 @@ for i, line in enumerate(src_rss.splitlines(), 1):
             cls = "INFO"
         print(f"    {cls:24} | {low[:100]}")
 
-# --- K12..K15: Day-1 archive hashes intact
-for label, fname, prefix in [
-    ("K12 nifty_experimental",  "data/paper_trades/nifty_experimental.json",  "106e57f3"),
-    ("K13 sensex_experimental", "data/paper_trades/sensex_experimental.json", "a1239db0"),
-    ("K14 nifty_predictions",   "data/paper_trades/nifty_predictions.jsonl",  "5fe634be"),
-    ("K15 sensex_predictions",  "data/paper_trades/sensex_predictions.jsonl", "d7790e3a"),
+# --- K12..K15: archived Day-1 + active V1 genesis hashes intact
+_ARCH = "data/paper_trades/_archived_NS_precert_20260915"
+for label, active_fname, arch_fname, v1_prefix, day1_prefix in [
+    ("K12 nifty_experimental",  "data/paper_trades/nifty_experimental.json",  _ARCH + "/nifty_experimental.json",  "3d8fdbe6", "106e57f3"),
+    ("K13 sensex_experimental", "data/paper_trades/sensex_experimental.json", _ARCH + "/sensex_experimental.json", "e58bd4a2", "a1239db0"),
+    ("K14 nifty_predictions",   "data/paper_trades/nifty_predictions.jsonl",  _ARCH + "/nifty_predictions.jsonl",  "e3b0c442", "5fe634be"),
+    ("K15 sensex_predictions",  "data/paper_trades/sensex_predictions.jsonl", _ARCH + "/sensex_predictions.jsonl", "e3b0c442", "d7790e3a"),
 ]:
-    h = sha256(fname)
-    ok(f"{label} unchanged", h and h.startswith(prefix),
-       f"{h[:16] if h else 'MISSING'}...")
+    h_act = sha256(active_fname)
+    h_arc = sha256(arch_fname)
+    ok(f"{label} unchanged",
+       (h_act and h_act.startswith(v1_prefix)) and (h_arc and h_arc.startswith(day1_prefix)),
+       f"active={h_act[:8] if h_act else 'MISS'} archive={h_arc[:8] if h_arc else 'MISS'}")
 
 # ============================================================
 # Summary

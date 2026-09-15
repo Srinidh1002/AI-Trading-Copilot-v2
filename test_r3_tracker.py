@@ -99,17 +99,26 @@ ok("loads with NONE result", t.result() == NONE)
 ok("t1_hit defaults False", t.t1_hit is False)
 ok("sequence defaults 0", t.first_touch_sequence == 0)
 
-print("\n[12] live Day-1 equity files unchanged")
+print("\n[12] active V1 genesis + archived Day-1 unchanged")
 def sha256(p):
     if not os.path.exists(p): return None
     with open(p, "rb") as f: return hashlib.sha256(f.read()).hexdigest()
-for fname, expected_prefix in [
-    ("data/paper_trades/nifty_experimental.json",  "106e57f3"),
-    ("data/paper_trades/sensex_experimental.json", "a1239db0"),
+_ARCH = "data/paper_trades/_archived_NS_precert_20260915"
+for label, active_fname, arch_fname, v1_prefix, day1_prefix in [
+    ("nifty_experimental",
+     "data/paper_trades/nifty_experimental.json",
+     _ARCH + "/nifty_experimental.json",
+     "3d8fdbe6", "106e57f3"),
+    ("sensex_experimental",
+     "data/paper_trades/sensex_experimental.json",
+     _ARCH + "/sensex_experimental.json",
+     "e58bd4a2", "a1239db0"),
 ]:
-    h = sha256(fname)
-    ok(f"{fname} unchanged", h and h.startswith(expected_prefix),
-       f"{h[:16] if h else 'MISSING'}...")
+    h_act = sha256(active_fname)
+    h_arc = sha256(arch_fname)
+    ok(f"{label} unchanged",
+       (h_act and h_act.startswith(v1_prefix)) and (h_arc and h_arc.startswith(day1_prefix)),
+       f"active={h_act[:8] if h_act else 'MISS'} archive={h_arc[:8] if h_arc else 'MISS'}")
 
 n_pass = sum(1 for _, c in passed if c)
 n_fail = sum(1 for _, c in passed if not c)

@@ -215,15 +215,18 @@ r = b._try_increment_certification_counter(t101, True)
 ok("trade 101 rejected", r is False)
 ok("counter still 100", b.certification_counter == 100)
 
-# [20] Day-1 files untouched
-print("\n[20] Day-1 files untouched")
-for fname, prefix in [
-    ("data/paper_trades/nifty_experimental.json",  "106e57f3"),
-    ("data/paper_trades/sensex_experimental.json", "a1239db0"),
+# [20] archived Day-1 + active V1 genesis
+print("\n[20] archived Day-1 + active V1 genesis")
+_ARCH = "data/paper_trades/_archived_NS_precert_20260915"
+for label, active_fname, arch_fname, v1_prefix, day1_prefix in [
+    ("nifty_experimental",  "data/paper_trades/nifty_experimental.json",  _ARCH + "/nifty_experimental.json",  "3d8fdbe6", "106e57f3"),
+    ("sensex_experimental", "data/paper_trades/sensex_experimental.json", _ARCH + "/sensex_experimental.json", "e58bd4a2", "a1239db0"),
 ]:
-    h = sha256(fname)
-    ok(f"{fname} unchanged", h and h.startswith(prefix),
-       f"{h[:16] if h else 'MISSING'}...")
+    h_act = sha256(active_fname)
+    h_arc = sha256(arch_fname)
+    ok(f"{label} unchanged",
+       (h_act and h_act.startswith(v1_prefix)) and (h_arc and h_arc.startswith(day1_prefix)),
+       f"active={h_act[:8] if h_act else 'MISS'} archive={h_arc[:8] if h_arc else 'MISS'}")
 
 # [21] MCX untouched (hash check)
 print("\n[21] MCX untouched (informational)")
