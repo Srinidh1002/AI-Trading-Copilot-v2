@@ -729,7 +729,7 @@ def test_non_wait_prediction_is_rejected(
 
     with pytest.raises(
         ValueError,
-        match="requires WAIT",
+        match="non-entry observation cannot be used for selected directional prediction",
     ):
         record_task9_abstention_prediction_observation(
             prediction_id=record.prediction_id,

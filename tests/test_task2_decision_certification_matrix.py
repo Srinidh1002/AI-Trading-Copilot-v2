@@ -45,7 +45,7 @@ def test_matrix_passes_deterministically_with_required_coverage():
         "CHILD_CALL",
         "CHILD_PUT",
         "CHILD_WAIT",
-        "CHILD_UNAVAILABLE",
+        "CHILD_NO_TRADE",
         "TIE_BREAK_SCENARIOS",
         "CONFIDENCE_TIE_BREAK_SCENARIOS",
         "CONFLICT_SCENARIOS",

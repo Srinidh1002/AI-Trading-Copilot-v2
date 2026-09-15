@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from types import MappingProxyType
+from collections.abc import Mapping
 from typing import ClassVar
 
 from services.contracts.market_analysis_candidate_v1 import (
@@ -54,6 +56,7 @@ class TwoMarketChildTerminalResultV1:
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
+    failure_diagnostic: Mapping[str, str] | None = None
     execution_mode: str = "PAPER"
     live_execution_eligible: bool = False
     broker_order_submission: bool = False
@@ -89,6 +92,16 @@ class TwoMarketChildTerminalResultV1:
                 name,
                 _messages(getattr(self, name), name),
             )
+        if self.failure_diagnostic is not None:
+            if not isinstance(self.failure_diagnostic, Mapping) or set(self.failure_diagnostic) != {"failure_stage", "exception_class", "stable_failure_code"}:
+                raise ValueError("failure_diagnostic")
+            diagnostic = {
+                key: _text(self.failure_diagnostic[key], f"failure_diagnostic {key}")
+                for key in ("failure_stage", "exception_class", "stable_failure_code")
+            }
+            if diagnostic["failure_stage"] != "ANALYSIS_AUTHORITY":
+                raise ValueError("failure_diagnostic")
+            object.__setattr__(self, "failure_diagnostic", MappingProxyType(diagnostic))
 
         if status == "COMPLETED":
             if type(self.candidate) is not MarketAnalysisCandidateV1:

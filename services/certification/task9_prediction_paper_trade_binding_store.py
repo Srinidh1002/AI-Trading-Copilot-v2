@@ -1,5 +1,7 @@
 """Explicit durable Task 9 prediction-to-PAPER-entry binding."""
 from __future__ import annotations
+
+from services.certification.task9_atomic_file_replace import replace_task9_atomic_file
 import json, os
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -37,7 +39,7 @@ class Task9PredictionPaperTradeBindingStore:
             if existing != raw: raise ValueError("conflicting Task 9 binding")
             return "DUPLICATE_SAME_PAYLOAD"
         doc["by_prediction"][binding.prediction_id]=raw; doc["by_trade"][binding.paper_trade_id]=raw; self.file_path.parent.mkdir(parents=True,exist_ok=True); tmp=self.file_path.with_suffix(self.file_path.suffix+".tmp")
-        try: tmp.write_text(json.dumps(doc,sort_keys=True,separators=(",",":")),encoding="utf-8"); os.replace(tmp,self.file_path)
+        try: tmp.write_text(json.dumps(doc,sort_keys=True,separators=(",",":")),encoding="utf-8"); replace_task9_atomic_file(tmp,self.file_path)
         finally: tmp.unlink(missing_ok=True)
         return "SAVED"
     @staticmethod

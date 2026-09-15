@@ -28,3 +28,113 @@ def test_malformed_or_invalid_ohlcv_is_rejected(row):
 def test_duplicate_and_cross_market_spot_are_rejected():
     with pytest.raises(ValueError): normalize_angel_candle_series(rows=(ROW, ROW), market_spec=NIFTY_MARKET_SPEC, timeframe="5m", provider_timestamp=NOW, evaluated_at=NOW)
     with pytest.raises(ValueError): normalize_angel_spot_response(response={"data": {"ltp": 1, "tradingsymbol": "SENSEX"}}, market_spec=NIFTY_MARKET_SPEC, provider_timestamp=NOW, evaluated_at=NOW)
+def _completed_row(start):
+    return [
+        start,
+        100,
+        102,
+        99,
+        101,
+        10,
+    ]
+
+
+def _spot():
+    return {
+        "data": {
+            "ltp": 100,
+            "tradingsymbol": "NIFTY",
+            "exchange": "NSE",
+            "symboltoken": "99926000",
+        }
+    }
+
+
+def test_only_5m_is_mandatory_and_other_timeframes_are_optional():
+    value = normalize_angel_live_observation(
+        spot_response=_spot(),
+        candle_rows_by_timeframe={
+            "5m": (
+                _completed_row(
+                    "2026-08-03T15:15:00+05:30"
+                ),
+            ),
+        },
+        market_spec=NIFTY_MARKET_SPEC,
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+    )
+
+    assert tuple(
+        item.timeframe
+        for item in value.candle_series
+    ) == ("5m",)
+
+    assert value.blockers == ()
+
+    assert value.warnings == (
+        "optional_timeframe_unavailable_15m",
+        "optional_timeframe_unavailable_1h",
+        "optional_timeframe_unavailable_1d",
+    )
+
+
+def test_missing_5m_remains_fail_closed():
+    value = normalize_angel_live_observation(
+        spot_response=_spot(),
+        candle_rows_by_timeframe={
+            "15m": (
+                _completed_row(
+                    "2026-08-03T15:00:00+05:30"
+                ),
+            ),
+        },
+        market_spec=NIFTY_MARKET_SPEC,
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+    )
+
+    assert "TIMEFRAME_UNAVAILABLE_5m" in value.blockers
+
+    assert (
+        "optional_timeframe_unavailable_1h"
+        in value.warnings
+    )
+    assert (
+        "optional_timeframe_unavailable_1d"
+        in value.warnings
+    )
+
+
+def test_missing_optional_warning_is_deduplicated():
+    value = normalize_angel_live_observation(
+        spot_response=_spot(),
+        candle_rows_by_timeframe={
+            "5m": (
+                _completed_row(
+                    "2026-08-03T15:15:00+05:30"
+                ),
+            ),
+            "15m": (
+                _completed_row(
+                    "2026-08-03T15:00:00+05:30"
+                ),
+            ),
+            "1h": (
+                _completed_row(
+                    "2026-08-03T14:15:00+05:30"
+                ),
+            ),
+        },
+        market_spec=NIFTY_MARKET_SPEC,
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+        warnings=(
+            "optional_timeframe_unavailable_1d",
+        ),
+    )
+
+    assert value.blockers == ()
+    assert value.warnings == (
+        "optional_timeframe_unavailable_1d",
+    )

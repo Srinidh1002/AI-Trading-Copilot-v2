@@ -1,0 +1,13 @@
+>>> patched SmartWebSocketV2._on_error
+[18:15:53.810] === STAGE 3A DIAGNOSTIC (patched error reporting) ===
+[I 260914 18:15:53 smartConnect:124] in pool
+[18:15:55.698] login OK
+[18:15:55.698] tokens to subscribe: ['565900', '569003', '568246']
+[18:15:55.701] calling sws.connect() ...
+[18:15:55.902] ON_OPEN
+[18:15:55.903] SUBSCRIBE SENT for 3 tokens
+[18:15:55.954] DATA first for token=565900 ltp=999400 seq=5631280
+[18:15:55.954] DATA first for token=568246 ltp=27720 seq=5630826
+[18:15:55.954] DATA first for token=569003 ltp=15065600 seq=5631212
+[18:15:55.954] ALL 3 tokens received
+[18:15:55.955] EXIT (seen=3/3)

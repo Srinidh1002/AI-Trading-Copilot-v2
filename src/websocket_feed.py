@@ -1,0 +1,198 @@
+"""WebSocket Feed - Angel One SmartAPI WebSocket v2 wrapper.
+Primary live feed for spot + option ticks.
+"""
+import json
+import threading
+import time
+from datetime import datetime
+
+
+EXCHANGE_TYPES = {
+    "NSE_CM": 1,   # NSE Cash Market (NIFTY spot)
+    "NSE_FO": 2,   # NSE F&O (NIFTY options)
+    "BSE_CM": 3,   # BSE Cash Market (SENSEX spot)
+    "BSE_FO": 4,   # BSE F&O (SENSEX options)
+    "MCX_FO": 5,
+    "NCX_FO": 7,
+}
+
+
+class WebSocketFeed:
+    def __init__(self, auth_token, api_key, client_id, feed_token):
+        self.auth_token = auth_token
+        self.api_key = api_key
+        self.client_id = client_id
+        self.feed_token = feed_token
+        
+        self.sws = None
+        self.connected = False
+        self._thread = None
+        self._running = False
+        
+        self.latest_ticks = {}
+        self._lock = threading.Lock()
+        self._callbacks = []
+        self._subscriptions = []
+        self._reconnect_attempts = 0
+        self._last_message_at = None
+    
+    def _on_open(self, wsapp):
+        print("[WS] Connected")
+        self.connected = True
+        self._reconnect_attempts = 0
+        # Restore subscriptions
+        for sub in self._subscriptions:
+            try:
+                self.sws.subscribe(sub["correlation_id"], sub["mode"], sub["token_list"])
+                print(f"[WS] Re-subscribed {sub['correlation_id']}")
+            except Exception as e:
+                print(f"[WS] Re-sub error: {e}")
+    
+    def _on_message(self, wsapp, message):
+        try:
+            if isinstance(message, str):
+                data = json.loads(message)
+            else:
+                data = message
+
+            # Angel WS v2 sends either a single dict OR a list of dicts.
+            # Old code only handled dict -> every list payload silently dropped.
+            items = data if isinstance(data, list) else [data]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                token = item.get("token")
+                if token is None:
+                    continue
+                token = str(token)
+                ltp_raw = item.get("last_traded_price", 0)
+                # Angel returns price * 100
+                ltp = float(ltp_raw) / 100 if ltp_raw else 0
+
+                tick = {
+                    "token": token,
+                    "ltp": ltp,
+                    "ts": datetime.now(),
+                    "raw": item,
+                }
+                with self._lock:
+                    self.latest_ticks[token] = tick
+                    self._last_message_at = tick["ts"]
+
+                for cb in self._callbacks:
+                    try:
+                        cb(tick)
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"[WS] parse err: {str(e)[:60]}")
+    
+    def _on_error(self, wsapp, error):
+        print(f"[WS] error: {str(error)[:80]}")
+        self.connected = False
+    
+    def _on_close(self, wsapp):
+        print("[WS] closed")
+        self.connected = False
+    
+    def start(self):
+        """Start WebSocket in background thread."""
+        try:
+            from SmartApi.smartWebSocketV2 import SmartWebSocketV2
+        except ImportError as e:
+            print(f"[WS] Import failed: {e}")
+            return False
+        
+        try:
+            self.sws = SmartWebSocketV2(
+                auth_token=self.auth_token,
+                api_key=self.api_key,
+                client_code=self.client_id,
+                feed_token=self.feed_token,
+            )
+            self.sws.on_open = self._on_open
+            self.sws.on_message = self._on_message
+            self.sws.on_error = self._on_error
+            self.sws.on_close = self._on_close
+            
+            self._running = True
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
+            return True
+        except Exception as e:
+            print(f"[WS] start failed: {e}")
+            return False
+    
+    def _run(self):
+        try:
+            self.sws.connect()
+        except Exception as e:
+            print(f"[WS] connect err: {str(e)[:80]}")
+            self.connected = False
+    
+    def subscribe(self, tokens_by_exchange, mode=2):
+        """tokens_by_exchange: {'NSE_CM': ['99926000'], 'NSE_FO': [...]}
+        mode: 1=LTP, 2=Quote, 3=SnapQuote
+        """
+        token_list = []
+        for exch, tokens in tokens_by_exchange.items():
+            et = EXCHANGE_TYPES.get(exch)
+            if et is None:
+                continue
+            token_list.append({"exchangeType": et, "tokens": tokens})
+        
+        if not token_list:
+            return
+        
+        sub = {
+            "correlation_id": f"sub_{int(time.time())}",
+            "mode": mode,
+            "token_list": token_list,
+        }
+        self._subscriptions.append(sub)
+        
+        if self.connected and self.sws:
+            try:
+                self.sws.subscribe(sub["correlation_id"], sub["mode"], sub["token_list"])
+                print(f"[WS] Subscribed {len(token_list)} groups")
+            except Exception as e:
+                print(f"[WS] sub err: {e}")
+    
+    def get_latest(self, token):
+        with self._lock:
+            return self.latest_ticks.get(str(token))
+    
+    def is_healthy(self, stale_seconds=30):
+        if not self.connected:
+            return False
+        if self._last_message_at is None:
+            return False
+        age = (datetime.now() - self._last_message_at).total_seconds()
+        return age < stale_seconds
+    
+    def health_str(self):
+        """Diagnostic status string for display (RULE 8: honest reporting)."""
+        if not self.connected:
+            return "OFFLINE"
+        if self._last_message_at is None:
+            return "CONNECTED_NO_TICKS"
+        age = (datetime.now() - self._last_message_at).total_seconds()
+        if age < 30:
+            return "HEALTHY"
+        return f"STALE_WS({age:.0f}s)"
+
+    def register_callback(self, fn):
+        self._callbacks.append(fn)
+    
+    def stop(self):
+        self._running = False
+        try:
+            if self.sws:
+                self.sws.close_connection()
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    print("WebSocketFeed module loaded OK")
+    print("Exchanges:", list(EXCHANGE_TYPES.keys()))

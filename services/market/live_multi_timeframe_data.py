@@ -45,6 +45,10 @@ from services.historical_request_gate import (
 from services.market_data_failure_evidence import (
     classify_market_data_exception,
 )
+from services.task9_daily_historical_warmup_retry import (
+    MAX_ATTEMPTS,
+    Task9DailyWarmupRetryStore,
+)
 from services.nse_holiday_calendar import (
     get_nse_holiday_calendar,
 )
@@ -97,7 +101,7 @@ _TIMEFRAME_MINUTES = {
 #   NFO / BFO -> 15:40
 #
 # Task 9's execution policy remains independently responsible for its
-# 15:20 new-entry cutoff and 15:40 NFO/BFO close.
+# explicitly configured new-entry cutoff and canonical NFO/BFO session close.
 _HISTORICAL_REGULAR_OPEN = time(
     9,
     15,
@@ -379,6 +383,13 @@ def required_closed_candle_at(
     )
 
 
+def task9_required_completed_daily_candle_at(end_time, *, exchange="NSE"):
+    """Task 9 admits only a completed *prior* trading session for 1D."""
+    if end_time.tzinfo is None or end_time.utcoffset() is None:
+        raise ValueError("end_time must be timezone-aware")
+    return _last_session_candle_start(end_time.astimezone(IST), "1d", exchange)
+
+
 class LiveMultiTimeframeData:
     """
     Fetch and normalize historical candles.
@@ -393,6 +404,7 @@ class LiveMultiTimeframeData:
         cache=None,
         provider_cooldown=None,
         historical_request_gate=None,
+        task9_daily_warmup_retry_store=None,
         *,
         cache_enabled=None,
         historical_request_interval_seconds=None,
@@ -436,6 +448,11 @@ class LiveMultiTimeframeData:
             "file_path",
             None,
         )
+        # A permissive mock (or malformed cache adapter) can manufacture a
+        # ``file_path`` attribute.  Never coerce that object into a relative
+        # filesystem path for control-state persistence.
+        if not isinstance(cache_path, (str, Path)):
+            cache_path = None
 
         if provider_cooldown is None:
             provider_cooldown = (
@@ -466,6 +483,17 @@ class LiveMultiTimeframeData:
 
         self.provider_cooldown = (
             provider_cooldown
+        )
+        self.task9_daily_warmup_retry_store = (
+            task9_daily_warmup_retry_store
+            if task9_daily_warmup_retry_store is not None
+            else (
+                Task9DailyWarmupRetryStore(
+                    Path(cache_path).with_name("task9_daily_historical_warmup_retry.json")
+                )
+                if cache_path is not None
+                else None
+            )
         )
 
         if (
@@ -1046,6 +1074,7 @@ class LiveMultiTimeframeData:
         symboltoken,
         timeframe,
         end_time=None,
+        minimum_completed_candles=None,
     ):
         if (
             timeframe
@@ -1061,6 +1090,16 @@ class LiveMultiTimeframeData:
                 timeframe
             ]
         )
+
+        if minimum_completed_candles is not None:
+            if (
+                timeframe != "1d"
+                or type(minimum_completed_candles) is not int
+                or minimum_completed_candles <= 0
+            ):
+                raise ValueError(
+                    "minimum_completed_candles"
+                )
 
         if end_time is None:
             end_time = (
@@ -1203,6 +1242,14 @@ class LiveMultiTimeframeData:
                         and cached_response.get(
                             "data"
                         )
+                        and (
+                            minimum_completed_candles is None
+                            or self._has_required_daily_coverage(
+                                cached_response,
+                                required_closed_at,
+                                minimum_completed_candles,
+                            )
+                        )
                     ):
                         diagnostic.update(
                             latest_cached_candle_at=(
@@ -1280,6 +1327,14 @@ class LiveMultiTimeframeData:
                     )
                     and cached_response.get(
                         "data"
+                    )
+                    and (
+                        minimum_completed_candles is None
+                        or self._has_required_daily_coverage(
+                            cached_response,
+                            required_closed_at,
+                            minimum_completed_candles,
+                        )
                     )
                 ):
                     diagnostic.update(
@@ -1491,6 +1546,14 @@ class LiveMultiTimeframeData:
             "provider_attempted"
         ] = True
 
+        # Persist the outbound-attempt fact before calling the provider.
+        # Later response validation, normalization, merging, or cache-write
+        # failures must still consume the bounded warm-up attempt.
+        self._record_request_diagnostic(
+            capture_key,
+            diagnostic,
+        )
+
         try:
             response = (
                 self.client
@@ -1656,6 +1719,30 @@ class LiveMultiTimeframeData:
                 "merge_result"
             ] = "SUCCESS"
 
+        if (
+            minimum_completed_candles is not None
+            and not self._has_required_daily_coverage(
+                response,
+                required_closed_at,
+                minimum_completed_candles,
+            )
+        ):
+            diagnostic.update(
+                provider_result=(
+                    "FAILED"
+                ),
+                failure_reason=(
+                    "HISTORICAL-DATA_INSUFFICIENT_COMPLETED_DAILY_CANDLES"
+                ),
+            )
+            self._record_request_diagnostic(
+                capture_key,
+                diagnostic,
+            )
+            raise ValueError(
+                "Insufficient completed daily candle coverage."
+            )
+
         cache_write_status = (
             "DISABLED"
         )
@@ -1770,6 +1857,226 @@ class LiveMultiTimeframeData:
         }
 
         return response
+
+    @staticmethod
+    def _has_required_daily_coverage(
+        response,
+        required_closed_at,
+        minimum_completed_candles,
+    ):
+        """Require an exact completed daily identity and sufficient history."""
+
+        if (
+            not isinstance(response, dict)
+            or required_closed_at is None
+            or type(minimum_completed_candles) is not int
+            or minimum_completed_candles <= 0
+        ):
+            return False
+
+        try:
+            required = datetime.fromisoformat(
+                required_closed_at
+            )
+            normalized, _ = (
+                LiveMultiTimeframeData._normalized_rows(
+                    response
+                )
+            )
+            timestamps = tuple(
+                item.to_pydatetime()
+                for item in normalized["timestamp"]
+            )
+        except (
+            AttributeError,
+            KeyError,
+            TypeError,
+            ValueError,
+        ):
+            return False
+
+        completed = tuple(
+            item
+            for item in timestamps
+            if item <= required
+        )
+        return (
+            required in completed
+            and len(completed) >= minimum_completed_candles
+        )
+
+    def ensure_daily_cache_coverage(
+        self,
+        exchange,
+        symboltoken,
+        *,
+        end_time,
+        minimum_completed_candles=50,
+    ):
+        """Ensure one truthful, completed 1D cache authority for a cycle date.
+
+        The ordinary persistent-cache and historical-request controls remain
+        authoritative.  A valid durable cache is reused across restart; a
+        failed optional refresh is reported rather than manufactured.
+        """
+
+        required_closed_at = task9_required_completed_daily_candle_at(
+            end_time,
+            exchange=exchange,
+        ).isoformat()
+        capture_key = (
+            str(exchange).strip().upper(),
+            str(symboltoken).strip(),
+            "1d",
+        )
+
+        retry_store = self.task9_daily_warmup_retry_store
+        try:
+            retry = (
+                retry_store.status(
+                    exchange=capture_key[0], symboltoken=capture_key[1],
+                    required_identity=required_closed_at,
+                )
+                if retry_store is not None else None
+            )
+            now_epoch = float(retry_store.time_function()) if retry_store is not None else None
+            if retry is not None and (
+                retry["attempt_count"] >= MAX_ATTEMPTS
+                or (retry["next_attempt_at_epoch_seconds"] is not None and now_epoch < retry["next_attempt_at_epoch_seconds"])
+            ):
+                return {
+                    "exchange": capture_key[0], "symboltoken": capture_key[1], "interval": "ONE_DAY",
+                    "required_completed_candle_at": required_closed_at, "cache_state_before": "STALE_OR_MISSING",
+                    "refresh_attempted": False,
+                    "refresh_outcome": "ATTEMPT_BUDGET_EXHAUSTED" if retry["attempt_count"] >= MAX_ATTEMPTS else "RETRY_BACKOFF_ACTIVE",
+                    "cache_state_after": "UNAVAILABLE", "row_count": 0,
+                    "latest_completed_candle_at": None, "provider_call_count": 0, "logical_attempt_count": retry["attempt_count"],
+                    "next_attempt_at_epoch_seconds": retry["next_attempt_at_epoch_seconds"], "blockers": (),
+                    "warnings": ("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",),
+                }
+            response = self._request_historical(
+                exchange=exchange,
+                symboltoken=symboltoken,
+                timeframe="1d",
+                end_time=end_time,
+                minimum_completed_candles=minimum_completed_candles,
+            )
+            diagnostic = dict(
+                self._request_diagnostics.get(
+                    capture_key,
+                    {},
+                )
+            )
+            provider_attempted = bool(
+                diagnostic.get("provider_attempted")
+            )
+            # Daily coverage has already proven the exact required
+            # completed-session identity. Provider rows after that identity
+            # may be retained as partial/future observations, but must not
+            # be reported as completed.
+            latest = required_closed_at
+            result = {
+                "exchange": capture_key[0],
+                "symboltoken": capture_key[1],
+                "interval": "ONE_DAY",
+                "required_completed_candle_at": required_closed_at,
+                "cache_state_before": (
+                    "FRESH"
+                    if diagnostic.get("cache_decision") == "HIT"
+                    else "STALE_OR_MISSING"
+                ),
+                "refresh_attempted": provider_attempted,
+                "refresh_outcome": (
+                    "REFRESHED" if provider_attempted else "REUSED"
+                ),
+                "cache_state_after": "READY",
+                "row_count": len(response.get("data", ())),
+                "latest_completed_candle_at": latest,
+                "provider_call_count": int(provider_attempted),
+                "logical_attempt_count": 0,
+                "next_attempt_at_epoch_seconds": None,
+                "blockers": (),
+                "warnings": (),
+            }
+            if retry_store is not None:
+                retry_store.clear(exchange=capture_key[0], symboltoken=capture_key[1], required_identity=required_closed_at)
+        except Exception as exc:
+            diagnostic = dict(
+                self._request_diagnostics.get(
+                    capture_key,
+                    {},
+                )
+            )
+            cooldown = self.provider_cooldown.active() if self.provider_cooldown is not None else None
+            provider_attempted = bool(diagnostic.get("provider_attempted"))
+            try:
+                retry = (
+                    retry_store.record_failure(
+                    exchange=capture_key[0], symboltoken=capture_key[1], required_identity=required_closed_at,
+                    failure_category=diagnostic.get("failure_reason") or type(exc).__name__,
+                    not_before_epoch_seconds=(cooldown or {}).get("expires_at_epoch_seconds"),
+                    )
+                    if retry_store is not None and provider_attempted
+                    else retry_store.status(
+                    exchange=capture_key[0], symboltoken=capture_key[1], required_identity=required_closed_at,
+                    )
+                    if retry_store is not None
+                    else None
+                )
+            except ValueError:
+                return {
+                    "exchange": capture_key[0], "symboltoken": capture_key[1], "interval": "ONE_DAY",
+                    "required_completed_candle_at": required_closed_at, "cache_state_before": "RETRY_STATE_INVALID",
+                    "refresh_attempted": False, "refresh_outcome": "RETRY_STATE_INVALID",
+                    "cache_state_after": "UNAVAILABLE", "row_count": 0, "latest_completed_candle_at": None,
+                    "provider_call_count": 0, "logical_attempt_count": 0, "next_attempt_at_epoch_seconds": None,
+                    "blockers": (), "warnings": ("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",),
+                }
+            result = {
+                "exchange": capture_key[0],
+                "symboltoken": capture_key[1],
+                "interval": "ONE_DAY",
+                "required_completed_candle_at": required_closed_at,
+                "cache_state_before": "STALE_OR_MISSING",
+                "refresh_attempted": bool(
+                    diagnostic.get("provider_attempted")
+                ),
+                "refresh_outcome": "PROVIDER_THROTTLED" if not provider_attempted and cooldown is not None else "UNAVAILABLE",
+                "cache_state_after": "UNAVAILABLE",
+                "row_count": 0,
+                "latest_completed_candle_at": diagnostic.get(
+                    "latest_cached_candle_at"
+                ),
+                "provider_call_count": int(
+                    bool(diagnostic.get("provider_attempted"))
+                ),
+                "logical_attempt_count": retry["attempt_count"] if retry is not None else int(provider_attempted),
+                "next_attempt_at_epoch_seconds": retry["next_attempt_at_epoch_seconds"] if retry is not None else None,
+                "blockers": (),
+                "warnings": (
+                    "OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",
+                ),
+            }
+
+        logger.info(
+            "daily_historical_cache_warmup exchange=%s symboltoken=%s "
+            "interval=%s required_completed_candle_at=%s "
+            "cache_state_before=%s refresh_attempted=%s "
+            "refresh_outcome=%s cache_state_after=%s row_count=%s "
+            "latest_completed_candle_at=%s provider_call_count=%s",
+            result["exchange"],
+            result["symboltoken"],
+            result["interval"],
+            result["required_completed_candle_at"],
+            result["cache_state_before"],
+            result["refresh_attempted"],
+            result["refresh_outcome"],
+            result["cache_state_after"],
+            result["row_count"],
+            result["latest_completed_candle_at"],
+            result["provider_call_count"],
+        )
+        return result
 
     def fetch_timeframe_raw(
         self,

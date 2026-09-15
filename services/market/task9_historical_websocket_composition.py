@@ -7,7 +7,10 @@ from datetime import datetime, timedelta
 from services.market.task9_live_tick_stream import (
     IST, Task9LiveCandleAggregator, Task9LiveTickJournal,
 )
-from services.market.live_multi_timeframe_data import required_closed_candle_at
+from services.market.live_multi_timeframe_data import (
+    required_closed_candle_at,
+    task9_required_completed_daily_candle_at,
+)
 
 
 REQUIRED_TIMEFRAMES = ("5m", "15m", "1h", "1d")
@@ -43,33 +46,99 @@ def _timestamp(row):
     return datetime.fromisoformat(value) if isinstance(value, str) else value
 
 
-def _effective_required_candle_at(*, timeframe: str, required_closed_at: datetime) -> datetime:
-    """Map shared historical identities to Task9's session-anchored evidence."""
-    # The shared historical helper expresses an hourly candle by the preceding
-    # clock-aligned start (09:00, 10:00, ...). Task9's cache and WebSocket
-    # evidence use the actual regular-session interval starts (09:15, 10:15,
-    # ...), so only hourly evidence has this fixed, same-session offset.
-    return required_closed_at + timedelta(minutes=15) if timeframe == "1h" else required_closed_at
+def _effective_required_candle_at(
+    *,
+    timeframe: str,
+    required_closed_at: datetime,
+    as_of: datetime,
+    exchange: str,
+) -> datetime:
+    """Map shared historical identities to Task9 session-anchored evidence."""
+
+    if timeframe != "1h":
+        return required_closed_at
+
+    local = as_of.astimezone(IST)
+
+    session_start = local.replace(
+        hour=9,
+        minute=15,
+        second=0,
+        microsecond=0,
+    )
+
+    # Before the first 09:15-10:15 Task9 hourly window has closed,
+    # the latest usable Task9 hourly identity belongs to the previous
+    # trading session. Ask the shared historical authority at session
+    # open, where it correctly resolves the previous trading day,
+    # then translate its clock-aligned identity by +15 minutes.
+    if local < session_start + timedelta(hours=1):
+        previous = required_closed_candle_at(
+            "1h",
+            session_start,
+            exchange=exchange,
+        )
+        return previous + timedelta(minutes=15)
+
+    elapsed_minutes = int(
+        (local - session_start).total_seconds() // 60
+    )
+
+    completed_windows = elapsed_minutes // 60
+
+    # The most recently completed session-aligned hourly window:
+    # 10:15 -> 09:15
+    # 11:15 -> 10:15
+    # ...
+    # 14:15 -> 13:15
+    latest_index = completed_windows - 1
+
+    # There are only six complete 60-minute windows in the
+    # 09:15-15:30 regular session. The final complete one starts 14:15.
+    latest_index = min(latest_index, 5)
+
+    return session_start + timedelta(
+        hours=latest_index
+    )
 
 
 class Task9HistoricalWebsocketComposition:
     """Composes caller-supplied cache rows with journal rows; no I/O except reads."""
-    def __init__(self, *, live_stream_root):
-        self.aggregator = Task9LiveCandleAggregator(Task9LiveTickJournal(live_stream_root))
+    def __init__(
+        self,
+        *,
+        live_stream_root,
+        session_state_resolver=None,
+    ):
+        self.aggregator = Task9LiveCandleAggregator(
+            Task9LiveTickJournal(
+                live_stream_root,
+                session_state_resolver=session_state_resolver,
+            )
+        )
 
     def compose(self, *, market, trading_date, timeframe, as_of, historical_rows=()):
         if timeframe not in REQUIRED_TIMEFRAMES or market not in {"NIFTY", "SENSEX"}:
             raise ValueError("Task9 composition identity")
         as_of = as_of.astimezone(IST)
         exchange = "NSE" if market == "NIFTY" else "BSE"
-        required_closed_at = required_closed_candle_at(
-            timeframe,
-            as_of,
-            exchange=exchange,
+        required_closed_at = (
+            task9_required_completed_daily_candle_at(
+                as_of,
+                exchange=exchange,
+            )
+            if timeframe == "1d"
+            else required_closed_candle_at(
+                timeframe,
+                as_of,
+                exchange=exchange,
+            )
         )
         effective_required_at = _effective_required_candle_at(
             timeframe=timeframe,
             required_closed_at=required_closed_at,
+            as_of=as_of,
+            exchange=exchange,
         )
         historical = []
         for row in historical_rows:
@@ -111,13 +180,25 @@ class Task9HistoricalWebsocketComposition:
         return {timeframe: self.compose(market=market, trading_date=trading_date, timeframe=timeframe, as_of=as_of, historical_rows=historical_rows_by_timeframe.get(timeframe, ())) for timeframe in REQUIRED_TIMEFRAMES}
 
 
-def build_task9_precomposed_timeframe_provider(*, live_stream_root):
+def build_task9_precomposed_timeframe_provider(
+    *,
+    live_stream_root,
+    session_state_resolver,
+):
     """Return the Task9-only zero-REST capture provider factory."""
+    if not callable(session_state_resolver):
+        raise TypeError(
+            "session_state_resolver"
+        )
+
     def factory(data_service):
         cache = getattr(data_service, "cache", None)
         if not callable(getattr(cache, "get_incremental_candidate", None)):
             raise TypeError("Task9 fallback requires cache-only reader")
-        adapter = Task9HistoricalWebsocketComposition(live_stream_root=live_stream_root)
+        adapter = Task9HistoricalWebsocketComposition(
+            live_stream_root=live_stream_root,
+            session_state_resolver=session_state_resolver,
+        )
         def provider(*, exchange, symboltoken, end_time):
             market = "NIFTY" if (exchange, str(symboltoken)) == ("NSE", "99926000") else "SENSEX" if (exchange, str(symboltoken)) == ("BSE", "99919000") else None
             if market is None: raise ValueError("TASK9_LOCAL_EVIDENCE_UNAVAILABLE_IDENTITY")
@@ -136,7 +217,8 @@ def build_task9_precomposed_timeframe_provider(*, live_stream_root):
                     }
                     continue
                 websocket = () if timeframe == "1d" else adapter.aggregator.candles(market=market, trading_date=end_time.astimezone(IST).date(), timeframe=timeframe, as_of=end_time)
-                merged = {datetime.fromisoformat(item[0]).astimezone(IST): tuple(item) for item in historical}
+                allowed_daily = task9_required_completed_daily_candle_at(end_time, exchange=exchange) if timeframe == "1d" else None
+                merged = {datetime.fromisoformat(item[0]).astimezone(IST): tuple(item) for item in historical if allowed_daily is None or datetime.fromisoformat(item[0]).astimezone(IST) <= allowed_daily}
                 for item in websocket:
                     merged.setdefault(datetime.fromisoformat(item["start_at"]).astimezone(IST), (item["start_at"], item["open"], item["high"], item["low"], item["close"], 0))
                 rows[timeframe] = tuple(row for _, row in sorted(merged.items()))

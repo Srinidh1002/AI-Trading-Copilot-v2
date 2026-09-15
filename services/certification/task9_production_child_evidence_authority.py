@@ -52,6 +52,7 @@ from services.contracts.prediction_lifecycle_outcome_policy_v1 import (
     PredictionLifecycleOutcomePolicyV1,
 )
 from services.paper_orchestration.prediction_ledger import PredictionLedger
+from services.market_session.policies import MarketSessionPolicy
 from services.paper_trading.paper_trade_persistence_service import (
     PaperTradePersistenceService,
 )
@@ -284,6 +285,7 @@ def build_task9_production_child_authority(
     outcome_store: Task9PredictionLifecycleOutcomeStore,
     reconciliation_store: Task9PredictionLifecycleReconciliationStore,
     outcome_policy: PredictionLifecycleOutcomePolicyV1,
+    session_policy: MarketSessionPolicy = MarketSessionPolicy(),
     entry_delegate: EntryDelegate | None = None,
     monitoring_delegate: MonitoringDelegate | None = None,
 ):
@@ -316,6 +318,8 @@ def build_task9_production_child_authority(
         raise TypeError("reconciliation_store")
     if type(outcome_policy) is not PredictionLifecycleOutcomePolicyV1:
         raise TypeError("outcome_policy")
+    if type(session_policy) is not MarketSessionPolicy:
+        raise TypeError("session_policy")
     if entry_delegate is not None and not callable(entry_delegate):
         raise TypeError("entry_delegate")
     if monitoring_delegate is not None and not callable(monitoring_delegate):
@@ -373,21 +377,32 @@ def build_task9_production_child_authority(
             evidence = handoffs[identity]
             if evidence.market_quote is not None and evidence.data_quality is not None:
                 stage = "ABSTENTION_LATER_OBSERVATION_RECOVERY"
-                recover_task9_later_abstention_observations(market=market, exchange=exchange, quote=evidence.market_quote, data_quality=evidence.data_quality, prediction_ledger=prediction_ledger, lifecycle_context_store=lifecycle_context_store, observation_store=observation_store, outcome_store=outcome_store, outcome_policy=outcome_policy, evaluated_at=boundary)
+                recover_task9_later_abstention_observations(market=market, exchange=exchange, quote=evidence.market_quote, data_quality=evidence.data_quality, prediction_ledger=prediction_ledger, lifecycle_context_store=lifecycle_context_store, observation_store=observation_store, outcome_store=outcome_store, outcome_policy=outcome_policy, evaluated_at=boundary, session_policy=session_policy)
             stage = "PREDICTION_RECOVERY"
             prediction, context, _ = _recover_prediction_and_window(evidence=evidence, prediction_ledger=prediction_ledger, lifecycle_context_store=lifecycle_context_store, observation_store=observation_store)
             stage = "DATA_INCIDENT_PROJECTION"
             failed = prediction.terminal_status in {"FAILED", "UNAVAILABLE"}
-            incident = prediction.terminal_status == "COMPLETED" and prediction.eligibility == "UNAVAILABLE" and prediction.predicted_action == "WAIT" and _has_authoritative_provider_data_incident(prediction)
+            incident = prediction.terminal_status == "COMPLETED" and prediction.eligibility == "UNAVAILABLE" and prediction.predicted_action in {"WAIT", "NO_TRADE"} and _has_authoritative_provider_data_incident(prediction)
             if failed:
                 if evidence.evaluation is not None: raise ValueError("failed prediction cannot retain evaluation")
-                if not _has_authoritative_provider_data_incident(prediction): raise ValueError("failed prediction provider provenance")
-                return Task9MarketCycleEvidenceV1(prediction=prediction, evidence_status="DATA_INCIDENT")
+                if _has_authoritative_provider_data_incident(prediction):
+                    return Task9MarketCycleEvidenceV1(prediction=prediction, evidence_status="DATA_INCIDENT")
+                # A generic failed child already carries its fail-closed
+                # terminal prediction and sanitized diagnostic.  It is not a
+                # provider incident, and must not enter any lifecycle path.
+                return Task9MarketCycleEvidenceV1(prediction=prediction)
             if incident:
                 if evidence.selected_planning is not None or evidence.paper_observation is not None: raise ValueError("completed provider incident cannot retain entry evidence")
                 return Task9MarketCycleEvidenceV1(prediction=prediction, evidence_status="DATA_INCIDENT")
-            if prediction.predicted_action in _ABSTENTION_ACTIONS:
-                stage = "ABSTENTION_OBSERVATION"
+            non_entry_prediction = (
+                prediction.predicted_action in _ABSTENTION_ACTIONS
+                or (
+                    prediction.predicted_action in _ENTRY_ACTIONS
+                    and not prediction.parent_selected
+                )
+            )
+            if non_entry_prediction:
+                stage = "NON_ENTRY_OBSERVATION"
                 if evidence.market_quote is None or evidence.data_quality is None: raise ValueError("abstention quote evidence")
                 # Task 8's retained spot can legitimately predate parent prediction
                 # completion.  It initializes durable lifecycle state but is never
@@ -404,7 +419,12 @@ def build_task9_production_child_authority(
                 outcome = None if candidate.evaluation_status == "UNRESOLVED" else _save_or_recover_outcome(outcome=candidate, outcome_store=outcome_store)
                 return Task9MarketCycleEvidenceV1(prediction=prediction, lifecycle_outcome=outcome, reconciliation=None, terminal_position_closed=False)
             stage = "PREDICTION_VALIDATION"
-            if prediction.predicted_action not in _ENTRY_ACTIONS: raise ValueError("unsupported prediction action")
+            if prediction.predicted_action not in _ENTRY_ACTIONS:
+                raise ValueError("unsupported prediction action")
+            if not prediction.parent_selected:
+                raise ValueError(
+                    "directional entry requires parent-selected prediction"
+                )
             stage = "ENTRY_BINDING"
             binding, snapshot = _validated_binding_snapshot(evidence=evidence, official_run_id=run_id, binding_store=binding_store, trade_persistence_service=trade_persistence_service)
             if binding is None:

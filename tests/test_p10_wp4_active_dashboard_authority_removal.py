@@ -40,11 +40,14 @@ def test_active_dashboard_imports_only_ui_config_and_read_boundaries():
         "dashboard.dashboard_read_model_state",
         "dashboard.dashboard_status_components",
         "dashboard.data_health_components",
+        "dashboard.decision_observability_components",
         "dashboard.manual_live_planner_components",
         "dashboard.markets_components",
         "dashboard.operational_components",
         "dashboard.plan_position_components",
         "dashboard.recommendation_history_components",
+        "dashboard.task9_active_campaign_sync",
+        "dashboard.task9_decision_observability_sync",
         "dashboard.task9_certification_components",
         "dashboard.trade_now_components",
         "dashboard.trades_pnl_components",
@@ -86,8 +89,13 @@ def test_unavailable_sections_are_explicit():
     )
 
     assert (
-        "Certified typed decision history is not available yet"
+        "render_task9_decision_observability"
         in source
+    )
+
+    assert (
+        "Certified typed decision history is not available yet"
+        not in source
     )
 
 

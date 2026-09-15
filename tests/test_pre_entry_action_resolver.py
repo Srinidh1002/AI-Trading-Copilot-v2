@@ -9,6 +9,6 @@ def make(action="CALL",**kw):
 def test_call_contract_and_determinism():
  assert make().to_json()==make().to_json()
  with pytest.raises(ValueError):make(action="CALL",candidate_direction="BEARISH")
-def test_wait_and_unavailable_invariants():
+def test_wait_and_no_trade_invariants():
  assert make(action="WAIT",candidate_direction="NEUTRAL",candidate_eligibility="INELIGIBLE",confidence=0.,score=0.,selected_for_parent_comparison=False,reasons=("DIRECTION_NEUTRAL_NO_ENTRY",)).action=="WAIT"
- assert make(action="UNAVAILABLE",candidate_direction="UNAVAILABLE",candidate_eligibility="UNAVAILABLE",confidence=0.,score=0.,selected_for_parent_comparison=False,blockers=("REQUIRED_EVIDENCE_UNAVAILABLE",),reasons=("REQUIRED_EVIDENCE_UNAVAILABLE",)).action=="UNAVAILABLE"
+ assert make(action="NO_TRADE",candidate_direction="UNAVAILABLE",candidate_eligibility="UNAVAILABLE",confidence=0.,score=0.,selected_for_parent_comparison=False,blockers=("REQUIRED_EVIDENCE_UNAVAILABLE",),reasons=("REQUIRED_EVIDENCE_UNAVAILABLE",)).action=="NO_TRADE"

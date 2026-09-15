@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from dataclasses import dataclass
 
 from services.paper_orchestration.angel_provider_timestamp import (
     validate_angel_quote_timestamp,
@@ -130,6 +131,7 @@ def _best_price(
     depth: Mapping[str, object],
     *,
     side: str,
+    allow_zero: bool = False,
 ) -> float:
     entries = _sequence(
         depth.get(side),
@@ -149,7 +151,8 @@ def _best_price(
     return _finite_float(
         first.get("price"),
         name=f"depth.{side}[0].price",
-        positive=True,
+        positive=not allow_zero,
+        non_negative=allow_zero,
     )
 
 
@@ -209,6 +212,7 @@ def validate_option_full_response(
     received_at=None,
     maximum_quote_age_seconds: float = 300.0,
     maximum_future_skew_seconds: float = 5.0,
+    allow_zero_market_prices: bool = False,
 ) -> dict[str, dict[str, object]]:
     """Validate exact one-for-one FULL coverage for requested option tokens."""
 
@@ -350,7 +354,8 @@ def validate_option_full_response(
         ltp = _finite_float(
             item.get("ltp"),
             name=f"{identity[1]} ltp",
-            positive=True,
+            positive=not allow_zero_market_prices,
+            non_negative=allow_zero_market_prices,
         )
 
         volume = _non_negative_integer(
@@ -371,11 +376,13 @@ def validate_option_full_response(
         bid = _best_price(
             depth,
             side="buy",
+            allow_zero=allow_zero_market_prices,
         )
 
         ask = _best_price(
             depth,
             side="sell",
+            allow_zero=allow_zero_market_prices,
         )
 
         if ask < bid:
@@ -451,3 +458,226 @@ def validate_option_full_response(
         )
         for token in requested
     }
+
+
+@dataclass(frozen=True, slots=True)
+class OptionFullPartialValidationResult:
+    """Validated FULL subset plus sanitized per-contract exclusions."""
+
+    validated_by_token: dict[str, dict[str, object]]
+    unfetched_tokens: tuple[str, ...]
+    malformed_tokens: tuple[str, ...]
+
+    @property
+    def fetched_contract_count(self) -> int:
+        return len(self.validated_by_token)
+
+    @property
+    def unfetched_contract_count(self) -> int:
+        return len(self.unfetched_tokens)
+
+    @property
+    def malformed_contract_count(self) -> int:
+        return len(self.malformed_tokens)
+
+
+def validate_option_full_response_partial(
+    *,
+    response: object,
+    option_exchange: str,
+    requested_tokens: Sequence[str],
+    received_at=None,
+    maximum_quote_age_seconds: float = 300.0,
+    maximum_future_skew_seconds: float = 5.0,
+    allow_zero_market_prices: bool = False,
+) -> OptionFullPartialValidationResult:
+    """Validate a FULL batch while isolating per-contract failures.
+
+    Provider-envelope corruption, unexpected identities, and duplicate or
+    contradictory identities remain batch-fatal. Requested contracts that
+    are unfetched, absent, or individually malformed are excluded without
+    invalidating otherwise valid requested siblings.
+    """
+
+    exchange = _required_text(
+        option_exchange,
+        name="option_exchange",
+    ).upper()
+
+    if exchange not in {"NFO", "BFO"}:
+        raise OptionFullResponseValidationError(
+            "option_exchange must be NFO or BFO."
+        )
+
+    requested: list[str] = []
+
+    for index, raw_token in enumerate(
+        _sequence(
+            requested_tokens,
+            name="requested_tokens",
+        )
+    ):
+        token = _required_text(
+            raw_token,
+            name=f"requested_tokens[{index}]",
+        )
+
+        if token in requested:
+            raise OptionFullResponseValidationError(
+                f"Duplicate requested option token: {token}."
+            )
+
+        requested.append(token)
+
+    if not requested:
+        raise OptionFullResponseValidationError(
+            "requested_tokens cannot be empty."
+        )
+
+    expected = {
+        (exchange, token)
+        for token in requested
+    }
+
+    envelope = _mapping(
+        response,
+        name="option FULL response",
+    )
+
+    if envelope.get("status") is not True:
+        raise OptionFullResponseValidationError(
+            "Option FULL response status must be true."
+        )
+
+    data = _mapping(
+        envelope.get("data"),
+        name="option FULL response data",
+    )
+
+    fetched = _sequence(
+        data.get("fetched"),
+        name="option FULL fetched",
+    )
+
+    unfetched = _sequence(
+        data.get("unfetched"),
+        name="option FULL unfetched",
+    )
+
+    fetched_by_token: dict[
+        str,
+        dict[str, object],
+    ] = {}
+
+    provider_unfetched: set[str] = set()
+
+    for index, raw_item in enumerate(fetched):
+        item = _mapping(
+            raw_item,
+            name=f"option FULL fetched[{index}]",
+        )
+
+        identity = _identity(
+            item,
+            expected_exchange=exchange,
+        )
+
+        if identity not in expected:
+            raise OptionFullResponseValidationError(
+                "Option FULL response contains an "
+                "unexpected fetched identity."
+            )
+
+        token = identity[1]
+
+        if token in fetched_by_token:
+            raise OptionFullResponseValidationError(
+                "Option FULL response contains a "
+                f"duplicate fetched token: {token}."
+            )
+
+        fetched_by_token[token] = deepcopy(
+            dict(item)
+        )
+
+    for index, raw_item in enumerate(unfetched):
+        item = _mapping(
+            raw_item,
+            name=f"option FULL unfetched[{index}]",
+        )
+
+        identity = _unfetched_identity(
+            item,
+            expected_exchange=exchange,
+        )
+
+        if identity not in expected:
+            raise OptionFullResponseValidationError(
+                "Option FULL response contains an "
+                "unexpected unfetched identity."
+            )
+
+        token = identity[1]
+
+        if (
+            token in provider_unfetched
+            or token in fetched_by_token
+        ):
+            raise OptionFullResponseValidationError(
+                "Option FULL response contains a "
+                f"duplicate or conflicting token: {token}."
+            )
+
+        provider_unfetched.add(token)
+
+    validated: dict[
+        str,
+        dict[str, object],
+    ] = {}
+
+    malformed: list[str] = []
+    unfetched_result: list[str] = []
+
+    for token in requested:
+        if token in provider_unfetched:
+            unfetched_result.append(token)
+            continue
+
+        raw_item = fetched_by_token.get(token)
+
+        if raw_item is None:
+            unfetched_result.append(token)
+            continue
+
+        try:
+            one = validate_option_full_response(
+                response={
+                    "status": True,
+                    "data": {
+                        "fetched": [raw_item],
+                        "unfetched": [],
+                    },
+                },
+                option_exchange=exchange,
+                requested_tokens=[token],
+                received_at=received_at,
+                maximum_quote_age_seconds=(
+                    maximum_quote_age_seconds
+                ),
+                maximum_future_skew_seconds=(
+                    maximum_future_skew_seconds
+                ),
+                allow_zero_market_prices=(
+                    allow_zero_market_prices
+                ),            )
+        except OptionFullResponseValidationError:
+            malformed.append(token)
+            continue
+
+        validated[token] = one[token]
+
+    return OptionFullPartialValidationResult(
+        validated_by_token=validated,
+        unfetched_tokens=tuple(unfetched_result),
+        malformed_tokens=tuple(malformed),
+    )

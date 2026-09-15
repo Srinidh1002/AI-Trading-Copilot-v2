@@ -87,7 +87,8 @@ def test_unavailable_sections_do_not_reintroduce_fallback_authority():
         "Certified portfolio validation statistics are not available yet"
         in source
     )
-    assert "Certified typed decision history is not available yet" in source
+    assert "render_task9_decision_observability" in source
+    assert "Certified typed decision history is not available yet" not in source
 
 
 def test_app_is_ui_bootstrap_only():

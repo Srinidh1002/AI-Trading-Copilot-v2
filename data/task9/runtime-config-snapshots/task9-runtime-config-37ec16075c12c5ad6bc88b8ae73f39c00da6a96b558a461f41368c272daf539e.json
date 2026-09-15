@@ -1,0 +1,31 @@
+{
+  "runtime_config_id": "task9-runtime-2026-08-31-r1",
+  "runtime_config_version": 1,
+  "created_at": "2026-08-31T09:44:16.306670",
+  "policy_references": {
+    "canonical_directional": "directional.v1",
+    "session": "session.v1",
+    "risk": "risk.v1",
+    "contract_selection": "contract-selection.v1",
+    "lifecycle": "lifecycle.v1",
+    "counting": "counting.v1",
+    "failure_disposition": "failure-disposition.v1",
+    "contract_spread": "spread.v1",
+    "liquidity": "liquidity.v1",
+    "minimum_risk_reward": "rr.v1",
+    "stop_target": "stop-target.v1",
+    "portfolio_concurrency": "portfolio.v1"
+  },
+  "available_capital": 10000.0,
+  "risk_fraction": 0.02,
+  "maximum_quantity": 100,
+  "config": {
+    "available_capital": 10000.0,
+    "risk_fraction": 0.02,
+    "maximum_quantity": 100,
+    "cycle_interval_seconds": 60,
+    "market_date": "2026-08-31",
+    "campaign_id": "task9-live-certification-2026-08-18-r2",
+    "official_run_id": "task9-live-20260831-r1"
+  }
+}

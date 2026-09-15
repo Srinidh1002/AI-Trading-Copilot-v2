@@ -1,0 +1,50 @@
+1086:             fii_bias == 'BULLISH',
+1087:         ])
+1088:         bear_pillars = sum([
+1089:             pcr_sentiment == 'BEARISH',
+1090:             stock_sentiment == 'BEARISH',
+1091:             tech_consensus in ('BEARISH', 'WEAK_BEARISH'),
+1092:             global_sentiment == 'RISK_OFF',
+1093:             fii_bias == 'BEARISH',
+1094:         ])
+1095: 
+1096:         print(f'  Bull pillars: {bull_pillars}/5')
+1097:         print(f'  Bear pillars: {bear_pillars}/5')
+1098: 
+1099:         # Require score > 1.5 and 3+ pillars aligned
+1100:         # STRONG requires 4+ pillars and 2x score dominance
+1101:         # MODERATE requires 3 pillars and 1.5x score dominance
+1102:         if bull_score > bear_score * 2.0 and bull_pillars >= 4:
+1103:             print("DIRECTIONAL_BIAS = BULLISH")
+1104:             print("BIAS_CONFIDENCE = STRONG")
+1105:             self.decision_state = "ENTRY_ELIGIBLE"
+1106:             return "BULLISH"
+1107:         elif bull_score > bear_score * 1.5 and bull_score > 1.5 and bull_pillars >= 3:
+1108:             print("DIRECTIONAL_BIAS = BULLISH")
+1109:             print("BIAS_CONFIDENCE = MODERATE")
+1110:             self.decision_state = "ENTRY_ELIGIBLE"
+1111:             return "BULLISH"
+1112: 
+1113:         if bear_score > bull_score * 2.0 and bear_pillars >= 4:
+1114:             print("DIRECTIONAL_BIAS = BEARISH")
+1115:             print("BIAS_CONFIDENCE = STRONG")
+1116:             self.decision_state = "ENTRY_ELIGIBLE"
+1117:             return "BEARISH"
+1118:         elif bear_score > bull_score * 1.5 and bear_score > 1.5 and bear_pillars >= 3:
+1119:             print("DIRECTIONAL_BIAS = BEARISH")
+1120:             print("BIAS_CONFIDENCE = MODERATE")
+1121:             self.decision_state = "ENTRY_ELIGIBLE"
+1122:             return "BEARISH"
+1123: 
+1124:         print('>>> SKIP: Insufficient alignment')
+1125:         self.decision_state = 'WAIT_CONFIRMATION'
+1126:         return 'NEUTRAL'
+1127: 
+1128:     def select_trade(self, sentiment, spot, options):
+1129:         """PHASE D: Full chain + liquidity gate + strike ranking."""
+1130:         if not options:
+1131:             return None
+1132: 
+1133:         atm = round(spot / self.strike_interval) * self.strike_interval
+1134:         expiry = self.get_expiry()
+1135: 

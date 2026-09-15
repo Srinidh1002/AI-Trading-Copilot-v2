@@ -1,7 +1,14 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytest
 
+from services.certification.task9_market_session_evaluator import (
+    evaluate_task9_market_session,
+)
+from services.contracts.task9_market_session_policy_v1 import (
+    Task9MarketSegment,
+    build_task9_market_session_policy,
+)
 from services.certification.task9_historical_certification_replay import (
     LIVE_ROOT,
     REPLAY_ROOT,
@@ -19,6 +26,40 @@ from services.market.task9_live_tick_stream import (
 
 
 DAY = date(2026, 8, 11)
+
+
+_TEST_SESSION_POLICY = build_task9_market_session_policy(
+    policy_id="task927-offline-replay-test-policy",
+    policy_version="1",
+    calendar_authority_ref="task927-offline-replay-test-calendar",
+    nfo_new_entry_cutoff=time(15, 30),
+    bfo_new_entry_cutoff=time(15, 30),
+)
+
+
+def _session_state_resolver(
+    *,
+    market,
+    evaluated_at,
+    market_date,
+):
+    aggregate = evaluate_task9_market_session(
+        policy=_TEST_SESSION_POLICY,
+        evaluated_at=evaluated_at,
+        market_date=market_date,
+        calendar_state="TRADING_DAY",
+    )
+
+    expected_segment = {
+        "NIFTY": Task9MarketSegment.NFO_OPTIONS,
+        "SENSEX": Task9MarketSegment.BFO_OPTIONS,
+    }[market]
+
+    return next(
+        state
+        for state in aggregate.states
+        if state.segment is expected_segment
+    )
 
 
 @pytest.mark.parametrize(
@@ -45,7 +86,10 @@ def test_replay_receipt_store_allows_replay_and_isolated_roots(tmp_path):
 
 
 def _ticks(root):
-    journal = Task9LiveTickJournal(root)
+    journal = Task9LiveTickJournal(
+        root,
+        session_state_resolver=_session_state_resolver,
+    )
     start = datetime(2026, 8, 11, 9, 15, tzinfo=IST)
 
     for exchange, token, price in (
@@ -101,6 +145,7 @@ def test_builder_aggregates_both_markets_deterministically_from_local_journal(
         live_source_root=tmp_path / "live",
         output_file=tmp_path / "one.json",
         cache_reader=_daily,
+        session_state_resolver=_session_state_resolver,
     )
 
     second = build_offline_replay_evidence(
@@ -108,6 +153,7 @@ def test_builder_aggregates_both_markets_deterministically_from_local_journal(
         live_source_root=tmp_path / "live",
         output_file=tmp_path / "two.json",
         cache_reader=_daily,
+        session_state_resolver=_session_state_resolver,
     )
 
     assert first == second
@@ -132,6 +178,7 @@ def test_builder_fails_closed_for_missing_daily_and_live_output_collision(
             trading_date=DAY,
             live_source_root=tmp_path / "live",
             output_file=tmp_path / "out.json",
+            session_state_resolver=_session_state_resolver,
         )
 
     with pytest.raises(
@@ -142,5 +189,18 @@ def test_builder_fails_closed_for_missing_daily_and_live_output_collision(
             trading_date=DAY,
             live_source_root=tmp_path / "live",
             output_file=LIVE_ROOT / "evidence.json",
+            cache_reader=_daily,
+            session_state_resolver=_session_state_resolver,
+        )
+
+def test_builder_requires_explicit_canonical_session_authority(tmp_path):
+    with pytest.raises(
+        Task9HistoricalReplayError,
+        match="HISTORICAL_REPLAY_SESSION_AUTHORITY_REQUIRED",
+    ):
+        build_offline_replay_evidence(
+            trading_date=DAY,
+            live_source_root=tmp_path / "live",
+            output_file=tmp_path / "missing-authority.json",
             cache_reader=_daily,
         )

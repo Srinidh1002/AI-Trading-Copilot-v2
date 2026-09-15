@@ -41,7 +41,7 @@ class MarketDecisionExplanationV1:
   identity=(_text(self.underlying_symbol,"underlying_symbol").upper(),_text(self.exchange,"exchange").upper())
   if identity not in _IDENTITIES:raise ValueError("identity")
   object.__setattr__(self,"underlying_symbol",identity[0]);object.__setattr__(self,"exchange",identity[1])
-  if self.action not in {"CALL","PUT","WAIT","UNAVAILABLE"} or self.eligibility not in {"ELIGIBLE","INELIGIBLE","UNAVAILABLE","CONFLICTING"} or self.direction not in _DIRECTIONS:raise ValueError("vocabulary")
+  if self.action not in {"CALL","PUT","WAIT","NO_TRADE"} or self.eligibility not in {"ELIGIBLE","INELIGIBLE","UNAVAILABLE","CONFLICTING"} or self.direction not in _DIRECTIONS:raise ValueError("vocabulary")
   if any(not isinstance(v,(int,float)) or isinstance(v,bool) or not 0<=v<=100 for v in (self.confidence,self.score)):raise ValueError("score")
   if not isinstance(self.entries,tuple) or tuple(sorted(x.explanation_entry_id for x in self.entries))!=tuple(x.explanation_entry_id for x in self.entries):raise ValueError("entries")
   for n in ("blockers","warnings","action_reason_codes","terminal_reason_codes"):object.__setattr__(self,n,_codes(getattr(self,n),n))

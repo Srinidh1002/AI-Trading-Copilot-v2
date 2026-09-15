@@ -1,0 +1,4 @@
+{ "_fixture_note": "TEST_FIXTURE — schema only.",
+  "source": "IMF", "period": "2026-08",
+  "purchases_tonnes": null, "sales_tonnes": null, "countries": [],
+  "status": "CENTRAL_BANK_DATA_UNAVAILABLE" }

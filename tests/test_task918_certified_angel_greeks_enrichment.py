@@ -227,3 +227,199 @@ def test_task8_candidate_does_not_report_unavailable_greeks_or_iv_when_valid_nif
     assert all(contract.metadata["delta"] is not None for contract in result.options.universe.contracts)
     assert "EVIDENCE_UNAVAILABLE_GREEKS" not in result.candidate.blockers
     assert "EVIDENCE_UNAVAILABLE_IV" not in result.candidate.blockers
+
+
+def test_missing_oi_change_does_not_erase_other_option_pillars():
+    source = task8_captured(
+        "NIFTY",
+        "NSE",
+        25000.0,
+        complete_options=True,
+    )
+
+    contracts = tuple(
+        {
+            **{
+                key: value
+                for key, value in dict(contract).items()
+                if key != "change_in_open_interest"
+            },
+            "delta": (
+                0.5
+                if contract["option_type"] == "CE"
+                else -0.5
+            ),
+            "gamma": 0.01,
+            "theta": -10.0,
+            "vega": 5.0,
+            "iv": 15.0,
+        }
+        for contract in source.option_contracts
+    )
+
+    captured = CertifiedLiveCapturedEvidenceV1(
+        underlying_symbol=source.underlying_symbol,
+        spot_exchange=source.spot_exchange,
+        spot_token=source.spot_token,
+        option_exchange=source.option_exchange,
+        spot_payload=source.spot_payload,
+        candle_rows_by_timeframe=(
+            source.candle_rows_by_timeframe
+        ),
+        option_contracts=contracts,
+        provider_timestamp=source.provider_timestamp,
+        evaluated_at=source.evaluated_at,
+        provider_blockers=source.provider_blockers,
+        provider_warnings=source.provider_warnings,
+        cache_metadata=source.cache_metadata,
+    )
+
+    session = validate_session_timestamp(
+        symbol="NIFTY",
+        exchange="NSE",
+        market_timestamp=source.provider_timestamp,
+        evaluated_at=source.evaluated_at,
+        validation_mode="LENIENT_ANALYSIS",
+        id_factory=lambda: (
+            "task918-session:granularity"
+        ),
+    )
+
+    result = evaluate_captured_certified_market_candidate(
+        captured_evidence=captured,
+        session_validation=session,
+        policy_source=LiveCandidatePolicySourceV1(
+            "BULLISH",
+            "ELIGIBLE",
+            80.0,
+            80.0,
+        ),
+        parent_cycle_id="task918-granularity-parent",
+        candidate_id="task918-granularity-candidate",
+        observation_id=(
+            "task918-granularity-observation"
+        ),
+        engines=(
+            build_default_live_canonical_evidence_engines()
+        ),
+    )
+
+    pillars = result.evidence.pillars.ordered_pillars
+
+    assert pillars["oi_change"].status == "UNAVAILABLE"
+
+    for name in (
+        "oi",
+        "pcr",
+        "support_resistance",
+        "max_pain",
+        "iv",
+        "greeks",
+        "premium_behavior",
+        "liquidity_spread",
+    ):
+        assert pillars[name].status == "READY"
+
+    assert (
+        "EVIDENCE_UNAVAILABLE_OI_CHANGE"
+        in result.candidate.blockers
+    )
+
+    for blocker in (
+        "EVIDENCE_UNAVAILABLE_OI",
+        "EVIDENCE_UNAVAILABLE_PCR",
+        "EVIDENCE_UNAVAILABLE_SUPPORT_RESISTANCE",
+        "EVIDENCE_UNAVAILABLE_MAX_PAIN",
+        "EVIDENCE_UNAVAILABLE_IV",
+        "EVIDENCE_UNAVAILABLE_GREEKS",
+        "EVIDENCE_UNAVAILABLE_PREMIUM_BEHAVIOR",
+        "EVIDENCE_UNAVAILABLE_LIQUIDITY_SPREAD",
+    ):
+        assert blocker not in result.candidate.blockers
+
+
+def test_missing_greeks_do_not_erase_quote_based_option_evidence():
+    source = task8_captured(
+        "NIFTY",
+        "NSE",
+        25000.0,
+        complete_options=True,
+    )
+
+    session = validate_session_timestamp(
+        symbol="NIFTY",
+        exchange="NSE",
+        market_timestamp=source.provider_timestamp,
+        evaluated_at=source.evaluated_at,
+        validation_mode="LENIENT_ANALYSIS",
+        id_factory=lambda: (
+            "task918-session:no-greeks"
+        ),
+    )
+
+    result = evaluate_captured_certified_market_candidate(
+        captured_evidence=source,
+        session_validation=session,
+        policy_source=LiveCandidatePolicySourceV1(
+            "BULLISH",
+            "ELIGIBLE",
+            80.0,
+            80.0,
+        ),
+        parent_cycle_id="task918-no-greeks-parent",
+        candidate_id="task918-no-greeks-candidate",
+        observation_id="task918-no-greeks-observation",
+        engines=(
+            build_default_live_canonical_evidence_engines()
+        ),
+    )
+
+    pillars = result.evidence.pillars.ordered_pillars
+
+    assert pillars["greeks"].status == "UNAVAILABLE"
+    assert pillars["premium_behavior"].status == "READY"
+    assert pillars["liquidity_spread"].status == "READY"
+
+    assert (
+        "EVIDENCE_UNAVAILABLE_GREEKS"
+        in result.candidate.blockers
+    )
+
+    assert (
+        "EVIDENCE_UNAVAILABLE_PREMIUM_BEHAVIOR"
+        not in result.candidate.blockers
+    )
+
+    assert (
+        "EVIDENCE_UNAVAILABLE_LIQUIDITY_SPREAD"
+        not in result.candidate.blockers
+    )
+
+
+def test_task9865a3_full_capture_is_retained_from_same_option_full_request():
+    client = MagicMock()
+    client.get_option_greeks.return_value = {
+        "data": [
+            _greek(suffix="CE"),
+            _greek(suffix="PE"),
+        ]
+    }
+
+    result = _builder(
+        client
+    ).build_chain(
+        "NIFTY",
+        25000,
+        strikes_each_side=0,
+    )
+
+    facts = result["full_capture"]
+
+    assert facts["requested_contract_count"] == 2
+    assert facts["fetched_contract_count"] == 2
+    assert facts["unfetched_contract_count"] == 0
+    assert facts["malformed_contract_count"] == 0
+    assert facts["exchange_identity_verified"] is True
+
+    client.get_market_data.assert_called_once()
+    client.get_option_greeks.assert_called_once()

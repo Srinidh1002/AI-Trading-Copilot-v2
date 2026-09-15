@@ -1,0 +1,9 @@
+# Change these settings in the file:
+# Line: self.STOP_LOSS_PERCENT = 5
+# Change to: self.STOP_LOSS_PERCENT = 7
+
+# Line: if pcr > 1.1:
+# Change to: if pcr > 1.3:
+
+# Line: elif pcr < 0.9:
+# Change to: elif pcr < 0.7:

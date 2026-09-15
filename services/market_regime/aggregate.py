@@ -7,6 +7,9 @@ from typing import Any
 from services.contracts.canonical_market_regime_result_v1 import CanonicalMarketRegimeResultV1
 from services.contracts.market_regime_input_v1 import MarketRegimeInputV1
 from services.contracts.market_regime_policy_v1 import DEFAULT_MARKET_REGIME_POLICY, MarketRegimePolicyV1
+from services.contracts.technical_intelligence_policy_v1 import (
+    DEFAULT_TECHNICAL_INTELLIGENCE_POLICY,
+)
 
 
 _ORDER = ("TECHNICAL", "BROADER_MARKET", "EXTERNAL_CONTEXT", "MARKET_SESSION")
@@ -37,6 +40,56 @@ def _sign(value: str) -> int | None:
     if normalized in _NEUTRAL:
         return 0
     return None
+
+
+def _optional_timeframe_warnings(warnings: list[str]) -> set[str]:
+    """Return canonical technical warnings paired to optional MTF warnings.
+
+    The regime boundary does not receive the technical policy.  The
+    multi-timeframe producer already marks policy-declared optional absence
+    with ``OPTIONAL_TIMEFRAME_UNAVAILABLE_<timeframe>``; technical aggregation
+    preserves that warning and adds its paired diagnostic.  Keep both visible,
+    but do not let that pair become a binary suitability veto.
+    """
+    optional_prefix = "OPTIONAL_TIMEFRAME_UNAVAILABLE_"
+    technical_prefix = "TECHNICAL_TIMEFRAME_UNAVAILABLE_"
+    optional_timeframes = {
+        warning.upper().removeprefix(optional_prefix)
+        for warning in warnings
+        if (
+            warning.upper().startswith(optional_prefix)
+            and warning.upper().removeprefix(optional_prefix)
+        )
+    }
+    technical_timeframes = {
+        warning.upper().removeprefix(technical_prefix)
+        for warning in warnings
+        if (
+            warning.upper().startswith(technical_prefix)
+            and warning.upper().removeprefix(technical_prefix)
+        )
+    }
+    canonical_optional_timeframes = {
+        timeframe.upper()
+        for timeframe in DEFAULT_TECHNICAL_INTELLIGENCE_POLICY.optional_timeframes
+    }
+    paired_timeframes = (
+        optional_timeframes
+        & technical_timeframes
+        & canonical_optional_timeframes
+    )
+    return {
+        warning
+        for warning in warnings
+        if (
+            warning.upper().startswith(optional_prefix)
+            and warning.upper().removeprefix(optional_prefix) in paired_timeframes
+        )
+        or (
+            warning.upper().startswith(technical_prefix)
+            and warning.upper().removeprefix(technical_prefix) in paired_timeframes
+        )
+    }
 
 
 def aggregate_market_regime(
@@ -131,6 +184,20 @@ def aggregate_market_regime(
     if directions and 0 < confirmations < policy.minimum_confirmation_count:
         warnings.append("PARTIAL_CONFIRMATION")
 
+    optional_unavailable_warnings = {
+        f"OPTIONAL_{name}_UNUSABLE"
+        for name in policy.optional_components
+    }
+    optional_timeframe_warnings = _optional_timeframe_warnings(warnings)
+    penalty_warnings = tuple(
+        warning
+        for warning in warnings
+        if (
+            warning not in optional_unavailable_warnings
+            and warning not in optional_timeframe_warnings
+        )
+    )
+
     applied_penalties: list[str] = []
     if contradictory:
         confidence -= policy.conflict_penalty
@@ -138,7 +205,7 @@ def aggregate_market_regime(
     if any(name in unavailable for name in policy.optional_components):
         confidence -= policy.missing_optional_component_penalty
         applied_penalties.append("MISSING_OPTIONAL")
-    if warnings:
+    if penalty_warnings:
         confidence -= policy.warning_penalty
         applied_penalties.append("WARNING")
     if directions and 0 < confirmations < policy.minimum_confirmation_count:
@@ -187,9 +254,14 @@ def aggregate_market_regime(
             primary = "BEARISH"
         else:
             primary = "RANGE_BOUND"
+        suitability_warnings = penalty_warnings
+
         if not new_entries_allowed:
             entry = "NOT_SUITABLE"
-        elif confidence >= policy.suitable_confidence_threshold and not warnings:
+        elif (
+            confidence >= policy.suitable_confidence_threshold
+            and not suitability_warnings
+        ):
             entry = "SUITABLE"
         elif confidence >= policy.caution_confidence_threshold:
             entry = "CAUTION"

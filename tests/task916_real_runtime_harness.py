@@ -17,6 +17,9 @@ from services.analysis.live_market_candidate_evaluator import (
     LiveMarketCandidateEvaluationResultV1,
     evaluate_captured_certified_market_candidate,
 )
+from services.analysis.pre_entry_action_resolver import (
+    resolve_pre_entry_market_action,
+)
 from services.certification.task8_selected_market_p6_bundle import (
     build_task8_selected_market_p6_bundle,
 )
@@ -312,6 +315,14 @@ def _task916_capture(
                     "open_interest": oi,
                     "change_in_open_interest": oi_change,
                     "iv": 15.0,
+                    "delta": (
+                        0.55
+                        if option_type == "CE"
+                        else -0.45
+                    ),
+                    "gamma": 0.01,
+                    "theta": -8.0,
+                    "vega": 4.0,
                 }
             )
 
@@ -542,6 +553,16 @@ def build_task916_real_runtime_harness(
         nifty_evaluation=nifty_evaluation,
         sensex_evaluation=sensex_evaluation,
     )
+    pre_entry_actions = {
+        entry.child.observation_id: resolve_pre_entry_market_action(
+            candidate=entry.child.candidate,
+            cycle_id=decision.parent_cycle_id,
+            observation_id=entry.child.observation_id,
+            evaluated_at=decision.completed_at,
+        )
+        for entry in decision.entries
+        if entry.child.terminal_status == "COMPLETED"
+    }
 
     predictions = project_parent_decision_predictions(
         decision,
@@ -549,7 +570,15 @@ def build_task916_real_runtime_harness(
             ("NIFTY", "NSE"): seed.nifty_price,
             ("SENSEX", "BSE"): seed.sensex_price,
         },
+        pre_entry_actions=pre_entry_actions,
     )
+    assert {
+        item.observation_id: item.predicted_action
+        for item in predictions
+    } == {
+        observation_id: action.action
+        for observation_id, action in pre_entry_actions.items()
+    }
 
     selected_prediction = next(
         item

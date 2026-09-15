@@ -2,6 +2,9 @@ from dataclasses import replace
 
 import pytest
 
+from services.analysis.pre_entry_action_resolver import (
+    resolve_pre_entry_market_action,
+)
 from services.paper_orchestration.authoritative_two_market_entry_point import (
     run_authoritative_two_market_parent_cycle,
 )
@@ -24,11 +27,33 @@ from test_certified_two_market_parent_runtime import (
 
 def _runtime():
     nifty, sensex = cycles()
-    nifty = replace(nifty, metadata={**dict(nifty.metadata), "spot_price": 25000.0})
-    sensex = replace(sensex, metadata={**dict(sensex.metadata), "spot_price": 80000.0})
-    runtime_readers = readers(
-        lambda cycle, data, analysis, captured, shared_context, *,
-        parent_cycle_id: candidate_for(
+    nifty = replace(
+        nifty,
+        metadata={
+            **dict(nifty.metadata),
+            "spot_price": 25000.0,
+        },
+    )
+    sensex = replace(
+        sensex,
+        metadata={
+            **dict(sensex.metadata),
+            "spot_price": 80000.0,
+        },
+    )
+
+    pre_entry_actions = {}
+
+    def candidate_reader(
+        cycle,
+        data,
+        analysis,
+        captured,
+        shared_context,
+        *,
+        parent_cycle_id,
+    ):
+        candidate = candidate_for(
             cycle,
             data,
             score=(
@@ -37,14 +62,32 @@ def _runtime():
                 else 60.0
             ),
         )
+
+        pre_entry_actions[cycle.observation_id] = (
+            resolve_pre_entry_market_action(
+                candidate=candidate,
+                cycle_id=parent_cycle_id,
+                observation_id=cycle.observation_id,
+                evaluated_at=cycle.received_at,
+            )
+        )
+
+        return candidate
+
+    runtime_readers = readers(candidate_reader)
+
+    return (
+        nifty,
+        sensex,
+        runtime_readers,
+        pre_entry_actions,
     )
-    return nifty, sensex, runtime_readers
 
 
 def test_authoritative_parent_persists_exact_two_predictions(
     tmp_path,
 ):
-    nifty, sensex, runtime_readers = _runtime()
+    nifty, sensex, runtime_readers, pre_entry_actions = _runtime()
     parent_input = parent(nifty, sensex)
     ledger = PredictionLedger(
         tmp_path / "prediction-ledger.json"
@@ -55,6 +98,7 @@ def test_authoritative_parent_persists_exact_two_predictions(
         nifty_cycle=nifty,
         sensex_cycle=sensex,
         readers=runtime_readers,
+        pre_entry_actions=pre_entry_actions,
         prediction_ledger=ledger,
     )
 
@@ -74,13 +118,13 @@ def test_authoritative_parent_persists_exact_two_predictions(
     assert tuple(
         item["predicted_action"]
         for item in records
-    ) == ("CALL", "WAIT")
+    ) == ("CALL", "CALL")
 
 
 def test_parent_journal_and_prediction_ledger_are_both_written(
     tmp_path,
 ):
-    nifty, sensex, runtime_readers = _runtime()
+    nifty, sensex, runtime_readers, pre_entry_actions = _runtime()
     parent_input = parent(nifty, sensex)
     parent_journal = PaperOrchestrationJournal(
         tmp_path / "parent-journal.json"
@@ -99,6 +143,7 @@ def test_parent_journal_and_prediction_ledger_are_both_written(
         sensex_cycle=sensex,
         readers=runtime_readers,
         parent_journal_adapter=parent_adapter,
+        pre_entry_actions=pre_entry_actions,
         prediction_ledger=prediction_ledger,
     )
 
@@ -107,7 +152,7 @@ def test_parent_journal_and_prediction_ledger_are_both_written(
 
 
 def test_restart_duplicate_is_no_change(tmp_path):
-    nifty, sensex, runtime_readers = _runtime()
+    nifty, sensex, runtime_readers, pre_entry_actions = _runtime()
     parent_input = parent(nifty, sensex)
     path = tmp_path / "prediction-ledger.json"
 
@@ -117,6 +162,7 @@ def test_restart_duplicate_is_no_change(tmp_path):
             nifty_cycle=nifty,
             sensex_cycle=sensex,
             readers=runtime_readers,
+            pre_entry_actions=pre_entry_actions,
             prediction_ledger=PredictionLedger(path),
         )
 
@@ -124,7 +170,7 @@ def test_restart_duplicate_is_no_change(tmp_path):
 
 
 def test_wrong_prediction_ledger_exact_type_is_rejected():
-    nifty, sensex, runtime_readers = _runtime()
+    nifty, sensex, runtime_readers, pre_entry_actions = _runtime()
 
     with pytest.raises(
         TypeError,

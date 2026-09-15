@@ -11,3 +11,55 @@ class MultiTimeframeSnapshotV1:
   if "5m" in missing and not self.blockers:raise ValueError("Missing mandatory timeframe requires blocker.")
   if missing-{"5m"} and not self.warnings:raise ValueError("Missing optional timeframe requires warning.")
   object.__setattr__(self,"blockers",tuple(self.blockers));object.__setattr__(self,"warnings",tuple(self.warnings))
+
+ def to_dict(self):
+  result={name:getattr(self,name) for name in self.__dataclass_fields__}
+  result["created_at"]=self.created_at.isoformat()
+  if self.synchronization_reference_at is not None:
+   result["synchronization_reference_at"]=self.synchronization_reference_at.isoformat()
+  result["required_timeframes"]=list(self.required_timeframes)
+  result["timeframe_evidence"]=[
+   {
+    "__type__":"TimeframeEvidenceV1",
+    "timeframe_evidence_id":item.timeframe_evidence_id,
+    "created_at":item.created_at.isoformat(),
+    "underlying_symbol":item.underlying_symbol,
+    "exchange":item.exchange,
+    "timeframe":item.timeframe,
+    "candle_series_id":item.candle_series_id,
+    "quality_result_id":item.quality_result_id,
+    "quality_status":item.quality_status,
+    "candle_count":item.candle_count,
+    "complete_candle_count":item.complete_candle_count,
+    "incomplete_candle_count":item.incomplete_candle_count,
+    "first_candle_start_at":item.first_candle_start_at.isoformat() if item.first_candle_start_at is not None else None,
+    "latest_candle_start_at":item.latest_candle_start_at.isoformat() if item.latest_candle_start_at is not None else None,
+    "latest_candle_end_at":item.latest_candle_end_at.isoformat() if item.latest_candle_end_at is not None else None,
+    "latest_complete_candle_end_at":item.latest_complete_candle_end_at.isoformat() if item.latest_complete_candle_end_at is not None else None,
+    "age_seconds":item.age_seconds,
+    "freshness_threshold_seconds":item.freshness_threshold_seconds,
+    "minimum_required_candles":item.minimum_required_candles,
+    "history_sufficient":item.history_sufficient,
+    "latest_candle_complete":item.latest_candle_complete,
+    "blockers":list(item.blockers),
+    "warnings":list(item.warnings),
+    "execution_mode":item.execution_mode,
+    "live_execution_eligible":item.live_execution_eligible,
+    "schema_version":item.schema_version,
+   }
+   for item in self.timeframe_evidence
+  ]
+  result["blockers"]=list(self.blockers)
+  result["warnings"]=list(self.warnings)
+  result["__type__"]=type(self).__name__
+  return result
+
+ def to_json(self):
+  import json
+  return json.dumps(self.to_dict(),sort_keys=True,separators=(",",":"))
+
+ def semantic_dict(self):
+  result=self.to_dict()
+  result.pop("multi_timeframe_snapshot_id",None)
+  result.pop("created_at",None)
+  return result

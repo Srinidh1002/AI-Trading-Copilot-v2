@@ -5,6 +5,7 @@ from dashboard.dashboard_operational_read_model_state import (
     get_operational_views,
 )
 from dashboard.dashboard_publication_sync import (
+    DEFAULT_TASK9_PUBLICATION_ROOT,
     OPERATOR_APPLICATION_VIEW_MODEL_STATE_KEY,
     get_operator_application_view_model,
     render_operator_dashboard,
@@ -15,7 +16,14 @@ from dashboard.dashboard_read_model_state import (
     build_task9_prepublication_application_view,
     get_application_view,
     get_r4_paper_lifecycle_view,
+    get_task9_decision_observability_view,
     recover_task9_durable_authorities,
+)
+from dashboard.task9_active_campaign_sync import (
+    synchronize_task9_active_campaign_projection,
+)
+from dashboard.task9_decision_observability_sync import (
+    synchronize_task9_decision_observability,
 )
 from dashboard.dashboard_read_model_state import (
     get_r4_paper_lifecycle_view,
@@ -36,6 +44,9 @@ from dashboard.trades_pnl_components import render_trades_pnl_center
 from dashboard.task9_certification_components import render_task9_certification_center
 from dashboard.recommendation_history_components import render_recommendation_history
 from dashboard.data_health_components import render_data_health_strip
+from dashboard.decision_observability_components import (
+    render_task9_decision_observability,
+)
 from dashboard.manual_live_planner_components import render_manual_live_planner
 from dashboard.dashboard_navigation import render_dashboard_navigation
 from dashboard.markets_components import render_markets_comparison
@@ -46,7 +57,9 @@ _OPERATOR_VIEW_MODEL_KEY = (
 )
 
 
-def _render_unavailable_sections() -> None:
+def _render_unavailable_sections(
+    decision_observability_view=None,
+) -> None:
     st.subheader("Market Overview")
     st.info(
         "Certified market-overview data is not available yet. "
@@ -62,10 +75,9 @@ def _render_unavailable_sections() -> None:
 
     st.divider()
 
-    st.subheader("Decision History")
-    st.info(
-        "Certified typed decision history is not available yet. "
-        "The dashboard does not query the legacy SQLite decision log."
+    render_task9_decision_observability(
+        st=st,
+        view=decision_observability_view,
     )
 
 
@@ -87,6 +99,20 @@ def _render_r4_lifecycle_section(view) -> None:
 def home() -> None:
     synchronize_registered_dashboard_publication(
         st.session_state
+    )
+
+    synchronize_task9_active_campaign_projection(
+        st.session_state,
+        persistence_root=(
+            DEFAULT_TASK9_PUBLICATION_ROOT
+        ),
+    )
+
+    synchronize_task9_decision_observability(
+        st.session_state,
+        registry_root=(
+            DEFAULT_TASK9_PUBLICATION_ROOT
+        ),
     )
 
     operator_view_model = get_operator_application_view_model(
@@ -114,7 +140,7 @@ def home() -> None:
     if application_view is not None:
         application_view = recover_task9_durable_authorities(
             application_view,
-            persistence_root="data/paper_trading/certified_runtime/task9",
+            persistence_root=DEFAULT_TASK9_PUBLICATION_ROOT,
         )
         st.title("AI TRADING COPILOT")
         st.caption("PAPER CERTIFICATION MODE · PAPER ONLY · BROKER ORDER SUBMISSION DISABLED")
@@ -156,6 +182,12 @@ def home() -> None:
         st.session_state
     )
 
+    decision_observability_view = (
+        get_task9_decision_observability_view(
+            st.session_state
+        )
+    )
+
     st.title("🤖 AI Trading Copilot V2")
     st.caption("Unified application view is unavailable; certified fallback read models only")
     st.divider()
@@ -181,7 +213,9 @@ def home() -> None:
 
     st.divider()
 
-    _render_unavailable_sections()
+    _render_unavailable_sections(
+        decision_observability_view
+    )
 
     st.divider()
     st.caption(

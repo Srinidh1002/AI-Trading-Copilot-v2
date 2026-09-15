@@ -1,6 +1,8 @@
 """Durable, append-only Task 9 prediction observation evidence."""
 from __future__ import annotations
 
+from services.certification.task9_atomic_file_replace import replace_task9_atomic_file
+
 import json
 import os
 from datetime import datetime
@@ -43,10 +45,24 @@ class Task9PredictionObservationWindowStore:
 
     def _write(self, value: dict[str, object]) -> None:
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.file_path.with_suffix(self.file_path.suffix + ".tmp")
+        temporary = self.file_path.with_suffix(
+            self.file_path.suffix + ".tmp"
+        )
         try:
-            temporary.write_text(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-            os.replace(temporary, self.file_path)
+            temporary.write_text(
+                json.dumps(
+                    value,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ),
+                encoding="utf-8",
+            )
+
+            replace_task9_atomic_file(
+                temporary,
+                self.file_path,
+            )
         finally:
             temporary.unlink(missing_ok=True)
 

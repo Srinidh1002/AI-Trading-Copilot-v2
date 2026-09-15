@@ -13,7 +13,10 @@ from services.contracts.market_analysis_confidence_policy_v1 import MarketAnalys
 
 def build_market_analysis_confidence_ledger(*, cycle_id: str, observation_id: str, evidence: object, policy_source: object, confidence_policy: MarketAnalysisConfidencePolicyV1 = MarketAnalysisConfidencePolicyV1()) -> MarketAnalysisConfidenceLedgerV1:
     """Build once from canonical typed evidence; this never changes candidates."""
-    from services.analysis.market_analysis_candidate_composer import _ready
+    from services.analysis.market_analysis_candidate_composer import (
+        _ready,
+        _required_failure_code,
+    )
     if type(confidence_policy) is not MarketAnalysisConfidencePolicyV1:
         raise TypeError("confidence_policy")
     observation = evidence.observation
@@ -41,12 +44,64 @@ def build_market_analysis_confidence_ledger(*, cycle_id: str, observation_id: st
     for code in contradictions:
         add("CONTRADICTION", f"contradiction:{code}", None, "CONFLICTING", None, None, False, "HARD_BLOCKED", None, (code,), ())
     for code in nonready:
-        add("QUALITY", f"quality:{code}", None, "UNAVAILABLE", None, None, False, "HARD_BLOCKED", None, (f"EVIDENCE_UNAVAILABLE_{code.upper()}",), ())
+        failure_code = _required_failure_code(
+            code,
+            dict(required)[code],
+        )
+        add(
+            "QUALITY",
+            f"quality:{code}",
+            None,
+            "UNAVAILABLE",
+            None,
+            None,
+            False,
+            "HARD_BLOCKED",
+            None,
+            (failure_code,),
+            (),
+        )
     if "session" in nonready or "regime" in nonready:
-        add("SUITABILITY", "suitability:session_regime", None, "UNAVAILABLE", None, None, False, "HARD_BLOCKED", None, tuple(f"EVIDENCE_UNAVAILABLE_{name.upper()}" for name in nonready if name in {"session", "regime"}), ())
+        add(
+            "SUITABILITY",
+            "suitability:session_regime",
+            None,
+            "UNAVAILABLE",
+            None,
+            None,
+            False,
+            "HARD_BLOCKED",
+            None,
+            tuple(
+                _required_failure_code(
+                    name,
+                    dict(required)[name],
+                )
+                for name in nonready
+                if name in {
+                    "session",
+                    "regime",
+                }
+            ),
+            (),
+        )
     final_confidence = 0.0 if hard_block else policy_source.confidence
     final_score = 0.0 if hard_block else policy_source.score
     direction = "CONFLICTING" if contradictions else "UNAVAILABLE" if hard_block else policy_source.direction
     status = "CONFLICTING" if contradictions else "UNAVAILABLE" if hard_block else "READY"
-    blockers = tuple(dict.fromkeys((*policy_source.blockers, *(f"EVIDENCE_UNAVAILABLE_{name.upper()}" for name in nonready), *contradictions)))
+    blockers = tuple(
+        dict.fromkeys(
+            (
+                *policy_source.blockers,
+                *(
+                    _required_failure_code(
+                        name,
+                        dict(required)[name],
+                    )
+                    for name in nonready
+                ),
+                *contradictions,
+            )
+        )
+    )
     return MarketAnalysisConfidenceLedgerV1(f"ledger:{cycle_id}:{observation_id}", symbol, exchange, cycle_id, observation_id, when, policy_source.score, policy_source.confidence, policy_source.confidence if direction == "BULLISH" and not hard_block else 0.0, policy_source.confidence if direction == "BEARISH" and not hard_block else 0.0, policy_source.confidence if direction == "NEUTRAL" and not hard_block else 0.0, 0.0, 0.0, 0.0, final_score, final_confidence, direction, status, tuple(sorted(entries, key=lambda item: item.entry_id)), blockers, tuple(dict.fromkeys((*policy_source.warnings, *evidence.warnings, *evidence.pillars.warnings))), confidence_policy.policy_version)

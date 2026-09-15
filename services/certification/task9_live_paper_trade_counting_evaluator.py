@@ -62,6 +62,9 @@ def evaluate_task9_live_paper_trade_counting(
     outcome = value.lifecycle_outcome
     reconciliation = value.reconciliation
 
+    if value.run_classification != "OFFICIAL_CERTIFICATION":
+        return _decision(value, status="EXCLUDED_NON_LIVE_SOURCE", reasons=("DIAGNOSTIC_NON_COUNTING_RUN",))
+
     if value.record_source == "REPLAY":
         return _decision(
             value,
@@ -173,6 +176,45 @@ def evaluate_task9_live_paper_trade_counting(
             ),
             no_trade_record=action == "NO_TRADE",
             wait_record=action == "WAIT",
+        )
+
+    if action in {"CALL", "PUT"} and not prediction.parent_selected:
+        if outcome is None:
+            return _decision(
+                value,
+                status="PENDING",
+                reasons=("LIFECYCLE_EVIDENCE_PENDING",),
+                pending=True,
+            )
+        if outcome.evaluation_status == "UNRESOLVED":
+            return _decision(
+                value,
+                status="PENDING",
+                reasons=("LIFECYCLE_OUTCOME_UNRESOLVED",),
+                pending=True,
+            )
+        if outcome.evaluation_status != "RESOLVED":
+            return _decision(
+                value,
+                status="EXCLUDED_UNRESOLVED",
+                reasons=(
+                    f"LIFECYCLE_STATUS_{outcome.evaluation_status}",
+                ),
+            )
+        if outcome.entry_occurred:
+            return _decision(
+                value,
+                status="EXCLUDED_RECONCILIATION",
+                reasons=(
+                    "NON_SELECTED_DIRECTIONAL_PREDICTION_MUST_NOT_ENTER",
+                ),
+            )
+        return _decision(
+            value,
+            status="EXCLUDED_NO_ENTRY",
+            reasons=(
+                "PARENT_NOT_SELECTED_DIRECTIONAL_RECOMMENDATION",
+            ),
         )
 
     if outcome is None or reconciliation is None:

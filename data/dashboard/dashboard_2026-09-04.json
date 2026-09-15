@@ -1,0 +1,636 @@
+{
+  "timestamp": "2026-09-04T00:38:12.684354",
+  "market_data": {
+    "NIFTY": {
+      "symbol": "NIFTY",
+      "ltp": 23864.55,
+      "change": 0,
+      "change_percent": 0,
+      "volume": 0,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "timestamp": "2026-09-04T00:38:12.061683"
+    },
+    "SENSEX": {
+      "symbol": "SENSEX",
+      "ltp": 76413.5,
+      "change": 0,
+      "change_percent": 0,
+      "volume": 0,
+      "high": 0.0,
+      "low": 0.0,
+      "open": 0.0,
+      "timestamp": "2026-09-04T00:38:12.065754"
+    }
+  },
+  "pre_market_reports": {
+    "2026-09-04": {
+      "timestamp": "2026-09-04T00:36:16.393663",
+      "date": "2026-09-04",
+      "time": "00:36:16",
+      "market_summary": {
+        "market_bias": "STRONGLY_BULLISH",
+        "volatility_level": "LOW",
+        "recommended_market": "NIFTY",
+        "overall_sentiment": "STRONG BULLISH"
+      },
+      "global_markets": {
+        "us": {
+          "markets": {
+            "S&P 500": {
+              "price": 7752.3,
+              "change": 0.85
+            },
+            "NASDAQ": {
+              "price": 26614.44,
+              "change": 1.06
+            },
+            "Dow Jones": {
+              "price": 53681.71,
+              "change": 0.7
+            }
+          },
+          "sentiment": "BULLISH"
+        },
+        "asia": {
+          "markets": {
+            "NIKKEI 225": {
+              "price": 64214.48,
+              "change": -0.79
+            },
+            "HANG SENG": {
+              "price": 25213.31,
+              "change": -1.06
+            }
+          },
+          "sentiment": "BEARISH"
+        },
+        "europe": {
+          "markets": {
+            "FTSE 100": {
+              "price": 10831.52,
+              "change": 0.69
+            },
+            "DAX": {
+              "price": 26003.32,
+              "change": 0.63
+            },
+            "CAC 40": {
+              "price": 8286.4,
+              "change": 0.13
+            }
+          },
+          "sentiment": "BULLISH"
+        }
+      },
+      "economic_events": [
+        {
+          "time": "10:00 AM",
+          "event": "US ISM Manufacturing PMI",
+          "impact": "HIGH",
+          "expected": "47.5",
+          "previous": "46.8"
+        },
+        {
+          "time": "10:30 AM",
+          "event": "US Unemployment Claims",
+          "impact": "HIGH",
+          "expected": "220K",
+          "previous": "215K"
+        },
+        {
+          "time": "11:00 AM",
+          "event": "US Crude Oil Inventories",
+          "impact": "MEDIUM",
+          "expected": "-2.5M",
+          "previous": "-3.2M"
+        }
+      ],
+      "news_analysis": {
+        "overall_sentiment": "NEUTRAL",
+        "sentiment_score": 0.3,
+        "volatility_expected": "MEDIUM",
+        "key_events": [
+          {
+            "headline": "RBI keeps repo rate unchanged at 6.5%",
+            "impact": "POSITIVE"
+          },
+          {
+            "headline": "Global markets show mixed signals",
+            "impact": "NEUTRAL"
+          },
+          {
+            "headline": "Oil prices rise on supply concerns",
+            "impact": "NEGATIVE"
+          }
+        ]
+      },
+      "previous_session": {
+        "date": "2026-09-03",
+        "nifty": {
+          "close": 23873.8,
+          "open": 23850.0,
+          "high": 23900.0,
+          "low": 23840.0,
+          "change": 0.1,
+          "change_percent": 0.42,
+          "volume": 1500000
+        },
+        "sensex": {
+          "close": 76440.14,
+          "open": 76400.0,
+          "high": 76500.0,
+          "low": 76350.0,
+          "change": 0.08,
+          "change_percent": 0.35,
+          "volume": 500000
+        },
+        "summary": "Consolidation with slight bullish bias",
+        "key_levels": {
+          "nifty_support": 23800,
+          "nifty_resistance": 23950,
+          "sensex_support": 76300,
+          "sensex_resistance": 76600
+        }
+      },
+      "fii_dii": {
+        "fii_net_buy": 850.5,
+        "dii_net_buy": 320.75,
+        "fii_derivatives": {
+          "index_futures": "BUY",
+          "index_options": "CALL_BUYING",
+          "stock_futures": "SELL"
+        },
+        "fii_sentiment": "BULLISH"
+      },
+      "vix_analysis": {
+        "current": 11.34,
+        "change": -0.35,
+        "change_percent": -2.36,
+        "level": "LOW"
+      },
+      "sectors": {
+        "best_performing": [
+          [
+            "IT",
+            0.85
+          ],
+          [
+            "METAL",
+            0.62
+          ],
+          [
+            "BANKING",
+            0.45
+          ]
+        ],
+        "worst_performing": [
+          [
+            "OIL_GAS",
+            -0.25
+          ],
+          [
+            "AUTO",
+            -0.12
+          ],
+          [
+            "FMCG",
+            -0.08
+          ]
+        ],
+        "all": {
+          "IT": 0.85,
+          "BANKING": 0.45,
+          "AUTO": -0.12,
+          "PHARMA": 0.32,
+          "FMCG": -0.08,
+          "METAL": 0.62,
+          "OIL_GAS": -0.25,
+          "REALTY": 0.18
+        }
+      },
+      "recommendations": {
+        "market": "NIFTY",
+        "bias": "STRONGLY_BULLISH",
+        "action": "BUY CALL",
+        "reason": "Strong bullish bias across markets"
+      },
+      "conclusion": "Market Bias: STRONGLY_BULLISH | Volatility Level: LOW | Recommended Market: NIFTY | Overall: Bullish outlook - Look for CALL opportunities"
+    }
+  },
+  "trade_signals": [
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:28.777181"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:29.799394"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:30.828549"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:31.860834"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:32.880619"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:33.913901"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:34.942791"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:35.965548"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:36.994194"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:38.012819"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:39.047353"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:40.082490"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:41.114213"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:42.146555"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:43.181565"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:44.218243"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:45.247260"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:46.272155"
+    },
+    {
+      "signal": "WAIT",
+      "market": "NIFTY",
+      "option_type": "NONE",
+      "entry_price": 0,
+      "stop_loss": 0,
+      "targets": {
+        "T1": 0,
+        "T2": 0,
+        "T3": 0
+      },
+      "confidence": 0,
+      "reason": "CONSOLIDATION - Waiting for breakout",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:47.313417"
+    },
+    {
+      "signal": "TRADE",
+      "market": "NIFTY",
+      "option_type": "CALL",
+      "entry_price": 23857.6,
+      "stop_loss": 23738.311999999998,
+      "targets": {
+        "T1": 23893.3864,
+        "T2": 23929.172799999997,
+        "T3": 23976.887999999995
+      },
+      "confidence": 0.55,
+      "reason": "Oversold in consolidation | RSI=26.6",
+      "regime": "CONSOLIDATION",
+      "timestamp": "2026-09-04T00:37:48.333045"
+    }
+  ],
+  "active_positions": [
+    {
+      "symbol": "NIFTY",
+      "option_type": "CALL",
+      "entry_price": 23857.6,
+      "entry_time": "2026-09-04T00:37:48.335862",
+      "entry_cycle": 88,
+      "current_price": 23864.55,
+      "status": "OPEN",
+      "quantity": 65,
+      "lots": 1,
+      "booked": {
+        "T1": false,
+        "T2": false,
+        "T3": false
+      },
+      "T1_price": 23893.3864,
+      "T2_price": 23929.172799999997,
+      "T3_price": 23976.887999999995,
+      "stop_loss": 23738.311999999998,
+      "highest_price": 23864.7,
+      "lowest_price": 23857.3,
+      "hold_count": 24,
+      "position_size": {
+        "symbol": "NIFTY",
+        "lot_size": 65,
+        "lots": 1,
+        "total_quantity": 65,
+        "entry_price": 23857.6,
+        "stop_loss": 23738.311999999998,
+        "risk_per_share": 119.28800000000047,
+        "total_risk": 7753.72000000003,
+        "risk_percent": 0.775372000000003,
+        "capital_used": 1550744.0,
+        "capital_used_percent": 155.0744,
+        "deployed_capital": 1000000
+      },
+      "position_number": 2,
+      "regime": "CONSOLIDATION",
+      "entry_reason": "Oversold in consolidation | RSI=26.6"
+    },
+    {
+      "symbol": "SENSEX",
+      "option_type": "CALL",
+      "entry_price": 76409.24,
+      "entry_time": "2026-09-04T00:37:02.088765",
+      "entry_cycle": 43,
+      "current_price": 76413.5,
+      "status": "OPEN",
+      "quantity": 20,
+      "lots": 1,
+      "booked": {
+        "T1": false,
+        "T2": false,
+        "T3": false
+      },
+      "T1_price": 76523.85386,
+      "T2_price": 76638.46772,
+      "T3_price": 76791.2862,
+      "stop_loss": 76027.19380000001,
+      "highest_price": 76416.68,
+      "lowest_price": 76382.26,
+      "hold_count": 69,
+      "position_size": {
+        "symbol": "SENSEX",
+        "lot_size": 20,
+        "lots": 1,
+        "total_quantity": 20,
+        "entry_price": 76409.24,
+        "stop_loss": 76027.19380000001,
+        "risk_per_share": 382.04619999999704,
+        "total_risk": 7640.923999999941,
+        "risk_percent": 0.764092399999994,
+        "capital_used": 1528184.8,
+        "capital_used_percent": 152.81848,
+        "deployed_capital": 1000000
+      },
+      "position_number": 2,
+      "regime": "CONSOLIDATION",
+      "entry_reason": "Oversold in consolidation | RSI=27.2"
+    }
+  ],
+  "trade_history": [],
+  "pnl_data": {},
+  "indicators": {},
+  "decisions": [],
+  "predictions": [],
+  "system_status": {
+    "status": "STOPPED",
+    "last_update": "2026-09-04T00:38:12.684347"
+  },
+  "last_update": "2026-09-04T00:38:12.065759"
+}

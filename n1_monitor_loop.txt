@@ -1,0 +1,172 @@
+=== lines 1550-1720 (monitor loop + target checks) ===
+1550:                 if not self.reconnect_if_needed():
+1551:                     continue
+1552:             
+1553:             try:
+1554:                 current_price = 0
+1555:                 # Try WebSocket first
+1556:                 if self.ws_feed and self.ws_feed.is_healthy():
+1557:                     ws_tick = self.ws_feed.get_latest(trade['token'])
+1558:                     if ws_tick and ws_tick.get("ltp", 0) > 0:
+1559:                         current_price = ws_tick["ltp"]
+1560:                 
+1561:                 # Fallback to REST if WS stale
+1562:                 if current_price <= 0:
+1563:                     self.rate_limiter.wait_if_needed("ltp_data")
+1564:                     ltp_data = self.obj.ltpData(self.option_exchange, trade['symbol'], trade['token'])
+1565:                     if ltp_data and ltp_data.get('data'):
+1566:                         current_price = float(ltp_data['data'].get('ltp', 0))
+1567:                 
+1568:                 if current_price > 0:
+1569:                     
+1570:                     if current_price > 0:
+1571:                         if trade['signal'] == 'BUY':
+1572:                             pnl = (current_price - entry) * self.lot_size
+1573:                             pnl_pct = ((current_price - entry) / entry) * 100
+1574:                         else:
+1575:                             pnl = (entry - current_price) * self.lot_size
+1576:                             pnl_pct = ((entry - current_price) / entry) * 100
+1577:                         
+1578:                         active_trade['current_price'] = current_price
+1579:                         active_trade['pnl'] = pnl
+1580:                         active_trade['pnl_pct'] = pnl_pct
+1581:                         
+1582:                         if pnl > active_trade['max_profit']:
+1583:                             active_trade['max_profit'] = pnl
+1584:                         
+1585:                         
+1586:                         # ===== PHASE F: MFE/MAE + Target policy =====
+1587:                         try:
+1588:                             self.mfe_mae.update(trade_id, current_price)
+1589:                             if 'peak_price' not in active_trade or current_price > active_trade['peak_price']:
+1590:                                 active_trade['peak_price'] = current_price
+1591:                             target_state = {
+1592:                                 'entry_price': entry,
+1593:                                 'current_price': current_price,
+1594:                                 'peak_price': active_trade.get('peak_price', current_price),
+1595:                                 'trail_stop': active_trade.get('trail_stop'),
+1596:                                 't1_hit': active_trade.get('t1_hit', False),
+1597:                                 't2_hit': active_trade.get('t2_hit', False),
+1598:                             }
+1599:                             action, reason, new_trail, updates = self.target_policy.evaluate(target_state)
+1600:                             for k, v in updates.items():
+1601:                                 active_trade[k] = v
+1602:                             if new_trail is not None:
+1603:                                 active_trade['trail_stop'] = new_trail
+1604:                             if action == 'EXIT_T3':
+1605:                                 print(f'  T3 REACHED at {current_price:.2f}')
+1606:                                 self.close_position(trade_id, current_price, 'T3_50%', pnl, pnl_pct)
+1607:                                 self.t3_hits += 1
+1608:                                 break
+1609:                             if active_trade.get('trail_stop') and current_price <= active_trade['trail_stop']:
+1610:                                 print(f'  TRAIL STOP HIT at {current_price:.2f}')
+1611:                                 self.close_position(trade_id, current_price, 'TRAIL_STOP', pnl, pnl_pct)
+1612:                                 break
+1613:                         except Exception as _e:
+1614:                             print(f'[F] policy error: {str(_e)[:60]}')
+1615:                         
+1616:                         # UNDERLYING INVALIDATION CHECK
+1617:                         # If spot moves >0.5% against our position, exit early
+1618:                         if self.entry_spot and self.entry_spot > 0:
+1619:                             try:
+1620:                                 current_spot = self.get_spot()
+1621:                                 if current_spot > 0:
+1622:                                     spot_move_pct = ((current_spot - self.entry_spot) / self.entry_spot) * 100
+1623:                                     
+1624:                                     # If long CE and spot fell >0.5%, invalidate
+1625:                                     if trade['type'] == 'CE' and spot_move_pct < -0.5:
+1626:                                         print(f'\nΓÜá∩╕Å UNDERLYING INVALIDATION: spot {spot_move_pct:+.2f}%')
+1627:                                         self.close_position(trade_id, current_price, 'SPOT_INVALIDATED', pnl, pnl_pct)
+1628:                                         self.stop_losses += 1
+1629:                                         break
+1630:                                     # If long PE and spot rose >0.5%, invalidate
+1631:                                     elif trade['type'] == 'PE' and spot_move_pct > 0.5:
+1632:                                         print(f'\nΓÜá∩╕Å UNDERLYING INVALIDATION: spot {spot_move_pct:+.2f}%')
+1633:                                         self.close_position(trade_id, current_price, 'SPOT_INVALIDATED', pnl, pnl_pct)
+1634:                                         self.stop_losses += 1
+1635:                                         break
+1636:                             except Exception:
+1637:                                 pass
+1638:                         
+1639:                         if pnl_pct >= self.T3_PERCENT:
+1640:                             self.close_position(trade_id, current_price, 'T3_50%', pnl, pnl_pct)
+1641:                             self.t3_hits += 1
+1642:                             break
+1643:                         elif pnl_pct >= self.T2_PERCENT:
+1644:                             self.close_position(trade_id, current_price, 'T2_30%', pnl, pnl_pct)
+1645:                             self.t2_hits += 1
+1646:                             break
+1647:                         elif pnl_pct >= self.T1_PERCENT:
+1648:                             self.close_position(trade_id, current_price, 'T1_15%', pnl, pnl_pct)
+1649:                             self.t1_hits += 1
+1650:                             break
+1651:                         elif pnl_pct <= -self.STOP_LOSS_PERCENT:
+1652:                             self.close_position(trade_id, current_price, 'STOP_LOSS', pnl, pnl_pct)
+1653:                             self.stop_losses += 1
+1654:                             break
+1655:                         
+1656:                         if (datetime.now() - last_update).seconds >= 30:
+1657:                             elapsed = (datetime.now() - start_time).seconds // 60
+1658:                             print(f"\n[{elapsed}min] Price: Γé╣{current_price:.2f} | P&L: {pnl_pct:.2f}%")
+1659:                             last_update = datetime.now()
+1660:             
+1661:             except Exception as e:
+1662:                 pass
+1663:         
+1664:         if trade_id in self.active_trades:
+1665:             try:
+1666:                 ltp_data = self.obj.ltpData(self.option_exchange, trade['symbol'], trade['token'])
+1667:                 if ltp_data and ltp_data.get('data'):
+1668:                     current_price = float(ltp_data['data'].get('ltp', 0))
+1669:                     if trade['signal'] == 'BUY':
+1670:                         pnl = (current_price - entry) * self.lot_size
+1671:                         pnl_pct = ((current_price - entry) / entry) * 100
+1672:                     else:
+1673:                         pnl = (entry - current_price) * self.lot_size
+1674:                         pnl_pct = ((entry - current_price) / entry) * 100
+1675:                     
+1676:                     self.close_position(trade_id, current_price, 'MARKET_CLOSE_3:28PM', pnl, pnl_pct)
+1677:                     self.market_close_exits += 1
+1678:             except:
+1679:                 pass
+1680:         
+1681:         return {
+1682:             'market': self.market,
+1683:             'type': trade['type'],
+1684:             'pnl': pnl if 'pnl' in locals() else 0,
+1685:             'win': pnl > 0 if 'pnl' in locals() else False
+1686:         }
+1687:     
+1688:     def close_position(self, trade_id, exit_price, reason, pnl, pnl_pct):
+1689:         trade = self.active_trades[trade_id]
+1690:         trade['exit_price'] = exit_price
+1691:         trade['exit_reason'] = reason
+1692:         trade['pnl'] = pnl
+1693:         trade['pnl_pct'] = pnl_pct
+1694:         trade['exit_time'] = datetime.now()
+1695:         trade['status'] = 'CLOSED'
+1696:         
+1697:         # ===== PHASE F: MFE/MAE + realistic net P&L =====
+1698:         try:
+1699:             mfe_mae = self.mfe_mae.snapshot(trade_id)
+1700:             trade['mfe'] = mfe_mae.get('max_favorable', 0)
+1701:             trade['mae'] = mfe_mae.get('max_adverse', 0)
+1702:             trade['peak_pnl_pct'] = round(mfe_mae.get('peak_pnl_pct', 0), 2)
+1703:             trade['trough_pnl_pct'] = round(mfe_mae.get('trough_pnl_pct', 0), 2)
+1704:             
+1705:             # Net P&L after costs
+1706:             entry_price = trade.get('entry', 0)
+1707:             qty = trade.get('quantity', 0)
+1708:             direction = trade.get('signal', 'BUY')
+1709:             if entry_price > 0 and qty > 0:
+1710:                 net_info = self.capital_engine.compute_net_pnl(
+1711:                     entry_price, exit_price, qty, direction
+1712:                 )
+1713:                 trade['gross_pnl'] = net_info['gross_pnl']
+1714:                 trade['costs_total'] = net_info['costs']['total']
+1715:                 trade['cost_breakdown'] = net_info['costs']
+1716:                 trade['net_pnl'] = net_info['net_pnl']
+1717:                 trade['net_pnl_pct'] = net_info['net_pnl_pct']
+1718:                 
+1719:                 print(f'\n  [F] TRADE RECONCILIATION:')
+1720:                 print(f'      MFE: Γé╣{trade["mfe"]:.2f} ({trade["peak_pnl_pct"]}%)')

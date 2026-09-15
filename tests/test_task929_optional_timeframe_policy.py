@@ -1,10 +1,93 @@
 """Focused Task 9 optional higher-timeframe PAPER gate regressions."""
+from datetime import datetime, timedelta, timezone
 from dataclasses import replace
 
+import pytest
+
+from services.contracts import (
+    MarketCandleSeriesV1,
+    MarketCandleV1,
+    MarketDataProvenanceV1,
+)
 from tests.fixtures.p5_4c import bullish_series, incomplete_series
 from services.multi_timeframe.pipeline import build_canonical_multi_timeframe_snapshot
 from services.multi_timeframe.quality import evaluate_multi_timeframe_quality
 from services.technical_intelligence.pipeline import build_canonical_technical_intelligence
+
+
+_DIRECTIONAL_END = datetime(2026, 8, 24, 9, 15, tzinfo=timezone.utc)
+_DIRECTIONAL_PROVENANCE = MarketDataProvenanceV1(
+    "TASK929_DIRECTIONAL_FIXTURE",
+    None,
+    None,
+    "TEST",
+    _DIRECTIONAL_END,
+    _DIRECTIONAL_END,
+    False,
+    None,
+    None,
+)
+_TIMEFRAME_MINUTES = {"5m": 5, "15m": 15, "1h": 60}
+
+
+def directional_raw_series(*, direction, timeframe):
+    """Sixty valid raw NIFTY candles; 1d is intentionally absent."""
+    assert direction in {"BULLISH", "BEARISH"}
+    step = _TIMEFRAME_MINUTES[timeframe]
+    sign = 1 if direction == "BULLISH" else -1
+    start = _DIRECTIONAL_END - timedelta(minutes=step * 60)
+    rows = []
+    previous_close = 24500.0
+    for index in range(60):
+        close = 24500.0 + sign * 5.0 * index
+        open_price = 24500.0 if index == 0 else previous_close
+        opened_at = start + timedelta(minutes=step * index)
+        rows.append(
+            MarketCandleV1(
+                f"task929-{direction.lower()}-{timeframe}-{index}",
+                "NIFTY",
+                "NSE",
+                timeframe,
+                opened_at,
+                opened_at + timedelta(minutes=step),
+                open_price,
+                max(open_price, close) + 4.0,
+                min(open_price, close) - 4.0,
+                close,
+                1000.0,
+                True,
+                _DIRECTIONAL_PROVENANCE,
+            )
+        )
+        previous_close = close
+    return MarketCandleSeriesV1(
+        f"task929-{direction.lower()}-{timeframe}",
+        "NIFTY",
+        "NSE",
+        timeframe,
+        tuple(rows),
+        None,
+        None,
+        _DIRECTIONAL_END,
+    )
+
+
+def build_directional_three_timeframe_technical(direction):
+    series = tuple(
+        directional_raw_series(direction=direction, timeframe=timeframe)
+        for timeframe in ("5m", "15m", "1h")
+    )
+    snapshot, quality = build_canonical_multi_timeframe_snapshot(
+        candle_series_by_timeframe=series,
+        clock=lambda: _DIRECTIONAL_END,
+    )
+    technical = build_canonical_technical_intelligence(
+        candle_series_by_timeframe=series,
+        multi_timeframe_snapshot=snapshot,
+        multi_timeframe_quality_result=quality,
+        clock=lambda: _DIRECTIONAL_END,
+    )
+    return snapshot, quality, technical
 
 
 def _build(*timeframes, incomplete=False):
@@ -70,3 +153,23 @@ def test_supplied_stale_or_future_optional_and_mandatory_evidence_never_silently
 
     assert evaluate_multi_timeframe_quality(stale_optional, clock=lambda: now).quality_status == "STALE"
     assert evaluate_multi_timeframe_quality(future_mandatory, clock=lambda: now).quality_status == "FUTURE"
+
+
+@pytest.mark.parametrize(
+    ("direction", "expected_bias"),
+    (("BULLISH", "BULLISH"), ("BEARISH", "BEARISH")),
+)
+def test_raw_three_timeframe_directional_fixture_remains_usable_without_1d(
+    direction,
+    expected_bias,
+):
+    _, quality, technical = build_directional_three_timeframe_technical(direction)
+
+    assert quality.quality_status == technical.status == "READY_WITH_WARNINGS"
+    assert technical.aggregate_bias == expected_bias
+    assert technical.aggregate_strength == pytest.approx(0.34)
+    assert technical.blockers == ()
+    assert tuple(warning.upper() for warning in technical.warnings) == (
+        "OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",
+        "TECHNICAL_TIMEFRAME_UNAVAILABLE_1D",
+    )

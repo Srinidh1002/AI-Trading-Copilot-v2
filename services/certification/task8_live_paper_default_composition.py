@@ -276,6 +276,8 @@ def build_task8_dependencies(
     task9_cycle_evidence_sink=None,
     historical_request_interval_seconds=None,
     precomposed_timeframe_provider_factory=None,
+    option_oi_change_authority=None,
+    providers=None,
 ) -> Task8CanaryDependenciesV1:
     """Build the production Task 8 PAPER-only dependency composition."""
 
@@ -290,12 +292,40 @@ def build_task8_dependencies(
 
     if task9_cycle_evidence_sink is not None and not callable(task9_cycle_evidence_sink):
         raise TypeError("task9_cycle_evidence_sink")
+
+    if option_oi_change_authority is not None and not callable(
+        getattr(option_oi_change_authority, "enrich", None)
+    ):
+        raise TypeError("option_oi_change_authority")
     provider_kwargs = {}
+
     if historical_request_interval_seconds is not None:
         provider_kwargs["historical_request_interval_seconds"] = (
             historical_request_interval_seconds
         )
-    providers = build_default_runtime_providers(**provider_kwargs)
+
+    if providers is None:
+        providers = build_default_runtime_providers(
+            **provider_kwargs
+        )
+    else:
+        # Task 9 startup may already own the canonical provider bundle.
+        # Reuse it exactly rather than constructing another Angel client /
+        # option pipeline / instrument master.  The historical spacing
+        # argument is intentionally irrelevant for an already-composed
+        # provider bundle; countable Task 9 cycles remain local-evidence-only.
+        for name in (
+            "quote_reader",
+            "analysis_pipeline",
+            "option_decision_pipeline",
+            "clock",
+        ):
+            if not hasattr(providers, name):
+                raise TypeError(
+                    "providers must expose "
+                    "CertifiedRuntimeProviderBundleV1 "
+                    f"attribute {name}"
+                )
 
     parent_journal_adapter = (
         build_certified_parent_journal_adapter(
@@ -308,6 +338,7 @@ def build_task8_dependencies(
         str,
         LiveMarketCandidateEvaluationResultV1,
     ] = {}
+    retained_pre_entry_actions: dict[str, object] = {}
     retained_request_diagnostics: dict[str, object] = {}
     retained_predictions: dict[tuple[str, str], object] = {}
     retained_lifecycle_windows: dict[tuple[str, str], object] = {}
@@ -345,6 +376,7 @@ def build_task8_dependencies(
             )
 
         retained_evaluations[observation_id] = evaluation
+        retained_pre_entry_actions[observation_id] = evaluation.pre_entry_action
 
     retaining_candidate_reader = (
         build_task8_retaining_candidate_reader(
@@ -370,7 +402,14 @@ def build_task8_dependencies(
     )
 
     def capture_and_retain(cycle, *, candle_cutoff=None):
-        capture = capture_certified_live_evidence(cycle_input=cycle, data_service=data_service, option_decision_pipeline=bundle.option_decision_pipeline, candle_cutoff=candle_cutoff, precomposed_timeframe_provider=precomposed_timeframe_provider)
+        capture = capture_certified_live_evidence(
+            cycle_input=cycle,
+            data_service=data_service,
+            option_decision_pipeline=bundle.option_decision_pipeline,
+            candle_cutoff=candle_cutoff,
+            precomposed_timeframe_provider=precomposed_timeframe_provider,
+            option_oi_change_authority=option_oi_change_authority,
+        )
         _retain_task9_request_diagnostics(
             retained_request_diagnostics,
             observation_id=cycle.observation_id,
@@ -610,6 +649,7 @@ def build_task8_dependencies(
                     parent_journal_adapter
                 ),
                 prediction_ledger=prediction_ledger,
+                pre_entry_actions=retained_pre_entry_actions,
                 prediction_records_sink=retain_predictions,
             )
         )

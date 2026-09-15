@@ -427,7 +427,7 @@ def reconcile_prediction_lifecycle(
             ),
         )
 
-    if prediction.predicted_action == "WAIT":
+    if prediction.predicted_action in {"WAIT", "NO_TRADE"}:
         if position is not None:
             return _result(
                 prediction=prediction,
@@ -442,7 +442,7 @@ def reconcile_prediction_lifecycle(
                 quantity_matches=None,
                 pnl_matches=None,
                 blockers=(
-                    "WAIT_PREDICTION_CANNOT_HAVE_POSITION",
+                    f"{prediction.predicted_action}_PREDICTION_CANNOT_HAVE_POSITION",
                 ),
             )
         if outcome.evaluation_status == "UNRESOLVED":

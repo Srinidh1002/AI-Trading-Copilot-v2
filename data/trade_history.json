@@ -1,0 +1,83 @@
+{
+  "timestamp": "2026-09-04T12:27:12.860044",
+  "stats": {
+    "total_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "total_pnl": 0,
+    "today_trades": 0,
+    "target_hits": {
+      "T1": 0,
+      "T2": 0,
+      "T3": 0
+    },
+    "max_drawdown": 0,
+    "current_capital": 1000000,
+    "deployed_capital": 9341.35
+  },
+  "positions": {
+    "NIFTY": {
+      "symbol": "NIFTY",
+      "strike": 24450,
+      "option_type": "CALL",
+      "entry_premium": 107.63,
+      "entry_underlying": 24461.3,
+      "entry_time": "2026-09-04T12:28:14",
+      "quantity": 65,
+      "lot_size": 65,
+      "deployed_capital": 6995.95,
+      "target1": 123.77449999999999,
+      "target2": 139.919,
+      "target3": 161.445,
+      "stop_loss": 102.24849999999999,
+      "status": "OPEN",
+      "current_premium": 107.63,
+      "current_underlying": 24461.3,
+      "pnl": 0,
+      "pnl_percent": 0,
+      "hold_count": 0
+    },
+    "SENSEX": {
+      "symbol": "SENSEX",
+      "strike": 78200,
+      "option_type": "CALL",
+      "entry_premium": 117.27,
+      "entry_underlying": 78180.31,
+      "entry_time": "2026-09-04T12:28:14",
+      "quantity": 20,
+      "lot_size": 20,
+      "deployed_capital": 2345.4,
+      "target1": 134.86049999999997,
+      "target2": 152.451,
+      "target3": 175.905,
+      "stop_loss": 111.4065,
+      "status": "OPEN",
+      "current_premium": 117.27,
+      "current_underlying": 78180.31,
+      "pnl": 0,
+      "pnl_percent": 0,
+      "hold_count": 0
+    }
+  },
+  "trades": [],
+  "premarket_scores": {
+    "bias": "STRONGLY_BULLISH",
+    "sentiment": "BULLISH",
+    "volatility": "LOW",
+    "score": 85
+  },
+  "live_prices": {
+    "NIFTY": {
+      "ltp": 24461.3,
+      "premium": 107.63,
+      "strike": 24450
+    },
+    "SENSEX": {
+      "ltp": 78180.31,
+      "premium": 117.27,
+      "strike": 78200
+    }
+  },
+  "ws_ticks": 0,
+  "data_source": "fallback"
+}

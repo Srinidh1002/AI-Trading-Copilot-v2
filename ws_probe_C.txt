@@ -1,0 +1,8 @@
+[18:24:33.905] === VARIANT C ===
+[I 260914 18:24:33 smartConnect:124] in pool
+[18:24:35.748] login OK
+[18:24:36.574] resolver status=OK fut_token=565900
+[18:24:37.257] ON_OPEN
+[18:24:37.257] SUBSCRIBE SENT
+[18:24:37.320] DATA first ltp=998200 seq=6099914
+[18:24:38.681] EXIT variant=C msgs=3

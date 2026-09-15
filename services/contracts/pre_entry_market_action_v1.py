@@ -7,7 +7,7 @@ from math import isfinite
 from types import MappingProxyType
 from typing import Any, Mapping
 
-_IDENTITIES=frozenset({("NIFTY","NSE"),("SENSEX","BSE")});_ACTIONS=frozenset({"CALL","PUT","WAIT","UNAVAILABLE"});_DIRECTIONS=frozenset({"BULLISH","BEARISH","NEUTRAL","UNAVAILABLE","CONFLICTING"});_ELIGIBILITY=frozenset({"ELIGIBLE","INELIGIBLE","UNAVAILABLE","CONFLICTING"});_FORBIDDEN=frozenset({"api_key","apikey","secret","password","pin","authorization","access_token","refresh_token","jwt","raw_payload","provider_payload","raw_exception","exception_text"})
+_IDENTITIES=frozenset({("NIFTY","NSE"),("SENSEX","BSE")});_ACTIONS=frozenset({"CALL","PUT","WAIT","NO_TRADE"});_DIRECTIONS=frozenset({"BULLISH","BEARISH","NEUTRAL","UNAVAILABLE","CONFLICTING"});_ELIGIBILITY=frozenset({"ELIGIBLE","INELIGIBLE","UNAVAILABLE","CONFLICTING"});_FORBIDDEN=frozenset({"api_key","apikey","secret","password","pin","authorization","access_token","refresh_token","jwt","raw_payload","provider_payload","raw_exception","exception_text"})
 def _text(v,n):
  if not isinstance(v,str) or not (v:=v.strip()):raise ValueError(n)
  return v
@@ -44,7 +44,7 @@ class PreEntryMarketActionV1:
   if self.action=="CALL" and self.candidate_direction!="BULLISH":raise ValueError("CALL direction")
   if self.action=="PUT" and self.candidate_direction!="BEARISH":raise ValueError("PUT direction")
   if self.action=="WAIT" and (self.blockers or not self.reasons or self.candidate_direction in {"BULLISH","BEARISH"} and self.candidate_eligibility=="ELIGIBLE"):raise ValueError("WAIT invariant")
-  if self.action=="UNAVAILABLE" and (self.candidate_eligibility=="ELIGIBLE" or not (self.blockers or self.reasons) or self.confidence!=0 or self.score!=0):raise ValueError("UNAVAILABLE invariant")
+  if self.action=="NO_TRADE" and (self.candidate_eligibility=="ELIGIBLE" or not (self.blockers or self.reasons) or self.confidence!=0 or self.score!=0):raise ValueError("NO_TRADE invariant")
   if not isinstance(self.metadata,Mapping) or any(not isinstance(k,str) or k.lower() in _FORBIDDEN for k in self.metadata):raise ValueError("metadata")
   try:json.dumps(dict(self.metadata),sort_keys=True,allow_nan=False)
   except (TypeError,ValueError) as exc:raise ValueError("metadata") from exc

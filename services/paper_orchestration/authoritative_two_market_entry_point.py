@@ -1,6 +1,8 @@
 """Single authoritative live two-market PAPER entry point."""
 from __future__ import annotations
 
+from dataclasses import replace
+
 from collections.abc import Mapping
 import math
 from datetime import datetime
@@ -69,6 +71,7 @@ def run_authoritative_two_market_parent_cycle(
     ) = None,
     prediction_ledger: PredictionLedger | None = None,
     prediction_lifecycle_context_store: Task9PredictionLifecycleContextStore | None = None,
+    pre_entry_actions=None,
     prediction_records_sink=None,
     substage_callback=None,
 ) -> TwoMarketDecisionResultV1:
@@ -115,6 +118,8 @@ def run_authoritative_two_market_parent_cycle(
         raise TypeError("prediction_lifecycle_context_store")
     if prediction_records_sink is not None and not callable(prediction_records_sink):
         raise TypeError("prediction_records_sink")
+    if pre_entry_actions is not None and not isinstance(pre_entry_actions, Mapping):
+        raise TypeError("pre_entry_actions")
 
     decision = run_certified_two_market_parent_runtime(
         parent,
@@ -136,6 +141,11 @@ def run_authoritative_two_market_parent_cycle(
                 ("NIFTY", "NSE"): _cycle_start_price(nifty_cycle),
                 ("SENSEX", "BSE"): _cycle_start_price(sensex_cycle),
             },
+            pre_entry_actions=(
+                pre_entry_actions
+                if pre_entry_actions is not None
+                else {}
+            ),
             lifecycle_window_sink=(
                 persist_lifecycle_windows
                 if prediction_lifecycle_context_store is not None
@@ -150,8 +160,17 @@ def run_authoritative_two_market_parent_cycle(
     )
 
     if parent_journal_adapter is not None:
+        # The input parent is created before child evaluation.  The
+        # coordinator terminalizes the decision at the latest child
+        # received_at, so persist an immutable terminal parent carrying
+        # that exact authoritative lifecycle completion timestamp.
+        terminal_parent = replace(
+            parent,
+            completed_at=decision.completed_at,
+        )
+
         parent_journal_adapter.persist(
-            parent=parent,
+            parent=terminal_parent,
             decision=decision,
         )
 

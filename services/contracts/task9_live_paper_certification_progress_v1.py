@@ -20,6 +20,9 @@ class Task9MarketProgressV1:
     no_trade_completed: int
     no_trade_passed: int
     no_trade_failed: int
+    wait_completed: int = 0
+    wait_passed: int = 0
+    wait_failed: int = 0
 
     def __post_init__(self) -> None:
         market = self.market.strip().upper()
@@ -34,6 +37,9 @@ class Task9MarketProgressV1:
             "no_trade_completed",
             "no_trade_passed",
             "no_trade_failed",
+            "wait_completed",
+            "wait_passed",
+            "wait_failed",
         ):
             object.__setattr__(
                 self,
@@ -46,18 +52,33 @@ class Task9MarketProgressV1:
                 "Task 9 requires exactly 100 trades per market"
             )
 
-        if self.no_trade_passed + self.no_trade_failed != self.no_trade_completed:
+        if (
+            self.no_trade_passed
+            + self.no_trade_failed
+            != self.no_trade_completed
+        ):
             raise ValueError("NO_TRADE reconciliation")
+
+        if (
+            self.wait_passed
+            + self.wait_failed
+            != self.wait_completed
+        ):
+            raise ValueError("WAIT reconciliation")
 
     @property
     def target_reached(self) -> bool:
-        return self.completed_live_paper_trades >= self.target_trade_count
+        return (
+            self.completed_live_paper_trades
+            >= self.target_trade_count
+        )
 
     @property
     def remaining_trade_count(self) -> int:
         return max(
             0,
-            self.target_trade_count - self.completed_live_paper_trades,
+            self.target_trade_count
+            - self.completed_live_paper_trades,
         )
 
 
@@ -127,11 +148,15 @@ class Task9LivePaperCertificationProgressV1:
 
     def to_dict(self) -> dict[str, object]:
         value = asdict(self)
-        value["nifty"]["target_reached"] = self.nifty.target_reached
+        value["nifty"]["target_reached"] = (
+            self.nifty.target_reached
+        )
         value["nifty"]["remaining_trade_count"] = (
             self.nifty.remaining_trade_count
         )
-        value["sensex"]["target_reached"] = self.sensex.target_reached
+        value["sensex"]["target_reached"] = (
+            self.sensex.target_reached
+        )
         value["sensex"]["remaining_trade_count"] = (
             self.sensex.remaining_trade_count
         )

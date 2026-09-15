@@ -22,6 +22,119 @@ from services.prediction_outcomes.prediction_lifecycle_outcome_evaluator import 
 from services.prediction_outcomes.prediction_lifecycle_reconciliation_service import reconcile_prediction_lifecycle
 
 
+def recover_task9_terminal_prediction(
+    *,
+    prediction_ledger,
+    observation_store,
+    outcome_store,
+    reconciliation_store,
+    outcome_policy,
+    binding,
+    snapshot,
+    evaluated_at: datetime,
+) -> bool:
+    """Recover one already-terminal Task 9 PAPER lifecycle from durable facts only."""
+    if (
+        not isinstance(evaluated_at, datetime)
+        or evaluated_at.tzinfo is None
+        or evaluated_at.utcoffset() is None
+    ):
+        raise ValueError("evaluated_at")
+
+    prediction = prediction_ledger.recover(
+        binding.prediction_id
+    )
+    window = observation_store.recover(
+        binding.prediction_id
+    )
+
+    if prediction is None or window is None:
+        raise ValueError(
+            "terminal Task9 lifecycle evidence unavailable"
+        )
+
+    if snapshot.position is None:
+        raise ValueError(
+            "terminal Task9 position unavailable"
+        )
+
+    if (
+        binding.prediction_id != prediction.prediction_id
+        or binding.market != prediction.underlying_symbol
+        or binding.option_symbol != snapshot.position.option_symbol
+        or binding.paper_position_id != snapshot.position.position_id
+        or snapshot.position.underlying_symbol != binding.market
+    ):
+        raise ValueError(
+            "terminal Task9 durable identity mismatch"
+        )
+
+    if snapshot.lifecycle_state.is_terminal is not True:
+        raise ValueError(
+            "terminal Task9 recovery requires terminal P7"
+        )
+
+    candidate = evaluate_prediction_lifecycle_outcome(
+        PredictionLifecycleOutcomeInputV1(
+            prediction=prediction,
+            observation_window=window,
+            policy=outcome_policy,
+            evaluated_at=evaluated_at,
+        )
+    )
+
+    existing_outcome = outcome_store.recover(
+        prediction.prediction_id
+    )
+
+    if existing_outcome is None:
+        outcome_store.save(candidate)
+    elif existing_outcome != candidate:
+        raise ValueError(
+            "conflicting terminal lifecycle outcome"
+        )
+
+    outcome = outcome_store.recover(
+        prediction.prediction_id
+    )
+    if outcome is None:
+        raise ValueError(
+            "terminal lifecycle outcome unavailable"
+        )
+
+    reconciliation = reconcile_prediction_lifecycle(
+        prediction=prediction,
+        outcome=outcome,
+        position=snapshot.position,
+        reconciled_at=evaluated_at,
+        pnl_evidence=snapshot.pnl_evidence,
+    )
+
+    existing_reconciliation = reconciliation_store.recover(
+        prediction.prediction_id
+    )
+
+    if existing_reconciliation is None:
+        reconciliation_store.save(reconciliation)
+    elif existing_reconciliation != reconciliation:
+        raise ValueError(
+            "conflicting terminal lifecycle reconciliation"
+        )
+
+    recovered = reconciliation_store.recover(
+        prediction.prediction_id
+    )
+    if recovered is None:
+        raise ValueError(
+            "terminal lifecycle reconciliation unavailable"
+        )
+
+    return (
+        recovered.status == "RECONCILED"
+        and recovered.reconciliation_complete is True
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class Task9OpenPositionMonitoringIterationV1:
     paper_trade_id: str
@@ -62,18 +175,16 @@ class Task9OpenPositionMonitoringController:
         return tuple(values)
 
     def _reconcile_terminal(self, binding, snapshot, evaluated_at):
-        prediction = self.prediction_ledger.recover(binding.prediction_id); window = self.observation_store.recover(binding.prediction_id)
-        if prediction is None or window is None: raise ValueError("terminal Task9 lifecycle evidence unavailable")
-        outcome = evaluate_prediction_lifecycle_outcome(PredictionLifecycleOutcomeInputV1(prediction=prediction, observation_window=window, policy=self.outcome_policy, evaluated_at=evaluated_at))
-        existing = self.outcome_store.recover(prediction.prediction_id)
-        if existing is None: self.outcome_store.save(outcome)
-        elif existing != outcome: raise ValueError("conflicting terminal lifecycle outcome")
-        outcome = self.outcome_store.recover(prediction.prediction_id)
-        reconciliation = reconcile_prediction_lifecycle(prediction=prediction, outcome=outcome, position=snapshot.position, reconciled_at=evaluated_at, pnl_evidence=snapshot.pnl_evidence)
-        existing = self.reconciliation_store.recover(prediction.prediction_id)
-        if existing is None: self.reconciliation_store.save(reconciliation)
-        elif existing != reconciliation: raise ValueError("conflicting terminal lifecycle reconciliation")
-        return reconciliation.status == "RECONCILED"
+        return recover_task9_terminal_prediction(
+            prediction_ledger=self.prediction_ledger,
+            observation_store=self.observation_store,
+            outcome_store=self.outcome_store,
+            reconciliation_store=self.reconciliation_store,
+            outcome_policy=self.outcome_policy,
+            binding=binding,
+            snapshot=snapshot,
+            evaluated_at=evaluated_at,
+        )
 
     def run_once(self, *, observation_provider, evaluated_at: datetime):
         if not callable(observation_provider) or not isinstance(evaluated_at, datetime) or evaluated_at.tzinfo is None: raise ValueError("monitoring iteration")

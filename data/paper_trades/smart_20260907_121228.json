@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-09-07T12:12:28.224862",
+  "total_trades": 2,
+  "winning": 2,
+  "losing": 0,
+  "total_pnl": 168.75000000000108,
+  "strategy_stats": {
+    "BULLISH_PE_SELL": {
+      "total": 1,
+      "wins": 1,
+      "losses": 0,
+      "total_pnl": 120.00000000000064,
+      "avg_pnl": 0
+    },
+    "BULLISH_SPREAD": {
+      "total": 1,
+      "wins": 1,
+      "losses": 0,
+      "total_pnl": 48.750000000000426,
+      "avg_pnl": 0
+    }
+  },
+  "trades": [
+    {
+      "trade_id": "ST_121202_002",
+      "strategy": "BULLISH_PE_SELL",
+      "symbol": "NIFTY08SEP2623850PE",
+      "token": "42634",
+      "strike": 23850.0,
+      "type": "PE",
+      "signal": "SELL",
+      "entry_price": 82.15,
+      "quantity": 75,
+      "entry_time": "2026-09-07 12:12:02.440761",
+      "status": "CLOSED",
+      "current_price": 80.55,
+      "pnl": 120.00000000000064,
+      "pnl_pct": 1.9476567255021404,
+      "max_profit": 172.50000000000085,
+      "max_loss": 0,
+      "exit_price": 80.55,
+      "exit_reason": "TRAILING_STOP",
+      "exit_time": "2026-09-07 12:12:18.156022"
+    },
+    {
+      "trade_id": "ST_121202_001",
+      "strategy": "BULLISH_SPREAD",
+      "symbol": "NIFTY08SEP2623800CE",
+      "token": "42631",
+      "strike": 23800,
+      "type": "CE",
+      "signal": "BUY",
+      "entry_price": 90.05,
+      "quantity": 75,
+      "entry_time": "2026-09-07 12:12:02.440541",
+      "status": "CLOSED",
+      "current_price": 90.7,
+      "pnl": 48.750000000000426,
+      "pnl_pct": 0.7218212104386514,
+      "max_profit": 142.50000000000043,
+      "max_loss": 0,
+      "exit_price": 90.7,
+      "exit_reason": "TRAILING_STOP",
+      "exit_time": "2026-09-07 12:12:25.122401"
+    }
+  ]
+}

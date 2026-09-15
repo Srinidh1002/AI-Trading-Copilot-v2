@@ -16,6 +16,7 @@ from .multi_timeframe_snapshot_v1 import MultiTimeframeSnapshotV1
 from .option_chain_intelligence_result_v1 import OptionChainIntelligenceResultV1
 from .option_contract_ranking_result_v1 import OptionContractRankingResultV1
 from .technical_intelligence_result_v1 import TechnicalIntelligenceResultV1
+from .technical_intelligence_result_v1 import is_usable_technical_status
 
 _IDENTITIES = {
     ("NIFTY", "NSE", "NFO"),
@@ -141,7 +142,7 @@ def _eligible_ready(name: str, value: object) -> bool:
             and not value.errors
         )
     if name == "technical":
-        return value.status == "READY" and not value.blockers
+        return is_usable_technical_status(value.status) and not value.blockers
     if name == "multi_timeframe":
         return (
             bool(value.timeframe_evidence)
@@ -155,7 +156,7 @@ def _eligible_ready(name: str, value: object) -> bool:
         )
     if name == "regime":
         return (
-            value.context_status == "READY"
+            value.context_status in {"READY", "READY_WITH_WARNINGS"}
             and value.primary_regime
             not in {"UNAVAILABLE", "CONFLICTING", "BLOCKED"}
             and value.entry_suitability == "SUITABLE"
@@ -236,6 +237,40 @@ class MarketAnalysisEvidenceV1:
             raise ValueError("ready evidence requires source_id")
         if status == "READY" and not (self.provenance or self.summary):
             raise ValueError("ready evidence requires retained detail")
+
+    def to_dict(self) -> dict[str, Any]:
+        def encode(value: Any) -> Any:
+            if isinstance(value, Mapping):
+                return {
+                    key: encode(item)
+                    for key, item in value.items()
+                }
+            if isinstance(value, tuple):
+                return [encode(item) for item in value]
+            if isinstance(value, list):
+                return [encode(item) for item in value]
+            return value
+
+        return {
+            "__type__": type(self).__name__,
+            "status": self.status,
+            "source_ids": list(self.source_ids),
+            "provenance": encode(self.provenance),
+            "summary": encode(self.summary),
+        }
+
+    def to_json(self) -> str:
+        import json
+        return json.dumps(
+            self.to_dict(),
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+
+    def semantic_dict(self) -> dict[str, Any]:
+        result = self.to_dict()
+        result.pop("__type__", None)
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -405,6 +440,43 @@ class MarketAnalysisCandidateV1:
             for name in _PILLARS
             if getattr(self, name).status
             in {"UNAVAILABLE", "BLOCKED", "CONFLICTING"}
+        )
+
+        capability_optional_unavailable: set[str] = set()
+
+        if (
+            self.underlying_symbol,
+            self.exchange,
+            self.option_exchange,
+        ) == (
+            "SENSEX",
+            "BSE",
+            "BFO",
+        ):
+            if (
+                self.greeks.status == "UNAVAILABLE"
+                and
+                "OPTION_GREEKS_PROVIDER_CAPABILITY_UNAVAILABLE"
+                in self.warnings
+            ):
+                capability_optional_unavailable.add(
+                    "greeks"
+                )
+
+            if (
+                self.iv.status == "UNAVAILABLE"
+                and
+                "OPTION_IV_PROVIDER_CAPABILITY_UNAVAILABLE"
+                in self.warnings
+            ):
+                capability_optional_unavailable.add(
+                    "iv"
+                )
+
+        unavailable_pillars = tuple(
+            name
+            for name in unavailable_pillars
+            if name not in capability_optional_unavailable
         )
 
         has_diagnostic = bool(self.blockers or self.contradictions)

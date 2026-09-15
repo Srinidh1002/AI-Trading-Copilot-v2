@@ -1,0 +1,81 @@
+{
+  "exchange": "MCX",
+  "tradingSymbol": "NATGASMINI25SEP26FUT",
+  "symbolToken": "568246",
+  "ltp": 277.5,
+  "open": 274.0,
+  "high": 280.0,
+  "low": 274.0,
+  "close": 269.7,
+  "lastTradeQty": 1000,
+  "exchFeedTime": "14-Sep-2026 17:36:07",
+  "exchTradeTime": "14-Sep-2026 17:36:07",
+  "netChange": 7.8,
+  "percentChange": 2.89,
+  "avgPrice": 277.79,
+  "tradeVolume": 41326,
+  "opnInterest": 15051500,
+  "lowerCircuit": 259.0,
+  "upperCircuit": 280.4,
+  "totBuyQuan": 1115000,
+  "totSellQuan": 1301000,
+  "referenceLimitPrice": 0.0,
+  "52WeekLow": 256.8,
+  "52WeekHigh": 332.0,
+  "depth": {
+    "buy": [
+      {
+        "price": 277.3,
+        "quantity": 47750,
+        "orders": 21
+      },
+      {
+        "price": 277.2,
+        "quantity": 27000,
+        "orders": 14
+      },
+      {
+        "price": 277.1,
+        "quantity": 49000,
+        "orders": 15
+      },
+      {
+        "price": 277.0,
+        "quantity": 36500,
+        "orders": 16
+      },
+      {
+        "price": 276.9,
+        "quantity": 24750,
+        "orders": 12
+      }
+    ],
+    "sell": [
+      {
+        "price": 277.5,
+        "quantity": 47750,
+        "orders": 31
+      },
+      {
+        "price": 277.6,
+        "quantity": 39000,
+        "orders": 16
+      },
+      {
+        "price": 277.7,
+        "quantity": 39250,
+        "orders": 22
+      },
+      {
+        "price": 277.8,
+        "quantity": 27250,
+        "orders": 36
+      },
+      {
+        "price": 277.9,
+        "quantity": 16500,
+        "orders": 25
+      }
+    ]
+  }
+}

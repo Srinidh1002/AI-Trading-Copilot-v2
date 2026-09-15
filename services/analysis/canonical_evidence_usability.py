@@ -1,9 +1,12 @@
 """Exact structural usability vocabulary for canonical warning-bearing evidence."""
 from __future__ import annotations
+from services.contracts.technical_intelligence_result_v1 import (
+    is_usable_technical_status as _is_usable_technical_status,
+)
 
 
 def is_usable_technical_status(status: object) -> bool:
-    return status in {"READY", "READY_WITH_WARNINGS"}
+    return _is_usable_technical_status(status)
 
 
 def is_usable_option_intelligence_status(status: object) -> bool:

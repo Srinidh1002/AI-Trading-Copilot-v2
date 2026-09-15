@@ -37,6 +37,9 @@ from services.contracts.certified_shared_market_context_v1 import (
 from services.contracts.market_analysis_candidate_v1 import (
     MarketAnalysisCandidateV1,
 )
+from services.contracts.canonical_directional_policy_v1 import (
+    CanonicalDirectionalPolicyV1,
+)
 from services.contracts.paper_orchestration_cycle_input_v1 import (
     PaperOrchestrationCycleInputV1,
 )
@@ -127,13 +130,34 @@ def _validate_common_inputs(
 
 def _policy_source(
     supplied_analysis: Mapping[str, object],
+    *,
+    expected_identity: tuple[str, str] | None = None,
+    allow_legacy_fallback: bool = True,
 ) -> LiveCandidatePolicySourceV1:
+    canonical = supplied_analysis.get("canonical_directional_policy")
+    if canonical is not None:
+        if type(canonical) is not CanonicalDirectionalPolicyV1:
+            return LiveCandidatePolicySourceV1.unavailable(blockers=("MALFORMED_CANONICAL_POLICY",))
+        if expected_identity is not None and (canonical.symbol, canonical.exchange) != expected_identity:
+            return LiveCandidatePolicySourceV1.unavailable(blockers=("CANONICAL_POLICY_IDENTITY_MISMATCH",))
+        return LiveCandidatePolicySourceV1(
+            direction=canonical.direction,
+            eligibility="ELIGIBLE" if canonical.decision == "TRADE" else "INELIGIBLE",
+            confidence=canonical.confidence,
+            score=canonical.score,
+            reasons=canonical.reasons,
+            invalidation_conditions=canonical.invalidation_reasons,
+            blockers=canonical.blockers + canonical.entry_restrictions,
+            warnings=canonical.warnings,
+            contradictions=canonical.contradictions,
+        )
     direction = supplied_analysis.get("policy_direction")
     eligibility = supplied_analysis.get("policy_eligibility")
     confidence = supplied_analysis.get("policy_confidence")
     score = supplied_analysis.get("policy_score")
 
-    if not all(
+    # Explicit certified policy values remain authoritative whenever present.
+    if all(
         value is not None
         for value in (
             direction,
@@ -142,43 +166,112 @@ def _policy_source(
             score,
         )
     ):
+        return LiveCandidatePolicySourceV1(
+            direction=direction,
+            eligibility=eligibility,
+            confidence=confidence,
+            score=score,
+            reasons=tuple(
+                supplied_analysis.get(
+                    "policy_reasons",
+                    (),
+                )
+            ),
+            invalidation_conditions=tuple(
+                supplied_analysis.get(
+                    "policy_invalidation_conditions",
+                    (),
+                )
+            ),
+            blockers=tuple(
+                supplied_analysis.get(
+                    "policy_blockers",
+                    (),
+                )
+            ),
+            warnings=tuple(
+                supplied_analysis.get(
+                    "policy_warnings",
+                    (),
+                )
+            ),
+            contradictions=tuple(
+                supplied_analysis.get(
+                    "policy_contradictions",
+                    (),
+                )
+            ),
+        )
+
+    # The default keeps the already-certified Task 8 adapter in its explicit
+    # migration configuration. New callers can disable it and fail closed.
+    if not allow_legacy_fallback:
+        return LiveCandidatePolicySourceV1.unavailable(blockers=("CANONICAL_POLICY_UNAVAILABLE",))
+
+    # Migration/shadow mode only: LiveAnalysisPipeline emits its legacy policy
+    # authority through the strategy result rather than policy_* keys.
+    strategy = supplied_analysis.get("strategy")
+
+    if not isinstance(strategy, Mapping):
         return LiveCandidatePolicySourceV1.unavailable()
 
+    strategy_direction = strategy.get("direction")
+    strategy_decision = strategy.get("decision")
+    strategy_confidence = strategy.get(
+        "direction_confidence",
+        strategy.get("confidence"),
+    )
+    strategy_score = strategy.get(
+        "evidence_strength_score"
+    )
+
+    if not all(
+        value is not None
+        for value in (
+            strategy_direction,
+            strategy_decision,
+            strategy_confidence,
+            strategy_score,
+        )
+    ):
+        return LiveCandidatePolicySourceV1.unavailable()
+
+    decision = str(strategy_decision).strip().upper()
+
+    if decision == "TRADE":
+        strategy_eligibility = "ELIGIBLE"
+    elif decision == "NO_TRADE":
+        strategy_eligibility = "INELIGIBLE"
+    else:
+        return LiveCandidatePolicySourceV1.unavailable(
+            blockers=("UNSUPPORTED_STRATEGY_DECISION",)
+        )
+
+    confirmations = tuple(
+        str(item).strip()
+        for item in (
+            strategy.get("confirmations") or ()
+        )
+        if str(item).strip()
+    )
+
+    risk_flags = tuple(
+        str(item).strip()
+        for item in (
+            strategy.get("risk_flags") or ()
+        )
+        if str(item).strip()
+    )
+
     return LiveCandidatePolicySourceV1(
-        direction=direction,
-        eligibility=eligibility,
-        confidence=confidence,
-        score=score,
-        reasons=tuple(
-            supplied_analysis.get(
-                "policy_reasons",
-                (),
-            )
-        ),
-        invalidation_conditions=tuple(
-            supplied_analysis.get(
-                "policy_invalidation_conditions",
-                (),
-            )
-        ),
-        blockers=tuple(
-            supplied_analysis.get(
-                "policy_blockers",
-                (),
-            )
-        ),
-        warnings=tuple(
-            supplied_analysis.get(
-                "policy_warnings",
-                (),
-            )
-        ),
-        contradictions=tuple(
-            supplied_analysis.get(
-                "policy_contradictions",
-                (),
-            )
-        ),
+        direction=str(
+            strategy_direction
+        ).strip().upper(),
+        eligibility=strategy_eligibility,
+        confidence=float(strategy_confidence),
+        score=float(strategy_score),
+        reasons=confirmations,
+        warnings=risk_flags,
     )
 
 
@@ -228,7 +321,11 @@ def evaluate_task8_live_candidate(
     result = evaluate_captured_certified_market_candidate(
         captured_evidence=evaluation_capture,
         session_validation=cycle_input.session_validation,
-        policy_source=_policy_source(supplied_analysis),
+        policy_source=_policy_source(
+            supplied_analysis,
+            expected_identity=expected,
+            allow_legacy_fallback=True,
+        ),
         parent_cycle_id=parent_cycle_id,
         candidate_id=(
             f"certified-live:{cycle_input.observation_id}"

@@ -1,0 +1,8 @@
+{
+  "product": "GOLDM",
+  "strategy_version": "MCX_GOLDM_PRECERT_V1",
+  "epoch": "GOLDM_PRECERT_V1",
+  "certification_eligible": false,
+  "frozen_at": "2026-09-12T13:09:34",
+  "note": "Version frozen for the duration of this certification epoch."
+}

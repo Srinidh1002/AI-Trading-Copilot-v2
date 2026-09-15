@@ -1,0 +1,14 @@
+{
+  "market": "NIFTY",
+  "total_trades": 0,
+  "wins": 0,
+  "losses": 0,
+  "win_rate": 0,
+  "total_pnl": 0.0,
+  "max_drawdown": 0.0,
+  "profit_factor": 0,
+  "target1_hit_rate": 0.0,
+  "target2_hit_rate": 0.0,
+  "target3_hit_rate": 0.0,
+  "no_trade_count": 0
+}

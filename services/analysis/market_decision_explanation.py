@@ -16,7 +16,7 @@ def build_market_decision_explanation(*,candidate,action,cycle_id,observation_id
   elif action.action=="WAIT":add("OPPOSING","action",action.reasons[0],direction=candidate.direction)
   suitability=getattr(candidate.regime,"entry_suitability",None)
   if suitability=="SUITABLE":add("SUPPORTING","regime","REGIME_SUITABLE",status="READY",source_id=getattr(candidate.regime,"market_regime_result_id",None))
-  elif suitability is not None:add("SUITABILITY","regime","REGIME_BLOCKED" if suitability in {"BLOCKED","NOT_SUITABLE"} else "REGIME_CAUTION",status="BLOCKED" if suitability in {"BLOCKED","NOT_SUITABLE"} else "READY")
+  elif suitability is not None:add("SUITABILITY","regime","REGIME_BLOCKED" if suitability in {"BLOCKED","NOT_SUITABLE"} else "EVIDENCE_UNAVAILABLE_REGIME" if suitability=="UNAVAILABLE" else "REGIME_CAUTION",status="BLOCKED" if suitability in {"BLOCKED","NOT_SUITABLE"} else "UNAVAILABLE" if suitability=="UNAVAILABLE" else "READY")
  if contributions is not None:
   for item in contributions.contributions:
    add("INFORMATIONAL",f"pillar:{item.pillar_name}","GROUPED_PILLAR_EVIDENCE" if item.provenance_classification=="GROUPED" else "PILLAR_UNAVAILABLE",direction=item.direction,status=item.status,source_id=item.source_result_id,timestamp=item.source_timestamp)

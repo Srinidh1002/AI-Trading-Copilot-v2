@@ -16,6 +16,7 @@ def evaluate_three_targets(evaluation_input,policy):
   if any(t.reward_to_risk<m for t,m in zip(ts,(policy.minimum_reward_to_risk_t1,policy.minimum_reward_to_risk_t2,policy.minimum_reward_to_risk_t3))):return 'rr'
   return ts
  def candidate(method):
+  if method=='DEPLOYED_CAPITAL_RETURN':return build(tuple(evaluation_input.entry_reference_price*(1.0+x) for x in mult),'DEPLOYED_CAPITAL_RETURN')
   if method=='RISK_MULTIPLE':return build(tuple(evaluation_input.entry_reference_price+evaluation_input.stop_distance*x for x in mult),'RISK_MULTIPLE')
   v=evaluation_input.atr_value if method=='ATR' else evaluation_input.expected_move_value if method=='EXPECTED_MOVE' else None
   if method in {'ATR','EXPECTED_MOVE'}:return None if v is None else build(tuple(evaluation_input.entry_reference_price+v*x for x in mult),method)
@@ -29,6 +30,6 @@ def evaluate_three_targets(evaluation_input,policy):
   if isinstance(c,tuple):valid.append((m,c))
   else:reasons.append(c)
  if not valid:return out('BLOCKED',bs=('TARGET_STRUCTURE_INCOMPLETE' if 'partial' in reasons else 'TARGET_REWARD_TO_RISK_BELOW_MINIMUM' if 'rr' in reasons else 'TARGET_REFERENCE_UNAVAILABLE',))
- m,ts=max(valid,key=lambda x:(x[1][1].reward_to_risk,-['STRUCTURE','EXPECTED_MOVE','ATR','RISK_MULTIPLE'].index(x[0])))
+ m,ts=max(valid,key=lambda x:(x[1][1].reward_to_risk,-['DEPLOYED_CAPITAL_RETURN','STRUCTURE','EXPECTED_MOVE','ATR','RISK_MULTIPLE'].index(x[0])))
  source='STRUCTURE_EXPLICIT' if m=='STRUCTURE' and all((evaluation_input.structure_target_1,evaluation_input.structure_target_2,evaluation_input.structure_target_3)) else 'RESISTANCE_LEVELS' if m=='STRUCTURE' else m
  return out('READY',ts,source,warnings=evaluation_input.warnings+(('TARGET_HYBRID_FALLBACK_USED',) if policy.target_method=='HYBRID' and m!='STRUCTURE' else ()))

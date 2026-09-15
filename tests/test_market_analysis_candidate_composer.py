@@ -1,5 +1,5 @@
 import ast
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
 import pytest
@@ -19,6 +19,8 @@ from test_market_analysis_candidate_v1 import (
     nonready_broader_market,
     nonready_canonical_input,
     nonready_external_context,
+    regime,
+    technical,
     valid_canonical_inputs,
 )
 
@@ -179,6 +181,63 @@ def test_neutral_policy_becomes_explicit_no_trade_not_forced_trade():
     )
     assert result.eligibility == "INELIGIBLE"
     assert result.confidence == result.score == 0.0
+    assert "DIRECTION_NEUTRAL_NO_TRADE" in result.blockers
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {
+            "technical": replace(
+                technical("NIFTY", "NSE"),
+                status="READY_WITH_WARNINGS",
+                warnings=("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",),
+            ),
+            "regime": replace(
+                regime("NIFTY", "NSE"),
+                entry_suitability="CAUTION",
+            ),
+        },
+        {
+            "technical": replace(
+                technical("NIFTY", "NSE"),
+                status="READY_WITH_WARNINGS",
+                warnings=("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",),
+            ),
+            "option_chain": nonready_canonical_input("option_chain"),
+        },
+        {
+            "technical": replace(
+                technical("NIFTY", "NSE"),
+                status="READY_WITH_WARNINGS",
+                warnings=("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",),
+            ),
+            "option_contract_eligibility": nonready_canonical_input(
+                "option_contract_eligibility"
+            ),
+        },
+    ),
+)
+def test_ready_with_warnings_technical_cannot_bypass_other_entry_gates(changes):
+    result = compose_market_analysis_candidate(composition(**changes), policy())
+
+    assert result.eligibility != "ELIGIBLE"
+    assert result.direction != "BULLISH" or result.blockers
+
+
+def test_ready_with_warnings_technical_cannot_bypass_neutral_policy_direction():
+    result = compose_market_analysis_candidate(
+        composition(
+            technical=replace(
+                technical("NIFTY", "NSE"),
+                status="READY_WITH_WARNINGS",
+                warnings=("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",),
+            )
+        ),
+        policy("NEUTRAL"),
+    )
+
+    assert result.eligibility == "INELIGIBLE"
     assert "DIRECTION_NEUTRAL_NO_TRADE" in result.blockers
 
 

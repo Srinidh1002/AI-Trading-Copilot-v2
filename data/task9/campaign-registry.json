@@ -1,0 +1,17 @@
+{
+  "campaign_id": "task9-live-certification-2026-08-18-r2",
+  "market_date": "2026-08-31",
+  "official_run_id": "task9-live-20260831-r1",
+  "runtime_config_id": "task9-runtime-2026-08-31-r1",
+  "runtime_config_version": "1",
+  "created_at": "2026-08-31T00:00:00",
+  "status": "active",
+  "markets": [
+    "NIFTY",
+    "SENSEX"
+  ],
+  "target_trades": 100,
+  "execution_mode": "PAPER",
+  "broker_order_submission": false,
+  "live_execution_eligible": false
+}

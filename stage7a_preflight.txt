@@ -1,0 +1,21 @@
+================================================================================
+S7 STAGE 7A-alt - EXECUTION INTEGRITY PREFLIGHT  product=CRUDEOILM
+================================================================================
+  [PASS] PAPER_MODE                                 runner forces --product, no live path
+  [PASS] BROKER_SUBMISSION_false                    BROKER_SUBMISSION=false
+  [PASS] LIVE_EXECUTION_false                       LIVE_EXECUTION=false
+  [PASS] REGISTRY_CERTIFICATION_ELIGIBLE            True
+  [PASS] DEPTH_QUANTITY_SEMANTICS_VERIFIED          True
+  [PASS] EXECUTION_FRESHNESS_CALIBRATED             True max_age=10.0s
+  [PASS] GLOBAL_FRESHNESS_CALIBRATED                global_max=20.0s
+  [PASS] ENTRY_SOURCE_REQUIRED_REAL_DEPTH           filled from REST FULL depth only
+  [PASS] EXIT_SOURCE_REQUIRED_REAL_DEPTH            exit via bid-side VWAP from depth
+  [PASS] SYNTHETIC_EXECUTION_ALLOWED_false          False
+  [PASS] LTP_FILL_ALLOWED_false                     False
+  [PASS] FIRST_TOUCH_TRACKING_true                  True
+  [PASS] FIRST_TOUCH_PERSISTENCE_true               True
+  [PASS] HASH_ADDRESSED_QUOTE_EVIDENCE              True
+  [PASS] RECONCILIATION_REQUIRED                    True
+================================================================================
+ALL FLAGS OK - ENTRY INTEGRITY SATISFIED
+================================================================================

@@ -181,6 +181,15 @@ def run_certified_two_market_parent_runtime(
             raise ChildEvaluationFailure(
                 "candidate_composition",
                 "CANDIDATE_COMPOSITION_FAILED",
+                {
+                    "failure_stage": getattr(
+                        exc,
+                        "task9_failure_stage",
+                        "ANALYSIS_AUTHORITY",
+                    ),
+                    "exception_class": type(exc).__name__,
+                    "stable_failure_code": "CANDIDATE_COMPOSITION_FAILED",
+                },
             ) from exc
         candidate = analysis.candidate
         if type(candidate) is not MarketAnalysisCandidateV1:

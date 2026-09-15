@@ -11,6 +11,7 @@ from services.dashboard_read_models import (
     build_task9_dashboard_shell_view,
     is_task9_dashboard_prepublication_shell,
     read_task9_external_provider_blocker,
+    Task9DecisionObservabilityDashboardViewV1,
 )
 
 
@@ -18,6 +19,9 @@ OPPORTUNITY_STATE_KEY = "dashboard_opportunity_view_v1"
 TRADE_PLAN_STATE_KEY = "dashboard_trade_plan_view_v1"
 PAPER_POSITION_STATE_KEY = "dashboard_paper_position_detail_view_v1"
 APPLICATION_VIEW_STATE_KEY = "dashboard_application_view_v1"
+DECISION_OBSERVABILITY_STATE_KEY = (
+    "task9_decision_observability_dashboard_view_v1"
+)
 
 
 def _optional_exact(
@@ -81,6 +85,21 @@ def get_application_view(
         state,
         APPLICATION_VIEW_STATE_KEY,
         DashboardApplicationViewV1,
+    )
+
+
+def get_task9_decision_observability_view(
+    state: Mapping[str, object],
+) -> Task9DecisionObservabilityDashboardViewV1 | None:
+    """Read an already-projected Task 9 decision observability view."""
+
+    if not isinstance(state, Mapping):
+        raise TypeError("state must be a mapping")
+
+    return _optional_exact(
+        state,
+        DECISION_OBSERVABILITY_STATE_KEY,
+        Task9DecisionObservabilityDashboardViewV1,
     )
 
 

@@ -283,3 +283,156 @@ def test_invalid_spot_price():
             underlying="NIFTY",
             spot_price=0,
         )
+
+def test_task91043_builder_preserves_zero_price_chain_evidence_but_not_trade_contracts():
+    master = MagicMock()
+
+    master.get_nearest_expiry.return_value = {
+        "display": "14JUL2026",
+        "raw": "14JUL2026",
+    }
+
+    master.get_option_contracts.return_value = [
+        instrument_contract("CE", 24200, "CE"),
+        instrument_contract("PE", 24200, "PE"),
+    ]
+
+    market_client = MagicMock()
+    market_client.get_market_data.return_value = {
+        "status": True,
+        "data": {
+            "fetched": [
+                {
+                    "symbolToken": "CE",
+                    "ltp": 150.0,
+                    "tradeVolume": 100,
+                    "opnInterest": 1000,
+                    "exchangeTimestamp": NOW.isoformat(),
+                    "depth": {
+                        "buy": [{"price": 149.5}],
+                        "sell": [{"price": 150.5}],
+                    },
+                },
+                {
+                    "symbolToken": "PE",
+                    "ltp": 0.0,
+                    "tradeVolume": 0,
+                    "opnInterest": 800,
+                    "exchangeTimestamp": NOW.isoformat(),
+                    "depth": {
+                        "buy": [{"price": 0.0}],
+                        "sell": [{"price": 0.05}],
+                    },
+                },
+            ],
+            "unfetched": [],
+        },
+    }
+
+    builder = LiveOptionChainBuilder(
+        instrument_master=master,
+        market_client=market_client,
+        clock=lambda: NOW,
+    )
+
+    result = builder.build_chain(
+        underlying="NIFTY",
+        spot_price=24206,
+        strikes_each_side=0,
+    )
+
+    strict_tokens = {
+        item["token"]
+        for item in result["contracts"]
+    }
+
+    evidence_tokens = {
+        item["token"]
+        for item in result["chain_evidence_contracts"]
+    }
+
+    assert strict_tokens == {"CE"}
+    assert evidence_tokens == {"CE", "PE"}
+
+    pe = next(
+        item
+        for item in result["chain_evidence_contracts"]
+        if item["token"] == "PE"
+    )
+
+    assert pe["premium"] == 0.0
+    assert pe["bid"] == 0.0
+    assert pe["ask"] == 0.05
+    assert pe["open_interest"] == 800
+
+    market_client.get_market_data.assert_called_once()
+
+
+def test_task91043_positive_price_contracts_exist_in_both_builder_views():
+    master = MagicMock()
+
+    master.get_nearest_expiry.return_value = {
+        "display": "14JUL2026",
+        "raw": "14JUL2026",
+    }
+
+    master.get_option_contracts.return_value = [
+        instrument_contract("CE", 24200, "CE"),
+        instrument_contract("PE", 24200, "PE"),
+    ]
+
+    market_client = MagicMock()
+    market_client.get_market_data.return_value = {
+        "status": True,
+        "data": {
+            "fetched": [
+                {
+                    "symbolToken": "CE",
+                    "ltp": 100.0,
+                    "tradeVolume": 100,
+                    "opnInterest": 1000,
+                    "exchangeTimestamp": NOW.isoformat(),
+                    "depth": {
+                        "buy": [{"price": 99.5}],
+                        "sell": [{"price": 100.5}],
+                    },
+                },
+                {
+                    "symbolToken": "PE",
+                    "ltp": 90.0,
+                    "tradeVolume": 100,
+                    "opnInterest": 900,
+                    "exchangeTimestamp": NOW.isoformat(),
+                    "depth": {
+                        "buy": [{"price": 89.5}],
+                        "sell": [{"price": 90.5}],
+                    },
+                },
+            ],
+            "unfetched": [],
+        },
+    }
+
+    builder = LiveOptionChainBuilder(
+        instrument_master=master,
+        market_client=market_client,
+        clock=lambda: NOW,
+    )
+
+    result = builder.build_chain(
+        underlying="NIFTY",
+        spot_price=24206,
+        strikes_each_side=0,
+    )
+
+    assert {
+        item["token"]
+        for item in result["contracts"]
+    } == {"CE", "PE"}
+
+    assert {
+        item["token"]
+        for item in result["chain_evidence_contracts"]
+    } == {"CE", "PE"}
+
+    market_client.get_market_data.assert_called_once()

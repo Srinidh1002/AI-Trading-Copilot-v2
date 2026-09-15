@@ -28,9 +28,10 @@ ChildEvaluator = Callable[
 
 class ChildEvaluationFailure(RuntimeError):
     """Safe, deterministic child-evaluation failure passed to the coordinator."""
-    def __init__(self, component: str, reason_code: str) -> None:
+    def __init__(self, component: str, reason_code: str, failure_diagnostic=None) -> None:
         self.component = component
         self.reason_code = reason_code
+        self.failure_diagnostic = failure_diagnostic
         super().__init__(reason_code)
 
 
@@ -81,9 +82,11 @@ def _evaluate_once(
         if isinstance(exc, ChildEvaluationFailure):
             blockers = (exc.reason_code,)
             errors = (exc.reason_code,)
+            failure_diagnostic = exc.failure_diagnostic
         else:
             blockers = ("CANDIDATE_COMPOSITION_FAILED",)
             errors = ("CANDIDATE_COMPOSITION_FAILED",)
+            failure_diagnostic = None
         return TwoMarketChildTerminalResultV1(
             child_result_id=child_result_id,
             parent_cycle_id=parent.parent_cycle_id,
@@ -95,6 +98,7 @@ def _evaluate_once(
             terminal_status="FAILED",
             blockers=blockers,
             errors=errors,
+            failure_diagnostic=failure_diagnostic,
         )
 
 

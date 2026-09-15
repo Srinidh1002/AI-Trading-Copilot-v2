@@ -1,0 +1,8 @@
+{
+  "_fixture_note": "TEST_FIXTURE — synthetic weather samples.",
+  "source": "NOAA", "issue_time": "2026-09-11T12:00:00+00:00",
+  "current": {"HDD": 2, "CDD": 8, "HDD_normal": 4, "CDD_normal": 6},
+  "forecast_1_3_day": {"HDD": 3, "CDD": 9, "HDD_normal": 5, "CDD_normal": 7},
+  "forecast_4_7_day": {"HDD": 5, "CDD": 6, "HDD_normal": 6, "CDD_normal": 5},
+  "forecast_8_14_day": {"HDD": 8, "CDD": 3, "HDD_normal": 9, "CDD_normal": 3}
+}

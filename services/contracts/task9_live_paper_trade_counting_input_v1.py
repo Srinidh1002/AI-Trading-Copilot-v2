@@ -14,6 +14,7 @@ from services.contracts.prediction_lifecycle_reconciliation_result_v1 import (
 from services.contracts.prediction_record_v1 import (
     PredictionRecordV1,
 )
+from services.contracts.task9_run_classification_v1 import validate_task9_run_classification
 
 
 _SOURCE_KINDS = {
@@ -77,6 +78,7 @@ class Task9LivePaperTradeCountingInputV1:
     record_run_id: str
     official_start_at: datetime
     evaluated_at: datetime
+    run_classification: str = "OFFICIAL_CERTIFICATION"
 
     execution_mode: str = "PAPER"
     live_execution_eligible: bool = False
@@ -145,6 +147,7 @@ class Task9LivePaperTradeCountingInputV1:
             "evaluated_at",
             _aware(self.evaluated_at, "evaluated_at"),
         )
+        object.__setattr__(self, "run_classification", validate_task9_run_classification(self.run_classification))
 
         if self.evaluated_at < self.prediction.completed_at:
             raise ValueError(

@@ -120,12 +120,26 @@ def test_complete_nifty_options_preserve_existing_warning_gates_without_forced_s
     assert eligible.evidence.option_chain.intelligence_status == "READY_WITH_WARNINGS"
     assert eligible.evidence.contract_ranking.ranking_status == "RANKED_WITH_WARNINGS"
     assert eligible.evidence.regime.context_status == "READY_WITH_WARNINGS"
-    assert eligible.candidate.blockers == ("EVIDENCE_UNAVAILABLE_REGIME",)
+    assert eligible.candidate.blockers == (
+        "EVIDENCE_UNAVAILABLE_GREEKS",
+        "REGIME_BLOCKED",
+    )
     assert eligible.evidence.option_chain.option_chain_snapshot_id is not None
     assert eligible.evidence.option_chain.expiry == date(2026, 8, 6)
     assert eligible.evidence.contract_ranking.ranking_status in {"RANKED", "RANKED_WITH_WARNINGS"}
     assert eligible.evidence.contributions is not None
-    assert all(item.provenance_classification == "GROUPED" for item in eligible.evidence.contributions.contributions)
+    provenance = {
+        item.pillar_name: item.provenance_classification
+        for item in eligible.evidence.contributions.contributions
+    }
+
+    assert provenance["greeks"] == "UNAVAILABLE"
+
+    assert all(
+        classification == "GROUPED"
+        for pillar_name, classification in provenance.items()
+        if pillar_name != "greeks"
+    )
 
 
 def test_shared_broader_result_reaches_matching_regime_without_forcing_suitability():

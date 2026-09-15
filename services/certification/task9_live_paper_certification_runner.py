@@ -29,6 +29,7 @@ from services.contracts.task9_live_paper_trade_counting_input_v1 import (
     Task9LivePaperTradeCountingInputV1,
 )
 from services.market_session.validator import validate_session_timestamp
+from services.contracts.task9_run_classification_v1 import validate_task9_run_classification
 
 
 _MARKETS = (("NIFTY", "NSE"), ("SENSEX", "BSE"))
@@ -120,10 +121,11 @@ Publish = Callable[[Task9LivePaperCycleResultV1], None]
 
 class Task9LivePaperCertificationRunner:
     """Run both certification children and count only terminal reconciliation."""
-    def __init__(self, *, official_run_id: str, official_start_at: datetime, child_authority: ChildAuthority, persist: Persist, publish: Publish | None = None) -> None:
+    def __init__(self, *, official_run_id: str, official_start_at: datetime, child_authority: ChildAuthority, persist: Persist, publish: Publish | None = None, run_classification: str = "OFFICIAL_CERTIFICATION") -> None:
         if not isinstance(official_run_id, str) or not official_run_id.strip():
             raise ValueError("official_run_id")
         self.official_run_id = official_run_id.strip()
+        self.run_classification = validate_task9_run_classification(run_classification)
         self.official_start_at = _aware(official_start_at, "official_start_at")
         if not callable(child_authority) or not callable(persist) or (publish is not None and not callable(publish)):
             raise TypeError("runner authority")
@@ -160,14 +162,14 @@ class Task9LivePaperCertificationRunner:
             if evidence.prediction.underlying_symbol != market or evidence.prediction.exchange != exchange:
                 raise ValueError("child evidence identity mismatch")
             if evidence.evidence_status == "DATA_INCIDENT":
-                decision = evaluate_task9_live_paper_trade_counting(Task9LivePaperTradeCountingInputV1(prediction=evidence.prediction, lifecycle_outcome=None, reconciliation=None, record_source=evidence.record_source, session_status="REAL_TIME_MARKET_SESSION", evidence_status="DATA_INCIDENT", official_run_id=self.official_run_id, record_run_id=self.official_run_id, official_start_at=self.official_start_at, evaluated_at=now))
+                decision = evaluate_task9_live_paper_trade_counting(Task9LivePaperTradeCountingInputV1(prediction=evidence.prediction, lifecycle_outcome=None, reconciliation=None, record_source=evidence.record_source, session_status="REAL_TIME_MARKET_SESSION", evidence_status="DATA_INCIDENT", official_run_id=self.official_run_id, record_run_id=self.official_run_id, official_start_at=self.official_start_at, evaluated_at=now, run_classification=self.run_classification))
                 results.append((market, "DATA_INCIDENT", decision))
                 continue
             # Counting is intentionally impossible until an entered position has
             # reached terminal state and reconciliation has completed.
             decision = None
             if evidence.terminal_position_closed and evidence.lifecycle_outcome is not None and evidence.reconciliation is not None:
-                decision = evaluate_task9_live_paper_trade_counting(Task9LivePaperTradeCountingInputV1(prediction=evidence.prediction, lifecycle_outcome=evidence.lifecycle_outcome, reconciliation=evidence.reconciliation, record_source=evidence.record_source, session_status="REAL_TIME_MARKET_SESSION", evidence_status=evidence.evidence_status, official_run_id=self.official_run_id, record_run_id=self.official_run_id, official_start_at=self.official_start_at, evaluated_at=now))
+                decision = evaluate_task9_live_paper_trade_counting(Task9LivePaperTradeCountingInputV1(prediction=evidence.prediction, lifecycle_outcome=evidence.lifecycle_outcome, reconciliation=evidence.reconciliation, record_source=evidence.record_source, session_status="REAL_TIME_MARKET_SESSION", evidence_status=evidence.evidence_status, official_run_id=self.official_run_id, record_run_id=self.official_run_id, official_start_at=self.official_start_at, evaluated_at=now, run_classification=self.run_classification))
             results.append((market, "ENTRY_ALLOWED" if entry_allowed else "MONITOR_ONLY", decision))
         result = Task9LivePaperCycleResultV1(cycle_id=cycle_id, started_at=now, completed_at=now, market_results=tuple(results))
         self.persist(result)

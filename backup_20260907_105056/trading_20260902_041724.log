@@ -1,0 +1,16 @@
+2026-09-02 04:17:24,320 - __main__ - INFO - ============================================================
+2026-09-02 04:17:24,320 - __main__ - INFO - [START] AI Trading Copilot - Scheduler Mode
+2026-09-02 04:17:24,320 - __main__ - INFO - ============================================================
+2026-09-02 04:17:24,320 - __main__ - INFO - [NOTE] Log file: logs\trading_20260902_041724.log
+2026-09-02 04:17:24,320 - __main__ - INFO - [CONNECT] Initializing WebSocket Bridge...
+2026-09-02 04:17:24,321 - services.market.websocket_bridge - INFO - WebSocket Bridge monitoring: C:\Users\sreen\OneDrive\Documents\GitHub\AI-Trading-Copilot-v2\data\task9\live_stream
+2026-09-02 04:17:24,321 - services.market.websocket_bridge - INFO - WebSocket Bridge initialized
+2026-09-02 04:17:24,321 - __main__ - INFO - [STATS] Initializing Paper Trading Engine...
+2026-09-02 04:17:24,321 - services.market.websocket_bridge - INFO - Subscriber added (total: 1)
+2026-09-02 04:17:24,322 - services.trading.paper_engine - INFO - [OK] Paper trading engine initialized (connected to WebSocket)
+2026-09-02 04:17:24,322 - __main__ - INFO - [START] Starting trading system...
+2026-09-02 04:17:24,322 - services.trading.paper_engine - INFO - [CONNECT] Starting WebSocket Bridge...
+2026-09-02 04:17:24,322 - services.market.websocket_bridge - INFO - WebSocket Bridge polling started
+2026-09-02 04:17:24,791 - services.market.websocket_bridge - INFO - Initial data for NIFTY: LTP=24080.4
+2026-09-02 04:17:24,792 - services.market.websocket_bridge - INFO - Initial data for SENSEX: LTP=76957.27
+2026-09-02 04:17:26,328 - services.trading.paper_engine - INFO - [START] Paper trading engine started

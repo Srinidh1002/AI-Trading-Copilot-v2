@@ -1,0 +1,81 @@
+{
+  "exchange": "MCX",
+  "tradingSymbol": "GOLDM25SEP26151000PE",
+  "symbolToken": "578934",
+  "ltp": 2928.5,
+  "open": 3250.0,
+  "high": 3250.0,
+  "low": 2299.5,
+  "close": 1918.5,
+  "lastTradeQty": 100,
+  "exchFeedTime": "14-Sep-2026 17:36:07",
+  "exchTradeTime": "14-Sep-2026 17:36:05",
+  "netChange": 1010.0,
+  "percentChange": 52.65,
+  "avgPrice": 2763.91,
+  "tradeVolume": 3499,
+  "opnInterest": 124700,
+  "lowerCircuit": 0.5,
+  "upperCircuit": 25513.0,
+  "totBuyQuan": 38000,
+  "totSellQuan": 42600,
+  "referenceLimitPrice": 0.0,
+  "52WeekLow": 1665.0,
+  "52WeekHigh": 4124.5,
+  "depth": {
+    "buy": [
+      {
+        "price": 2928.0,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 2926.0,
+        "quantity": 200,
+        "orders": 1
+      },
+      {
+        "price": 2925.5,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 2925.0,
+        "quantity": 500,
+        "orders": 3
+      },
+      {
+        "price": 2923.5,
+        "quantity": 100,
+        "orders": 1
+      }
+    ],
+    "sell": [
+      {
+        "price": 2937.0,
+        "quantity": 200,
+        "orders": 2
+      },
+      {
+        "price": 2939.0,
+        "quantity": 400,
+        "orders": 1
+      },
+      {
+        "price": 2939.5,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 2942.0,
+        "quantity": 200,
+        "orders": 1
+      },
+      {
+        "price": 2942.5,
+        "quantity": 300,
+        "orders": 1
+      }
+    ]
+  }
+}

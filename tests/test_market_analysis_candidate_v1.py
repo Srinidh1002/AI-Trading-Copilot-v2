@@ -215,6 +215,64 @@ def test_ready_with_warnings_option_chain_and_ranking_remain_eligible_without_lo
     assert value.warnings == ("OPTION_EVIDENCE_WARNING",)
 
 
+def test_ready_with_warnings_technical_remains_eligible_and_visible():
+    technical_result = replace(
+        technical("NIFTY", "NSE"),
+        status="READY_WITH_WARNINGS",
+        warnings=("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",),
+    )
+
+    value = build(technical=technical_result)
+
+    assert value.eligibility == "ELIGIBLE"
+    assert value.technical.status == "READY_WITH_WARNINGS"
+    assert value.technical.warnings == ("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",)
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    (
+        ("READY", True),
+        ("READY_WITH_WARNINGS", True),
+        ("UNAVAILABLE", False),
+        ("BLOCKED", False),
+        ("MALFORMED", False),
+        ("UNKNOWN", False),
+        (None, False),
+        ("", False),
+    ),
+)
+def test_canonical_technical_status_usability(status, expected):
+    from services.contracts.technical_intelligence_result_v1 import (
+        is_usable_technical_status,
+    )
+
+    assert is_usable_technical_status(status) is expected
+
+
+@pytest.mark.parametrize("status", ("UNAVAILABLE", "BLOCKED", "MALFORMED", "UNKNOWN", ""))
+def test_nonusable_technical_status_remains_ineligible(status):
+    values = dict(
+        status=status,
+        aggregate_bias="UNAVAILABLE",
+        aggregate_strength=0.0,
+        blockers=("TECHNICAL_UNUSABLE",),
+    )
+    with pytest.raises(ValueError):
+        technical_result = replace(technical("NIFTY", "NSE"), **values)
+        build(technical=technical_result)
+
+
+def test_ready_with_warnings_technical_cannot_carry_a_hard_blocker():
+    with pytest.raises(ValueError, match="Warning result"):
+        replace(
+            technical("NIFTY", "NSE"),
+            status="READY_WITH_WARNINGS",
+            warnings=("OPTIONAL_TIMEFRAME_UNAVAILABLE_1D",),
+            blockers=("MANDATORY_TIMEFRAME_UNAVAILABLE",),
+        )
+
+
 @pytest.mark.parametrize(
     "field_name,invalid",
     (

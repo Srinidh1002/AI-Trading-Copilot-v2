@@ -1,0 +1,81 @@
+{
+  "exchange": "MCX",
+  "tradingSymbol": "CRUDEOILM21SEP26FUT",
+  "symbolToken": "565900",
+  "ltp": 9887.0,
+  "open": 9750.0,
+  "high": 9919.0,
+  "low": 9750.0,
+  "close": 9525.0,
+  "lastTradeQty": 10,
+  "exchFeedTime": "14-Sep-2026 17:36:02",
+  "exchTradeTime": "14-Sep-2026 17:36:00",
+  "netChange": 362.0,
+  "percentChange": 3.8,
+  "avgPrice": 9887.12,
+  "tradeVolume": 15045,
+  "opnInterest": 514830,
+  "lowerCircuit": 8954.0,
+  "upperCircuit": 10096.0,
+  "totBuyQuan": 16930,
+  "totSellQuan": 15640,
+  "referenceLimitPrice": 0.0,
+  "52WeekLow": 6482.0,
+  "52WeekHigh": 9919.0,
+  "depth": {
+    "buy": [
+      {
+        "price": 9888.0,
+        "quantity": 210,
+        "orders": 5
+      },
+      {
+        "price": 9887.0,
+        "quantity": 460,
+        "orders": 28
+      },
+      {
+        "price": 9886.0,
+        "quantity": 490,
+        "orders": 26
+      },
+      {
+        "price": 9885.0,
+        "quantity": 260,
+        "orders": 16
+      },
+      {
+        "price": 9884.0,
+        "quantity": 180,
+        "orders": 12
+      }
+    ],
+    "sell": [
+      {
+        "price": 9890.0,
+        "quantity": 430,
+        "orders": 4
+      },
+      {
+        "price": 9891.0,
+        "quantity": 210,
+        "orders": 5
+      },
+      {
+        "price": 9892.0,
+        "quantity": 410,
+        "orders": 7
+      },
+      {
+        "price": 9893.0,
+        "quantity": 190,
+        "orders": 10
+      },
+      {
+        "price": 9894.0,
+        "quantity": 450,
+        "orders": 9
+      }
+    ]
+  }
+}

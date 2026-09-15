@@ -32,12 +32,12 @@ from services.contracts.option_contract_ranking_result_v1 import (
 )
 from services.contracts.technical_intelligence_result_v1 import (
     TechnicalIntelligenceResultV1,
+    is_usable_technical_status,
 )
 from services.analysis.canonical_evidence_usability import (
     is_usable_option_intelligence_status,
     is_usable_option_ranking_status,
     is_usable_regime_status,
-    is_usable_technical_status,
 )
 
 _IDENTITIES = {
@@ -84,6 +84,25 @@ _PILLARS = (
     "premium_behavior",
     "liquidity_spread",
 )
+
+# Angel SmartAPI documents option Greeks and implied volatility as
+# available only for NSE.  SENSEX options trade on BFO, so absence of
+# these provider-owned fields is a bounded capability limitation, not
+# missing certification evidence.  The evidence objects remain present
+# and UNAVAILABLE for audit; only the universal hard-block is exempted.
+_PROVIDER_CAPABILITY_OPTIONAL_PILLARS = {
+    ("SENSEX", "BSE", "BFO"): frozenset(
+        {
+            "iv",
+            "greeks",
+        }
+    ),
+}
+
+_PROVIDER_CAPABILITY_WARNINGS = {
+    "iv": "OPTION_IV_PROVIDER_CAPABILITY_UNAVAILABLE",
+    "greeks": "OPTION_GREEKS_PROVIDER_CAPABILITY_UNAVAILABLE",
+}
 _TYPES = {
     "freshness": MarketDataQualityResultV1,
     "data_quality": MarketDataQualityResultV1,
@@ -151,6 +170,130 @@ def _identity_of(value: object) -> tuple[object, object] | None:
     return symbol, exchange
 
 
+def _provider_capability_optional_pillar(
+    composition: object,
+    name: str,
+    value: object,
+) -> bool:
+    """True only for a documented provider-unsupported pillar."""
+    identity = (
+        composition.underlying_symbol,
+        composition.exchange,
+        composition.option_exchange,
+    )
+
+    optional = _PROVIDER_CAPABILITY_OPTIONAL_PILLARS.get(
+        identity,
+        frozenset(),
+    )
+
+    if name not in optional:
+        return False
+
+    if getattr(value, "status", None) != "UNAVAILABLE":
+        return False
+
+    provenance = getattr(value, "provenance", {})
+
+    if name == "greeks":
+        return (
+            provenance.get("source")
+            == "canonical_option_contract_universe"
+            and provenance.get("field") == "greeks"
+        )
+
+    if name == "iv":
+        metrics = provenance.get("metrics", ())
+        return (
+            provenance.get("source")
+            == "canonical_option_chain_metric"
+            and tuple(metrics) == ("IV_SKEW",)
+        )
+
+    return False
+
+
+def _required_failure_code(
+    name: str,
+    value: object,
+) -> str:
+    """Return a truthful fail-closed code for required evidence."""
+    if name == "option_chain" and value is not None:
+        if (
+            value.source_status == "AVAILABLE"
+            and value.intelligence_status == "CONFLICTING"
+            and value.aggregate_bias == "MIXED"
+            and bool(value.metrics)
+            and not value.blockers
+        ):
+            return "OPTION_CHAIN_CONFLICTING"
+
+    if name == "option_contract_eligibility" and value is not None:
+        policy_blockers = {
+            "DIRECTIONAL OPTION-CHAIN INTELLIGENCE IS REQUIRED "
+            "FOR CONTRACT RANKING",
+            "CONFLICTING OPTION-CHAIN INTELLIGENCE DOES NOT "
+            "PERMIT CONTRACT RANKING",
+        }
+        if (
+            value.ranking_status == "BLOCKED"
+            and value.directional_bias in {"NEUTRAL", "MIXED"}
+            and value.required_option_type is None
+            and value.selected_candidate is None
+            and any(
+                blocker in policy_blockers
+                for blocker in value.blockers
+            )
+        ):
+            return "OPTION_RANKING_BLOCKED"
+
+    if name != "regime":
+        return f"EVIDENCE_UNAVAILABLE_{name.upper()}"
+
+    if value is None:
+        return "EVIDENCE_UNAVAILABLE_REGIME"
+
+    evidence_available = (
+        value.context_status
+        in {
+            "READY",
+            "READY_WITH_WARNINGS",
+        }
+        and value.primary_regime
+        not in {
+            "UNAVAILABLE",
+            "CONFLICTING",
+            "BLOCKED",
+        }
+        and not value.blockers
+        and not value.contradictions
+    )
+
+    if evidence_available and (
+        value.entry_suitability
+        in {
+            "NOT_SUITABLE",
+            "BLOCKED",
+        }
+        or value.entry_restriction_state
+        == "BLOCKED"
+        or not value.analysis_allowed
+        or not value.new_entries_allowed
+    ):
+        return "REGIME_BLOCKED"
+
+    if (
+        evidence_available
+        and (
+            value.entry_suitability == "CAUTION"
+            or value.entry_restriction_state == "WARNING"
+        )
+    ):
+        return "REGIME_CAUTION"
+
+    return "EVIDENCE_UNAVAILABLE_REGIME"
+
+
 def _ready(name: str, value: object) -> bool:
     if name in {"freshness", "data_quality"}:
         return (
@@ -181,12 +324,17 @@ def _ready(name: str, value: object) -> bool:
             )
         )
     if name == "regime":
+        # READY_WITH_WARNINGS is admissible only at this strict candidate
+        # boundary because the caller also verifies suitability, restriction,
+        # analysis/entry permission, blockers, and contradictions below.
+        # Keep canonical is_usable_regime_status() conservative for callers
+        # that do not perform these additional entry-safety checks.
         return (
-            is_usable_regime_status(value.context_status)
+            value.context_status in {"READY", "READY_WITH_WARNINGS"}
             and value.primary_regime
             not in {"UNAVAILABLE", "CONFLICTING", "BLOCKED"}
             and value.entry_suitability == "SUITABLE"
-            and value.entry_restriction_state in {"OPEN", "WARNING"}
+            and value.entry_restriction_state == "OPEN"
             and value.analysis_allowed
             and value.new_entries_allowed
             and not value.blockers
@@ -389,10 +537,21 @@ def compose_market_analysis_candidate(
         if getattr(composition, name) is not None
         and not _ready(name, getattr(composition, name))
     )
+    capability_optional = tuple(
+        name
+        for name in _PILLARS
+        if _provider_capability_optional_pillar(
+            composition,
+            name,
+            getattr(composition, name),
+        )
+    )
+
     pillar_nonready = tuple(
         name
         for name in _PILLARS
         if getattr(composition, name).status != "READY"
+        and name not in capability_optional
     )
 
     blockers = policy.blockers
@@ -402,7 +561,18 @@ def compose_market_analysis_candidate(
         if getattr(composition, name) is not None
         for message in getattr(getattr(composition, name), "warnings", ())
     )
-    warnings = tuple(dict.fromkeys(policy.warnings + evidence_warnings))
+    capability_warnings = tuple(
+        _PROVIDER_CAPABILITY_WARNINGS[name]
+        for name in capability_optional
+    )
+
+    warnings = tuple(
+        dict.fromkeys(
+            policy.warnings
+            + evidence_warnings
+            + capability_warnings
+        )
+    )
     contradictions = policy.contradictions
     direction = policy.direction
     eligibility = policy.eligibility
@@ -420,17 +590,50 @@ def compose_market_analysis_candidate(
                 set(missing + nonready + optional_nonready + pillar_nonready)
             )
         )
+        failure_codes = tuple(
+            _required_failure_code(
+                name,
+                getattr(
+                    composition,
+                    name,
+                    None,
+                ),
+            )
+            for name in failures
+        )
         blockers = tuple(
             dict.fromkeys(
-                blockers
-                + tuple(
-                    f"EVIDENCE_UNAVAILABLE_{name.upper()}"
-                    for name in failures
-                )
+                blockers + failure_codes
             )
         )
-        direction = "UNAVAILABLE"
-        eligibility = "UNAVAILABLE"
+
+        # Some canonical evidence can be fully available but deliberately
+        # non-entry-ready.  Preserve that directional conclusion instead of
+        # misclassifying a policy abstention as evidence unavailability.
+        policy_nonentry_codes = {
+            "REGIME_CAUTION",
+            "REGIME_BLOCKED",
+            "OPTION_RANKING_BLOCKED",
+        }
+        policy_nonentry_only = (
+            bool(failure_codes)
+            and all(
+                code in policy_nonentry_codes
+                for code in failure_codes
+            )
+        )
+
+        if policy_nonentry_only:
+            direction = (
+                direction
+                if direction in {"BULLISH", "BEARISH"}
+                else "UNAVAILABLE"
+            )
+            eligibility = "INELIGIBLE"
+        else:
+            direction = "UNAVAILABLE"
+            eligibility = "UNAVAILABLE"
+
         confidence = 0.0
         score = 0.0
     elif blockers:

@@ -9,6 +9,7 @@ import pytest
 from services.certification.task9_abstention_later_observation_recovery import finalize_task9_expired_abstentions, recover_task9_later_abstention_observations
 from services.certification.task9_external_provider_blocker import Task9ExternalProviderBlockerStore
 from services.contracts.prediction_lifecycle_outcome_policy_v1 import PredictionLifecycleOutcomePolicyV1
+from services.paper_orchestration.prediction_ledger import PredictionLedger
 from tests.test_task916_production_child_evidence_authority import _quote, _runtime
 
 
@@ -44,6 +45,81 @@ def test_later_abstention_quote_persists_once_and_is_restart_idempotent(tmp_path
     assert len(window.observations) == 1
     assert window.observations[0].observed_at == quote.observed_at
     assert _recover(_runtime(tmp_path, nifty_action="WAIT", sensex_action="NO_TRADE"), prediction, quote, quality) == (prediction.prediction_id,)
+
+
+def test_failed_no_trade_child_is_excluded_from_later_abstention_recovery(tmp_path):
+    runtime = _runtime(
+        tmp_path,
+        nifty_action="WAIT",
+        sensex_action="NO_TRADE",
+    )
+    original, other = runtime["predictions"]
+
+    failed = replace(
+        original,
+        terminal_status="FAILED",
+        candidate_id=None,
+        market_timestamp=None,
+        predicted_direction="UNAVAILABLE",
+        predicted_action="NO_TRADE",
+        eligibility="UNAVAILABLE",
+        confidence=0.0,
+        score=0.0,
+        rank_value=0.0,
+        eligible_for_comparison=False,
+        outcome_reason="CHILD_FAILED",
+        parent_decision="NO_TRADE",
+        parent_selected=False,
+        blockers=("CANDIDATE_COMPOSITION_FAILED",),
+        errors=("CANDIDATE_COMPOSITION_FAILED",),
+        failure_diagnostic={
+            "failure_stage": "ANALYSIS_AUTHORITY",
+            "exception_class": "ValueError",
+            "stable_failure_code": (
+                "CANDIDATE_COMPOSITION_FAILED"
+            ),
+        },
+    )
+
+    ledger = PredictionLedger(
+        tmp_path / "failed-no-trade-ledger.json"
+    )
+    ledger.save_pair((failed, other))
+    runtime["ledger"] = ledger
+
+    quote, quality = _quote(failed)
+
+    assert recover_task9_later_abstention_observations(
+        market="NIFTY",
+        exchange="NSE",
+        quote=quote,
+        data_quality=quality,
+        prediction_ledger=runtime["ledger"],
+        lifecycle_context_store=runtime["context_store"],
+        observation_store=runtime["observation_store"],
+        outcome_store=runtime["outcome_store"],
+        outcome_policy=_policy(),
+        evaluated_at=quote.observed_at,
+    ) == ()
+
+    assert (
+        runtime["observation_store"].recover(
+            failed.prediction_id
+        )
+        is None
+    )
+    assert (
+        runtime["outcome_store"].recover(
+            failed.prediction_id
+        )
+        is None
+    )
+    assert (
+        runtime["binding_store"].by_prediction(
+            failed.prediction_id
+        )
+        is None
+    )
 
 
 def test_pre_prediction_quote_is_ignored_without_timestamp_rewrite_or_outcome(tmp_path):

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from services.certification.task8_selected_market_lifecycle_runtime import (
-    execute_task8_selected_market_lifecycle,
+from services.certification.task9_selected_market_lifecycle_runtime import (
+    execute_task9_selected_market_lifecycle as execute_task9_selected_market_lifecycle_runtime,
 )
 from services.certification.task9_paper_portfolio_policy_store import (
     Task9PaperPortfolioPolicyStore,
@@ -32,6 +32,9 @@ from services.contracts.paper_trade_entry_evaluation_input_v1 import PaperTradeE
 from services.contracts.paper_market_observation_v1 import PaperMarketObservationV1
 from services.paper_orchestration.paper_state_factories import build_entry_paper_trade_persistence_snapshot
 from services.paper_portfolio.paper_portfolio_lifecycle_coordinator import PaperPortfolioLifecycleCoordinator
+from services.paper_portfolio.paper_portfolio_persistence_service import (
+    PaperPortfolioPersistenceService,
+)
 from services.paper_trading.paper_trade_entry_evaluator import evaluate_paper_trade_entry
 from services.paper_trading.paper_trade_persistence_service import PaperTradePersistenceService
 from services.contracts.task9_prediction_paper_market_identity_v1 import (
@@ -265,7 +268,7 @@ def execute_task9_selected_market_lifecycle(
             ),
         )
 
-    return execute_task8_selected_market_lifecycle(
+    return execute_task9_selected_market_lifecycle_runtime(
         prediction_id=prediction_id,
         task9_pending_entry_persistor=(
             None if pending_entry_store is None else lambda input_value, result: pending_entry_store.save(
@@ -299,6 +302,102 @@ def execute_task9_selected_market_lifecycle(
     )
 
 
+def _reconcile_recovered_open_p7_portfolio(*, pending, p7_snapshot, portfolio_persistence_service, updated_at):
+    """Repair only the durable P8 projection of an already durable OPEN P7."""
+    if type(portfolio_persistence_service) is not PaperPortfolioPersistenceService:
+        raise TypeError("portfolio_persistence_service")
+    position = p7_snapshot.position
+    if position is None or p7_snapshot.lifecycle_state.current_state != "OPEN":
+        raise ValueError("unexpected durable pending P7 state")
+    value = pending.input_value
+    current = portfolio_persistence_service.get(value.portfolio_id)
+    if current is None:
+        raise ValueError("recovered P7 portfolio missing")
+    if current.execution_mode != "PAPER" or current.live_execution_eligible is not False:
+        raise ValueError("recovered P8 is not PAPER-only")
+
+    reservations = [
+        item for item in current.portfolio_snapshot.reservations
+        if (
+            item.reservation_id == value.requested_reservation_id
+            and item.portfolio_id == value.portfolio_id
+            and item.admission_request_id == value.admission_request_id
+            and item.admission_idempotency_key == value.admission_idempotency_key
+            and item.trade_plan_id == position.trade_plan_id
+            and item.integrated_trade_plan_result_id == position.integrated_trade_plan_result_id
+        )
+    ]
+    plan_reservations = [
+        item for item in current.portfolio_snapshot.reservations
+        if (
+            item.trade_plan_id == position.trade_plan_id
+            and item.integrated_trade_plan_result_id == position.integrated_trade_plan_result_id
+        )
+    ]
+    if len(reservations) != 1 or len(plan_reservations) != 1:
+        raise ValueError("recovered P8 matching reservation is ambiguous or missing")
+    reservation = reservations[0]
+    if reservation.initial_quantity != position.initial_quantity:
+        raise ValueError("recovered P7/P8 reservation quantity mismatch")
+
+    references = current.portfolio_snapshot.position_references
+    related_references = [
+        item for item in references
+        if item.reservation_id == reservation.reservation_id or item.position_id == position.position_id
+    ]
+    if reservation.reservation_status == "ACTIVE":
+        if (
+            reservation.position_id != position.position_id
+            or reservation.last_p7_lifecycle_state != "OPEN"
+            or reservation.last_p7_transition_sequence != p7_snapshot.event_sequence
+            or len(related_references) != 1
+        ):
+            raise ValueError("recovered P8 ACTIVE projection conflicts with P7")
+        reference = related_references[0]
+        if (
+            reference.reservation_id != reservation.reservation_id
+            or reference.position_id != position.position_id
+            or reference.trade_plan_id != position.trade_plan_id
+            or reference.integrated_trade_plan_result_id != position.integrated_trade_plan_result_id
+            or reference.selected_option_contract_id != position.selected_option_contract_id
+            or reference.lifecycle_state != "OPEN"
+            or reference.transition_sequence != p7_snapshot.event_sequence
+        ):
+            raise ValueError("recovered P8 position projection conflicts with P7")
+        return current
+    if reservation.reservation_status != "PENDING_HOLD" or related_references:
+        raise ValueError("recovered P8 reservation is not an unprojected pending hold")
+
+    repaired = PaperPortfolioLifecycleCoordinator(
+        portfolio_persistence_service
+    ).apply_p7_snapshot(
+        portfolio_id=value.portfolio_id,
+        policy=value.portfolio_policy,
+        p7_snapshot=p7_snapshot,
+        result_snapshot_id=value.activation_result_snapshot_id,
+        portfolio_event_id=value.activation_portfolio_event_id,
+        update_idempotency_key=value.activation_update_idempotency_key,
+        updated_at=updated_at,
+    )
+    repaired_reservations = [
+        item for item in repaired.portfolio_snapshot.reservations
+        if item.reservation_id == reservation.reservation_id
+    ]
+    repaired_references = [
+        item for item in repaired.portfolio_snapshot.position_references
+        if item.reservation_id == reservation.reservation_id
+    ]
+    if (
+        len(repaired_reservations) != 1
+        or len(repaired_references) != 1
+        or repaired_reservations[0].reservation_status != "ACTIVE"
+        or repaired_reservations[0].position_id != position.position_id
+        or repaired_references[0].position_id != position.position_id
+    ):
+        raise ValueError("recovered P8 activation verification failed")
+    return repaired
+
+
 def continue_task9_pending_entry(*, official_run_id: str, prediction_id: str, observation: PaperMarketObservationV1, evaluated_at, pending_entry_store: Task9PendingEntryStore, trade_persistence_service: PaperTradePersistenceService, portfolio_persistence_service, binding_store: Task9PredictionPaperTradeBindingStore):
     """Evaluate only a recovered Task 9 pending entry; no P6/P8 admission rerun."""
     if type(observation) is not PaperMarketObservationV1 or type(pending_entry_store) is not Task9PendingEntryStore or type(trade_persistence_service) is not PaperTradePersistenceService: raise TypeError("pending continuation inputs")
@@ -308,6 +407,12 @@ def continue_task9_pending_entry(*, official_run_id: str, prediction_id: str, ob
     value = pending.input_value
     existing_snapshot = trade_persistence_service.get(value.paper_trade_id)
     if existing_snapshot is not None:
+        _reconcile_recovered_open_p7_portfolio(
+            pending=pending,
+            p7_snapshot=existing_snapshot,
+            portfolio_persistence_service=portfolio_persistence_service,
+            updated_at=evaluated_at,
+        )
         if existing_snapshot.position is None or existing_snapshot.lifecycle_state.current_state != "OPEN": raise ValueError("unexpected durable pending P7 state")
         position = existing_snapshot.position
         binding_store.save(Task9PredictionPaperTradeBindingV1(official_run_id=official_run_id, prediction_id=prediction_id, market=position.underlying_symbol, paper_trade_id=existing_snapshot.paper_trade_id, paper_position_id=position.position_id, option_symbol=position.option_symbol, entered_at=position.opened_at))

@@ -10,6 +10,15 @@ from services.certification.task9_historical_certification_replay import (
     LIVE_ROOT,
     Task9HistoricalReplayError,
 )
+from services.certification.task9_market_session_evaluator import (
+    evaluate_task9_market_session,
+)
+from services.contracts.task9_market_session_policy_v1 import (
+    Task9MarketSegment,
+    build_task9_market_session_policy,
+)
+from services.bse_holiday_calendar import get_bse_holiday_calendar
+from services.nse_holiday_calendar import get_nse_holiday_calendar
 from services.historical_data_cache import HistoricalDataCache
 from services.market.task9_live_tick_stream import (
     IST,
@@ -47,6 +56,7 @@ def build_offline_replay_evidence(
     live_source_root,
     output_file,
     cache_reader=None,
+    session_state_resolver=None,
 ):
     """Build JSON-safe evidence from read-only ticks plus local cache only."""
 
@@ -58,7 +68,15 @@ def build_offline_replay_evidence(
     if cache_reader is not None and not callable(cache_reader):
         raise TypeError("cache_reader")
 
-    journal = Task9LiveTickJournal(live_source_root)
+    if not callable(session_state_resolver):
+        raise Task9HistoricalReplayError(
+            "HISTORICAL_REPLAY_SESSION_AUTHORITY_REQUIRED"
+        )
+
+    journal = Task9LiveTickJournal(
+        live_source_root,
+        session_state_resolver=session_state_resolver,
+    )
     aggregator = Task9LiveCandleAggregator(journal)
 
     cutoff = datetime.combine(
@@ -185,6 +203,7 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
 
+    trading_date = date.fromisoformat(args.trading_date)
     cache_path = Path(args.historical_cache_root)
 
     cache_file = (
@@ -217,13 +236,67 @@ def main(argv=None):
             (),
         )
 
+    session_policy = build_task9_market_session_policy(
+        policy_id="task9-offline-replay-cli-session-policy",
+        policy_version="1",
+        calendar_authority_ref="local-exchange-holiday-calendars",
+        nfo_new_entry_cutoff=time(15, 30),
+        bfo_new_entry_cutoff=time(15, 30),
+    )
+
+    expected_segments = {
+        "NIFTY": Task9MarketSegment.NFO_OPTIONS,
+        "SENSEX": Task9MarketSegment.BFO_OPTIONS,
+    }
+
+    def offline_session_state_resolver(
+        *,
+        market,
+        evaluated_at,
+        market_date,
+    ):
+        if market not in expected_segments:
+            raise ValueError("market")
+
+        if market_date != trading_date:
+            raise ValueError("market_date")
+
+        if market_date.weekday() >= 5:
+            calendar_state = "NON_TRADING_DAY"
+        elif market == "NIFTY":
+            calendar_state = (
+                "NON_TRADING_DAY"
+                if get_nse_holiday_calendar().is_holiday(market_date)
+                else "TRADING_DAY"
+            )
+        else:
+            calendar_state = (
+                "NON_TRADING_DAY"
+                if get_bse_holiday_calendar().is_holiday(market_date)
+                else "TRADING_DAY"
+            )
+
+        aggregate = evaluate_task9_market_session(
+            policy=session_policy,
+            evaluated_at=evaluated_at,
+            market_date=market_date,
+            calendar_state=calendar_state,
+        )
+
+        expected_segment = expected_segments[market]
+
+        return next(
+            state
+            for state in aggregate.states
+            if state.segment is expected_segment
+        )
+
     evidence = build_offline_replay_evidence(
-        trading_date=date.fromisoformat(
-            args.trading_date
-        ),
+        trading_date=trading_date,
         live_source_root=args.live_source_root,
         output_file=args.output_file,
         cache_reader=local_cache_reader,
+        session_state_resolver=offline_session_state_resolver,
     )
 
     print(

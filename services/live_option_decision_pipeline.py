@@ -225,12 +225,24 @@ class LiveOptionDecisionPipeline:
             chain = {"underlying": underlying, "spot_price": spot_price, "contracts": ()}
             blockers = (f"OPTION_CAPTURE_{type(exc).__name__.upper()}",)
             warnings = ()
+
+        capture_clock = getattr(
+            self.option_chain_builder,
+            "clock",
+            None,
+        )
+        capture_evaluated_at = (
+            capture_clock()
+            if callable(capture_clock)
+            else evaluated_at
+        )
+
         return LiveOptionCaptureResultV1(
             underlying_symbol=str(underlying).strip().upper(),
             option_exchange=str(option_exchange).strip().upper(),
             option_chain=chain,
             provider_timestamp=provider_timestamp,
-            evaluated_at=evaluated_at,
+            evaluated_at=capture_evaluated_at,
             blockers=blockers,
             warnings=warnings,
             metadata={

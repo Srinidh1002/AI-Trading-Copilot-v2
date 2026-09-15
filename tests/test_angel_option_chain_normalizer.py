@@ -14,3 +14,50 @@ def test_invalid_metadata_rejected(changes):
  with pytest.raises(ValueError):normalize_angel_option_chain(contracts=(row(**changes),),market_spec=NIFTY_MARKET_SPEC,spot_price=1,provider_timestamp=NOW,evaluated_at=NOW)
 def test_greeks_and_depth_are_not_fabricated():
  out=normalize_angel_option_chain(contracts=(row(bid=None,ask=None),),market_spec=NIFTY_MARKET_SPEC,spot_price=1,provider_timestamp=NOW,evaluated_at=NOW);c=out.universe.contracts[0];assert c.bid_price is None and c.ask_price is None and "delta" not in c.metadata
+
+
+def test_task91043_snapshot_uses_evidence_contracts_but_universe_stays_strict():
+    strict_call = row(
+        token="STRICT_CE",
+        symbol="NIFTY14JUL202624200CE",
+        strike=24200,
+        option_type="CE",
+        premium=100.0,
+        bid=99.5,
+        ask=100.5,
+        open_interest=1000,
+        volume=100,
+    )
+
+    evidence_call = dict(strict_call)
+
+    evidence_put = row(
+        token="EVIDENCE_PE",
+        symbol="NIFTY14JUL202624200PE",
+        strike=24200,
+        option_type="PE",
+        premium=0.0,
+        bid=0.0,
+        ask=0.05,
+        open_interest=800,
+        volume=0,
+    )
+
+    result = normalize_angel_option_chain(
+        contracts=(strict_call,),
+        snapshot_contracts=(
+            evidence_call,
+            evidence_put,
+        ),
+        market_spec=NIFTY_MARKET_SPEC,
+        spot_price=24206,
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+    )
+
+    assert len(result.universe.contracts) == 1
+    assert result.universe.contracts[0].instrument_token == "STRICT_CE"
+
+    assert result.snapshot.complete_pair_count == 1
+    assert result.snapshot.call_only_count == 0
+    assert result.snapshot.put_only_count == 0

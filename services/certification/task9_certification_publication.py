@@ -1,6 +1,8 @@
 """Task 9 current-session certification draft and derived read-only progress."""
 from __future__ import annotations
 
+from services.certification.task9_atomic_file_replace import replace_task9_atomic_file
+
 import json
 import os
 import hashlib
@@ -9,6 +11,12 @@ from pathlib import Path
 
 from services.certification.task9_daily_report_index import Task9DailyReportIndex
 from services.certification.task9_daily_report_recovery import recover_task9_daily_reports
+from services.certification.task9_daily_report_index_scope import (
+    recover_task9_campaign_daily_reports,
+    task9_daily_report_index_path,
+)
+from services.certification.task9_close_drain_state_store import Task9CloseDrainStateStore
+from services.contracts.task9_close_drain_state_v1 import Task9CloseDrainStatus
 from services.certification.task9_live_paper_certification_progress_builder import build_task9_live_paper_certification_progress_from_raw
 from services.certification.task9_live_paper_trade_counting_evaluator import evaluate_task9_live_paper_trade_counting
 from services.certification.task9_prediction_lifecycle_outcome_store import Task9PredictionLifecycleOutcomeStore
@@ -20,11 +28,12 @@ from services.paper_orchestration.prediction_ledger import PredictionLedger
 from services.paper_trading.paper_trade_persistence_service import PaperTradePersistenceService
 from services.reports.paper_certification_daily_report import build_paper_certification_daily_report
 from services.reporting.paper_certification_report_archive import PaperCertificationReportArchive
+from services.contracts.task9_run_classification_v1 import validate_task9_run_classification
 
 
 def _write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True); tmp = path.with_suffix(path.suffix + ".tmp")
-    try: tmp.write_text(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False), encoding="utf-8"); os.replace(tmp, path)
+    try: tmp.write_text(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False), encoding="utf-8"); replace_task9_atomic_file(tmp, path)
     finally: tmp.unlink(missing_ok=True)
 
 
@@ -40,11 +49,19 @@ def _content_hash(value):
 
 class Task9CertificationPublicationAuthority:
     """Rebuilds, never increments, the mutable current-session report draft."""
-    def __init__(self, *, official_run_id, official_start_at, root, prediction_ledger: PredictionLedger, binding_store: Task9PredictionPaperTradeBindingStore, outcome_store: Task9PredictionLifecycleOutcomeStore, reconciliation_store: Task9PredictionLifecycleReconciliationStore, trade_persistence_service: PaperTradePersistenceService, starting_capital: float):
+    def __init__(self, *, official_run_id, official_start_at, root, prediction_ledger: PredictionLedger, binding_store: Task9PredictionPaperTradeBindingStore, outcome_store: Task9PredictionLifecycleOutcomeStore, reconciliation_store: Task9PredictionLifecycleReconciliationStore, trade_persistence_service: PaperTradePersistenceService, starting_capital: float, run_classification="OFFICIAL_CERTIFICATION"):
         if type(official_run_id) is not str or not official_run_id.strip() or not isinstance(official_start_at, datetime) or official_start_at.tzinfo is None or type(starting_capital) not in (int, float) or starting_capital <= 0: raise ValueError("publication identity")
         self.official_run_id, self.official_start_at, self.root, self.starting_capital = official_run_id.strip(), official_start_at, Path(root), float(starting_capital)
+        self.run_classification = validate_task9_run_classification(run_classification)
         self.prediction_ledger, self.binding_store, self.outcome_store, self.reconciliation_store, self.trade_persistence_service = prediction_ledger, binding_store, outcome_store, reconciliation_store, trade_persistence_service
-        self.archive_root = self.root / "certification_reports"; self.index = Task9DailyReportIndex(official_run_id=self.official_run_id, file_path=self.root / "daily-report-index.json")
+        self.archive_root = self.root / "certification_reports"
+        self.index = Task9DailyReportIndex(
+            official_run_id=self.official_run_id,
+            file_path=task9_daily_report_index_path(
+                self.root,
+                self.official_run_id,
+            ),
+        )
 
     def _draft_path(self, session_date): return self.root / "current-session-reports" / f"{session_date.isoformat()}.json"
     def _draft_report_id(self, session_date): return f"task9-draft:{self.official_run_id}:{session_date.isoformat()}"
@@ -54,7 +71,7 @@ class Task9CertificationPublicationAuthority:
     def _archive_path(self, session_date): return Path("daily") / session_date.isoformat() / f"{self._finalized_report_id(session_date)}.json"
 
     def _build_report(self, *, session_date, evaluated_at, report_id=None):
-        predictions = tuple(item for item in (self.prediction_ledger.recover(raw["prediction_id"]) for raw in self.prediction_ledger.all_records()) if item is not None and item.completed_at.date() == session_date)
+        predictions = () if self.run_classification != "OFFICIAL_CERTIFICATION" else tuple(item for item in (self.prediction_ledger.recover(raw["prediction_id"]) for raw in self.prediction_ledger.all_records()) if item is not None and item.completed_at.date() == session_date)
         outcomes = tuple(item for item in (self.outcome_store.recover(prediction.prediction_id) for prediction in predictions) if item is not None)
         reconciliations = tuple(item for item in (self.reconciliation_store.recover(prediction.prediction_id) for prediction in predictions) if item is not None)
         positions = []
@@ -72,7 +89,11 @@ class Task9CertificationPublicationAuthority:
         return self._build_report(session_date=session_date, evaluated_at=evaluated_at, report_id=self._finalized_report_id(session_date))
 
     def _progress(self, report=None):
-        archived = recover_task9_daily_reports(index=self.index, official_run_id=self.official_run_id, archive_root=self.archive_root)
+        archived = recover_task9_campaign_daily_reports(
+            root=self.root,
+            current_official_run_id=self.official_run_id,
+            archive_root=self.archive_root,
+        )
         archived_by_session = {item["session_date"]: item for item in archived}
         if report is not None:
             current = report.to_dict()
@@ -87,11 +108,28 @@ class Task9CertificationPublicationAuthority:
         return progress
 
     def finalize_session(self, *, session_date, evaluated_at, session_closed):
-        """Archive one explicitly closed past Task 9 session, then index it."""
+        """Archive only a past Task9 session with sealed close-drain authority."""
         if type(session_date) is not date or not isinstance(evaluated_at, datetime) or evaluated_at.tzinfo is None or type(session_closed) is not bool:
             raise ValueError("Task9 daily finalization input")
         if session_closed is not True or session_date >= evaluated_at.date():
             raise ValueError("TASK9_SESSION_NOT_CLOSED")
+
+        drain_state = Task9CloseDrainStateStore(self.root).get(
+            official_run_id=self.official_run_id,
+            market_date=session_date,
+        )
+        if drain_state is None:
+            raise ValueError("TASK9_CLOSE_DRAIN_STATE_MISSING")
+        if drain_state.status is not Task9CloseDrainStatus.COMPLETE:
+            raise ValueError(
+                f"TASK9_CLOSE_DRAIN_INCOMPLETE:{drain_state.status.value}"
+            )
+        if drain_state.session_phases != (
+            ("NIFTY", "CLOSED"),
+            ("SENSEX", "CLOSED"),
+        ):
+            raise ValueError("TASK9_CLOSE_DRAIN_SESSION_NOT_CLOSED")
+
         relative = self._archive_path(session_date)
         indexed = next((item for item in self.index.all_records() if item["session_date"] == session_date.isoformat()), None)
         if indexed is not None:
@@ -115,18 +153,54 @@ class Task9CertificationPublicationAuthority:
         return self._progress()
 
     def rollover(self, *, session_date, evaluated_at):
-        """Finalize only draft sessions strictly before the supplied session date."""
+        """Finalize older drafts only after durable close-drain completion."""
         if type(session_date) is not date or not isinstance(evaluated_at, datetime) or evaluated_at.tzinfo is None:
             raise ValueError("Task9 rollover input")
         draft_root = self.root / "current-session-reports"
-        if not draft_root.exists(): return ()
+        if not draft_root.exists():
+            return ()
+
+        drain_store = Task9CloseDrainStateStore(self.root)
         finalized = []
+
         for path in sorted(draft_root.glob("*.json")):
-            try: draft_date = date.fromisoformat(path.stem)
-            except ValueError: raise ValueError("invalid Task9 daily draft path")
-            if draft_date < session_date:
-                self.finalize_session(session_date=draft_date, evaluated_at=evaluated_at, session_closed=True)
-                finalized.append(draft_date)
+            try:
+                draft_date = date.fromisoformat(path.stem)
+            except ValueError:
+                raise ValueError("invalid Task9 daily draft path")
+
+            if draft_date >= session_date:
+                continue
+
+            drain_state = drain_store.get(
+                official_run_id=self.official_run_id,
+                market_date=draft_date,
+            )
+
+            # Missing or still-pending close work is not an archival
+            # condition. Preserve the draft for later durable recovery.
+            if drain_state is None:
+                continue
+
+            if drain_state.status in {
+                Task9CloseDrainStatus.NOT_REQUIRED,
+                Task9CloseDrainStatus.PENDING,
+            }:
+                continue
+
+            if drain_state.status is Task9CloseDrainStatus.BLOCKED:
+                raise ValueError(
+                    "TASK9_CLOSE_DRAIN_BLOCKED:"
+                    f"{draft_date.isoformat()}"
+                )
+
+            self.finalize_session(
+                session_date=draft_date,
+                evaluated_at=evaluated_at,
+                session_closed=True,
+            )
+            finalized.append(draft_date)
+
         return tuple(finalized)
     def _child_failure(self, prediction):
         cycle_id = f"task9:{self.official_run_id}:{prediction.parent_cycle_id}"
@@ -183,6 +257,7 @@ class Task9CertificationPublicationAuthority:
                 "EXCLUDED_RUN_MISMATCH": "EXCLUDED_RUN_MISMATCH",
                 "EXCLUDED_PRE_START": "EXCLUDED_PRE_START",
                 "EXCLUDED_OUT_OF_SESSION": "EXCLUDED_OUT_OF_SESSION",
+                "EXCLUDED_NO_ENTRY": "EXCLUDED_NO_ENTRY",
             }.get(task9.status, "EXCLUDED_UNEVALUABLE_OUTCOME")
         return PredictionCertificationCountingDecisionV1(decision_id=f"task9-report:{task9.decision_id}", counting_key=("1" * 64) if trade else ("0" * 64), prediction_id=prediction.prediction_id, outcome_id=(outcome.outcome_id if trade or non_trade or wait else None), official_run_id=self.official_run_id, underlying_symbol=prediction.underlying_symbol, exchange=prediction.exchange, predicted_action=prediction.predicted_action, parent_decision=prediction.parent_decision, status=status, countable=trade, pending=pending, reason_codes=() if trade or non_trade or wait else task9.reason_codes, policy_id="task9-live-counting", policy_version="1.0", system_version="task9", provider_version="task9", evaluated_at=evaluated_at)
 

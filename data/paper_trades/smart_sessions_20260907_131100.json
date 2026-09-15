@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-09-07T13:11:00.174053",
+  "sessions": [
+    {
+      "direction": "BULLISH",
+      "pnl": -348.7499999999994,
+      "win": false
+    },
+    {
+      "direction": "BULLISH",
+      "pnl": -262.5,
+      "win": true
+    },
+    {
+      "direction": "BULLISH",
+      "pnl": -622.4999999999998,
+      "win": false
+    },
+    {
+      "direction": "BULLISH",
+      "pnl": -967.4999999999993,
+      "win": false
+    },
+    {
+      "direction": "BULLISH",
+      "pnl": -918.75,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 90.00000000000021,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 33.75000000000021,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 228.74999999999977,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 3.749999999999787,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 67.50000000000043,
+      "win": true
+    }
+  ],
+  "total_trades": 10,
+  "winning": 7,
+  "losing": 3,
+  "total_pnl": -494.99999999999955,
+  "win_rate": 70.0
+}

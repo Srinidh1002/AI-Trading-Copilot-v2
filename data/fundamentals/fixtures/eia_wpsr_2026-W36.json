@@ -1,0 +1,14 @@
+{
+  "_fixture_note": "TEST_FIXTURE — schema only. Not real EIA data.",
+  "source": "EIA", "report": "Weekly Petroleum Status Report",
+  "reference_week": "2026-W36", "release_date": "2026-09-10",
+  "release_time_utc": "2026-09-10T14:30:00+00:00",
+  "metrics": {
+    "COMMERCIAL_CRUDE_STOCKS": {"units": "million_barrels", "previous": -2.0, "consensus": -1.0, "actual": -5.0},
+    "CUSHING_CRUDE_STOCKS":    {"units": "million_barrels", "previous": -0.5, "consensus": 0.2, "actual": -0.8},
+    "GASOLINE_STOCKS":         {"units": "million_barrels", "previous": 1.0, "consensus": 0.8, "actual": 2.5},
+    "DISTILLATE_STOCKS":       {"units": "million_barrels", "previous": 0.5, "consensus": 0.4, "actual": 0.3},
+    "REFINERY_UTILIZATION":    {"units": "percent", "previous": 92.5, "consensus": 93.0, "actual": 91.8},
+    "US_CRUDE_PRODUCTION":     {"units": "million_bpd", "previous": 13.4, "consensus": 13.4, "actual": 13.5}
+  }
+}

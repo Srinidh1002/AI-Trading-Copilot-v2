@@ -1,6 +1,6 @@
 """One provider-free NIFTY or SENSEX typed candidate evaluation."""
 from __future__ import annotations
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime
 from services.analysis.live_canonical_evidence_engines import LiveCanonicalEvidenceEnginesV1, LiveCanonicalEvidenceResultV1, build_live_canonical_evidence
@@ -32,7 +32,7 @@ class LiveCandidatePolicySourceV1:
 
 @dataclass(frozen=True,slots=True)
 class LiveMarketCandidateEvaluationInputV1:
- market_spec:CertifiedIndexMarketSpecV1;parent_cycle_id:str;candidate_id:str;observation_id:str;spot_response:object;candle_rows_by_timeframe:Mapping[str,object];option_contracts:object;provider_timestamp:datetime;evaluated_at:datetime;session:MarketSessionValidationV1;policy:LiveCandidatePolicySourceV1;engines:LiveCanonicalEvidenceEnginesV1;broader_market:BroaderMarketIntelligenceResultV1|None=None;external_context:ExternalMarketContextResultV1|None=None;provider_state:str="OK";blockers:tuple[str,...]=();warnings:tuple[str,...]=()
+ market_spec:CertifiedIndexMarketSpecV1;parent_cycle_id:str;candidate_id:str;observation_id:str;spot_response:object;candle_rows_by_timeframe:Mapping[str,object];option_contracts:object;option_chain_evidence_contracts:object|None;provider_timestamp:datetime;evaluated_at:datetime;session:MarketSessionValidationV1;policy:LiveCandidatePolicySourceV1;engines:LiveCanonicalEvidenceEnginesV1;broader_market:BroaderMarketIntelligenceResultV1|None=None;external_context:ExternalMarketContextResultV1|None=None;provider_state:str="OK";blockers:tuple[str,...]=();warnings:tuple[str,...]=()
  def __post_init__(self):
   if type(self.market_spec) is not CertifiedIndexMarketSpecV1 or type(self.session) is not MarketSessionValidationV1 or type(self.policy) is not LiveCandidatePolicySourceV1 or type(self.engines) is not LiveCanonicalEvidenceEnginesV1:raise TypeError("typed evaluation input")
   if type(self.parent_cycle_id) is not str or not self.parent_cycle_id.strip():raise ValueError("parent_cycle_id")
@@ -45,27 +45,421 @@ class LiveMarketCandidateEvaluationInputV1:
 class LiveMarketCandidateEvaluationResultV1:
  observation:AngelLiveMarketObservationV1;options:AngelOptionNormalizationResultV1;evidence:LiveCanonicalEvidenceResultV1;composition:MarketAnalysisCandidateCompositionInputV1;policy:MarketAnalysisCandidateCompositionPolicyV1;candidate:MarketAnalysisCandidateV1;pre_entry_action:object|None=None
 
-def evaluate_live_market_candidate(value:LiveMarketCandidateEvaluationInputV1)->LiveMarketCandidateEvaluationResultV1:
- if type(value) is not LiveMarketCandidateEvaluationInputV1:raise TypeError("evaluation input")
- observation=normalize_angel_live_observation(spot_response=value.spot_response,candle_rows_by_timeframe=value.candle_rows_by_timeframe,market_spec=value.market_spec,provider_timestamp=value.provider_timestamp,evaluated_at=value.evaluated_at,provider_state=value.provider_state,blockers=value.blockers,warnings=value.warnings)
- options=normalize_angel_option_chain(contracts=value.option_contracts,market_spec=value.market_spec,spot_price=observation.spot.price,provider_timestamp=value.provider_timestamp,evaluated_at=value.evaluated_at,provider_state=value.provider_state,blockers=value.blockers,warnings=value.warnings)
- source=LiveTypedEvidenceInputV1(value.candidate_id,value.observation_id,value.market_spec.underlying_symbol,value.market_spec.exchange,value.market_spec.option_exchange,value.market_spec.symboltoken,value.evaluated_at,value.provider_timestamp,value.evaluated_at,observation,options,value.session,value.policy.direction,value.policy.eligibility,value.policy.confidence,value.policy.score,value.policy.reasons,value.policy.invalidation_conditions,value.policy.blockers,value.policy.warnings,value.policy.contradictions)
- evidence=build_live_canonical_evidence(observation=observation,options=options,session=value.session,evaluated_at=value.evaluated_at,engines=value.engines,cycle_id=value.candidate_id,observation_id=value.observation_id,broader_market=value.broader_market,external_context=value.external_context,blockers=value.blockers,warnings=value.warnings,contradictions=value.policy.contradictions,reasons=value.policy.reasons,invalidation_conditions=value.policy.invalidation_conditions)
- evidence=replace(evidence,confidence_ledger=build_market_analysis_confidence_ledger(cycle_id=value.parent_cycle_id,observation_id=value.observation_id,evidence=evidence,policy_source=value.policy))
- composition,policy=compose_from_live_canonical_evidence(source=source,evidence=evidence)
- candidate=compose_market_analysis_candidate(composition,policy)
- action=resolve_pre_entry_market_action(candidate=candidate,cycle_id=value.parent_cycle_id,observation_id=value.observation_id,evaluated_at=value.evaluated_at,ledger=evidence.confidence_ledger)
- return LiveMarketCandidateEvaluationResultV1(observation,options,evidence,composition,policy,candidate,action)
+def _build_live_candidate_base_evidence(
+    value: LiveMarketCandidateEvaluationInputV1,
+) -> tuple[
+    AngelLiveMarketObservationV1,
+    AngelOptionNormalizationResultV1,
+    LiveCanonicalEvidenceResultV1,
+]:
+    """Build normalized market/options and canonical evidence exactly once."""
+    if type(value) is not LiveMarketCandidateEvaluationInputV1:
+        raise TypeError("evaluation input")
 
-def evaluate_captured_certified_market_candidate(*, captured_evidence:CertifiedLiveCapturedEvidenceV1, session_validation:MarketSessionValidationV1, policy_source:LiveCandidatePolicySourceV1, parent_cycle_id:str, candidate_id:str, observation_id:str, engines:LiveCanonicalEvidenceEnginesV1, broader_market:BroaderMarketIntelligenceResultV1|None=None, external_context:ExternalMarketContextResultV1|None=None)->LiveMarketCandidateEvaluationResultV1:
- """Pure one-market bridge from the certified immutable capture to typed evidence."""
- if type(captured_evidence) is not CertifiedLiveCapturedEvidenceV1 or type(session_validation) is not MarketSessionValidationV1 or type(policy_source) is not LiveCandidatePolicySourceV1 or type(engines) is not LiveCanonicalEvidenceEnginesV1: raise TypeError("exact captured evaluator inputs")
- spec=market_spec_for(captured_evidence.underlying_symbol,captured_evidence.spot_exchange)
- if (session_validation.symbol,session_validation.exchange)!=(spec.underlying_symbol,spec.exchange): raise ValueError("session identity")
- payload=dict(captured_evidence.spot_payload)
- if "data" not in payload:
-  payload={"data":{"ltp":payload.get("spot_price",payload.get("ltp")),"tradingsymbol":spec.underlying_symbol,"exchange":spec.exchange,"symboltoken":spec.symboltoken}}
- return evaluate_live_market_candidate(LiveMarketCandidateEvaluationInputV1(spec,parent_cycle_id,candidate_id,observation_id,payload,captured_evidence.candle_rows_by_timeframe,captured_evidence.option_contracts,captured_evidence.provider_timestamp,captured_evidence.evaluated_at,session_validation,policy_source,engines,broader_market=broader_market,external_context=external_context,blockers=captured_evidence.provider_blockers,warnings=captured_evidence.provider_warnings))
+    observation = normalize_angel_live_observation(
+        spot_response=value.spot_response,
+        candle_rows_by_timeframe=(
+            value.candle_rows_by_timeframe
+        ),
+        market_spec=value.market_spec,
+        provider_timestamp=value.provider_timestamp,
+        evaluated_at=value.evaluated_at,
+        provider_state=value.provider_state,
+        blockers=value.blockers,
+        warnings=value.warnings,
+    )
+
+    options = normalize_angel_option_chain(
+        contracts=value.option_contracts,
+        snapshot_contracts=(
+            value.option_chain_evidence_contracts
+            if value.option_chain_evidence_contracts is not None
+            else value.option_contracts
+        ),
+        market_spec=value.market_spec,
+        spot_price=observation.spot.price,
+        provider_timestamp=value.provider_timestamp,
+        evaluated_at=value.evaluated_at,
+        provider_state=value.provider_state,
+        blockers=value.blockers,
+        warnings=value.warnings,
+    )
+
+    evidence = build_live_canonical_evidence(
+        observation=observation,
+        options=options,
+        session=value.session,
+        evaluated_at=value.evaluated_at,
+        engines=value.engines,
+        cycle_id=value.candidate_id,
+        observation_id=value.observation_id,
+        broader_market=value.broader_market,
+        external_context=value.external_context,
+        blockers=value.blockers,
+        warnings=value.warnings,
+    )
+
+    return observation, options, evidence
+
+
+def _finalize_live_market_candidate(
+    *,
+    value: LiveMarketCandidateEvaluationInputV1,
+    observation: AngelLiveMarketObservationV1,
+    options: AngelOptionNormalizationResultV1,
+    evidence: LiveCanonicalEvidenceResultV1,
+    policy: LiveCandidatePolicySourceV1,
+) -> LiveMarketCandidateEvaluationResultV1:
+    """Apply one already-decided policy to one already-built evidence graph."""
+    if type(policy) is not LiveCandidatePolicySourceV1:
+        raise TypeError(
+            "policy factory must return exact "
+            "LiveCandidatePolicySourceV1"
+        )
+
+    # These fields historically entered the evidence result from the
+    # supplied policy before canonical evidence construction. They are
+    # metadata only; no canonical evidence engine consumes them.
+    evidence = replace(
+        evidence,
+        contradictions=policy.contradictions,
+        reasons=policy.reasons,
+        invalidation_conditions=(
+            policy.invalidation_conditions
+        ),
+    )
+
+    source = LiveTypedEvidenceInputV1(
+        value.candidate_id,
+        value.observation_id,
+        value.market_spec.underlying_symbol,
+        value.market_spec.exchange,
+        value.market_spec.option_exchange,
+        value.market_spec.symboltoken,
+        value.evaluated_at,
+        value.provider_timestamp,
+        value.evaluated_at,
+        observation,
+        options,
+        value.session,
+        policy.direction,
+        policy.eligibility,
+        policy.confidence,
+        policy.score,
+        policy.reasons,
+        policy.invalidation_conditions,
+        policy.blockers,
+        policy.warnings,
+        policy.contradictions,
+    )
+
+    evidence = replace(
+        evidence,
+        confidence_ledger=(
+            build_market_analysis_confidence_ledger(
+                cycle_id=value.parent_cycle_id,
+                observation_id=value.observation_id,
+                evidence=evidence,
+                policy_source=policy,
+            )
+        ),
+    )
+
+    composition, composition_policy = (
+        compose_from_live_canonical_evidence(
+            source=source,
+            evidence=evidence,
+        )
+    )
+
+    candidate = compose_market_analysis_candidate(
+        composition,
+        composition_policy,
+    )
+
+    action = resolve_pre_entry_market_action(
+        candidate=candidate,
+        cycle_id=value.parent_cycle_id,
+        observation_id=value.observation_id,
+        evaluated_at=value.evaluated_at,
+        ledger=evidence.confidence_ledger,
+    )
+
+    return LiveMarketCandidateEvaluationResultV1(
+        observation,
+        options,
+        evidence,
+        composition,
+        composition_policy,
+        candidate,
+        action,
+    )
+
+
+def evaluate_live_market_candidate(
+    value: LiveMarketCandidateEvaluationInputV1,
+) -> LiveMarketCandidateEvaluationResultV1:
+    """Existing fixed-policy evaluation path."""
+    observation, options, evidence = (
+        _build_live_candidate_base_evidence(value)
+    )
+
+    return _finalize_live_market_candidate(
+        value=value,
+        observation=observation,
+        options=options,
+        evidence=evidence,
+        policy=value.policy,
+    )
+
+
+def evaluate_live_market_candidate_with_policy_factory(
+    value: LiveMarketCandidateEvaluationInputV1,
+    *,
+    policy_factory: Callable[
+        [LiveCanonicalEvidenceResultV1],
+        LiveCandidatePolicySourceV1,
+    ],
+) -> LiveMarketCandidateEvaluationResultV1:
+    """Build canonical evidence once, then derive the policy from it."""
+    if not callable(policy_factory):
+        raise TypeError("policy_factory")
+
+    try:
+        observation, options, evidence = (
+            _build_live_candidate_base_evidence(value)
+        )
+    except Exception as exc:
+        if not hasattr(exc, "task9_failure_stage"):
+            setattr(
+                exc,
+                "task9_failure_stage",
+                "TASK9_BASE_EVIDENCE",
+            )
+        raise
+
+    try:
+        policy = policy_factory(evidence)
+    except Exception as exc:
+        if not hasattr(exc, "task9_failure_stage"):
+            setattr(
+                exc,
+                "task9_failure_stage",
+                "TASK9_CANONICAL_POLICY",
+            )
+        raise
+
+    try:
+        return _finalize_live_market_candidate(
+            value=value,
+            observation=observation,
+            options=options,
+            evidence=evidence,
+            policy=policy,
+        )
+    except Exception as exc:
+        if not hasattr(exc, "task9_failure_stage"):
+            setattr(
+                exc,
+                "task9_failure_stage",
+                "TASK9_CANDIDATE_FINALIZATION",
+            )
+        raise
+
+
+def evaluate_captured_certified_market_candidate(
+    *,
+    captured_evidence: CertifiedLiveCapturedEvidenceV1,
+    session_validation: MarketSessionValidationV1,
+    policy_source: LiveCandidatePolicySourceV1,
+    parent_cycle_id: str,
+    candidate_id: str,
+    observation_id: str,
+    engines: LiveCanonicalEvidenceEnginesV1,
+    broader_market: BroaderMarketIntelligenceResultV1 | None = None,
+    external_context: ExternalMarketContextResultV1 | None = None,
+) -> LiveMarketCandidateEvaluationResultV1:
+    """Pure one-market bridge from certified immutable capture."""
+    if (
+        type(captured_evidence)
+        is not CertifiedLiveCapturedEvidenceV1
+        or type(session_validation)
+        is not MarketSessionValidationV1
+        or type(policy_source)
+        is not LiveCandidatePolicySourceV1
+        or type(engines)
+        is not LiveCanonicalEvidenceEnginesV1
+    ):
+        raise TypeError(
+            "exact captured evaluator inputs"
+        )
+
+    spec = market_spec_for(
+        captured_evidence.underlying_symbol,
+        captured_evidence.spot_exchange,
+    )
+
+    if (
+        session_validation.symbol,
+        session_validation.exchange,
+    ) != (
+        spec.underlying_symbol,
+        spec.exchange,
+    ):
+        raise ValueError("session identity")
+
+    payload = dict(
+        captured_evidence.spot_payload
+    )
+
+    if "data" not in payload:
+        payload = {
+            "data": {
+                "ltp": payload.get(
+                    "spot_price",
+                    payload.get("ltp"),
+                ),
+                "tradingsymbol": (
+                    spec.underlying_symbol
+                ),
+                "exchange": spec.exchange,
+                "symboltoken": spec.symboltoken,
+            }
+        }
+
+    value = LiveMarketCandidateEvaluationInputV1(
+        spec,
+        parent_cycle_id,
+        candidate_id,
+        observation_id,
+        payload,
+        captured_evidence.candle_rows_by_timeframe,
+        captured_evidence.option_contracts,
+        captured_evidence.option_chain_evidence_contracts,
+        captured_evidence.provider_timestamp,
+        captured_evidence.evaluated_at,
+        session_validation,
+        policy_source,
+        engines,
+        broader_market=broader_market,
+        external_context=external_context,
+        blockers=(
+            captured_evidence.provider_blockers
+        ),
+        warnings=(
+            captured_evidence.provider_warnings
+        ),
+    )
+
+    return evaluate_live_market_candidate(
+        value
+    )
+
+
+def evaluate_captured_certified_market_candidate_with_policy_factory(
+    *,
+    captured_evidence: CertifiedLiveCapturedEvidenceV1,
+    session_validation: MarketSessionValidationV1,
+    policy_factory: Callable[
+        [LiveCanonicalEvidenceResultV1],
+        LiveCandidatePolicySourceV1,
+    ],
+    parent_cycle_id: str,
+    candidate_id: str,
+    observation_id: str,
+    engines: LiveCanonicalEvidenceEnginesV1,
+    broader_market: BroaderMarketIntelligenceResultV1 | None = None,
+    external_context: ExternalMarketContextResultV1 | None = None,
+) -> LiveMarketCandidateEvaluationResultV1:
+    """Captured-evidence path where policy is derived from canonical evidence."""
+    if (
+        type(captured_evidence)
+        is not CertifiedLiveCapturedEvidenceV1
+        or type(session_validation)
+        is not MarketSessionValidationV1
+        or type(engines)
+        is not LiveCanonicalEvidenceEnginesV1
+        or not callable(policy_factory)
+    ):
+        raise TypeError(
+            "exact captured policy-factory inputs"
+        )
+
+    spec = market_spec_for(
+        captured_evidence.underlying_symbol,
+        captured_evidence.spot_exchange,
+    )
+
+    if (
+        session_validation.symbol,
+        session_validation.exchange,
+    ) != (
+        spec.underlying_symbol,
+        spec.exchange,
+    ):
+        raise ValueError("session identity")
+
+    payload = dict(
+        captured_evidence.spot_payload
+    )
+
+    if "data" not in payload:
+        payload = {
+            "data": {
+                "ltp": payload.get(
+                    "spot_price",
+                    payload.get("ltp"),
+                ),
+                "tradingsymbol": (
+                    spec.underlying_symbol
+                ),
+                "exchange": spec.exchange,
+                "symboltoken": spec.symboltoken,
+            }
+        }
+
+    # The placeholder policy exists only to satisfy the immutable input
+    # contract. It is never used as authority; policy_factory replaces it
+    # after canonical evidence is built.
+    placeholder = (
+        LiveCandidatePolicySourceV1.unavailable(
+            blockers=(
+                "CANONICAL_POLICY_PENDING",
+            )
+        )
+    )
+
+    value = LiveMarketCandidateEvaluationInputV1(
+        spec,
+        parent_cycle_id,
+        candidate_id,
+        observation_id,
+        payload,
+        captured_evidence.candle_rows_by_timeframe,
+        captured_evidence.option_contracts,
+        captured_evidence.option_chain_evidence_contracts,
+        captured_evidence.provider_timestamp,
+        captured_evidence.evaluated_at,
+        session_validation,
+        placeholder,
+        engines,
+        broader_market=broader_market,
+        external_context=external_context,
+        blockers=(
+            captured_evidence.provider_blockers
+        ),
+        warnings=(
+            captured_evidence.provider_warnings
+        ),
+    )
+
+    return (
+        evaluate_live_market_candidate_with_policy_factory(
+            value,
+            policy_factory=policy_factory,
+        )
+    )
+
 
 def attach_certified_candidate_evidence(raw_analysis:Mapping[str,object],evaluation:LiveMarketCandidateEvaluationResultV1)->dict[str,object]:
  if not isinstance(raw_analysis,Mapping) or type(evaluation) is not LiveMarketCandidateEvaluationResultV1:raise TypeError("attachment")

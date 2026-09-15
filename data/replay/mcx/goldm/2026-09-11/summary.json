@@ -1,0 +1,23 @@
+{
+  "product": "GOLDM",
+  "date": "2026-09-11",
+  "execution_mode": "REPLAY_DIAGNOSTIC",
+  "market_origin": "HISTORICAL",
+  "certification_eligible": false,
+  "window": "2026-09-11T17:00:00+05:30 \u2192 2026-09-11T23:15:00+05:30",
+  "step_seconds": 300,
+  "contract_resolved": "GOLDM05OCT26FUT",
+  "contract_token": "569003",
+  "evals_attempted": 76,
+  "evals_complete": 0,
+  "incomplete_evidence": 76,
+  "time_travel_violations": 0,
+  "live_boundary_violations": 0,
+  "levels": {
+    "level_a": "PASS",
+    "level_b": "UNAVAILABLE",
+    "level_c": "UNAVAILABLE",
+    "level_a_reason": "historical futures candles available"
+  },
+  "determinism_hash": "a2cea201a1edd9537fcecbea307c6b7413d9663b765fe80f057855fcbea8e8f7"
+}

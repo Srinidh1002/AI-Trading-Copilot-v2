@@ -293,7 +293,18 @@ def test_analysis_rate_limit_retains_specific_failure_reason():
     )
 
 
-def test_generic_analysis_failure_remains_candidate_composition_failed():
+@pytest.mark.parametrize(
+    ("exception_type", "exception_class"),
+    (
+        (ValueError, "ValueError"),
+        (RuntimeError, "RuntimeError"),
+        (TypeError, "TypeError"),
+    ),
+)
+def test_generic_analysis_failure_remains_candidate_composition_failed(
+    exception_type,
+    exception_class,
+):
     nifty, sensex = cycles()
 
     def factory(
@@ -306,8 +317,8 @@ def test_generic_analysis_failure_remains_candidate_composition_failed():
         parent_cycle_id,
     ):
         if cycle.underlying_symbol == "NIFTY":
-            raise RuntimeError(
-                "INJECTED_CANDIDATE_COMPOSITION_FAILURE"
+            raise exception_type(
+                "Authorization: Bearer secret-token password=not-for-audit"
             )
         return candidate_for(
             cycle,
@@ -331,3 +342,16 @@ def test_generic_analysis_failure_remains_candidate_composition_failed():
     assert failed.child.errors == (
         "CANDIDATE_COMPOSITION_FAILED",
     )
+    assert dict(failed.child.failure_diagnostic) == {
+        "failure_stage": "ANALYSIS_AUTHORITY",
+        "exception_class": exception_class,
+        "stable_failure_code": "CANDIDATE_COMPOSITION_FAILED",
+    }
+    persisted_text = repr(failed.child)
+    for secret_fragment in (
+        "Authorization",
+        "secret-token",
+        "password=not-for-audit",
+        "Traceback",
+    ):
+        assert secret_fragment not in persisted_text

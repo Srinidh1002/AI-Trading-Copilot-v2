@@ -1,0 +1,24 @@
+2026-09-02 04:30:51,823 - INFO - ======================================================================
+2026-09-02 04:30:51,823 - INFO - [START] AI Trading Copilot - Scheduled Trading Mode
+2026-09-02 04:30:51,823 - INFO - ======================================================================
+2026-09-02 04:30:51,823 - INFO - [NOTE] Log file: logs\trading_20260902_043051.log
+2026-09-02 04:30:51,874 - INFO - [NOTE] Current IST: 2026-09-02 04:30:51
+2026-09-02 04:30:51,875 - INFO - [WAIT] 269 minutes until pre-market (9:00 AM IST)
+2026-09-02 09:00:00,011 - INFO - [OK] Pre-market starting now!
+2026-09-02 09:00:00,012 - INFO - [WAIT] Pre-market period - Waiting for trading to start at 9:15 AM...
+2026-09-02 09:00:00,013 - INFO - [WAIT] 14 minutes until trading starts at 9:15 AM IST
+2026-09-02 09:15:00,011 - INFO - [OK] Trading starting now!
+2026-09-02 09:15:00,011 - INFO - [START] Initializing trading session...
+2026-09-02 09:15:00,012 - INFO - WebSocket Bridge monitoring: C:\Users\sreen\OneDrive\Documents\GitHub\AI-Trading-Copilot-v2\data\task9\live_stream
+2026-09-02 09:15:00,012 - INFO - WebSocket Bridge initialized
+2026-09-02 09:15:00,012 - INFO - Subscriber added (total: 1)
+2026-09-02 09:15:00,012 - INFO - [OK] Paper trading engine initialized (connected to WebSocket)
+2026-09-02 09:15:00,012 - INFO - [START] Starting paper trading engine...
+2026-09-02 09:15:00,013 - INFO - [CONNECT] Starting WebSocket Bridge...
+2026-09-02 09:15:00,013 - INFO - [MONITOR] Session monitor started
+2026-09-02 09:15:00,013 - INFO - WebSocket Bridge polling started
+2026-09-02 09:15:00,531 - INFO - Initial data for NIFTY: LTP=24080.4
+2026-09-02 09:15:00,532 - INFO - Initial data for SENSEX: LTP=76957.27
+2026-09-02 09:15:00,532 - INFO - WebSocket Bridge stopped
+2026-09-02 09:15:00,533 - INFO - 🛑 Paper trading engine stopped
+2026-09-02 09:15:00,533 - INFO - [OK] Trading session completed peacefully!

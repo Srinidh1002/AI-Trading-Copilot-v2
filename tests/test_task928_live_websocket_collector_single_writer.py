@@ -32,3 +32,148 @@ def test_foreign_token_cannot_unlock_existing_lock(tmp_path):
     foreign.release()
     assert owner.path.exists()
     owner.release()
+
+def test_dead_process_lock_is_reclaimed_without_manual_deletion(
+    tmp_path,
+    monkeypatch,
+):
+    root = tmp_path / "stream"
+    root.mkdir()
+
+    path = (
+        root
+        / Task9LiveStreamCollectorLock.filename
+    )
+
+    path.write_text(
+        json.dumps(
+            {
+                "pid": 99999999,
+                "acquired_at": (
+                    "2026-08-18T05:01:14+00:00"
+                ),
+                "ownership_token": (
+                    "dead-owner-token"
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "services.certification."
+        "task9_live_websocket_collector."
+        "_task9_process_is_alive",
+        lambda pid: False,
+    )
+
+    replacement = (
+        Task9LiveStreamCollectorLock(
+            root
+        )
+    )
+
+    replacement.acquire()
+
+    durable = json.loads(
+        path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert durable["pid"] != 99999999
+    assert (
+        durable["ownership_token"]
+        != "dead-owner-token"
+    )
+
+    replacement.release()
+
+    assert not path.exists()
+
+
+def test_live_process_lock_remains_strictly_single_writer(
+    tmp_path,
+    monkeypatch,
+):
+    root = tmp_path / "stream"
+    root.mkdir()
+
+    path = (
+        root
+        / Task9LiveStreamCollectorLock.filename
+    )
+
+    path.write_text(
+        json.dumps(
+            {
+                "pid": 12345,
+                "acquired_at": (
+                    "2026-08-19T04:00:00+00:00"
+                ),
+                "ownership_token": (
+                    "live-owner-token"
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "services.certification."
+        "task9_live_websocket_collector."
+        "_task9_process_is_alive",
+        lambda pid: True,
+    )
+
+    with pytest.raises(
+        Task9LiveStreamCollectorLockError,
+        match=(
+            "TASK9_LIVE_STREAM_"
+            "COLLECTOR_ALREADY_ACTIVE"
+        ),
+    ):
+        Task9LiveStreamCollectorLock(
+            root
+        ).acquire()
+
+    durable = json.loads(
+        path.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert (
+        durable["ownership_token"]
+        == "live-owner-token"
+    )
+
+
+def test_malformed_existing_lock_fails_closed_and_is_not_deleted(
+    tmp_path,
+):
+    root = tmp_path / "stream"
+    root.mkdir()
+
+    path = (
+        root
+        / Task9LiveStreamCollectorLock.filename
+    )
+
+    path.write_text(
+        "{not-json",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        Task9LiveStreamCollectorLockError,
+        match=(
+            "TASK9_LIVE_STREAM_"
+            "COLLECTOR_LOCK_CORRUPT"
+        ),
+    ):
+        Task9LiveStreamCollectorLock(
+            root
+        ).acquire()
+
+    assert path.exists()

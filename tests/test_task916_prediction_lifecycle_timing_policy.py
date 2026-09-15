@@ -9,6 +9,7 @@ from services.contracts.prediction_lifecycle_timing_v1 import POLICY_ID, Predict
 from services.contracts.prediction_record_v1 import PredictionRecordV1
 from services.contracts.task9_live_paper_trade_counting_input_v1 import Task9LivePaperTradeCountingInputV1
 from services.market_session.policies import MarketSessionPolicy
+from services.contracts.task9_market_session_state_v1 import Task9SegmentSessionStateV1
 
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -89,3 +90,8 @@ def test_prediction_record_without_explicit_observed_time_fails_closed():
     object.__setattr__(record, "observed_at", None)
     with pytest.raises(ValueError, match="observed_at"):
         resolve(record)
+
+def test_canonical_task9_state_overrides_legacy_close_with_1540_cap():
+    observed=datetime(2026,8,10,15,31,tzinfo=IST);state=Task9SegmentSessionStateV1("NFO_OPTIONS",observed.date(),observed,"Asia/Kolkata","ENTRY_RESTRICTED",True,False,True,False,time(9,15),time(15,30),time(15,40),time(15,40),"TRADING_DAY","p","1")
+    window=resolve_prediction_lifecycle_window(prediction_record=prediction("WAIT",observed),session_policy=MarketSessionPolicy(),task9_session_state=state,task9_segment="NFO_OPTIONS")
+    assert window.validity_window_ends_at==datetime(2026,8,10,15,40,tzinfo=IST)

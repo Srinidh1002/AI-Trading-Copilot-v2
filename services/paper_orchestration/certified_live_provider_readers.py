@@ -357,13 +357,20 @@ class CertifiedLiveProviderReaders:
         if self.substage_callback is not None: self.substage_callback("INDIA_VIX_CAPTURE_COMPLETE")
         if vix_capture is not None:
             self.india_vix_normalization_count += 1
-        # Each provider receipt remains on its captured evidence.  The shared
-        # cross-market calculation uses one boundary after every shared input
-        # has been captured; otherwise a fresh later VIX looks future-dated.
-        parent_evaluated_at = max(
+        # Mandatory NIFTY<->SENSEX freshness belongs only to the
+        # two market captures. Later optional context must not age
+        # the final completed 5m cross-market candle.
+        market_evaluated_at = max(
             nifty.evaluated_at,
             sensex.evaluated_at,
-            vix_capture.evaluated_at if vix_capture is not None else nifty.evaluated_at,
+        )
+        # The shared parent clock may advance for later context such
+        # as India VIX, preserving its own timestamp semantics.
+        parent_evaluated_at = max(
+            market_evaluated_at,
+            vix_capture.evaluated_at
+            if vix_capture is not None
+            else market_evaluated_at,
         )
         external_context = (
             self.external_context_reader.build(
@@ -377,6 +384,7 @@ class CertifiedLiveProviderReaders:
             nifty_observation=self._normalized_capture(nifty_cycle, nifty, evaluated_at=parent_evaluated_at),
             sensex_observation=self._normalized_capture(sensex_cycle, sensex, evaluated_at=parent_evaluated_at),
             evaluated_at=parent_evaluated_at,
+            cross_market_evaluated_at=market_evaluated_at,
             india_vix_capture=vix_capture,
             shared_external_context=external_context,
             capture_diagnostics={

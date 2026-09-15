@@ -1,0 +1,86 @@
+549:     def analyze_top_stocks(self):
+550:         """Analyze FIXED weighted stock universe - NIFTY/SENSEX constituents"""
+551:         print(' 📊 Analyzing Weighted Constituents (FIXED UNIVERSE)...')
+552: 
+553:         if self.market == 'NIFTY':
+554:             universe = self.index_weights
+555:         else:
+556:             universe = self.index_weights
+557: 
+558:         if not hasattr(self, '_token_cache'):
+559:             self._token_cache = {}
+560:             try:
+561:                 with open('data/instruments.json', 'r') as f:
+562:                     raw = json.load(f)
+563:                 for inst in raw:
+564:                     if inst.get('exch_seg') == 'NSE':
+565:                         sym = inst.get('symbol', '')
+566:                         if sym.endswith('-EQ'):
+567:                             self._token_cache[sym] = inst.get('token')
+568:             except:
+569:                 pass
+570: 
+571:         weighted_bull = 0.0
+572:         weighted_bear = 0.0
+573:         valid_count = 0
+574:         missing_count = 0
+575: 
+576:         for symbol, weight in universe:
+577:             try:
+578:                 token = self._token_cache.get(symbol, '')
+579:                 if not token:
+580:                     missing_count += 1
+581:                     continue
+582: 
+583:                 quote = self.obj.ltpData('NSE', symbol, token)
+584:                 if not quote or not quote.get('data'):
+585:                     missing_count += 1
+586:                     continue
+587: 
+588:                 ltp = float(quote['data'].get('ltp', 0))
+589:                 prev_close = float(quote['data'].get('close', 0))
+590: 
+591:                 if ltp <= 0 or prev_close <= 0:
+592:                     missing_count += 1
+593:                     continue
+594: 
+595:                 change_pct = ((ltp - prev_close) / prev_close) * 100
+596:                 contribution = (weight / 100) * change_pct
+597: 
+598:                 if change_pct > 0.15:
+599:                     weighted_bull += contribution
+600:                     marker = 'UP'
+601:                 elif change_pct < -0.15:
+602:                     weighted_bear += abs(contribution)
+603:                     marker = 'DN'
+604:                 else:
+605:                     marker = '--'
+606: 
+607:                 valid_count += 1
+608:                 print(f'  [{marker}] {symbol.replace("-EQ", "")} ({weight:.1f}%): {change_pct:+.2f}% | contrib: {contribution:+.3f}')
+609: 
+610:                 time.sleep(0.5)
+611: 
+612:             except Exception:
+613:                 missing_count += 1
+614:                 continue
+615: 
+616:         total_expected = len(universe)
+617:         completeness = valid_count / total_expected if total_expected > 0 else 0
+618: 
+619:         print(f'  Evidence: {valid_count}/{total_expected} stocks loaded')
+620: 
+621:         if completeness < 0.6:
+622:             print(f'  INSUFFICIENT EVIDENCE ({completeness:.0%}) - abstaining')
+623:             return 0, 0, 'INCOMPLETE'
+624: 
+625:         print(f'  Weighted Bull: +{weighted_bull:.3f}')
+626:         print(f'  Weighted Bear: -{weighted_bear:.3f}')
+627: 
+628:         if weighted_bull > weighted_bear * 1.5 and weighted_bull > 0.15:
+629:             return valid_count, missing_count, 'BULLISH'
+630:         elif weighted_bear > weighted_bull * 1.5 and weighted_bear > 0.15:
+631:             return valid_count, missing_count, 'BEARISH'
+632:         else:
+633:             return valid_count, missing_count, 'NEUTRAL'
+634: 

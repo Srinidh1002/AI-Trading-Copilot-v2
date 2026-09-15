@@ -1,0 +1,80 @@
+{
+  "schema_version": "task9_runtime_config.v1",
+  "runtime_config_id": "task9-runtime-2026-08-31-r1",
+  "runtime_config_version": "1",
+  "canonical_config": {
+    "runtime_config_id": "task9-runtime-2026-08-31-r1",
+    "runtime_config_version": "1",
+    "schema_version": "task9_runtime_config.v1",
+    "execution_mode": "PAPER",
+    "broker_order_submission": false,
+    "live_execution_eligible": false,
+    "campaign_id": "task9-live-certification-2026-08-18-r2",
+    "market_date": "2026-08-31",
+    "official_run_id": "task9-live-20260831-r1",
+    "authoritative_persistence_root": "data/task9",
+    "campaign_registry_location": "data/task9/campaign_registry",
+    "certification_registry_root": "data/task9/certification_registry",
+    "dashboard_publication_location": "data/task9/dashboard",
+    "official_root": "data/task9/official",
+    "available_capital": 10000.0,
+    "trade_risk_fraction": 0.02,
+    "maximum_quantity": 10,
+    "maximum_lots": 3,
+    "maximum_daily_loss_fraction": 0.05,
+    "maximum_spread_fraction": 0.1,
+    "parent_cycle_cadence_seconds": 60.0,
+    "collector_heartbeat_seconds": 5.0,
+    "market_quote_max_age_seconds": 300.0,
+    "option_quote_max_age_seconds": 300.0,
+    "instrument_master_max_age_seconds": 86400.0,
+    "timezone": "Asia/Kolkata",
+    "run_classification": "OFFICIAL_CERTIFICATION",
+    "emergency_halt_enabled": false,
+    "emergency_halt_reason": null,
+    "policy_references": {
+      "canonical_directional": "directional.v1",
+      "session": "session.v1",
+      "risk": "risk.v1",
+      "contract_selection": "contract-selection.v1",
+      "lifecycle": "lifecycle.v1",
+      "counting": "counting.v1",
+      "failure_disposition": "failure-disposition.v1",
+      "contract_spread": "spread.v1",
+      "liquidity": "liquidity.v1",
+      "minimum_risk_reward": "rr.v1",
+      "stop_target": "stop-target.v1",
+      "portfolio_concurrency": "portfolio.v1"
+    },
+    "markets": [
+      {
+        "market": "NIFTY",
+        "exchange": "NSE",
+        "option_exchange": "NFO",
+        "provider_market_name": "Nifty 50",
+        "spot_token": "99926000"
+      },
+      {
+        "market": "SENSEX",
+        "exchange": "BSE",
+        "option_exchange": "BFO",
+        "provider_market_name": "SENSEX",
+        "spot_token": "99919000"
+      }
+    ],
+    "provider_features": {
+      "angel_spot": "ENABLED_REQUIRED",
+      "angel_option_full": "ENABLED_REQUIRED",
+      "angel_greeks": "CAPABILITY_AWARE",
+      "india_vix": "ENABLED_OPTIONAL",
+      "events": "PROVIDER_NOT_SELECTED",
+      "fii_dii": "PROVIDER_NOT_SELECTED",
+      "global": "PROVIDER_NOT_SELECTED",
+      "market_breadth": "PROVIDER_NOT_SELECTED",
+      "news": "PROVIDER_NOT_SELECTED",
+      "llm": "OPTIONAL_FUTURE"
+    }
+  },
+  "content_sha256": "561b1ec373483034ad4e095de1efc158f5565bbcbe916fc2e7388fd7775cf52f",
+  "snapshot_id": "task9-runtime-config-561b1ec373483034ad4e095de1efc158f5565bbcbe916fc2e7388fd7775cf52f"
+}

@@ -28,7 +28,7 @@ from services.option_chain_validator import (
 )
 
 from services.option_full_response_validator import (
-    validate_option_full_response,
+    validate_option_full_response_partial,
 )
 from services.options.angel_option_provider_capabilities import (
     angel_option_provider_capabilities,
@@ -52,50 +52,53 @@ class LiveOptionChainBuilder:
     """
 
     def __init__(
-        self,
-        instrument_master=None,
-        market_client=None,
-        clock=None,
-        maximum_quote_age_seconds=300.0,
-        maximum_future_skew_seconds=5.0,
-    ):
-        self.instrument_master = (
-            instrument_master
-            if instrument_master is not None
-            else AngelInstrumentMaster()
-        )
-
-        self.market_client = (
-            market_client
-            if market_client is not None
-            else get_market_client()
-        )
-
-        self.clock = (
-            clock
-            if clock is not None
-            else lambda: datetime.now(timezone.utc)
-        )
-
-        if not callable(self.clock):
-            raise TypeError("clock must be callable")
-
-        self.maximum_quote_age_seconds = float(
-            maximum_quote_age_seconds
-        )
-        self.maximum_future_skew_seconds = float(
-            maximum_future_skew_seconds
-        )
-
-        if self.maximum_quote_age_seconds < 0:
-            raise ValueError(
-                "maximum_quote_age_seconds cannot be negative"
+            self,
+            instrument_master=None,
+            market_client=None,
+            option_cache=None,
+            clock=None,
+            maximum_quote_age_seconds=300.0,
+            maximum_future_skew_seconds=5.0,
+        ):
+            self.instrument_master = (
+                instrument_master
+                if instrument_master is not None
+                else AngelInstrumentMaster()
             )
 
-        if self.maximum_future_skew_seconds < 0:
-            raise ValueError(
-                "maximum_future_skew_seconds cannot be negative"
+            self.market_client = (
+                market_client
+                if market_client is not None
+                else get_market_client()
             )
+
+            self.option_cache = option_cache
+
+            self.clock = (
+                clock
+                if clock is not None
+                else lambda: datetime.now(timezone.utc)
+            )
+
+            if not callable(self.clock):
+                raise TypeError("clock must be callable")
+
+            self.maximum_quote_age_seconds = float(
+                maximum_quote_age_seconds
+            )
+            self.maximum_future_skew_seconds = float(
+                maximum_future_skew_seconds
+            )
+
+            if self.maximum_quote_age_seconds < 0:
+                raise ValueError(
+                    "maximum_quote_age_seconds cannot be negative"
+                )
+
+            if self.maximum_future_skew_seconds < 0:
+                raise ValueError(
+                    "maximum_future_skew_seconds cannot be negative"
+                )
 
     @staticmethod
     def _normalize_strike(
@@ -664,30 +667,51 @@ class LiveOptionChainBuilder:
         # FETCH LIVE FULL MARKET DATA
         # ---------------------------------
 
-        response = (
-            self.market_client
-            .get_market_data(
-                mode="FULL",
-                exchange_tokens={
-                    option_exchange: tokens
-                },
-            )
-        )
+        current_time = self.clock()
 
-        received_at = self.clock()
+        # 1. Initialize an in-memory TTL cache on the builder instance if missing
+        if not hasattr(self, "_ttl_cache"):
+              self._ttl_cache = {}
+              self._ttl_seconds = 60.0
+
+        # 2. Use the exact tuple of required option tokens as the cache key
+        cache_key = tuple(sorted(tokens))
+        cached = self._ttl_cache.get(cache_key)
+
+        # 3. Serve from RAM if we queried these exact strikes less than 60s ago
+        if cached and (current_time - cached["received_at"]).total_seconds() < self._ttl_seconds:
+              response = cached["response"]
+              received_at = cached["received_at"]
+        else:
+              # 4. Otherwise, fetch fresh data from Angel One
+              response = (
+                  self.market_client
+                  .get_market_data(
+                      mode="FULL",
+                      exchange_tokens={
+                          option_exchange: tokens
+                      },
+                  )
+              )
+              received_at = current_time
+              
+              # 5. Save to the local instance cache
+              self._ttl_cache[cache_key] = {
+                  "response": response,
+                  "received_at": received_at
+              }
 
         if (
-            not isinstance(received_at, datetime)
-            or received_at.tzinfo is None
-            or received_at.utcoffset() is None
-        ):
-            raise ValueError(
-                "option quote receipt timestamp "
-                "must be timezone-aware"
-            )
+              not isinstance(received_at, datetime)
+              or received_at.tzinfo is None
+          ):
+              raise ValueError(
+                  "option quote receipt timestamp "
+                  "must be timezone-aware"
+              )
 
-        market_by_token = (
-            validate_option_full_response(
+        full_validation = (
+            validate_option_full_response_partial(
                 response=response,
                 option_exchange=option_exchange,
                 requested_tokens=tokens,
@@ -701,11 +725,36 @@ class LiveOptionChainBuilder:
             )
         )
 
+        chain_evidence_validation = (
+            validate_option_full_response_partial(
+                response=response,
+                option_exchange=option_exchange,
+                requested_tokens=tokens,
+                received_at=received_at,
+                maximum_quote_age_seconds=(
+                    self.maximum_quote_age_seconds
+                ),
+                maximum_future_skew_seconds=(
+                    self.maximum_future_skew_seconds
+                ),
+                allow_zero_market_prices=True,
+            )
+        )
+
+        market_by_token = (
+            full_validation.validated_by_token
+        )
+
+        chain_evidence_market_by_token = (
+            chain_evidence_validation.validated_by_token
+        )
+
         # ---------------------------------
         # NORMALIZE CONTRACTS
         # ---------------------------------
 
         normalized = []
+        chain_evidence_normalized = []
 
         for contract in contracts:
 
@@ -867,10 +916,67 @@ class LiveOptionChainBuilder:
                 normalized_contract
             )
 
+        for contract in contracts:
+            token = str(
+                contract.get(
+                    "token",
+                    "",
+                )
+            ).strip()
+
+            if not token:
+                continue
+
+            market = (
+                chain_evidence_market_by_token.get(
+                    token
+                )
+            )
+
+            if not market:
+                continue
+
+            lot_size = (
+                self._normalize_lot_size(
+                    contract.get(
+                        "lotsize",
+                        0,
+                    )
+                )
+            )
+
+            chain_evidence_normalized.append({
+                "token": token,
+                "symbol": contract.get("symbol"),
+                "strike": contract["_strike"],
+                "option_type": contract["_option_type"],
+                "expiry": selection["expiry"]["display"],
+                "lot_size": lot_size,
+                "premium": market["_validated_ltp"],
+                "bid": market["_validated_bid"],
+                "ask": market["_validated_ask"],
+                "volume": market["_validated_volume"],
+                "open_interest": market["_validated_open_interest"],
+                "provider_timestamp": (
+                    market["_validated_provider_timestamp"]
+                ),
+                "provider_timestamp_field": (
+                    market["_validated_provider_timestamp_field"]
+                ),
+                "provider_timestamp_age_seconds": (
+                    market["_validated_provider_timestamp_age_seconds"]
+                ),
+                "delta": None,
+                "gamma": None,
+                "theta": None,
+                "vega": None,
+                "iv": None,
+            })
+
         if not normalized:
             raise RuntimeError(
-                "No option contracts could be "
-                "normalized from live broker data."
+                "No live option contracts could be "
+                "normalized from broker data."
             )
 
         # ---------------------------------
@@ -895,6 +1001,91 @@ class LiveOptionChainBuilder:
                 normalized
             )
         )
+
+        provider_timestamps = tuple(
+            item["provider_timestamp"]
+            for item in normalized
+        )
+
+        if any(
+            not isinstance(value, datetime)
+            or value.tzinfo is None
+            or value.utcoffset() is None
+            for value in provider_timestamps
+        ):
+            raise RuntimeError(
+                "Validated option FULL capture "
+                "contains invalid provider timestamps."
+            )
+
+        requested_contract_count = len(
+            tokens
+        )
+        received_contract_count = len(
+            normalized
+        )
+        validated_contract_count = len(
+            validated_contracts
+        )
+
+        downstream_malformed_contract_count = (
+            received_contract_count
+            - validated_contract_count
+        )
+
+        unfetched_contract_count = (
+            full_validation.unfetched_contract_count
+        )
+
+        malformed_contract_count = (
+            full_validation.malformed_contract_count
+            + downstream_malformed_contract_count
+        )
+
+        if (
+            requested_contract_count <= 0
+            or received_contract_count < 0
+            or validated_contract_count < 0
+            or downstream_malformed_contract_count < 0
+            or unfetched_contract_count < 0
+            or malformed_contract_count < 0
+            or (
+                validated_contract_count
+                + unfetched_contract_count
+                + malformed_contract_count
+                != requested_contract_count
+            )
+        ):
+            raise RuntimeError(
+                "Option FULL capture accounting "
+                "is inconsistent."
+            )
+
+        full_capture = {
+            "requested_contract_count": (
+                requested_contract_count
+            ),
+            "fetched_contract_count": (
+                validated_contract_count
+            ),
+            "unfetched_contract_count": (
+                unfetched_contract_count
+            ),
+            "malformed_contract_count": (
+                malformed_contract_count
+            ),
+            "oldest_provider_timestamp": (
+                min(provider_timestamps)
+                if validated_contract_count > 0
+                else None
+            ),
+            "newest_provider_timestamp": (
+                max(provider_timestamps)
+                if validated_contract_count > 0
+                else None
+            ),
+            "exchange_identity_verified": True,
+        }
 
         # ---------------------------------
         # RETURN VALIDATED CHAIN ONLY
@@ -921,6 +1112,10 @@ class LiveOptionChainBuilder:
 
             "contracts": (
                 validated_contracts
+            ),
+
+            "chain_evidence_contracts": (
+                chain_evidence_normalized
             ),
 
             "requested_contracts": (
@@ -951,6 +1146,10 @@ class LiveOptionChainBuilder:
             ),
 
             "integrity_validated": True,
+
+            # Sanitized provider-capability evidence. No raw provider
+            # response, credentials, or additional acquisition is retained.
+            "full_capture": full_capture,
 
             # Sanitized capture evidence only.  Raw provider payloads and
             # credentials are never retained in the certified capture.

@@ -317,6 +317,11 @@ def test_live_rate_limited_capture_metadata_reaches_only_nifty_handoff(tmp_path)
     launcher = Task9LivePaperCertificationLauncher(
         persistence_root=tmp_path,
         official_run_id="run",
+        startup_preflight_id="startup-preflight-1",
+        runtime_config_snapshot_id="task9-runtime-config-" + ("a" * 64),
+        runtime_config_sha256="a" * 64,
+        campaign_id="campaign-1",
+        market_date=nifty_cycle.received_at.date(),
         clock=lambda: nifty_cycle.received_at,
         sleep=lambda _: None,
     )

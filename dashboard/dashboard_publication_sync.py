@@ -57,7 +57,7 @@ OPERATOR_APPLICATION_VIEW_MODEL_SEQUENCE_STATE_KEY = (
     "operator_application_view_model_sequence"
 )
 DEFAULT_TASK9_PUBLICATION_ROOT = (
-    "data/paper_trading/certified_runtime/task9"
+    "data/task9"
 )
 
 

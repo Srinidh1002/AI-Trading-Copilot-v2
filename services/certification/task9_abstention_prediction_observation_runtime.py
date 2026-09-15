@@ -112,9 +112,12 @@ def record_task9_abstention_prediction_observation(
             "Task 9 abstention prediction context unavailable"
         )
 
-    if prediction.predicted_action not in {"WAIT", "NO_TRADE"}:
+    if (
+        prediction.predicted_action in {"CALL", "PUT"}
+        and prediction.parent_selected
+    ):
         raise ValueError(
-            "Task 9 abstention runtime requires WAIT or NO_TRADE prediction"
+            "non-entry observation cannot be used for selected directional prediction"
         )
 
     observation_store.initialize(

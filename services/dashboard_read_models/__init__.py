@@ -70,3 +70,7 @@ __all__ = [
     "project_three_target_trade_plan",
     "project_trade_opportunity",
 ]
+
+from services.dashboard_read_models.task9_decision_observability_view_v1 import (
+    Task9DecisionObservabilityDashboardViewV1,
+)

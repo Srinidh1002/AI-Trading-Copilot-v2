@@ -1,0 +1,78 @@
+=== lines 100-135 (init boundaries) ===
+ 100:         
+ 101:         self.t1_hits = 0
+ 102:         self.t2_hits = 0
+ 103:         self.t3_hits = 0
+ 104:         self.stop_losses = 0
+ 105:         self.market_close_exits = 0
+ 106:         
+ 107:         self.T1_PERCENT = 15
+ 108:         self.T2_PERCENT = 30
+ 109:         self.T3_PERCENT = 50
+ 110:         self.STOP_LOSS_PERCENT = 5
+ 111:         
+ 112:         self.session_history = []
+ 113:         self.is_running = True
+ 114:         self.is_connected = False
+ 115:         self.current_session = 0
+ 116:         self.total_sessions = 100
+ 117:         self.sessions_completed_today = 0
+ 118:         
+ 119:         self.consecutive_wins = 0
+ 120:         self.consecutive_losses = 0
+ 121:         
+ 122:         self.MARKET_OPEN = datetime.now().replace(hour=9, minute=15, second=0, microsecond=0)
+ 123:         self.MARKET_CLOSE = datetime.now().replace(hour=15, minute=30, second=0, microsecond=0)
+ 124:         self.FINAL_EXIT = datetime.now().replace(hour=15, minute=28, second=0, microsecond=0)
+ 125:         
+ 126:         # Market analysis data
+ 127:         self.global_market_data = {}
+ 128:         self.fii_dii_data = {}
+ 129:         self.top_stocks_data = {}
+ 130:         
+ 131:         if self.market == 'NIFTY':
+ 132:             self.index_token = '99926000'
+ 133:             self.index_exchange = 'NSE'
+ 134:             self.index_symbol = 'NIFTY'
+ 135:             self.lot_size = 75
+
+=== lines 435-445 (is_market_open region) ===
+ 435:         return True
+ 436:     
+ 437:     def is_market_open(self):
+ 438:         now = datetime.now()
+ 439:         return self.MARKET_OPEN <= now <= self.FINAL_EXIT
+ 440:     
+ 441:     def load_instruments(self):
+ 442:         try:
+ 443:             with open('data/instruments.json', 'r') as f:
+ 444:                 raw = json.load(f)
+ 445:             
+
+=== lines 590-615 (holiday calculator) ===
+ 590:         valid.sort(key=lambda x: x[1])
+ 591:         
+ 592:         if not valid:
+ 593:             return None
+ 594:         
+ 595:         nearest_expiry, nearest_dte, nearest_date = valid[0]
+ 596:         
+ 597:         # Holiday-aware trading days calculator
+ 598:         def trading_days_between(start_date, end_date):
+ 599:             # NSE holidays for Sept 2026 (add more as known)
+ 600:             holidays = [
+ 601:                 datetime(2026, 9, 14).date(),  # Ganesh Chaturthi
+ 602:             ]
+ 603:             count = 0
+ 604:             current = start_date + timedelta(days=1)
+ 605:             while current <= end_date:
+ 606:                 if current.weekday() < 5 and current not in holidays:
+ 607:                     count += 1
+ 608:                 current += timedelta(days=1)
+ 609:             return count
+ 610:         
+ 611:         if self.market == 'SENSEX' and nearest_dte == 0 and len(valid) > 1:
+ 612:             selected_expiry, selected_dte, selected_date = valid[1]
+ 613:             trading_days = trading_days_between(today, selected_date)
+ 614:             print(f'  NEAREST_EXPIRY: {nearest_expiry}')
+ 615:             print(f'  NEAREST_EXPIRY_DTE: 0 (SAME DAY)')

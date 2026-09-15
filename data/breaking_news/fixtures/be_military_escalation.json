@@ -1,0 +1,7 @@
+{ "_fixture_note": "TEST_FIXTURE — synthetic. NOT a real event.",
+  "event_type": "MILITARY_ESCALATION",
+  "headline": "TEST: Notional geopolitical escalation",
+  "source_name": "TEST_SOCIAL", "source_tier": "TIER_5_UNVERIFIED",
+  "source_published_at": "2026-09-12T12:00:00+00:00",
+  "countries": ["IRN"], "severity": "HIGH", "urgency": "IMMEDIATE",
+  "theoretical_impact": "BULLISH", "verification_status": "UNVERIFIED" }

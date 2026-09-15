@@ -6,6 +6,9 @@ import pytest
 from services.certification.task9_cycle_market_evidence_handoff import (
     Task9CycleMarketEvidenceV1,
 )
+from services.certification.task9_live_decision_audit import (
+    Task9LiveDecisionAuditStore,
+)
 from services.certification.task9_live_paper_production_composition import (
     build_task9_live_paper_production_runtime,
 )
@@ -91,6 +94,84 @@ def test_production_composition_builds_paper_runner_with_one_canonical_root(
     assert production.broker_order_submission is False
     assert production.live_execution_eligible is False
     assert production.pending_entry_store.file_path == layout.pending_entry_store_path
+
+
+def test_provider_free_composition_persists_sanitized_failure_diagnostic(
+    tmp_path,
+):
+    seed = _runtime(tmp_path / "seed")
+    original, sensex = seed["predictions"]
+    failed = replace(
+        original,
+        terminal_status="FAILED",
+        candidate_id=None,
+        market_timestamp=None,
+        predicted_direction="UNAVAILABLE",
+        predicted_action="WAIT",
+        eligibility="UNAVAILABLE",
+        confidence=0.0,
+        score=0.0,
+        rank_value=0.0,
+        eligible_for_comparison=False,
+        outcome_reason="CHILD_FAILED",
+        parent_decision="NO_TRADE",
+        parent_selected=False,
+        errors=("CANDIDATE_COMPOSITION_FAILED",),
+        failure_diagnostic={
+            "failure_stage": "ANALYSIS_AUTHORITY",
+            "exception_class": "RuntimeError",
+            "stable_failure_code": "CANDIDATE_COMPOSITION_FAILED",
+        },
+    )
+    seed["predictions"] = (failed, sensex)
+    seed["handoffs"][("NIFTY", "NSE")] = replace(
+        seed["handoffs"][("NIFTY", "NSE")],
+        prediction=failed,
+        evaluation=None,
+        selected_planning=None,
+        market_quote=None,
+        data_quality=None,
+        lifecycle_window=resolve_prediction_lifecycle_window(
+            prediction_record=failed,
+            session_policy=MarketSessionPolicy(),
+        ),
+    )
+
+    production = _build(seed, tmp_path / "production")
+
+    assert dict(
+        production.prediction_ledger.recover(
+            failed.prediction_id
+        ).failure_diagnostic
+    ) == dict(failed.failure_diagnostic)
+    assert dict(
+        Task9LiveDecisionAuditStore(
+            production.persistence_layout.root
+            / "live-decision-audit.json"
+        ).recover(
+            failed.prediction_id
+        ).failure_diagnostic
+    ) == dict(failed.failure_diagnostic)
+    result = production.child_authority("NIFTY", "NSE", True)
+    assert result.evidence_status == "VALID"
+    assert result.prediction.terminal_status == "FAILED"
+    assert result.lifecycle_outcome is None
+    assert result.reconciliation is None
+    assert result.terminal_position_closed is False
+    assert production.binding_store.by_prediction(failed.prediction_id) is None
+    assert production.observation_store.recover(failed.prediction_id) is None
+    assert production.outcome_store.recover(failed.prediction_id) is None
+    assert production.reconciliation_store.recover(failed.prediction_id) is None
+    assert production.trade_persistence_service.list_all() == ()
+    cycle_result = production.run_cycle(
+        cycle_id="generic-failed-child",
+        evaluated_at=seed["boundary"],
+    )
+    assert cycle_result.market_results[0][0:2] == (
+        "NIFTY",
+        "ENTRY_ALLOWED",
+    )
+    assert cycle_result.market_results[0][2] is None
 
 
 def test_two_market_abstention_uses_exact_quote_handoffs_without_p7_entry(

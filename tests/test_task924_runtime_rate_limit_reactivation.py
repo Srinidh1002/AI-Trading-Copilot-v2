@@ -32,10 +32,58 @@ def _incident(value="one"):
     )
 
 
+def _write_valid_startup_preflight(root):
+    from services.certification.task9_startup_preflight_store import (
+        Task9StartupPreflightStore,
+    )
+    from services.contracts.task9_startup_preflight_v1 import (
+        Task9StartupPreflightPhase,
+        Task9StartupPreflightPhaseResultV1,
+        Task9StartupPreflightPhaseStatus,
+        Task9StartupPreflightResultV1,
+    )
+
+    sha = "a" * 64
+
+    receipt = Task9StartupPreflightResultV1(
+        preflight_id="task9102-preflight",
+        runtime_config_snapshot_id=(
+            "task9-runtime-config-" + sha
+        ),
+        runtime_config_sha256=sha,
+        campaign_id="task9102-campaign",
+        market_date=NOW.date(),
+        official_run_id="run",
+        run_classification="OFFICIAL_CERTIFICATION",
+        started_at=NOW,
+        completed_at=NOW,
+        phase_results=tuple(
+            Task9StartupPreflightPhaseResultV1(
+                phase,
+                Task9StartupPreflightPhaseStatus.PASS,
+                False,
+                "TASK9102_TEST_PASS",
+                None,
+                NOW,
+            )
+            for phase in Task9StartupPreflightPhase
+        ),
+    )
+
+    Task9StartupPreflightStore(
+        root
+    ).save(receipt)
+
+
 def _launcher(root):
     return Task9LivePaperCertificationLauncher(
         persistence_root=root,
         official_run_id="run",
+            startup_preflight_id="task9102-preflight",
+            runtime_config_snapshot_id="task9-runtime-config-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            runtime_config_sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            campaign_id="task9102-campaign",
+            market_date=NOW.date(),
         clock=lambda: NOW,
         sleep=lambda _: None,
     )
@@ -127,6 +175,8 @@ def test_launcher_no_incident_does_not_mutate_blocker(tmp_path):
     )
     assert Task9ExternalProviderBlockerStore(tmp_path).load("run") is None
 def test_runtime_reactivation_blocks_launcher_before_provider_work(tmp_path):
+    _write_valid_startup_preflight(tmp_path)
+
     Task9ExternalProviderBlockerStore(tmp_path).record(
         "run",
         observed_at=NOW,
@@ -140,10 +190,16 @@ def test_runtime_reactivation_blocks_launcher_before_provider_work(tmp_path):
     launcher = Task9LivePaperCertificationLauncher(
         persistence_root=tmp_path,
         official_run_id="run",
+            startup_preflight_id="task9102-preflight",
+            runtime_config_snapshot_id="task9-runtime-config-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            runtime_config_sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            campaign_id="task9102-campaign",
+            market_date=NOW.date(),
         clock=lambda: NOW,
         sleep=lambda _: None,
-        task8_dependencies_factory=lambda **_: provider_work.append("task8"),
+        task9_evidence_dependencies_factory=lambda **_: provider_work.append("task8"),
         runtime_factory=lambda **_: provider_work.append("runtime"),
+        session_state_resolver=lambda **_: object(),
     )
 
     with pytest.raises(Task9ExternalProviderBlockedError):
@@ -162,13 +218,13 @@ def test_operator_runtime_record_is_zero_provider_side_effect(tmp_path, monkeypa
     result = record_verified_runtime_rate_limit(
         persistence_root=tmp_path,
         official_run_id="run",
-        observed_at=NOW,
+            observed_at=NOW,
         incident_id=_incident(),
     )
     duplicate = record_verified_runtime_rate_limit(
         persistence_root=tmp_path,
         official_run_id="run",
-        observed_at=NOW + timedelta(minutes=1),
+            observed_at=NOW + timedelta(minutes=1),
         incident_id=_incident(),
     )
 

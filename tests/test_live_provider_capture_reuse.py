@@ -38,6 +38,41 @@ def test_option_capture_is_single_read_and_contains_no_decision_fields():
     assert captured.to_dict()["contract_count"] == 1
 
 
+
+def test_option_capture_uses_builder_post_acquisition_clock_when_available():
+    from datetime import timedelta
+
+    class ClockedBuilder:
+        def __init__(self):
+            self.calls = 0
+
+        def build_chain(self, **kwargs):
+            self.calls += 1
+            return {
+                "underlying": "NIFTY",
+                "contracts": ({"token": "1"},),
+            }
+
+        def clock(self):
+            return NOW + timedelta(seconds=3)
+
+    builder = ClockedBuilder()
+
+    capture = LiveOptionDecisionPipeline(
+        option_chain_builder=builder,
+        market_client=object(),
+    ).capture_option_inputs(
+        underlying="NIFTY",
+        spot_price=25000.0,
+        option_exchange="NFO",
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+    )
+
+    assert builder.calls == 1
+    assert capture.evaluated_at == NOW + timedelta(seconds=3)
+
+
 def test_certified_option_capture_does_not_construct_legacy_candle_fallback(
     monkeypatch,
 ):

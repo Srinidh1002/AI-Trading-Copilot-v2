@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from services.certification.task9_atomic_file_replace import replace_task9_atomic_file
+
 import json
 import os
 from datetime import datetime
@@ -128,7 +130,7 @@ class Task9PaperPortfolioPolicyStore:
             encoding="utf-8",
         )
 
-        os.replace(
+        replace_task9_atomic_file(
             temporary,
             self.path,
         )

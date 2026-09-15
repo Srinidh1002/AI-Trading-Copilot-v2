@@ -19,8 +19,16 @@ from services.paper_orchestration.certified_live_provider_readers import Certifi
 
 
 IST = ZoneInfo("Asia/Kolkata")
-_INTERVALS = {"5m": 5, "15m": 15, "1h": 60, "1d": 1440}
-_REQUIRED = tuple(_INTERVALS)
+_INTERVALS = {
+    "5m": 5,
+    "15m": 15,
+    "1h": 60,
+    "1d": 1440,
+}
+
+_TIMEFRAME_ORDER = tuple(_INTERVALS)
+_MANDATORY = ("5m",)
+_OPTIONAL = ("15m", "1h", "1d")
 
 
 def _aware(value: object, name: str) -> datetime:
@@ -99,13 +107,39 @@ class AngelLiveMarketObservationV1:
             raise TypeError("typed observation")
         expected = (self.spot.underlying_symbol, self.spot.exchange)
         names = tuple(item.timeframe for item in self.candle_series)
-        if names != tuple(item for item in _REQUIRED if item in names) or len(names) != len(set(names)):
+        if (
+            names
+            != tuple(
+                item
+                for item in _TIMEFRAME_ORDER
+                if item in names
+            )
+            or len(names) != len(set(names))
+        ):
             raise ValueError("timeframe order")
-        if any(type(item) is not MarketCandleSeriesV1 or (item.underlying_symbol, item.exchange) != expected for item in self.candle_series):
+
+        if any(
+            type(item) is not MarketCandleSeriesV1
+            or (
+                item.underlying_symbol,
+                item.exchange,
+            ) != expected
+            for item in self.candle_series
+        ):
             raise ValueError("series identity")
-        missing = set(_REQUIRED) - set(names)
-        if missing and not self.blockers:
-            raise ValueError("missing timeframe requires blocker")
+        missing = set(_TIMEFRAME_ORDER) - set(names)
+        missing_mandatory = set(_MANDATORY) & missing
+        missing_optional = set(_OPTIONAL) & missing
+
+        if missing_mandatory and not self.blockers:
+            raise ValueError(
+                "missing mandatory timeframe requires blocker"
+            )
+
+        if missing_optional and not self.warnings:
+            raise ValueError(
+                "missing optional timeframe requires warning"
+            )
 
 
 def normalize_angel_spot_response(*, response: object, market_spec: CertifiedIndexMarketSpecV1, provider_timestamp: datetime | None, evaluated_at: datetime, provider_state: str = "OK", blockers: tuple[str, ...] = (), warnings: tuple[str, ...] = ()) -> AngelLiveSpotObservationV1:
@@ -166,6 +200,68 @@ def normalize_angel_live_observation(*, spot_response: object, candle_rows_by_ti
     spot = normalize_angel_spot_response(response=spot_response, market_spec=market_spec, provider_timestamp=provider_timestamp, evaluated_at=evaluated_at, provider_state=provider_state, blockers=blockers, warnings=warnings)
     if provider_timestamp is None:
         return AngelLiveMarketObservationV1(spot, (), blockers=tuple(spot.blockers) + ("CANDLE_PROVIDER_TIMESTAMP_MISSING",))
-    series = tuple(normalize_angel_candle_series(rows=candle_rows_by_timeframe[name], market_spec=market_spec, timeframe=name, provider_timestamp=provider_timestamp, evaluated_at=evaluated_at) for name in _REQUIRED if name in candle_rows_by_timeframe)
-    missing = tuple(f"TIMEFRAME_UNAVAILABLE_{name}" for name in _REQUIRED if name not in candle_rows_by_timeframe)
-    return AngelLiveMarketObservationV1(spot, series, blockers=tuple(dict.fromkeys((*spot.blockers, *missing))), warnings=tuple(warnings))
+    series = tuple(
+        normalize_angel_candle_series(
+            rows=candle_rows_by_timeframe[name],
+            market_spec=market_spec,
+            timeframe=name,
+            provider_timestamp=provider_timestamp,
+            evaluated_at=evaluated_at,
+        )
+        for name in _TIMEFRAME_ORDER
+        if name in candle_rows_by_timeframe
+    )
+
+    missing_mandatory = tuple(
+        f"TIMEFRAME_UNAVAILABLE_{name}"
+        for name in _MANDATORY
+        if name not in candle_rows_by_timeframe
+    )
+
+    missing_optional = tuple(
+        f"optional_timeframe_unavailable_{name}"
+        for name in _OPTIONAL
+        if name not in candle_rows_by_timeframe
+    )
+
+    return AngelLiveMarketObservationV1(
+        spot,
+        series,
+        blockers=tuple(
+            dict.fromkeys(
+                (
+                    *spot.blockers,
+                    *missing_mandatory,
+                )
+            )
+        ),
+        warnings=tuple(
+            dict.fromkeys(
+                (
+                    *warnings,
+                    *missing_optional,
+                )
+            )
+        ),
+    )
+
+from services.market.task9_live_tick_stream import Task9LiveTickV1
+
+def normalize_tick_to_spot_observation(
+    tick: Task9LiveTickV1,
+    market_spec,
+    evaluated_at
+):
+    """Adapts a WebSocket tick directly into the canonical spot observation contract, bypassing REST."""
+    return AngelLiveSpotObservationV1(
+        underlying_symbol=market_spec.underlying_symbol,
+        exchange=market_spec.exchange,
+        symboltoken=market_spec.symboltoken,
+        option_exchange=market_spec.option_exchange,
+        price=tick.ltp,
+        provider_timestamp=tick.provider_timestamp,
+        evaluated_at=evaluated_at,
+        blockers=(),
+        warnings=(),
+        provider_state="LIVE_WEBSOCKET"
+    )

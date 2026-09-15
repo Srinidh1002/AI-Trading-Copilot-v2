@@ -1,0 +1,8 @@
+{
+  "product": "NATGASMINI",
+  "strategy_version": "MCX_NATGASMINI_PRECERT_V1",
+  "epoch": "NATGASMINI_PRECERT_V1",
+  "certification_eligible": false,
+  "frozen_at": "2026-09-12T13:10:01",
+  "note": "Version frozen for the duration of this certification epoch."
+}

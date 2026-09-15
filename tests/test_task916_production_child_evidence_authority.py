@@ -657,6 +657,75 @@ def test_failed_child_is_returned_as_data_incident_without_entry_or_lifecycle(
     )
 
 
+@pytest.mark.parametrize(
+    ("failure_code", "exception_class"),
+    (
+        ("CANDIDATE_COMPOSITION_FAILED", "ValueError"),
+        ("ANALYSIS_EVALUATION_FAILED", "RuntimeError"),
+    ),
+)
+def test_generic_failed_child_remains_non_trading_without_provider_incident(
+    tmp_path,
+    failure_code,
+    exception_class,
+):
+    runtime = _runtime(tmp_path)
+    original, other = runtime["predictions"]
+    failed = replace(
+        original,
+        terminal_status="FAILED",
+        candidate_id=None,
+        market_timestamp=None,
+        predicted_direction="UNAVAILABLE",
+        predicted_action="WAIT",
+        eligibility="UNAVAILABLE",
+        confidence=0.0,
+        score=0.0,
+        rank_value=0.0,
+        eligible_for_comparison=False,
+        outcome_reason="CHILD_FAILED",
+        parent_decision="NO_TRADE",
+        parent_selected=False,
+        blockers=(failure_code,),
+        errors=(failure_code,),
+        failure_diagnostic={
+            "failure_stage": "ANALYSIS_AUTHORITY",
+            "exception_class": exception_class,
+            "stable_failure_code": failure_code,
+        },
+    )
+    ledger = PredictionLedger(tmp_path / "generic-failed-ledger.json")
+    ledger.save_pair((failed, other))
+    runtime["ledger"] = ledger
+    runtime["handoffs"][("NIFTY", "NSE")] = replace(
+        runtime["handoffs"][("NIFTY", "NSE")],
+        prediction=failed,
+        market_quote=None,
+        data_quality=None,
+    )
+
+    result = _authority(runtime)("NIFTY", "NSE", True)
+
+    assert result.evidence_status == "VALID"
+    assert result.prediction.terminal_status == "FAILED"
+    assert result.prediction.predicted_action == "WAIT"
+    assert result.lifecycle_outcome is None
+    assert result.reconciliation is None
+    assert result.terminal_position_closed is False
+    assert dict(result.prediction.failure_diagnostic) == {
+        "failure_stage": "ANALYSIS_AUTHORITY",
+        "exception_class": exception_class,
+        "stable_failure_code": failure_code,
+    }
+    assert "secret" not in repr(result)
+    assert "Traceback" not in repr(result)
+    assert runtime["binding_store"].by_prediction(failed.prediction_id) is None
+    assert runtime["observation_store"].recover(failed.prediction_id) is None
+    assert runtime["outcome_store"].recover(failed.prediction_id) is None
+    assert runtime["reconciliation_store"].recover(failed.prediction_id) is None
+    assert runtime["trade_service"].list_all() == ()
+
+
 def test_call_without_binding_and_entry_allowed_delegates_exact_evidence(
     tmp_path,
 ):
@@ -1347,6 +1416,94 @@ def test_pre_prediction_abstention_quote_initializes_window_without_projection_o
             "reconciliation_store"
         ].recover(
             handoff.prediction.prediction_id
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "market,exchange,action",
+    (
+        ("NIFTY", "NSE", "WAIT"),
+        ("NIFTY", "NSE", "NO_TRADE"),
+        ("SENSEX", "BSE", "WAIT"),
+        ("SENSEX", "BSE", "NO_TRADE"),
+    ),
+)
+def test_abstention_never_invokes_entry_delegate_even_when_session_allows_entry(
+    tmp_path,
+    market,
+    exchange,
+    action,
+):
+    runtime = _runtime(
+        tmp_path,
+        nifty_action=(
+            action
+            if market == "NIFTY"
+            else "WAIT"
+        ),
+        sensex_action=(
+            action
+            if market == "SENSEX"
+            else "NO_TRADE"
+        ),
+    )
+
+    calls = []
+
+    authority = _authority(
+        runtime,
+        entry_delegate=(
+            lambda evidence, prediction_id:
+            calls.append(
+                (
+                    evidence,
+                    prediction_id,
+                )
+            )
+        ),
+    )
+
+    result = authority(
+        market,
+        exchange,
+        True,
+    )
+
+    prediction_record = next(
+        item
+        for item in runtime["predictions"]
+        if (
+            item.underlying_symbol,
+            item.exchange,
+        )
+        == (
+            market,
+            exchange,
+        )
+    )
+
+    assert (
+        prediction_record.predicted_action
+        == action
+    )
+
+    assert calls == []
+
+    assert (
+        result.prediction.prediction_id
+        == prediction_record.prediction_id
+    )
+
+    assert (
+        result.terminal_position_closed
+        is False
+    )
+
+    assert (
+        runtime["binding_store"].by_prediction(
+            prediction_record.prediction_id
         )
         is None
     )

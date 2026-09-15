@@ -13,7 +13,9 @@ from datetime import datetime
 from typing import Any
 
 from services.analysis.market_analysis_candidate_composer import (
-    MarketAnalysisCandidateCompositionInputV1, MarketAnalysisCandidateCompositionPolicyV1,
+    MarketAnalysisCandidateCompositionInputV1,
+    MarketAnalysisCandidateCompositionPolicyV1,
+    _provider_capability_optional_pillar,
     _ready,
 )
 from services.contracts.market_analysis_candidate_v1 import MarketAnalysisEvidenceV1
@@ -87,10 +89,135 @@ def assemble_live_typed_candidate_evidence(
     return composition, policy
 
 
-def compose_from_live_canonical_evidence(*, source: LiveTypedEvidenceInputV1, evidence: LiveCanonicalEvidenceResultV1) -> tuple[MarketAnalysisCandidateCompositionInputV1, MarketAnalysisCandidateCompositionPolicyV1]:
+def compose_from_live_canonical_evidence(
+    *,
+    source: LiveTypedEvidenceInputV1,
+    evidence: LiveCanonicalEvidenceResultV1,
+) -> tuple[
+    MarketAnalysisCandidateCompositionInputV1,
+    MarketAnalysisCandidateCompositionPolicyV1,
+]:
     """Compatibility adapter from the exact 2H aggregate to existing inputs."""
-    if type(source) is not LiveTypedEvidenceInputV1 or type(evidence) is not LiveCanonicalEvidenceResultV1: raise TypeError("typed source/evidence")
-    if (source.underlying_symbol, source.exchange) != (evidence.observation.spot.underlying_symbol, evidence.observation.spot.exchange): raise ValueError("identity")
+
+    if (
+        type(source) is not LiveTypedEvidenceInputV1
+        or type(evidence) is not LiveCanonicalEvidenceResultV1
+    ):
+        raise TypeError("typed source/evidence")
+
+    if (
+        source.underlying_symbol,
+        source.exchange,
+    ) != (
+        evidence.observation.spot.underlying_symbol,
+        evidence.observation.spot.exchange,
+    ):
+        raise ValueError("identity")
+
     aggregate = evidence.pillars
-    candidate_external_context = evidence.external_context if evidence.external_context is None or _ready("external_context", evidence.external_context) else None
-    return MarketAnalysisCandidateCompositionInputV1(candidate_id=source.candidate_id, observation_id=source.observation_id, underlying_symbol=source.underlying_symbol, exchange=source.exchange, option_exchange=source.option_exchange, symboltoken=source.symboltoken, requested_at=source.requested_at, market_timestamp=source.market_timestamp, received_at=source.received_at, freshness=evidence.data_quality, data_quality=evidence.data_quality, session=evidence.session, technical=evidence.technical, multi_timeframe=evidence.multi_timeframe, regime=evidence.regime, option_chain=evidence.option_chain, option_contract_eligibility=evidence.contract_ranking, broader_market=evidence.broader_market, external_context=candidate_external_context, evidence_references={"live_boundary":"canonical_evidence"}, provenance={"source":"normalized_live_provider"}, **dict(aggregate.ordered_pillars)), MarketAnalysisCandidateCompositionPolicyV1(direction=source.direction, eligibility=source.eligibility, confidence=source.confidence, score=source.score, blockers=source.blockers + evidence.blockers + aggregate.blockers, warnings=source.warnings + evidence.warnings + aggregate.warnings, contradictions=source.contradictions + evidence.contradictions + aggregate.contradictions, reasons=source.reasons + evidence.reasons + aggregate.reasons, invalidation_conditions=source.invalidation_conditions + evidence.invalidation_conditions + aggregate.invalidation_conditions)
+
+    candidate_external_context = (
+        evidence.external_context
+        if (
+            evidence.external_context is None
+            or _ready(
+                "external_context",
+                evidence.external_context,
+            )
+        )
+        else None
+    )
+
+    composition = MarketAnalysisCandidateCompositionInputV1(
+        candidate_id=source.candidate_id,
+        observation_id=source.observation_id,
+        underlying_symbol=source.underlying_symbol,
+        exchange=source.exchange,
+        option_exchange=source.option_exchange,
+        symboltoken=source.symboltoken,
+        requested_at=source.requested_at,
+        market_timestamp=source.market_timestamp,
+        received_at=source.received_at,
+        freshness=evidence.data_quality,
+        data_quality=evidence.data_quality,
+        session=evidence.session,
+        technical=evidence.technical,
+        multi_timeframe=evidence.multi_timeframe,
+        regime=evidence.regime,
+        option_chain=evidence.option_chain,
+        option_contract_eligibility=evidence.contract_ranking,
+        broader_market=evidence.broader_market,
+        external_context=candidate_external_context,
+        evidence_references={
+            "live_boundary": "canonical_evidence",
+        },
+        provenance={
+            "source": "normalized_live_provider",
+        },
+        **dict(aggregate.ordered_pillars),
+    )
+
+    # Aggregate blockers are structurally flattened from all fourteen
+    # supplied pillars.  Reconstruct the effective blocker set from the
+    # original typed pillars so only provider-capability-optional evidence
+    # is exempted.
+    #
+    # The capability helper is identity + provenance aware.  Therefore this
+    # does not weaken NIFTY/NFO or suppress unrelated SENSEX/BFO failures.
+    effective_aggregate_blockers: list[str] = []
+
+    for name, pillar in aggregate.ordered_pillars.items():
+        if _provider_capability_optional_pillar(
+            composition,
+            name,
+            pillar,
+        ):
+            continue
+
+        raw_blockers = pillar.summary.get("blockers", ())
+
+        if not isinstance(raw_blockers, (tuple, list)):
+            continue
+
+        for blocker in raw_blockers:
+            normalized = str(blocker).strip()
+
+            if (
+                normalized
+                and normalized not in effective_aggregate_blockers
+            ):
+                effective_aggregate_blockers.append(normalized)
+
+    policy = MarketAnalysisCandidateCompositionPolicyV1(
+        direction=source.direction,
+        eligibility=source.eligibility,
+        confidence=source.confidence,
+        score=source.score,
+        blockers=(
+            source.blockers
+            + evidence.blockers
+            + tuple(effective_aggregate_blockers)
+        ),
+        warnings=(
+            source.warnings
+            + evidence.warnings
+            + aggregate.warnings
+        ),
+        contradictions=(
+            source.contradictions
+            + evidence.contradictions
+            + aggregate.contradictions
+        ),
+        reasons=(
+            source.reasons
+            + evidence.reasons
+            + aggregate.reasons
+        ),
+        invalidation_conditions=(
+            source.invalidation_conditions
+            + evidence.invalidation_conditions
+            + aggregate.invalidation_conditions
+        ),
+    )
+
+    return composition, policy

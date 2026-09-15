@@ -14,6 +14,16 @@ from pathlib import Path
 from services.certification.task9_cycle_market_evidence_handoff import (
     Task9CycleMarketEvidenceV1,
 )
+from services.certification.task9_context_evidence_receipt_store import (
+    Task9ContextEvidenceReceiptStore,
+)
+from services.certification.task9_live_decision_audit import (
+    Task9LiveDecisionAuditStore,
+    build_task9_live_decision_audit,
+)
+from services.contracts.task9_context_evidence_receipt_v1 import (
+    build_task9_context_evidence_receipt,
+)
 from services.certification.task9_live_paper_certification_runner import (
     Task9LivePaperCertificationRunner,
 )
@@ -66,6 +76,8 @@ from services.paper_trade_repository import PaperTradeRepository
 from services.paper_trading.paper_trade_persistence_service import (
     PaperTradePersistenceService,
 )
+from services.contracts.task9_run_classification_v1 import validate_task9_run_classification
+from services.market_session.policies import MarketSessionPolicy
 
 
 _MARKETS = (("NIFTY", "NSE"), ("SENSEX", "BSE"))
@@ -102,6 +114,7 @@ class Task9ProductionPersistenceLayoutV1:
     paper_trade_repository_path: Path
     paper_portfolio_repository_path: Path
     pending_entry_store_path: Path
+    context_evidence_receipt_store_path: Path
 
     @classmethod
     def from_root(
@@ -125,6 +138,9 @@ class Task9ProductionPersistenceLayoutV1:
             paper_trade_repository_path=root / "p7-trades.json",
             paper_portfolio_repository_path=root / "p8-portfolios.json",
             pending_entry_store_path=root / "pending-paper-entries.json",
+            context_evidence_receipt_store_path=(
+                root / "context-evidence-receipts.json"
+            ),
         )
 
 
@@ -146,6 +162,7 @@ class Task9LivePaperProductionRuntimeV1:
     trade_persistence_service: PaperTradePersistenceService
     portfolio_persistence_service: PaperPortfolioPersistenceService
     pending_entry_store: Task9PendingEntryStore
+    context_evidence_receipt_store: Task9ContextEvidenceReceiptStore
     outcome_policy: PredictionLifecycleOutcomePolicyV1
     portfolio_id: str
     publication_authority: Task9CertificationPublicationAuthority
@@ -264,6 +281,7 @@ def _monitor_kwargs(
 def build_task9_live_paper_production_runtime(
     *,
     official_run_id: str,
+    run_classification: str = "OFFICIAL_CERTIFICATION",
     official_start_at: datetime,
     evaluated_at: datetime,
     persistence_root: str | Path,
@@ -274,12 +292,14 @@ def build_task9_live_paper_production_runtime(
     available_capital: float,
     portfolio_id: str,
     outcome_policy: PredictionLifecycleOutcomePolicyV1,
+    session_policy: MarketSessionPolicy = MarketSessionPolicy(),
     persist: Callable,
     publish: Callable | None = None,
 ) -> Task9LivePaperProductionRuntimeV1:
     """Bind one exact two-market evidence map to the existing Task 9 runner."""
 
     run_id = _text(official_run_id, "official_run_id")
+    classification = validate_task9_run_classification(run_classification)
     start_at = _aware(official_start_at, "official_start_at")
     boundary = _aware(evaluated_at, "evaluated_at")
     portfolio = _text(portfolio_id, "portfolio_id")
@@ -291,6 +311,8 @@ def build_task9_live_paper_production_runtime(
         raise ValueError("available_capital")
     if type(outcome_policy) is not PredictionLifecycleOutcomePolicyV1:
         raise TypeError("outcome_policy")
+    if type(session_policy) is not MarketSessionPolicy:
+        raise TypeError("session_policy")
     if not callable(persist) or (publish is not None and not callable(publish)):
         raise TypeError("runner persistence")
 
@@ -332,8 +354,15 @@ def build_task9_live_paper_production_runtime(
         PaperPortfolioRepository(layout.paper_portfolio_repository_path)
     )
     pending_entry_store = Task9PendingEntryStore(layout.pending_entry_store_path)
+    context_evidence_receipt_store = Task9ContextEvidenceReceiptStore(
+        layout.context_evidence_receipt_store_path
+    )
+    decision_audit_store = Task9LiveDecisionAuditStore(
+        layout.root / "live-decision-audit.json"
+    )
     publication_authority = Task9CertificationPublicationAuthority(
         official_run_id=run_id,
+        run_classification=classification,
         official_start_at=start_at,
         root=layout.root,
         prediction_ledger=prediction_ledger,
@@ -343,6 +372,153 @@ def build_task9_live_paper_production_runtime(
         trade_persistence_service=trade_persistence_service,
         starting_capital=float(available_capital),
     )
+    for item in ordered_evidence:
+        evaluation = item.evaluation
+        canonical_evidence = (
+            None
+            if evaluation is None
+            else evaluation.evidence
+        )
+
+        broader_market = (
+            None
+            if canonical_evidence is None
+            else canonical_evidence.broader_market
+        )
+
+        external_context = (
+            None
+            if canonical_evidence is None
+            else canonical_evidence.external_context
+        )
+
+        receipt = build_task9_context_evidence_receipt(
+            receipt_id=(
+                f"task9-context:{run_id}:"
+                f"{item.prediction.prediction_id}"
+            ),
+            official_run_id=run_id,
+            parent_cycle_id=(
+                item.prediction.parent_cycle_id
+            ),
+            prediction_id=(
+                item.prediction.prediction_id
+            ),
+            observation_id=(
+                item.cycle.observation_id
+            ),
+            underlying_symbol=(
+                item.prediction.underlying_symbol
+            ),
+            exchange=(
+                item.prediction.exchange
+            ),
+            evaluated_at=boundary,
+            broader_market=broader_market,
+            external_context=external_context,
+            external_provider_snapshot_id=None,
+        )
+
+        context_evidence_receipt_store.save(
+            receipt
+        )
+
+        recovered_receipt = (
+            context_evidence_receipt_store.recover(
+                item.prediction.prediction_id
+            )
+        )
+
+        if recovered_receipt != receipt:
+            raise ValueError(
+                "durable context evidence receipt identity"
+            )
+
+        decision_audit = build_task9_live_decision_audit(
+            audit_id=(
+                f"task9-decision-audit:{run_id}:"
+                f"{item.prediction.prediction_id}"
+            ),
+            official_run_id=run_id,
+            parent_cycle_id=(
+                item.prediction.parent_cycle_id
+            ),
+            prediction_id=(
+                item.prediction.prediction_id
+            ),
+            observation_id=(
+                item.cycle.observation_id
+            ),
+            underlying_symbol=(
+                item.prediction.underlying_symbol
+            ),
+            exchange=(
+                item.prediction.exchange
+            ),
+            evaluated_at=boundary,
+            evaluation=evaluation,
+            prediction_action=getattr(
+                item.prediction,
+                "predicted_action",
+                getattr(
+                    item.prediction,
+                    "action",
+                    None,
+                ),
+            ),
+            prediction_direction=getattr(
+                item.prediction,
+                "predicted_direction",
+                getattr(
+                    item.prediction,
+                    "direction",
+                    None,
+                ),
+            ),
+            prediction_eligibility=getattr(
+                item.prediction,
+                "eligibility",
+                None,
+            ),
+            prediction_blockers=tuple(
+                item.prediction.blockers
+            ),
+            selected_planning=(
+                item.selected_planning
+            ),
+            paper_observation=(
+                item.paper_observation
+            ),
+            provider_incident_ids=tuple(
+                incident.incident_id
+                for incident
+                in item.provider_incidents
+            ),
+            failure_diagnostic=getattr(
+                item.prediction,
+                "failure_diagnostic",
+                None,
+            ),
+        )
+
+        decision_audit_store.save(
+            decision_audit
+        )
+
+        recovered_decision_audit = (
+            decision_audit_store.recover(
+                item.prediction.prediction_id
+            )
+        )
+
+        if (
+            recovered_decision_audit
+            != decision_audit
+        ):
+            raise ValueError(
+                "durable Task 9 live decision audit identity"
+            )
+
     prediction_ledger.save_pair(tuple(
         item.prediction for item in ordered_evidence
     ))
@@ -350,6 +526,25 @@ def build_task9_live_paper_production_runtime(
         assert item.lifecycle_window is not None
         lifecycle_context_store.save(item.lifecycle_window)
 
+        # Only a completed, available-evidence WAIT/NO_TRADE prediction
+        # is a genuine Task 9 abstention. FAILED children and completed
+        # provider/data incidents must remain outside the abstention window
+        # lifecycle even when their fallback action is WAIT/NO_TRADE.
+        is_genuine_abstention = (
+            item.prediction.terminal_status == "COMPLETED"
+            and item.prediction.eligibility != "UNAVAILABLE"
+            and item.prediction.predicted_action in {"WAIT", "NO_TRADE"}
+        )
+        if is_genuine_abstention:
+            observation_store.initialize(
+                prediction=item.prediction,
+                entry_window_ends_at=(
+                    item.lifecycle_window.entry_window_ends_at
+                ),
+                validity_window_ends_at=(
+                    item.lifecycle_window.validity_window_ends_at
+                ),
+            )
     def entry_delegate(
         evidence: Task9CycleMarketEvidenceV1,
         prediction_id: str,
@@ -430,12 +625,14 @@ def build_task9_live_paper_production_runtime(
         outcome_store=outcome_store,
         reconciliation_store=reconciliation_store,
         outcome_policy=outcome_policy,
+        session_policy=session_policy,
         entry_delegate=entry_delegate,
         monitoring_delegate=monitoring_delegate,
     )
     runner = Task9LivePaperCertificationRunner(
         official_run_id=run_id,
         official_start_at=start_at,
+        run_classification=classification,
         child_authority=child_authority,
         persist=persist,
         publish=publish,
@@ -455,6 +652,7 @@ def build_task9_live_paper_production_runtime(
         trade_persistence_service=trade_persistence_service,
         portfolio_persistence_service=portfolio_persistence_service,
         pending_entry_store=pending_entry_store,
+        context_evidence_receipt_store=context_evidence_receipt_store,
         outcome_policy=outcome_policy,
         portfolio_id=portfolio,
         publication_authority=publication_authority,

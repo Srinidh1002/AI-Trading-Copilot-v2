@@ -6,6 +6,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from services.certification.task9_live_collector_session_resolver import (
+    build_task9_live_collector_session_resolver,
+)
 from services.market.task9_live_tick_stream import (
     IST,
     Task9LiveCandleAggregator,
@@ -19,13 +22,37 @@ from services.market.task9_live_tick_stream import (
 NOW = datetime(2026, 8, 11, 9, 15, tzinfo=IST)
 
 
+def _session_resolver():
+    return build_task9_live_collector_session_resolver(
+        nfo_new_entry_cutoff=NOW.replace(
+            hour=15,
+            minute=20,
+            second=0,
+            microsecond=0,
+        ).time(),
+        bfo_new_entry_cutoff=NOW.replace(
+            hour=15,
+            minute=20,
+            second=0,
+            microsecond=0,
+        ).time(),
+    )
+
+
+def _journal(root):
+    return Task9LiveTickJournal(
+        root,
+        session_state_resolver=_session_resolver(),
+    )
+
+
 def _tick(offset=0, *, market="NIFTY", price=25000):
     exchange, token = ("NSE", "99926000") if market == "NIFTY" else ("BSE", "99919000")
     return normalize_task9_websocket_tick(exchange=exchange, symbol_token=token, provider_timestamp=NOW + timedelta(minutes=offset), received_at=NOW + timedelta(minutes=offset), ltp=price)
 
 
 def test_exact_shared_subscriptions_and_no_socket_until_started(tmp_path):
-    stream = Task9LiveTickStream(journal=Task9LiveTickJournal(tmp_path), websocket_factory=lambda **_: None, credentials={})
+    stream = Task9LiveTickStream(journal=_journal(tmp_path), websocket_factory=lambda **_: None, credentials={})
     assert stream.websocket is None
     assert Task9LiveTickStream.subscriptions() == [
         {"exchangeType": 1, "tokens": ["99926000"]},
@@ -59,7 +86,7 @@ class _FakeSocket:
 def test_stream_explicit_callbacks_subscribe_once_and_never_expose_credentials(tmp_path):
     socket = _FakeSocket()
     stream = Task9LiveTickStream(
-        journal=Task9LiveTickJournal(tmp_path),
+        journal=_journal(tmp_path),
         websocket_factory=lambda **_: socket,
         credentials={"auth_token": "secret", "feed_token": "secret"},
     )
@@ -81,12 +108,15 @@ def test_supervisor_reconnects_sequentially_with_bounded_backoff_and_healthy_res
         socket._stream = stream
         sockets.append(socket)
         return socket
-    stream = Task9LiveTickStream(journal=Task9LiveTickJournal(tmp_path), websocket_factory=factory, credentials={})
+    stream = Task9LiveTickStream(journal=_journal(tmp_path), websocket_factory=factory, credentials={})
     delays = []
 
     stream.run_forever(
-        sleep=lambda _: None, wait_for_stop=lambda delay: delays.append(delay) or False,
-        poll_interval_seconds=0.001, max_sessions=4,
+        clock=lambda: NOW + timedelta(hours=1),
+        sleep=lambda _: None,
+        wait_for_stop=lambda delay: delays.append(delay) or False,
+        poll_interval_seconds=0.001,
+        max_sessions=4,
     )
 
     assert len(sockets) == 4
@@ -97,7 +127,7 @@ def test_supervisor_reconnects_sequentially_with_bounded_backoff_and_healthy_res
 
 def test_stale_open_connection_reconnects_only_during_market_session_and_stop_closes_socket(tmp_path):
     socket = _FakeSocket(block=True)
-    stream = Task9LiveTickStream(journal=Task9LiveTickJournal(tmp_path), websocket_factory=lambda **_: socket, credentials={})
+    stream = Task9LiveTickStream(journal=_journal(tmp_path), websocket_factory=lambda **_: socket, credentials={})
     socket._stream = stream
     stream.run_forever(
         clock=lambda: NOW + timedelta(hours=1, seconds=31),
@@ -108,21 +138,49 @@ def test_stale_open_connection_reconnects_only_during_market_session_and_stop_cl
     assert "STALE" in stream.events and list(stream.events)[-1] == "STOPPED"
 
 
-def test_open_connection_is_not_declared_stale_outside_market_session(tmp_path):
+def test_closed_session_does_not_start_or_stale_websocket(tmp_path):
     socket = _FakeSocket()
-    stream = Task9LiveTickStream(journal=Task9LiveTickJournal(tmp_path), websocket_factory=lambda **_: socket, credentials={})
-    socket._stream = stream
-    closed_session = datetime.now(IST).replace(hour=8, minute=0, second=0, microsecond=0)
-    stream.run_forever(clock=lambda: closed_session, sleep=lambda _: None, poll_interval_seconds=0.001, max_sessions=1)
-    assert socket.closed is True  # final supervisor stop, not stale detection
+    factory_calls = []
+
+    def factory(**_):
+        factory_calls.append(True)
+        socket._stream = stream
+        return socket
+
+    stream = Task9LiveTickStream(
+        journal=_journal(tmp_path),
+        websocket_factory=factory,
+        credentials={},
+    )
+
+    closed_session = NOW.replace(
+        hour=16,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
+    stream.run_forever(
+        clock=lambda: closed_session,
+        sleep=lambda _: None,
+        poll_interval_seconds=0.001,
+        max_sessions=1,
+    )
+
+    # The session resolver closes the supervisor before _prepare_session().
+    # No socket should be created merely so final cleanup can close it.
+    assert factory_calls == []
+    assert stream.websocket is None
+    assert socket.closed is False
+    assert stream.close_reason != "STALE"
     assert "STALE" not in stream.events
 
 
 def test_closed_ist_5m_15m_and_1h_candles_are_truthful_and_restart_safe(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     for offset in range(0, 60, 5):
         assert journal.append(_tick(offset, price=25000 + offset)) is True
-    aggregator = Task9LiveCandleAggregator(Task9LiveTickJournal(tmp_path))
+    aggregator = Task9LiveCandleAggregator(_journal(tmp_path))
     assert aggregator.candles(market="NIFTY", trading_date=NOW.date(), timeframe="5m", as_of=NOW + timedelta(minutes=5))[0]["close"] == 25000
     assert len(aggregator.candles(market="NIFTY", trading_date=NOW.date(), timeframe="15m", as_of=NOW + timedelta(minutes=15))) == 1
     assert len(aggregator.candles(market="NIFTY", trading_date=NOW.date(), timeframe="1h", as_of=NOW + timedelta(minutes=60))) == 1
@@ -130,7 +188,7 @@ def test_closed_ist_5m_15m_and_1h_candles_are_truthful_and_restart_safe(tmp_path
 
 
 def test_rejects_malformed_out_of_order_and_out_of_session_ticks(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     with pytest.raises(Task9LiveTickError): normalize_task9_websocket_tick(exchange="NSE", symbol_token="99926000", provider_timestamp=NOW, received_at=NOW, ltp=0)
     journal.append(_tick(5))
     with pytest.raises(Task9LiveTickError): journal.append(_tick(0))
@@ -138,7 +196,7 @@ def test_rejects_malformed_out_of_order_and_out_of_session_ticks(tmp_path):
 
 
 def test_late_start_coverage_reports_missing_morning_without_synthesis(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     journal.append(_tick(130))
     coverage = Task9LiveCandleAggregator(journal).coverage(market="NIFTY", trading_date=NOW.date(), timeframe="5m", as_of=NOW + timedelta(minutes=135))
     assert coverage["earliest_observed_at"] == (NOW + timedelta(minutes=130)).isoformat()
@@ -147,7 +205,7 @@ def test_late_start_coverage_reports_missing_morning_without_synthesis(tmp_path)
 
 
 def test_late_capture_does_not_certify_the_partially_observed_5m_bucket(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     journal.append(_tick(12))  # 09:27, after the 09:25 bucket began.
     aggregator = Task9LiveCandleAggregator(journal)
 
@@ -157,7 +215,7 @@ def test_late_capture_does_not_certify_the_partially_observed_5m_bucket(tmp_path
 
 
 def test_late_capture_cannot_certify_15m_or_1h_session_start_windows(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     for offset in (12, *range(15, 60, 5)):
         journal.append(_tick(offset))
     aggregator = Task9LiveCandleAggregator(journal)
@@ -169,7 +227,7 @@ def test_late_capture_cannot_certify_15m_or_1h_session_start_windows(tmp_path):
 
 
 def test_complete_capture_certifies_5m_15m_and_1h_normally(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     for offset in range(0, 60, 5):
         journal.append(_tick(offset))
     aggregator = Task9LiveCandleAggregator(journal)
@@ -180,7 +238,7 @@ def test_complete_capture_certifies_5m_15m_and_1h_normally(tmp_path):
 
 
 def test_missing_constituent_5m_bucket_fails_higher_timeframe_closed_window(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     for offset in range(0, 60, 5):
         if offset != 10:
             journal.append(_tick(offset))
@@ -191,7 +249,7 @@ def test_missing_constituent_5m_bucket_fails_higher_timeframe_closed_window(tmp_
 
 
 def test_legacy_json_and_new_jsonl_are_combined_without_mutating_legacy_evidence(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     legacy_tick = _tick(0)
     legacy_path = tmp_path / f"ticks-{NOW.date().isoformat()}.json"
     legacy_payload = {"schema_version": 1, "trading_date": NOW.date().isoformat(), "ticks": [{"market": legacy_tick.market, "exchange": legacy_tick.exchange, "symbol_token": legacy_tick.symbol_token, "provider_timestamp": legacy_tick.provider_timestamp.isoformat(), "received_at": legacy_tick.received_at.isoformat(), "ltp": legacy_tick.ltp, "source": legacy_tick.source}]}
@@ -205,7 +263,7 @@ def test_legacy_json_and_new_jsonl_are_combined_without_mutating_legacy_evidence
 
 
 def test_jsonl_append_seeds_state_once_and_does_not_rewrite_prior_records(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     calls = 0
     original_load = journal.load
     def counted_load(day):
@@ -227,13 +285,13 @@ def test_jsonl_append_seeds_state_once_and_does_not_rewrite_prior_records(tmp_pa
 
 
 def test_jsonl_restart_ignores_only_incomplete_trailing_line_and_seeds_order_state(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     assert journal.append(_tick(0)) is True
     path = tmp_path / f"ticks-{NOW.date().isoformat()}.jsonl"
     with path.open("a", encoding="utf-8") as handle:
         handle.write('{"incomplete"')
 
-    restarted = Task9LiveTickJournal(tmp_path)
+    restarted = _journal(tmp_path)
     assert restarted.load(NOW.date()) == (_tick(0),)
     assert restarted.append(_tick(5)) is True
     with pytest.raises(Task9LiveTickError):
@@ -241,7 +299,7 @@ def test_jsonl_restart_ignores_only_incomplete_trailing_line_and_seeds_order_sta
 
 
 def test_lagging_callback_backlog_is_diagnostic_while_provider_timestamp_remains_authority(tmp_path):
-    stream = Task9LiveTickStream(journal=Task9LiveTickJournal(tmp_path), websocket_factory=lambda **_: None, credentials={})
+    stream = Task9LiveTickStream(journal=_journal(tmp_path), websocket_factory=lambda **_: None, credentials={})
     stream._session_open = True
     stream.last_callback_received_at = NOW + timedelta(minutes=60)
     stream.latest_provider_timestamp = NOW
@@ -253,30 +311,30 @@ def test_lagging_callback_backlog_is_diagnostic_while_provider_timestamp_remains
 
 
 def test_malformed_newline_terminated_middle_jsonl_line_fails_closed(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     assert journal.append(_tick(0)) is True
     path = tmp_path / f"ticks-{NOW.date().isoformat()}.jsonl"
     with path.open("a", encoding="utf-8") as handle:
         handle.write('{"malformed":true}\n')
         handle.write(json.dumps({"market":"NIFTY","exchange":"NSE","symbol_token":"99926000","provider_timestamp":(NOW + timedelta(minutes=5)).isoformat(),"received_at":(NOW + timedelta(minutes=5)).isoformat(),"ltp":25001,"source":"LIVE_WEBSOCKET"}) + "\n")
     with pytest.raises(Task9LiveTickError):
-        Task9LiveTickJournal(tmp_path).load(NOW.date())
+        _journal(tmp_path).load(NOW.date())
 
 
 def test_malformed_newline_terminated_final_jsonl_line_fails_closed(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     assert journal.append(_tick(0)) is True
     with (tmp_path / f"ticks-{NOW.date().isoformat()}.jsonl").open("a", encoding="utf-8") as handle:
         handle.write('{"malformed":true}\n')
-    with pytest.raises(Task9LiveTickError): Task9LiveTickJournal(tmp_path).load(NOW.date())
+    with pytest.raises(Task9LiveTickError): _journal(tmp_path).load(NOW.date())
 
 
 def test_unterminated_final_partial_jsonl_fragment_is_ignored_but_prior_rows_remain_readable(tmp_path):
-    journal = Task9LiveTickJournal(tmp_path)
+    journal = _journal(tmp_path)
     assert journal.append(_tick(0)) is True
     assert journal.append(_tick(5)) is True
     path = tmp_path / f"ticks-{NOW.date().isoformat()}.jsonl"
     with path.open("a", encoding="utf-8") as handle:
         handle.write('{"partial"')
-    recovered = Task9LiveTickJournal(tmp_path).load(NOW.date())
+    recovered = _journal(tmp_path).load(NOW.date())
     assert recovered == (_tick(0), _tick(5))

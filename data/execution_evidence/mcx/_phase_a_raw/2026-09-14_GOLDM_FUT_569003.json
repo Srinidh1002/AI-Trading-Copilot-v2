@@ -1,0 +1,81 @@
+{
+  "exchange": "MCX",
+  "tradingSymbol": "GOLDM05OCT26FUT",
+  "symbolToken": "569003",
+  "ltp": 150843.0,
+  "open": 152811.0,
+  "high": 152812.0,
+  "low": 150151.0,
+  "close": 152978.0,
+  "lastTradeQty": 100,
+  "exchFeedTime": "14-Sep-2026 17:36:05",
+  "exchTradeTime": "14-Sep-2026 17:36:03",
+  "netChange": -2135.0,
+  "percentChange": -1.4,
+  "avgPrice": 151103.87,
+  "tradeVolume": 6526,
+  "opnInterest": 3085100,
+  "lowerCircuit": 148389.0,
+  "upperCircuit": 157567.0,
+  "totBuyQuan": 113400,
+  "totSellQuan": 88200,
+  "referenceLimitPrice": 0.0,
+  "52WeekLow": 140675.0,
+  "52WeekHigh": 171691.0,
+  "depth": {
+    "buy": [
+      {
+        "price": 150825.0,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 150820.0,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 150815.0,
+        "quantity": 200,
+        "orders": 2
+      },
+      {
+        "price": 150811.0,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 150810.0,
+        "quantity": 4300,
+        "orders": 2
+      }
+    ],
+    "sell": [
+      {
+        "price": 150849.0,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 150850.0,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 150854.0,
+        "quantity": 100,
+        "orders": 1
+      },
+      {
+        "price": 150856.0,
+        "quantity": 400,
+        "orders": 2
+      },
+      {
+        "price": 150861.0,
+        "quantity": 200,
+        "orders": 2
+      }
+    ]
+  }
+}

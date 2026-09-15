@@ -1,0 +1,108 @@
+"""Target Policy - Handles T1/T2/T3 lifecycle for single-lot trades.
+Also handles trailing / profit-lock behavior.
+"""
+
+
+class TargetPolicy:
+    def __init__(self, t1_pct=15, t2_pct=30, t3_pct=50,
+                 single_lot=True,
+                 trail_after_t1=True,
+                 trail_step_pct=5,
+                 lock_in_at_t1=True):
+        self.t1_pct = t1_pct
+        self.t2_pct = t2_pct
+        self.t3_pct = t3_pct
+        self.single_lot = single_lot
+        self.trail_after_t1 = trail_after_t1
+        self.trail_step_pct = trail_step_pct
+        self.lock_in_at_t1 = lock_in_at_t1
+    
+    def evaluate(self, state):
+        """state keys:
+            entry_price, current_price,
+            peak_price (max price seen), 
+            trail_stop (current trail stop price or None),
+            t1_hit (bool), t2_hit (bool)
+        Returns (action, reason, new_trail_stop, updates)
+        action in ("HOLD", "TRAIL_UPDATE", "EXIT_T3")
+        """
+        entry = state.get("entry_price", 0)
+        current = state.get("current_price", 0)
+        peak = state.get("peak_price", current)
+        trail_stop = state.get("trail_stop")
+        t1_hit = state.get("t1_hit", False)
+        t2_hit = state.get("t2_hit", False)
+        
+        if entry <= 0 or current <= 0:
+            return ("HOLD", "INSUFFICIENT_DATA", trail_stop, {})
+        
+        # Target price levels
+        t1_price = entry * (1 + self.t1_pct / 100)
+        t2_price = entry * (1 + self.t2_pct / 100)
+        t3_price = entry * (1 + self.t3_pct / 100)
+        
+        pnl_pct = ((current - entry) / entry) * 100
+        
+        # Hit T3 = full exit
+        if pnl_pct >= self.t3_pct:
+            return ("EXIT_T3", "T3_REACHED", trail_stop, {"pnl_pct": pnl_pct})
+        
+        updates = {}
+        
+        # Single-lot policy: T1 ├óΓÇáΓÇÖ lock in, trail; T2 ├óΓÇáΓÇÖ tighter trail; T3 ├óΓÇáΓÇÖ exit
+        if self.single_lot:
+            new_trail = trail_stop
+            
+            # T1: activate trail stop at breakeven + buffer
+            if pnl_pct >= self.t1_pct and not t1_hit:
+                if self.lock_in_at_t1:
+                    # Trail stop at T1 - 5% or breakeven, whichever higher
+                    candidate = max(entry, t1_price * (1 - self.trail_step_pct / 100))
+                    new_trail = candidate
+                updates["t1_hit"] = True
+                print(f"    [TARGET] T1 hit ({pnl_pct:.1f}%), trail stop ├óΓÇáΓÇÖ ├óΓÇÜ┬╣{new_trail:.2f}")
+                return ("TRAIL_UPDATE", "T1_LOCK_IN", new_trail, updates)
+            
+            # After T1, trail peak
+            if t1_hit and self.trail_after_t1:
+                new_trail_candidate = peak * (1 - self.trail_step_pct / 100)
+                if new_trail is None or new_trail_candidate > new_trail:
+                    updates["t1_hit"] = True
+                    return ("TRAIL_UPDATE", "TRAIL_UP", new_trail_candidate, updates)
+            
+            # T2: tighter trail (2%)
+            if pnl_pct >= self.t2_pct and not t2_hit:
+                new_trail = peak * 0.98
+                updates["t1_hit"] = True
+                updates["t2_hit"] = True
+                print(f"    [TARGET] T2 hit ({pnl_pct:.1f}%), tighter trail ├óΓÇáΓÇÖ ├óΓÇÜ┬╣{new_trail:.2f}")
+                return ("TRAIL_UPDATE", "T2_TIGHTER_TRAIL", new_trail, updates)
+        
+        return ("HOLD", "ACTIVE", new_trail if 'new_trail' in dir() else trail_stop, updates)
+    
+    def check_trail_stop(self, current, trail_stop):
+        """Has the trail stop been hit?"""
+        if trail_stop is None:
+            return False
+        return current <= trail_stop
+
+
+if __name__ == "__main__":
+    policy = TargetPolicy()
+    
+    # Simulate progression
+    print("Simulating trade progression:")
+    trail = None
+    for p in [100, 105, 110, 116, 120, 125, 130, 128, 132, 140, 145, 150, 155]:
+        state = {
+            "entry_price": 100,
+            "current_price": p,
+            "peak_price": max(p, 100),
+            "trail_stop": trail,
+            "t1_hit": False,
+            "t2_hit": False,
+        }
+        action, reason, new_trail, updates = policy.evaluate(state)
+        trail = new_trail
+        print(f"  price={p:>5} pnl={(p-100):>4}% -> {action:15s} {reason:20s} trail={trail}")
+

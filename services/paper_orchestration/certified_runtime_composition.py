@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+import math
 from pathlib import Path
 from threading import RLock
 from typing import Any
@@ -32,6 +33,9 @@ from services.contracts.paper_portfolio_policy_v1 import (
 )
 from services.contracts.paper_trade_lifecycle_policy_v1 import (
     PaperTradeLifecyclePolicyV1,
+)
+from services.contracts.capital_quantity_trading_cost_policy_v1 import (
+    CapitalQuantityTradingCostPolicyV1,
 )
 from services.live_analysis_pipeline import LiveAnalysisPipeline
 from services.live_option_decision_pipeline import (
@@ -76,6 +80,9 @@ from services.paper_orchestration.certified_new_entry_input_factory import (
 from services.paper_orchestration.certified_p6_input_factory import (
     CertifiedP6InputBundleV1,
     CertifiedP6InputFactory,
+)
+from services.trade_planning.task9_local_paper_cost_authority import (
+    calculate_task9_local_paper_cost_evidence,
 )
 from services.paper_orchestration.certified_persistence_composition import (
     build_certified_coordinators,
@@ -388,11 +395,103 @@ def _provider_ltp_reader(
     }
 
 
+_ANALYTICAL_OPTION_EVIDENCE_FIELDS = (
+    "change_in_open_interest",
+    "iv",
+    "delta",
+    "gamma",
+    "theta",
+    "vega",
+)
+
+
+def _analytical_option_identity(contract: Mapping[str, object]):
+    """Return the exact join identity, or ``None`` for unsafe evidence.
+
+    The analytical view is intentionally separate from the contract-universe
+    view.  Evidence may cross that boundary only when the provider token and
+    all available secondary identifiers corroborate one another.
+    """
+    token = str(contract.get("token", contract.get("symbolToken", ""))).strip()
+    expiry = str(contract.get("expiry", "")).strip().upper()
+    option_type = str(contract.get("option_type", "")).strip().upper()
+    if option_type == "CALL":
+        option_type = "CE"
+    elif option_type == "PUT":
+        option_type = "PE"
+    symbol = str(contract.get("symbol", contract.get("trading_symbol", ""))).strip().upper()
+    try:
+        strike = float(contract.get("strike"))
+    except (TypeError, ValueError):
+        return None
+    if not token or not expiry or option_type not in {"CE", "PE"} or not math.isfinite(strike):
+        return None
+    return token, expiry, strike, option_type, symbol
+
+
+def _propagate_analytical_option_evidence(
+    *,
+    option_contracts,
+    option_chain_evidence_contracts,
+) -> tuple[dict[str, object], ...]:
+    """Strictly project authoritative enrichment into the analytical view.
+
+    No field is inferred: a duplicate, missing, or conflicting identity leaves
+    its analytical contract unchanged.  This retains the raw analytical view's
+    quote fields while allowing local OI and strictly matched provider Greeks
+    to reach canonical option-chain normalization.
+    """
+    by_token: dict[str, tuple[tuple[object, ...], Mapping[str, object]]] = {}
+    duplicate_tokens: set[str] = set()
+    for contract in option_contracts:
+        if not isinstance(contract, Mapping):
+            continue
+        identity = _analytical_option_identity(contract)
+        if identity is None:
+            continue
+        token = identity[0]
+        if token in by_token:
+            duplicate_tokens.add(token)
+        else:
+            by_token[token] = (identity, contract)
+
+    projected = []
+    seen_analytical_tokens: set[str] = set()
+    for contract in option_chain_evidence_contracts:
+        copied = dict(contract)
+        identity = (
+            _analytical_option_identity(contract)
+            if isinstance(contract, Mapping)
+            else None
+        )
+        if identity is None:
+            projected.append(copied)
+            continue
+        token = identity[0]
+        if token in seen_analytical_tokens or token in duplicate_tokens:
+            projected.append(copied)
+            seen_analytical_tokens.add(token)
+            continue
+        seen_analytical_tokens.add(token)
+        source = by_token.get(token)
+        if source is None or source[0] != identity:
+            projected.append(copied)
+            continue
+        source_contract = source[1]
+        for field in _ANALYTICAL_OPTION_EVIDENCE_FIELDS:
+            value = source_contract.get(field)
+            if value is not None:
+                copied[field] = value
+        projected.append(copied)
+    return tuple(projected)
+
+
 def capture_certified_live_evidence(
     *,
     cycle_input: PaperOrchestrationCycleInputV1,
     data_service: LiveMultiTimeframeData,
     option_decision_pipeline: LiveOptionDecisionPipeline,
+    option_oi_change_authority=None,
     candle_cutoff: datetime | None = None,
     precomposed_timeframe_provider=None,
 ) -> CertifiedLiveCapturedEvidenceV1:
@@ -457,6 +556,58 @@ def capture_certified_live_evidence(
         provider_timestamp=market_timestamp,
         evaluated_at=evaluated_at,
     )
+
+    option_contracts = option_capture.contracts
+    option_chain = getattr(
+        option_capture,
+        "option_chain",
+        None,
+    )
+    option_chain_evidence_contracts = tuple(
+        option_chain.get(
+            "chain_evidence_contracts",
+            option_contracts,
+        )
+        if isinstance(option_chain, Mapping)
+        else option_contracts
+    )
+    option_metadata = dict(option_capture.metadata)
+
+    if option_oi_change_authority is not None:
+        enrich = getattr(
+            option_oi_change_authority,
+            "enrich",
+            None,
+        )
+        if not callable(enrich):
+            raise TypeError(
+                "option_oi_change_authority must expose enrich()"
+            )
+
+        oi_change_enrichment = enrich(
+            underlying_symbol=spec.underlying_symbol,
+            spot_exchange=spec.exchange,
+            option_exchange=spec.option_exchange,
+            provider_timestamp=market_timestamp,
+            contracts=option_contracts,
+        )
+
+        option_contracts = (
+            oi_change_enrichment.contracts
+        )
+
+        option_metadata[
+            "oi_change_authority"
+        ] = oi_change_enrichment.metadata()
+
+    option_chain_evidence_contracts = (
+        _propagate_analytical_option_evidence(
+            option_contracts=option_contracts,
+            option_chain_evidence_contracts=(
+                option_chain_evidence_contracts
+            ),
+        )
+    )
     return CertifiedLiveCapturedEvidenceV1(
         underlying_symbol=spec.underlying_symbol,
         spot_exchange=spec.exchange,
@@ -464,12 +615,15 @@ def capture_certified_live_evidence(
         option_exchange=spec.option_exchange,
         spot_payload=payload,
         candle_rows_by_timeframe={key: tuple(value) for key, value in rows.items()},
-        option_contracts=option_capture.contracts,
+        option_contracts=option_contracts,
+        option_chain_evidence_contracts=(
+            option_chain_evidence_contracts
+        ),
         provider_timestamp=market_timestamp,
         evaluated_at=evaluated_at,
         provider_blockers=candle_blockers + option_capture.blockers,
         provider_warnings=candle_warnings + option_capture.warnings,
-        cache_metadata={"candles": cache_metadata, "request_diagnostics": request_diagnostics if isinstance(request_diagnostics, Mapping) else {}, "options": option_capture.metadata, "shared_candle_cutoff": candle_cutoff.isoformat() if candle_cutoff else None},
+        cache_metadata={"candles": cache_metadata, "request_diagnostics": request_diagnostics if isinstance(request_diagnostics, Mapping) else {}, "options": option_metadata, "shared_candle_cutoff": candle_cutoff.isoformat() if candle_cutoff else None},
     )
 
 
@@ -612,13 +766,70 @@ def _p6_bundle_from_opportunity(
             "opportunity evidence must contain exact "
             "CertifiedP6InputBundleV1"
         )
-    return bundle
+    task9_planning_policy = replace(
+        bundle.planning_policy,
+        target_method="DEPLOYED_CAPITAL_RETURN",
+        target_1_multiplier=0.15,
+        target_2_multiplier=0.30,
+        target_3_multiplier=0.50,
+    )
+    inherited_input = bundle.capital_quantity_input
+    inherited_evidence = inherited_input.trading_cost_evidence
+    if inherited_evidence is None:
+        raise ValueError("Task 9 requires upstream trading cost evidence")
+    task9_cost_policy = CapitalQuantityTradingCostPolicyV1(
+        cost_policy_id=f"task9-local-cost-policy:{inherited_input.planning_input_id}",
+        calculation_mode="FIXED_ASSUMPTION_MODEL",
+        brokerage_fixed_per_order=20.0,
+        exchange_transaction_charge_fraction=0.0005,
+        clearing_charge_fraction=0.0,
+        stt_rate_fraction=0.000625,
+        sebi_charge_fraction=0.000001,
+        stamp_duty_rate_fraction=0.00003,
+        gst_rate_fraction=0.18,
+        slippage_rate_fraction=0.005,
+        estimated_order_count=5,
+        policy_timestamp=inherited_input.evaluated_at,
+        policy_source="TASK9_LOCAL_FIXED_ASSUMPTION_MODEL",
+        source_timestamps=dict(inherited_input.source_timestamps),
+        metadata={"cost_authority": "TASK9_LOCAL"},
+    )
+    task9_cost_evidence = calculate_task9_local_paper_cost_evidence(
+        policy=task9_cost_policy,
+        planning_input_id=inherited_input.planning_input_id,
+        trade_plan_id=inherited_input.trade_plan_id,
+        option_selection_result_id=(
+            inherited_input.option_contract_selection_result.selection_result_id
+        ),
+        planned_lot_count=inherited_evidence.planned_lot_count,
+        lot_size=inherited_evidence.lot_size,
+        estimated_premium_outlay=inherited_evidence.estimated_premium_outlay,
+        evidence_timestamp=inherited_input.evaluated_at,
+        evidence_id=(
+            f"task9-local-cost-evidence:{inherited_input.planning_input_id}"
+        ),
+        warnings=inherited_input.warnings,
+        source_timestamps=dict(inherited_input.source_timestamps),
+        metadata={"replaces_cost_policy_id": inherited_input.trading_cost_policy.cost_policy_id},
+    )
+    task9_capital_input = replace(
+        inherited_input,
+        trading_cost_policy=task9_cost_policy,
+        trading_cost_evidence=task9_cost_evidence,
+    )
+
+    return replace(
+        bundle,
+        planning_policy=task9_planning_policy,
+        capital_quantity_input=task9_capital_input,
+    )
 
 
 def build_default_automated_paper_authorities(
     *,
     portfolio_id: str,
     available_capital: float,
+    maximum_daily_loss_fraction: float = 0.02,
 ) -> AutomatedPaperAuthorityBundleV1:
     """Compose the repository's typed P6 and PAPER lifecycle factories.
 
@@ -627,6 +838,15 @@ def build_default_automated_paper_authorities(
     mapping adapter and does not fabricate a trade plan or signal.
     """
     capital = _positive_float(available_capital, "available_capital")
+    if (
+        type(maximum_daily_loss_fraction) not in (int, float)
+        or isinstance(maximum_daily_loss_fraction, bool)
+        or not math.isfinite(maximum_daily_loss_fraction)
+        or maximum_daily_loss_fraction <= 0
+        or maximum_daily_loss_fraction > 1
+    ):
+        raise ValueError("maximum_daily_loss_fraction")
+    daily_loss_fraction = float(maximum_daily_loss_fraction)
 
     def portfolio_policy(
         cycle_input,
@@ -640,7 +860,9 @@ def build_default_automated_paper_authorities(
             maximum_concurrent_trades=3,
             maximum_total_deployed_capital=capital,
             maximum_total_portfolio_risk_amount=capital * 0.10,
-            maximum_daily_loss_amount=capital * 0.02,
+            maximum_daily_loss_amount=(
+                capital * daily_loss_fraction
+            ),
             maximum_daily_drawdown_amount=capital * 0.03,
             maximum_instrument_risk_fraction=0.75,
             maximum_direction_risk_fraction=0.75,

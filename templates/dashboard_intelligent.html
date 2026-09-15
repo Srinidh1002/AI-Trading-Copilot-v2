@@ -1,0 +1,464 @@
+<!-- templates/dashboard_intelligent.html -->
+<!-- FIXED: Shows premium-based values clearly -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 AI Trading Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a1a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a3e, #0f3460);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #00ff8844;
+        }
+        .header h1 { color: #00ff88; font-size: 28px; }
+        .header .status {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .status-running { background: #00ff8822; color: #00ff88; border: 1px solid #00ff88; }
+        .status-stopped { background: #ff444422; color: #ff4444; border: 1px solid #ff4444; }
+        .status-waiting { background: #ffaa0022; color: #ffaa00; border: 1px solid #ffaa00; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; }
+        .grid-5 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 20px; }
+        
+        .card {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #0f3460;
+            margin-bottom: 20px;
+        }
+        .card h3 {
+            color: #00ff88;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #0f3460;
+            padding-bottom: 10px;
+        }
+        .value { font-size: 22px; font-weight: bold; margin: 5px 0; }
+        .positive { color: #00ff88; }
+        .negative { color: #ff4444; }
+        .neutral { color: #ffaa00; }
+        .small { font-size: 14px; color: #888; }
+        
+        .capital-box {
+            background: #0f1a30;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #0f3460;
+        }
+        .capital-box .amount {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .capital-box .label {
+            font-size: 12px;
+            color: #888;
+        }
+        .capital-box .bar {
+            height: 6px;
+            background: #0f3460;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .capital-box .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00ff44);
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+        .capital-box .bar-fill.warning {
+            background: linear-gradient(90deg, #ffaa00, #ff8800);
+        }
+        .capital-box .bar-fill.danger {
+            background: linear-gradient(90deg, #ff4444, #cc0000);
+        }
+        
+        .warning-banner {
+            background: #ff444422;
+            border: 2px solid #ff4444;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            text-align: center;
+            color: #ff6666;
+            font-weight: bold;
+        }
+        
+        .signal-item {
+            background: #0f1a30;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 6px;
+            font-size: 13px;
+            border-left: 3px solid #00ff88;
+        }
+        .signal-item.wait { border-left-color: #ffaa00; }
+        .signal-item.trade { border-left-color: #00ff88; }
+        
+        .position-item {
+            background: #0f1a30;
+            padding: 12px 15px;
+            margin: 5px 0;
+            border-radius: 6px;
+            border-left: 3px solid #00ff88;
+        }
+        .position-item.loss { border-left-color: #ff4444; }
+        .position-item .reason { color: #888; font-size: 12px; margin-top: 4px; }
+        .position-item .pnl-positive { color: #00ff88; }
+        .position-item .pnl-negative { color: #ff4444; }
+        
+        .market-data {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #0f1a30;
+        }
+        .market-data:last-child { border-bottom: none; }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .last-update { color: #888; font-size: 12px; }
+        .refresh-info { text-align: center; color: #666; font-size: 12px; margin-top: 20px; padding: 15px; border-top: 1px solid #0f3460; }
+        .premium-badge { background: #00ff8822; color: #00ff88; padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+        .entry-current { font-size: 12px; color: #888; }
+        .position-pnl { font-size: 16px; font-weight: bold; }
+        
+        @media (max-width: 1200px) {
+            .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 AI TRADING COPILOT</h1>
+            <div>
+                <span id="status-badge" class="status status-waiting">⏳ LOADING</span>
+                <span id="last-update" class="last-update" style="margin-left: 15px;">Loading...</span>
+            </div>
+        </div>
+        
+        <!-- CAPITAL DISPLAY -->
+        <div class="card">
+            <h3>💰 CAPITAL DEPLOYMENT <span class="premium-badge">PREMIUM-BASED</span></h3>
+            <div id="capital-display">
+                <div class="loading">Loading capital data...</div>
+            </div>
+            <div id="capital-warning"></div>
+        </div>
+        
+        <!-- Pre-Market Analysis -->
+        <div class="card">
+            <h3>📊 PRE-MARKET ANALYSIS</h3>
+            <div id="pre-market"><div class="loading">Loading pre-market data...</div></div>
+        </div>
+        
+        <!-- Grid: Market Data + Decisions -->
+        <div class="grid-2">
+            <div class="card">
+                <h3>📈 LIVE MARKET DATA</h3>
+                <div id="market-data"><div class="loading">Loading...</div></div>
+            </div>
+            <div class="card">
+                <h3>🎯 DECISIONS & SIGNALS</h3>
+                <div id="decisions"><div class="loading">No decisions yet</div></div>
+            </div>
+        </div>
+        
+        <!-- Active Positions -->
+        <div class="card">
+            <h3>📊 ACTIVE POSITIONS <span class="premium-badge">PREMIUM</span></h3>
+            <div id="positions"><div class="loading">No open positions</div></div>
+        </div>
+        
+        <!-- P&L Summary -->
+        <div class="card">
+            <h3>💰 P&L SUMMARY</h3>
+            <div id="pnl"><div class="loading">Loading...</div></div>
+        </div>
+        
+        <div class="refresh-info">
+            🔄 Auto-refreshes every 5 seconds | Data from: <span id="data-file">...</span>
+        </div>
+    </div>
+
+    <script>
+        async function fetchDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('status-badge').textContent = '⚠️ ERROR';
+                    document.getElementById('status-badge').className = 'status status-stopped';
+                    console.error('Dashboard error:', data.error);
+                    return;
+                }
+                
+                updateDashboard(data);
+            } catch (e) {
+                console.error('Fetch error:', e);
+                document.getElementById('status-badge').textContent = '⚠️ CONNECTION ERROR';
+            }
+        }
+        
+        function updateDashboard(data) {
+            const dashboard = data.dashboard || {};
+            const status = data.system_status || {};
+            
+            document.getElementById('status-badge').textContent = '🟢 RUNNING';
+            document.getElementById('status-badge').className = 'status status-running';
+            document.getElementById('last-update').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+            document.getElementById('data-file').textContent = data.data_file || '...';
+            
+            // ---- CAPITAL DISPLAY ----
+            const totalCapital = data.total_capital || 1000000;
+            const deployedCapital = data.capital_deployed || 0;
+            const usagePercent = data.usage_percent || 0;
+            const displayPercent = Math.min(usagePercent, 100);
+            
+            let barClass = '';
+            let warningHtml = '';
+            
+            if (usagePercent > 100) {
+                barClass = 'danger';
+                warningHtml = `<div class="warning-banner">⚠️ WARNING: Deployed capital exceeds total capital by ${(usagePercent - 100).toFixed(1)}%</div>`;
+            } else if (usagePercent > 80) {
+                barClass = 'danger';
+            } else if (usagePercent > 50) {
+                barClass = 'warning';
+            }
+            
+            document.getElementById('capital-display').innerHTML = `
+                <div class="grid-5">
+                    <div class="capital-box">
+                        <div class="label">TOTAL CAPITAL</div>
+                        <div class="amount positive">₹${totalCapital.toLocaleString()}</div>
+                    </div>
+                    <div class="capital-box">
+                        <div class="label">DEPLOYED</div>
+                        <div class="amount ${deployedCapital > 0 ? 'positive' : 'neutral'}">₹${deployedCapital.toFixed(2)}</div>
+                    </div>
+                    <div class="capital-box">
+                        <div class="label">AVAILABLE</div>
+                        <div class="amount">₹${(totalCapital - Math.min(deployedCapital, totalCapital)).toFixed(2)}</div>
+                    </div>
+                    <div class="capital-box">
+                        <div class="label">USED</div>
+                        <div class="amount ${usagePercent > 80 ? 'negative' : usagePercent > 50 ? 'neutral' : 'positive'}">${usagePercent.toFixed(1)}%</div>
+                    </div>
+                    <div class="capital-box">
+                        <div class="label">LOT SIZES (SEBI 2026)</div>
+                        <div style="font-size:14px; color:#888;">NIFTY: 65 | SENSEX: 20</div>
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <div class="bar">
+                        <div class="bar-fill ${barClass}" style="width: ${displayPercent}%;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:#666; margin-top:4px;">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('capital-warning').innerHTML = warningHtml;
+            
+            // ---- PRE-MARKET ----
+            const preMarket = data.pre_market || {};
+            if (Object.keys(preMarket).length > 0) {
+                const summary = preMarket.market_summary || {};
+                const conclusion = preMarket.conclusion || '';
+                const recommendations = preMarket.recommendations || {};
+                
+                document.getElementById('pre-market').innerHTML = `
+                    <div class="grid-4">
+                        <div>
+                            <div style="font-size:12px; color:#888;">Market Bias</div>
+                            <div style="font-size:18px; font-weight:bold; color:#00ff88;">${summary.market_bias || 'NEUTRAL'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:12px; color:#888;">Sentiment</div>
+                            <div style="font-size:18px; font-weight:bold; color:#ffaa00;">${summary.overall_sentiment || 'NEUTRAL'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:12px; color:#888;">Volatility</div>
+                            <div style="font-size:18px; font-weight:bold; color:#ffaa00;">${summary.volatility_level || 'MEDIUM'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:12px; color:#888;">Recommendation</div>
+                            <div style="font-size:18px; font-weight:bold; color:#00ff88;">${recommendations.action || 'WAIT'}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px; font-size:13px; color:#aaa;">
+                        ${conclusion}
+                    </div>
+                `;
+            } else {
+                document.getElementById('pre-market').innerHTML = '<div class="loading">No pre-market data available</div>';
+            }
+            
+            // ---- MARKET DATA ----
+            const marketData = dashboard.market_data || {};
+            let marketHtml = '';
+            for (const [symbol, market] of Object.entries(marketData)) {
+                const change = market.change_percent || 0;
+                const cls = change >= 0 ? 'positive' : 'negative';
+                marketHtml += `
+                    <div class="market-data">
+                        <span><strong>${symbol}</strong></span>
+                        <span>${market.ltp || 0}</span>
+                        <span class="${cls}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                    </div>
+                `;
+            }
+            document.getElementById('market-data').innerHTML = marketHtml || '<div class="loading">No market data</div>';
+            
+            // ---- DECISIONS ----
+            const decisions = dashboard.decisions || [];
+            const signals = dashboard.trade_signals || [];
+            let decHtml = '';
+            
+            if (decisions.length > 0) {
+                for (const dec of decisions.slice(-5).reverse()) {
+                    decHtml += `
+                        <div class="signal-item decision">
+                            <strong>${dec.decision || 'DECISION'}</strong>: ${dec.market || ''} ${dec.option_type || ''}
+                            <div style="font-size:11px; color:#666;">Confidence: ${(dec.confidence || 0).toFixed(2)}</div>
+                        </div>
+                    `;
+                }
+            }
+            
+            if (signals.length > 0 && decisions.length < 3) {
+                for (const sig of signals.slice(-3).reverse()) {
+                    const cls = sig.signal === 'TRADE' ? 'trade' : 'wait';
+                    decHtml += `
+                        <div class="signal-item ${cls}">
+                            <strong>${sig.signal || 'WAIT'}</strong>: ${sig.market || ''} ${sig.option_type || ''}
+                            <div style="font-size:11px; color:#666;">Confidence: ${(sig.confidence || 0).toFixed(2)}</div>
+                        </div>
+                    `;
+                }
+            }
+            
+            if (decHtml === '') {
+                decHtml = '<div class="loading">No decisions or signals yet</div>';
+            }
+            document.getElementById('decisions').innerHTML = decHtml;
+            
+            // ---- ACTIVE POSITIONS ----
+            const positions = data.active_positions || [];
+            let posHtml = '';
+            if (positions.length === 0) {
+                posHtml = '<div class="loading">No open positions</div>';
+            } else {
+                for (const pos of positions) {
+                    const pnlAmount = pos.pnl_amount || 0;
+                    const pnlPercent = pos.pnl_percent || 0;
+                    const cls = pnlAmount >= 0 ? 'pnl-positive' : 'pnl-negative';
+                    const borderCls = pnlAmount >= 0 ? '' : 'loss';
+                    const entryPremium = pos.entry_premium || pos.entry_price || 0;
+                    const currentPremium = pos.current_premium || pos.current_price || entryPremium;
+                    const deployed = pos.deployed_capital || 0;
+                    const lots = pos.lots || 1;
+                    const lotSize = pos.lot_size || 65;
+                    const quantity = lots * lotSize;
+                    
+                    posHtml += `
+                        <div class="position-item ${borderCls}">
+                            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center;">
+                                <span>
+                                    <strong>${pos.symbol}</strong> #${pos.position_number || 1}
+                                    <span style="color:#888; font-size:12px;">
+                                        ${lots} lot${lots > 1 ? 's' : ''} × ${lotSize} = ${quantity} shares
+                                    </span>
+                                </span>
+                                <span style="font-size:13px; color:#888;">
+                                    ${pos.option_type || 'CALL'} @ ₹${entryPremium.toFixed(2)}
+                                </span>
+                                <span class="position-pnl ${cls}">
+                                    ${pnlAmount >= 0 ? '+' : ''}₹${pnlAmount.toFixed(2)} (${pnlAmount >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%)
+                                </span>
+                            </div>
+                            <div class="entry-current">
+                                Entry: ₹${entryPremium.toFixed(2)} | Current: ₹${currentPremium.toFixed(2)} | Deployed: ₹${deployed.toFixed(2)}
+                            </div>
+                            <div class="reason">
+                                <strong>Entry Reason:</strong> ${pos.entry_reason || 'N/A'}
+                            </div>
+                            <div style="font-size:11px; color:#666;">
+                                Regime: ${pos.regime || 'NEUTRAL'} | Hold: ${pos.hold_count || 0} cycles
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('positions').innerHTML = posHtml;
+            
+            // ---- P&L ----
+            const pnl = data.pnl || {};
+            const net = pnl.net || 0;
+            const winRate = pnl.win_rate || 0;
+            
+            document.getElementById('pnl').innerHTML = `
+                <div class="grid-3">
+                    <div>
+                        <div style="font-size:12px; color:#888;">Net P&L</div>
+                        <div class="value ${net >= 0 ? 'positive' : 'negative'}">₹${net.toFixed(2)}</div>
+                        <div style="font-size:12px; color:#888;">${pnl.total_trades || 0} trades</div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#888;">Winning Trades</div>
+                        <div class="value positive">${pnl.winning_trades || 0}</div>
+                        <div style="font-size:12px; color:#888;">Profit: ₹${(pnl.profit || 0).toFixed(2)}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#888;">Losing Trades</div>
+                        <div class="value negative">${pnl.losing_trades || 0}</div>
+                        <div style="font-size:12px; color:#888;">Loss: ₹${(pnl.loss || 0).toFixed(2)}</div>
+                    </div>
+                </div>
+                <div style="margin-top:10px; text-align:center; font-size:13px; color:#888;">
+                    ${winRate >= 50 ? '✅' : '⚠️'} Win Rate: <span class="${winRate >= 50 ? 'positive' : 'neutral'}">${winRate.toFixed(1)}%</span>
+                    (${pnl.winning_trades || 0}W / ${pnl.losing_trades || 0}L)
+                </div>
+            `;
+        }
+        
+        fetchDashboard();
+        setInterval(fetchDashboard, 5000);
+    </script>
+</body>
+</html>

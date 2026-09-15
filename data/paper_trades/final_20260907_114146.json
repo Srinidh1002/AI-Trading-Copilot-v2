@@ -1,0 +1,78 @@
+{
+  "timestamp": "2026-09-07T11:41:46.148921",
+  "markets": {
+    "NIFTY": {
+      "spot": 23764.4,
+      "atm": 23750,
+      "options": [
+        {
+          "symbol": "NIFTY08SEP2623750CE",
+          "token": "42629",
+          "strike": 23750.0,
+          "expiry": "08SEP2026",
+          "type": "CE",
+          "exchange": "NFO",
+          "market": "NIFTY",
+          "ltp": 110.55
+        },
+        {
+          "symbol": "NIFTY08SEP2623750PE",
+          "token": "42630",
+          "strike": 23750.0,
+          "expiry": "08SEP2026",
+          "type": "PE",
+          "exchange": "NFO",
+          "market": "NIFTY",
+          "ltp": 49.3
+        }
+      ]
+    },
+    "SENSEX": {
+      "spot": 11212.3,
+      "atm": 11200,
+      "options": []
+    }
+  },
+  "completed_trades": [],
+  "active_trades": [
+    {
+      "trade_id": "PT_001",
+      "market": "NIFTY",
+      "symbol": "NIFTY08SEP2623750CE",
+      "token": "42629",
+      "strike": 23750.0,
+      "type": "CE",
+      "signal": "BUY",
+      "entry_price": 110.55,
+      "quantity": 75,
+      "entry_time": "2026-09-07 11:39:03.244738",
+      "status": "OPEN",
+      "current_price": 110.55,
+      "pnl": 0,
+      "pnl_pct": 0
+    },
+    {
+      "trade_id": "PT_002",
+      "market": "NIFTY",
+      "symbol": "NIFTY08SEP2623750PE",
+      "token": "42630",
+      "strike": 23750.0,
+      "type": "PE",
+      "signal": "BUY",
+      "entry_price": 49.3,
+      "quantity": 75,
+      "entry_time": "2026-09-07 11:39:03.245242",
+      "status": "OPEN",
+      "current_price": 49.3,
+      "pnl": 0,
+      "pnl_pct": 0
+    }
+  ],
+  "summary": {
+    "total_pnl": 0,
+    "nifty_pnl": 0,
+    "sensex_pnl": 0,
+    "completed": 0,
+    "active": 2
+  }
+}

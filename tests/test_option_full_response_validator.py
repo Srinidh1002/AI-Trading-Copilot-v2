@@ -3,6 +3,7 @@ import pytest
 from services.option_full_response_validator import (
     OptionFullResponseValidationError,
     validate_option_full_response,
+    validate_option_full_response_partial,
 )
 
 
@@ -257,3 +258,164 @@ def test_supplied_mismatched_exchange_fails_closed():
             option_exchange="NFO",
             requested_tokens=["1"],
         )
+
+
+def test_partial_validation_retains_valid_sibling_when_one_is_unfetched():
+    result = validate_option_full_response_partial(
+        response=response(
+            fetched=[item("1")],
+            unfetched=[
+                {
+                    "exchange": "NFO",
+                    "symbolToken": "2",
+                    "message": "not available",
+                }
+            ],
+        ),
+        option_exchange="NFO",
+        requested_tokens=["1", "2"],
+    )
+
+    assert tuple(result.validated_by_token) == ("1",)
+    assert result.unfetched_tokens == ("2",)
+    assert result.malformed_tokens == ()
+
+
+def test_partial_validation_retains_valid_sibling_when_one_is_malformed():
+    result = validate_option_full_response_partial(
+        response=response(
+            fetched=[
+                item("1"),
+                item("2", ltp=0),
+            ],
+        ),
+        option_exchange="NFO",
+        requested_tokens=["1", "2"],
+    )
+
+    assert tuple(result.validated_by_token) == ("1",)
+    assert result.unfetched_tokens == ()
+    assert result.malformed_tokens == ("2",)
+
+
+def test_partial_validation_classifies_absent_requested_token_as_unfetched():
+    result = validate_option_full_response_partial(
+        response=response(
+            fetched=[item("1")],
+            unfetched=[],
+        ),
+        option_exchange="NFO",
+        requested_tokens=["1", "2"],
+    )
+
+    assert tuple(result.validated_by_token) == ("1",)
+    assert result.unfetched_tokens == ("2",)
+    assert result.malformed_tokens == ()
+
+
+def test_partial_validation_can_return_zero_valid_contracts():
+    result = validate_option_full_response_partial(
+        response=response(
+            fetched=[item("1", ltp=0)],
+            unfetched=[
+                {
+                    "exchange": "NFO",
+                    "symbolToken": "2",
+                    "message": "not available",
+                }
+            ],
+        ),
+        option_exchange="NFO",
+        requested_tokens=["1", "2"],
+    )
+
+    assert result.validated_by_token == {}
+    assert result.unfetched_tokens == ("2",)
+    assert result.malformed_tokens == ("1",)
+
+
+def test_partial_validation_still_fails_on_unexpected_identity():
+    with pytest.raises(
+        OptionFullResponseValidationError,
+        match="unexpected fetched identity",
+    ):
+        validate_option_full_response_partial(
+            response=response(
+                fetched=[item("999")],
+                unfetched=[],
+            ),
+            option_exchange="NFO",
+            requested_tokens=["1"],
+        )
+
+
+def test_task91043_zero_market_prices_remain_strictly_malformed_by_default():
+    response = {
+        "status": True,
+        "data": {
+            "fetched": [
+                {
+                    "exchange": "NFO",
+                    "symbolToken": "ZERO",
+                    "ltp": 0.0,
+                    "tradeVolume": 0,
+                    "opnInterest": 800,
+                    "depth": {
+                        "buy": [{"price": 0.0}],
+                        "sell": [{"price": 0.05}],
+                    },
+                },
+            ],
+            "unfetched": [],
+        },
+    }
+
+    result = validate_option_full_response_partial(
+        response=response,
+        option_exchange="NFO",
+        requested_tokens=("ZERO",),
+    )
+
+    assert result.validated_by_token == {}
+    assert result.unfetched_tokens == ()
+    assert result.malformed_tokens == ("ZERO",)
+
+
+def test_task91043_chain_evidence_mode_preserves_zero_market_prices():
+    response = {
+        "status": True,
+        "data": {
+            "fetched": [
+                {
+                    "exchange": "NFO",
+                    "symbolToken": "ZERO",
+                    "ltp": 0.0,
+                    "tradeVolume": 0,
+                    "opnInterest": 800,
+                    "depth": {
+                        "buy": [{"price": 0.0}],
+                        "sell": [{"price": 0.05}],
+                    },
+                },
+            ],
+            "unfetched": [],
+        },
+    }
+
+    result = validate_option_full_response_partial(
+        response=response,
+        option_exchange="NFO",
+        requested_tokens=("ZERO",),
+        allow_zero_market_prices=True,
+    )
+
+    assert result.unfetched_tokens == ()
+    assert result.malformed_tokens == ()
+    assert tuple(result.validated_by_token) == ("ZERO",)
+
+    quote = result.validated_by_token["ZERO"]
+
+    assert quote["_validated_ltp"] == 0.0
+    assert quote["_validated_bid"] == 0.0
+    assert quote["_validated_ask"] == 0.05
+    assert quote["_validated_open_interest"] == 800

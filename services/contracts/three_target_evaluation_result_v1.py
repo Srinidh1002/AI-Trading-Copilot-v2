@@ -11,7 +11,7 @@ class ThreeTargetEvaluationResultV1:
  def __post_init__(self):
   for n in ('evaluation_result_id','evaluation_id'):object.__setattr__(self,n,_text(getattr(self,n),n))
   object.__setattr__(self,'evaluated_at',_aware(self.evaluated_at,'evaluated_at'))
-  if self.direction not in _PAIR or self.option_right!=_PAIR[self.direction] or self.target_method not in {'RISK_MULTIPLE','ATR','EXPECTED_MOVE','STRUCTURE','HYBRID'} or self.status not in {'READY','BLOCKED','NO_TARGETS'}:raise ValueError('vocabulary')
+  if self.direction not in _PAIR or self.option_right!=_PAIR[self.direction] or self.target_method not in {'DEPLOYED_CAPITAL_RETURN','RISK_MULTIPLE','ATR','EXPECTED_MOVE','STRUCTURE','HYBRID'} or self.status not in {'READY','BLOCKED','NO_TARGETS'}:raise ValueError('vocabulary')
   ts=(self.target_1,self.target_2,self.target_3)
   if any(x is not None for x in ts) and any(x is None for x in ts):raise ValueError('partial targets')
   for n in ('blockers','warnings','decision_reasons'):object.__setattr__(self,n,_diag(getattr(self,n),n))

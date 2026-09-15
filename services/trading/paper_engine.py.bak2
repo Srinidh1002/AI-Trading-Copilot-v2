@@ -1,0 +1,462 @@
+"""
+Paper Trading Engine - Simplified Unified Engine
+Single paper trading engine that uses the decision pipeline.
+
+This is THE ONLY paper trading engine. All other paper trading files
+should be archived or removed.
+"""
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+import logging
+import json
+from pathlib import Path
+
+from services.decision.pipeline import DecisionPipeline, PipelineResult, DecisionAction
+from services.trading.health_monitor import PredictionHealthMonitor, HealthStatus
+from services.trading.target_tracker import TargetTracker, TargetLevel
+from services.trading.trade_manager import TradeManager, TradeAction
+
+
+@dataclass
+class PaperTrade:
+    """Single paper trade record."""
+    trade_id: str
+    market: str
+    direction: str  # CALL or PUT
+    entry_price: float
+    entry_time: datetime
+    quantity: int
+    option_contract: str
+    strike: float
+    expiry: str
+    premium: float
+    stop_loss: float
+    target1: float
+    target2: float
+    target3: float
+    status: str = "OPEN"  # OPEN, CLOSED, INVALIDATED
+    exit_price: Optional[float] = None
+    exit_time: Optional[datetime] = None
+    exit_reason: Optional[str] = None
+    pnl: float = 0.0
+    pnl_percent: float = 0.0
+    max_favorable_excursion: float = 0.0
+    max_adverse_excursion: float = 0.0
+    health_history: List[Dict] = field(default_factory=list)
+    target_hits: List[str] = field(default_factory=list)
+    decision_confidence: float = 0.0
+    composite_score: float = 0.0
+    gate_results: List[Dict] = field(default_factory=list)
+    reasons: List[str] = field(default_factory=list)
+
+
+@dataclass
+class TradingStats:
+    """Trading statistics for a market."""
+    market: str
+    total_trades: int = 0
+    wins: int = 0
+    losses: int = 0
+    win_rate: float = 0.0
+    total_pnl: float = 0.0
+    max_drawdown: float = 0.0
+    profit_factor: float = 0.0
+    avg_win: float = 0.0
+    avg_loss: float = 0.0
+    target1_hit_rate: float = 0.0
+    target2_hit_rate: float = 0.0
+    target3_hit_rate: float = 0.0
+    no_trade_count: int = 0
+
+
+class PaperTradingEngine:
+    """
+    Unified Paper Trading Engine.
+    
+    This is THE ONLY paper trading engine in the system.
+    It uses:
+    - DecisionPipeline for trade decisions (9 gates)
+    - PredictionHealthMonitor for active trade monitoring
+    - TargetTracker for T1/T2/T3 tracking
+    - TradeManager for HOLD/WAIT/EXIT decisions
+    """
+    
+    def __init__(self, config: Optional[Dict] = None):
+        self.config = config or {}
+        self.logger = logging.getLogger(__name__)
+        
+        # Initialize components with config
+        pipeline_config = self.config.get("pipeline_config", {})
+        health_config = self.config.get("health_config", {})
+        target_config = self.config.get("target_config", {})
+        management_config = self.config.get("management_config", {})
+        
+        self.decision_pipeline = DecisionPipeline(pipeline_config)
+        self.health_monitor = PredictionHealthMonitor(health_config)
+        self.target_tracker = TargetTracker(target_config)
+        self.trade_manager = TradeManager(management_config)
+        
+        # State
+        self.active_trades: Dict[str, PaperTrade] = {}
+        self.closed_trades: List[PaperTrade] = []
+        self.stats: Dict[str, TradingStats] = {}
+        self.mode = self.config.get("mode", "replay")
+        self.days = self.config.get("days", 30)
+        self.markets = self.config.get("markets", ["NIFTY", "SENSEX"])
+        
+        # Safety
+        self.broker_order_submission = False
+        self.live_execution_eligible = False
+        
+        # Persistence
+        self.persist_path = Path(self.config.get("persist_path", "data/paper_trades"))
+        self.persist_path.mkdir(parents=True, exist_ok=True)
+        
+        self.logger.info("PaperTradingEngine initialized (PAPER ONLY - NO BROKER ORDERS)")
+    
+    def run(self) -> Dict[str, Dict]:
+        """
+        Run the paper trading engine.
+        
+        Returns:
+            Dictionary with results for each market
+        """
+        results = {}
+        
+        for market in self.markets:
+            self.logger.info(f"Running paper trading for {market}")
+            
+            # Initialize stats
+            self.stats[market] = TradingStats(market=market)
+            
+            # Get market data
+            data = self._get_market_data(market)
+            if not data:
+                self.logger.warning(f"No data for {market}")
+                continue
+            
+            # Process each data point (tick/candle)
+            trades = self._process_data(market, data)
+            
+            # Generate stats
+            results[market] = self._generate_stats(market)
+            results[market]["trades"] = len(trades)
+            
+            self.logger.info(f"Completed {market}: {len(trades)} trades")
+        
+        return results
+    
+    def _process_data(self, market: str, data: List[Dict]) -> List[PaperTrade]:
+        """Process historical data for a market."""
+        trades = []
+        
+        for i, data_point in enumerate(data):
+            # Check if we have an active trade
+            active_trade = self._get_active_trade(market)
+            
+            if active_trade:
+                # Manage active trade
+                trade = self._manage_trade(active_trade, data_point)
+                if trade.status == "CLOSED":
+                    # Move to closed and record stats
+                    self.closed_trades.append(trade)
+                    self._update_stats(trade)
+                    trades.append(trade)
+                    self.active_trades.pop(trade.trade_id, None)
+                    self.logger.info(f"Trade closed: {trade.trade_id} - {trade.exit_reason}")
+            else:
+                # Check for new trade opportunity
+                if self._should_trade(data_point):
+                    trade = self._execute_trade(market, data_point)
+                    if trade:
+                        self.active_trades[trade.trade_id] = trade
+                        self.logger.info(f"Trade opened: {trade.trade_id}")
+                        trades.append(trade)
+                else:
+                    self.stats[market].no_trade_count += 1
+        
+        return trades
+    
+    def _manage_trade(self, trade: PaperTrade, data: Dict) -> PaperTrade:
+        """
+        Manage an active trade.
+        Uses HealthMonitor, TargetTracker, TradeManager.
+        """
+        # Update health
+        health = self.health_monitor.update(trade.trade_id, data)
+        trade.health_history.append(health.to_dict())
+        
+        # Check targets
+        target_hit = self.target_tracker.check_targets(trade.trade_id, data)
+        if target_hit:
+            trade.target_hits.append(target_hit)
+            self.target_tracker.record_hit(trade.trade_id, target_hit)
+            
+            if target_hit == "T3":
+                # All targets hit - close trade
+                trade.exit_price = data.get("price", trade.entry_price * 1.5)
+                trade.exit_time = datetime.now()
+                trade.exit_reason = "TARGET_3"
+                trade.status = "CLOSED"
+                trade.pnl = trade.quantity * (trade.exit_price - trade.entry_price)
+                trade.pnl_percent = (trade.exit_price / trade.entry_price - 1) * 100
+                return trade
+        
+        # Check invalidation
+        if health.is_invalidated:
+            trade.exit_price = data.get("price", trade.entry_price * 0.95)
+            trade.exit_time = datetime.now()
+            trade.exit_reason = "PREDICTION_INVALIDATED"
+            trade.status = "INVALIDATED"
+            trade.pnl = trade.quantity * (trade.exit_price - trade.entry_price)
+            trade.pnl_percent = (trade.exit_price / trade.entry_price - 1) * 100
+            return trade
+        
+        # Get management decision
+        management_decision = self.trade_manager.evaluate(
+            trade.trade_id,
+            health,
+            data
+        )
+        
+        if management_decision.action == TradeAction.EXIT:
+            trade.exit_price = data.get("price", trade.entry_price)
+            trade.exit_time = datetime.now()
+            trade.exit_reason = management_decision.reason
+            trade.status = "CLOSED"
+            trade.pnl = trade.quantity * (trade.exit_price - trade.entry_price)
+            trade.pnl_percent = (trade.exit_price / trade.entry_price - 1) * 100
+        
+        # Update MFE/MAE
+        current_price = data.get("price", trade.entry_price)
+        mfe = max(trade.max_favorable_excursion, current_price - trade.entry_price)
+        mae = min(trade.max_adverse_excursion, current_price - trade.entry_price)
+        trade.max_favorable_excursion = mfe
+        trade.max_adverse_excursion = mae
+        
+        return trade
+    
+    def _execute_trade(self, market: str, data: Dict) -> Optional[PaperTrade]:
+        """Execute a new trade from the decision pipeline."""
+        try:
+            # Run decision pipeline
+            result = self.decision_pipeline.run(market, data)
+            
+            if result.action == DecisionAction.NO_TRADE:
+                return None
+            
+            # Create trade
+            trade = PaperTrade(
+                trade_id=f"{market}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                market=market,
+                direction="CALL" if result.action == DecisionAction.BUY_CALL else "PUT",
+                entry_price=result.entry_price or data.get("price", 0),
+                entry_time=datetime.now(),
+                quantity=data.get("lot_size", 1),
+                option_contract=result.option_contract or f"{market}CE",
+                strike=result.strike or data.get("strike", 0),
+                expiry=result.expiry or data.get("expiry", ""),
+                premium=data.get("premium", 0),
+                stop_loss=result.stop_loss or data.get("stop_loss", 0),
+                target1=result.target1 or data.get("target1", 0),
+                target2=result.target2 or data.get("target2", 0),
+                target3=result.target3 or data.get("target3", 0),
+                decision_confidence=result.confidence,
+                composite_score=result.composite_score,
+                gate_results=[g.__dict__ for g in result.gate_results],
+                reasons=result.reasons
+            )
+            
+            # Initialize health
+            self.health_monitor.initialize(trade.trade_id, data)
+            
+            # Initialize targets
+            self.target_tracker.initialize_trade(trade.trade_id, trade.entry_price, trade.quantity)
+            
+            # Register with trade manager
+            self.trade_manager.register_trade(trade.trade_id, {
+                "entry_price": trade.entry_price,
+                "stop_loss": trade.stop_loss,
+                "targets": [trade.target1, trade.target2, trade.target3],
+                "invalidation_conditions": data.get("invalidation_conditions", [])
+            })
+            
+            return trade
+            
+        except Exception as e:
+            self.logger.error(f"Error executing trade: {e}")
+            self.logger.exception(e)
+            return None
+    
+    def _should_trade(self, data: Dict) -> bool:
+        """Check if we should consider a new trade."""
+        # Don't trade if we have an active trade
+        # (configurable: allow multiple trades)
+        max_open = self.config.get("max_open_trades", 1)
+        if len(self.active_trades) >= max_open:
+            return False
+        
+        # Check if we've reached target trades
+        # (for certification)
+        return True
+    
+    def _get_active_trade(self, market: str) -> Optional[PaperTrade]:
+        """Get the active trade for a market."""
+        for trade in self.active_trades.values():
+            if trade.market == market and trade.status == "OPEN":
+                return trade
+        return None
+    
+    def _get_market_data(self, market: str) -> List[Dict]:
+        """Get market data for replay or live mode."""
+        if self.mode == "replay":
+            return self._get_replay_data(market)
+        else:
+            return self._get_live_data(market)
+    
+    def _get_replay_data(self, market: str) -> List[Dict]:
+    """Get replay data - uses synthetic data."""
+    self.logger.info(f"Generating synthetic data for {market} ({self.days} days)")
+    return self._generate_synthetic_data(market)
+
+def _generate_synthetic_data(self, market: str) -> List[Dict]:
+    """Generate synthetic data directly."""
+    import random
+    from datetime import datetime, timedelta
+    
+    base_price = 25000 if market == "NIFTY" else 85000
+    volatility = 0.01
+    
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=self.days)
+    
+    data = []
+    current_price = base_price
+    
+    for i in range(self.days * 390):
+        timestamp = start_date + timedelta(minutes=i)
+        change = current_price * volatility * random.gauss(0, 1)
+        current_price += change
+        
+        data.append({
+            "timestamp": timestamp.isoformat(),
+            "price": float(current_price),
+            "open": float(current_price * (1 - random.gauss(0, 0.001))),
+            "high": float(current_price * (1 + abs(random.gauss(0, 0.005)))),
+            "low": float(current_price * (1 - abs(random.gauss(0, 0.005)))),
+            "close": float(current_price),
+            "volume": float(random.randint(100000, 1000000)),
+            "market": market,
+            "vwap": float(current_price * (1 + random.gauss(0, 0.001))),
+            "rsi": float(50 + random.gauss(0, 10)),
+            "trend": "BULLISH" if i % 3 == 0 else "BEARISH" if i % 3 == 1 else "SIDEWAYS",
+            "regime": "BULL" if i % 2 == 0 else "RANGE",
+            "pcr": 1.0 + random.gauss(0, 0.1),
+            "support": float(current_price * 0.98),
+            "resistance": float(current_price * 1.02),
+            "max_pain": float(current_price),
+            "adx": float(25 + random.gauss(0, 5)),
+            "macd": float(random.gauss(0, 10)),
+            "volume_ratio": float(1 + random.gauss(0, 0.2)),
+        })
+    
+    self.logger.info(f"Generated {len(data)} synthetic data points for {market}")
+    return data
+
+    def _get_live_data(self, market: str) -> List[Dict]:
+        """Get live market data."""
+        # Use existing market data service
+        from services.market.market_snapshot import get_market_snapshot
+        snapshot = get_market_snapshot(market)
+        return [snapshot]  # Single point for live
+    
+    def _generate_stats(self, market: str) -> Dict:
+        """Generate statistics for a market."""
+        stats = self.stats.get(market)
+        if not stats:
+            return {}
+        
+        # Calculate win rate
+        total = stats.wins + stats.losses
+        stats.win_rate = (stats.wins / total * 100) if total > 0 else 0
+        
+        # Calculate profit factor
+        stats.profit_factor = abs(stats.total_pnl / stats.total_pnl) if stats.total_pnl != 0 else 0
+        
+        # Calculate target hit rates
+        trades = [t for t in self.closed_trades if t.market == market]
+        if trades:
+            t1_hits = len([t for t in trades if "TARGET_1" in t.target_hits])
+            t2_hits = len([t for t in trades if "TARGET_2" in t.target_hits])
+            t3_hits = len([t for t in trades if "TARGET_3" in t.target_hits])
+            stats.target1_hit_rate = (t1_hits / len(trades)) * 100
+            stats.target2_hit_rate = (t2_hits / len(trades)) * 100
+            stats.target3_hit_rate = (t3_hits / len(trades)) * 100
+        
+        # Save stats
+        self._persist_stats(market, stats)
+        
+        return {
+            "total_trades": total,
+            "wins": stats.wins,
+            "losses": stats.losses,
+            "win_rate": stats.win_rate,
+            "total_pnl": stats.total_pnl,
+            "profit_factor": stats.profit_factor,
+            "max_drawdown": stats.max_drawdown,
+            "target1_hit_rate": stats.target1_hit_rate,
+            "target2_hit_rate": stats.target2_hit_rate,
+            "target3_hit_rate": stats.target3_hit_rate,
+            "no_trade_count": stats.no_trade_count
+        }
+    
+    def _update_stats(self, trade: PaperTrade):
+        """Update statistics with a closed trade."""
+        stats = self.stats.get(trade.market)
+        if not stats:
+            return
+        
+        stats.total_trades += 1
+        if trade.pnl > 0:
+            stats.wins += 1
+        else:
+            stats.losses += 1
+        
+        stats.total_pnl += trade.pnl
+        
+        # Update max drawdown
+        if trade.pnl < 0:
+            stats.max_drawdown = min(stats.max_drawdown, trade.pnl)
+    
+    def _persist_stats(self, market: str, stats: TradingStats):
+        """Persist statistics to file."""
+        path = self.persist_path / f"{market}_stats.json"
+        with open(path, "w") as f:
+            json.dump({
+                "market": stats.market,
+                "total_trades": stats.total_trades,
+                "wins": stats.wins,
+                "losses": stats.losses,
+                "win_rate": stats.win_rate,
+                "total_pnl": stats.total_pnl,
+                "max_drawdown": stats.max_drawdown,
+                "profit_factor": stats.profit_factor,
+                "target1_hit_rate": stats.target1_hit_rate,
+                "target2_hit_rate": stats.target2_hit_rate,
+                "target3_hit_rate": stats.target3_hit_rate,
+                "no_trade_count": stats.no_trade_count
+            }, f, indent=2)
+    
+    def get_active_trades(self) -> List[PaperTrade]:
+        """Get all active trades."""
+        return list(self.active_trades.values())
+    
+    def get_closed_trades(self) -> List[PaperTrade]:
+        """Get all closed trades."""
+        return self.closed_trades
+    
+    def get_stats(self, market: str) -> Optional[TradingStats]:
+        """Get statistics for a market."""
+        return self.stats.get(market)

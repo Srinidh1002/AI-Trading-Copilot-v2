@@ -9,6 +9,10 @@ from pathlib import Path
 from types import UnionType
 from typing import Any, ClassVar, Mapping, get_args, get_origin, get_type_hints
 
+from services.contracts.task9_live_paper_certification_progress_v1 import (
+    Task9MarketProgressV1,
+)
+
 from .dashboard_publication_snapshot_v1 import DashboardPublicationSnapshotV1
 
 
@@ -97,7 +101,19 @@ def _recover(value: object, annotation: object, name: str):
             "live_execution_eligible",
             "schema_version",
         }
-        allowed = expected | class_fields
+        derived_fields = (
+            {
+                "target_reached",
+                "remaining_trade_count",
+            }
+            if annotation is Task9MarketProgressV1
+            else set()
+        )
+        allowed = (
+            expected
+            | class_fields
+            | derived_fields
+        )
         required = {
             item.name for item in fields(annotation)
             if item.default is MISSING and item.default_factory is MISSING
@@ -126,12 +142,40 @@ def _recover(value: object, annotation: object, name: str):
                 )
         hints = get_type_hints(annotation)
         try:
-            return annotation(**{
-                item.name: _recover(payload[item.name], hints[item.name], f"{name}.{item.name}")
-                for item in fields(annotation) if item.name in payload
+            result = annotation(**{
+                item.name: _recover(
+                    payload[item.name],
+                    hints[item.name],
+                    f"{name}.{item.name}",
+                )
+                for item in fields(annotation)
+                if item.name in payload
             })
         except (TypeError, ValueError) as exc:
-            raise ValueError(f"invalid {name}") from exc
+            raise ValueError(
+                f"invalid {name}"
+            ) from exc
+
+        if annotation is Task9MarketProgressV1:
+            if (
+                "target_reached" in payload
+                and payload["target_reached"]
+                is not result.target_reached
+            ):
+                raise ValueError(
+                    f"{name}.target_reached"
+                )
+
+            if (
+                "remaining_trade_count" in payload
+                and payload["remaining_trade_count"]
+                != result.remaining_trade_count
+            ):
+                raise ValueError(
+                    f"{name}.remaining_trade_count"
+                )
+
+        return result
     if annotation is float:
         if type(value) not in (int, float) or isinstance(value, bool):
             raise ValueError(name)

@@ -1,0 +1,251 @@
+====================================================================================================
+STAGE 2 ΓÇö RAW DEPTH + QUANTITY SEMANTICS
+Run at: 2026-09-14T17:36:00.739150+05:30
+====================================================================================================
+[I 260914 17:36:00 smartConnect:124] in pool
+
+  local_receive_time: 2026-09-14T17:36:06.590579+05:30
+
+====================================================================================================
+CRUDEOILM  FUT  token=565900
+====================================================================================================
+  symbol          : CRUDEOILM21SEP26FUT
+  ltp             : 9887.0
+  exchFeedTime    : 14-Sep-2026 17:36:02
+  exchTradeTime   : 14-Sep-2026 17:36:00
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=      9888.0  qty=     210  orders=    5
+    L2: price=      9887.0  qty=     460  orders=   28
+    L3: price=      9886.0  qty=     490  orders=   26
+    L4: price=      9885.0  qty=     260  orders=   16
+    L5: price=      9884.0  qty=     180  orders=   12
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=      9890.0  qty=     430  orders=    4
+    L2: price=      9891.0  qty=     210  orders=    5
+    L3: price=      9892.0  qty=     410  orders=    7
+    L4: price=      9893.0  qty=     190  orders=   10
+    L5: price=      9894.0  qty=     450  orders=    9
+  scale_hint_bids : 1   scale_hint_asks : 1
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 9888.0, 'quantity': 210, 'orders': 5}, {'price': 9887.0, 'quantity': 460, 'orders': 28}, {'price': 9886.0, 'quantity': 490, 'orders': 26}]
+    asks[:3] = [{'price': 9890.0, 'quantity': 430, 'orders': 4}, {'price': 9891.0, 'quantity': 210, 'orders': 5}, {'price': 9892.0, 'quantity': 410, 'orders': 7}]
+
+  local_receive_time: 2026-09-14T17:36:07.421705+05:30
+
+====================================================================================================
+CRUDEOILM  CE_9900  token=576713
+====================================================================================================
+  symbol          : CRUDEOILM17SEP269900CE
+  ltp             : 276.0
+  exchFeedTime    : 14-Sep-2026 17:36:03
+  exchTradeTime   : 14-Sep-2026 17:36:03
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=       275.3  qty=      40  orders=    2
+    L2: price=      275.25  qty=      60  orders=    2
+    L3: price=       275.2  qty=      20  orders=    2
+    L4: price=      275.15  qty=      10  orders=    1
+    L5: price=       275.1  qty=     430  orders=    4
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=      275.95  qty=      30  orders=    1
+    L2: price=       276.0  qty=     110  orders=    1
+    L3: price=       276.1  qty=      10  orders=    1
+    L4: price=       276.2  qty=      90  orders=    1
+    L5: price=      276.25  qty=      30  orders=    1
+  scale_hint_bids : None   scale_hint_asks : None
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 275.3, 'quantity': 40, 'orders': 2}, {'price': 275.25, 'quantity': 60, 'orders': 2}, {'price': 275.2, 'quantity': 20, 'orders': 2}]
+    asks[:3] = [{'price': 275.95, 'quantity': 30, 'orders': 1}, {'price': 276.0, 'quantity': 110, 'orders': 1}, {'price': 276.1, 'quantity': 10, 'orders': 1}]
+
+  local_receive_time: 2026-09-14T17:36:08.246050+05:30
+
+====================================================================================================
+CRUDEOILM  PE_9900  token=576867
+====================================================================================================
+  symbol          : CRUDEOILM17SEP269900PE
+  ltp             : 282.35
+  exchFeedTime    : 14-Sep-2026 17:36:03
+  exchTradeTime   : 14-Sep-2026 17:36:03
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=       282.0  qty=     170  orders=    3
+    L2: price=      281.95  qty=      20  orders=    1
+    L3: price=      281.85  qty=      10  orders=    1
+    L4: price=       281.8  qty=     160  orders=    1
+    L5: price=      281.75  qty=      60  orders=    2
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=       282.4  qty=      10  orders=    1
+    L2: price=       282.5  qty=      10  orders=    1
+    L3: price=      282.55  qty=      50  orders=    2
+    L4: price=       282.6  qty=      10  orders=    1
+    L5: price=      282.65  qty=      40  orders=    1
+  scale_hint_bids : None   scale_hint_asks : None
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 282.0, 'quantity': 170, 'orders': 3}, {'price': 281.95, 'quantity': 20, 'orders': 1}, {'price': 281.85, 'quantity': 10, 'orders': 1}]
+    asks[:3] = [{'price': 282.4, 'quantity': 10, 'orders': 1}, {'price': 282.5, 'quantity': 10, 'orders': 1}, {'price': 282.55, 'quantity': 50, 'orders': 2}]
+
+  local_receive_time: 2026-09-14T17:36:09.056214+05:30
+
+====================================================================================================
+GOLDM  FUT  token=569003
+====================================================================================================
+  symbol          : GOLDM05OCT26FUT
+  ltp             : 150843.0
+  exchFeedTime    : 14-Sep-2026 17:36:05
+  exchTradeTime   : 14-Sep-2026 17:36:03
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=    150825.0  qty=     100  orders=    1
+    L2: price=    150820.0  qty=     100  orders=    1
+    L3: price=    150815.0  qty=     200  orders=    2
+    L4: price=    150811.0  qty=     100  orders=    1
+    L5: price=    150810.0  qty=    4300  orders=    2
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=    150849.0  qty=     100  orders=    1
+    L2: price=    150850.0  qty=     100  orders=    1
+    L3: price=    150854.0  qty=     100  orders=    1
+    L4: price=    150856.0  qty=     400  orders=    2
+    L5: price=    150861.0  qty=     200  orders=    2
+  scale_hint_bids : 1   scale_hint_asks : 1
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 150825.0, 'quantity': 100, 'orders': 1}, {'price': 150820.0, 'quantity': 100, 'orders': 1}, {'price': 150815.0, 'quantity': 200, 'orders': 2}]
+    asks[:3] = [{'price': 150849.0, 'quantity': 100, 'orders': 1}, {'price': 150850.0, 'quantity': 100, 'orders': 1}, {'price': 150854.0, 'quantity': 100, 'orders': 1}]
+
+  local_receive_time: 2026-09-14T17:36:09.907069+05:30
+
+====================================================================================================
+GOLDM  CE_150800  token=578834
+====================================================================================================
+  symbol          : GOLDM25SEP26151000CE
+  ltp             : 2784.0
+  exchFeedTime    : 14-Sep-2026 17:36:05
+  exchTradeTime   : 14-Sep-2026 17:36:00
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=      2782.0  qty=     100  orders=    1
+    L2: price=      2781.5  qty=     100  orders=    1
+    L3: price=      2780.0  qty=     200  orders=    1
+    L4: price=      2779.5  qty=     100  orders=    1
+    L5: price=      2777.5  qty=     100  orders=    1
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=      2791.0  qty=     100  orders=    1
+    L2: price=      2791.5  qty=     100  orders=    1
+    L3: price=      2794.0  qty=     200  orders=    1
+    L4: price=      2794.5  qty=     100  orders=    1
+    L5: price=      2795.0  qty=     600  orders=    3
+  scale_hint_bids : None   scale_hint_asks : None
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 2782.0, 'quantity': 100, 'orders': 1}, {'price': 2781.5, 'quantity': 100, 'orders': 1}, {'price': 2780.0, 'quantity': 200, 'orders': 1}]
+    asks[:3] = [{'price': 2791.0, 'quantity': 100, 'orders': 1}, {'price': 2791.5, 'quantity': 100, 'orders': 1}, {'price': 2794.0, 'quantity': 200, 'orders': 1}]
+
+  local_receive_time: 2026-09-14T17:36:10.796708+05:30
+
+====================================================================================================
+GOLDM  PE_150800  token=578934
+====================================================================================================
+  symbol          : GOLDM25SEP26151000PE
+  ltp             : 2928.5
+  exchFeedTime    : 14-Sep-2026 17:36:07
+  exchTradeTime   : 14-Sep-2026 17:36:05
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=      2928.0  qty=     100  orders=    1
+    L2: price=      2926.0  qty=     200  orders=    1
+    L3: price=      2925.5  qty=     100  orders=    1
+    L4: price=      2925.0  qty=     500  orders=    3
+    L5: price=      2923.5  qty=     100  orders=    1
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=      2937.0  qty=     200  orders=    2
+    L2: price=      2939.0  qty=     400  orders=    1
+    L3: price=      2939.5  qty=     100  orders=    1
+    L4: price=      2942.0  qty=     200  orders=    1
+    L5: price=      2942.5  qty=     300  orders=    1
+  scale_hint_bids : None   scale_hint_asks : None
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 2928.0, 'quantity': 100, 'orders': 1}, {'price': 2926.0, 'quantity': 200, 'orders': 1}, {'price': 2925.5, 'quantity': 100, 'orders': 1}]
+    asks[:3] = [{'price': 2937.0, 'quantity': 200, 'orders': 2}, {'price': 2939.0, 'quantity': 400, 'orders': 1}, {'price': 2939.5, 'quantity': 100, 'orders': 1}]
+
+  local_receive_time: 2026-09-14T17:36:11.683392+05:30
+
+====================================================================================================
+NATGASMINI  FUT  token=568246
+====================================================================================================
+  symbol          : NATGASMINI25SEP26FUT
+  ltp             : 277.5
+  exchFeedTime    : 14-Sep-2026 17:36:07
+  exchTradeTime   : 14-Sep-2026 17:36:07
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=       277.3  qty=   47750  orders=   21
+    L2: price=       277.2  qty=   27000  orders=   14
+    L3: price=       277.1  qty=   49000  orders=   15
+    L4: price=       277.0  qty=   36500  orders=   16
+    L5: price=       276.9  qty=   24750  orders=   12
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=       277.5  qty=   47750  orders=   31
+    L2: price=       277.6  qty=   39000  orders=   16
+    L3: price=       277.7  qty=   39250  orders=   22
+    L4: price=       277.8  qty=   27250  orders=   36
+    L5: price=       277.9  qty=   16500  orders=   25
+  scale_hint_bids : None   scale_hint_asks : None
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 277.3, 'quantity': 47750, 'orders': 21}, {'price': 277.2, 'quantity': 27000, 'orders': 14}, {'price': 277.1, 'quantity': 49000, 'orders': 15}]
+    asks[:3] = [{'price': 277.5, 'quantity': 47750, 'orders': 31}, {'price': 277.6, 'quantity': 39000, 'orders': 16}, {'price': 277.7, 'quantity': 39250, 'orders': 22}]
+
+  local_receive_time: 2026-09-14T17:36:12.525615+05:30
+
+====================================================================================================
+NATGASMINI  CE_275  token=578429
+====================================================================================================
+  symbol          : NATGASMINI23SEP26275CE
+  ltp             : 9.6
+  exchFeedTime    : 14-Sep-2026 17:36:08
+  exchTradeTime   : 14-Sep-2026 17:36:08
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=        9.55  qty=   13000  orders=    8
+    L2: price=         9.5  qty=   20750  orders=   11
+    L3: price=        9.45  qty=   28250  orders=   13
+    L4: price=         9.4  qty=   36750  orders=   12
+    L5: price=        9.35  qty=   23500  orders=    9
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=         9.6  qty=     250  orders=    1
+    L2: price=        9.65  qty=   56000  orders=   28
+    L3: price=         9.7  qty=   24500  orders=   11
+    L4: price=        9.75  qty=   17000  orders=   11
+    L5: price=         9.8  qty=   20250  orders=   12
+  scale_hint_bids : None   scale_hint_asks : None
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 9.55, 'quantity': 13000, 'orders': 8}, {'price': 9.5, 'quantity': 20750, 'orders': 11}, {'price': 9.45, 'quantity': 28250, 'orders': 13}]
+    asks[:3] = [{'price': 9.6, 'quantity': 250, 'orders': 1}, {'price': 9.65, 'quantity': 56000, 'orders': 28}, {'price': 9.7, 'quantity': 24500, 'orders': 11}]
+
+  local_receive_time: 2026-09-14T17:36:13.437348+05:30
+
+====================================================================================================
+NATGASMINI  PE_275  token=578509
+====================================================================================================
+  symbol          : NATGASMINI23SEP26275PE
+  ltp             : 7.15
+  exchFeedTime    : 14-Sep-2026 17:36:08
+  exchTradeTime   : 14-Sep-2026 17:36:08
+  depth_present   : True   notes=[]
+  --- BIDS (raw best-5 from provider row) ---
+    L1: price=         7.1  qty=   41250  orders=   12
+    L2: price=        7.05  qty=   31500  orders=   15
+    L3: price=         7.0  qty=   69000  orders=   39
+    L4: price=        6.95  qty=   26250  orders=   12
+    L5: price=         6.9  qty=   32750  orders=   12
+  --- ASKS (raw best-5 from provider row) ---
+    L1: price=        7.15  qty=    7000  orders=    3
+    L2: price=         7.2  qty=   33000  orders=   10
+    L3: price=        7.25  qty=   44250  orders=   12
+    L4: price=         7.3  qty=   38000  orders=   12
+    L5: price=        7.35  qty=   51500  orders=   11
+  scale_hint_bids : None   scale_hint_asks : None
+  --- extract_depth normalized (what bot will use) ---
+    bids[:3] = [{'price': 7.1, 'quantity': 41250, 'orders': 12}, {'price': 7.05, 'quantity': 31500, 'orders': 15}, {'price': 7.0, 'quantity': 69000, 'orders': 39}]
+    asks[:3] = [{'price': 7.15, 'quantity': 7000, 'orders': 3}, {'price': 7.2, 'quantity': 33000, 'orders': 10}, {'price': 7.25, 'quantity': 44250, 'orders': 12}]
+
+Raw payloads written to: data\execution_evidence\mcx\_phase_a_raw
+====================================================================================================

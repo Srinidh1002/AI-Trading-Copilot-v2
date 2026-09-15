@@ -36,7 +36,13 @@ def test_equivalent_directional_evidence_is_market_neutral(identity):
     assert result.primary_regime == "STRONG_BULLISH"
     assert result.trend_state == "UPTREND"
     assert result.regime_strength == pytest.approx(0.9, abs=1e-12)
-    assert result.confidence == 0.8
+    # Optional-unavailable evidence receives its dedicated missing-optional
+    # penalty once; OPTIONAL_*_UNUSABLE is retained as warning evidence but
+    # must not receive a second generic warning penalty.
+    assert result.confidence == pytest.approx(
+        0.85,
+        abs=1e-12,
+    )
 
 
 def test_boundary_and_policy_variants_remain_deterministic():

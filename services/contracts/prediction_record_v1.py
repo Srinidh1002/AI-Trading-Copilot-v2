@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 from math import isfinite
 from typing import ClassVar
+from collections.abc import Mapping
+from types import MappingProxyType
 
 _IDENTITIES = {("NIFTY", "NSE"), ("SENSEX", "BSE")}
 _TERMINAL_STATUSES = {"COMPLETED", "FAILED", "UNAVAILABLE"}
@@ -73,6 +75,7 @@ class PredictionRecordV1:
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
+    failure_diagnostic: Mapping[str, str] | None = None
     execution_mode: str = "PAPER"
     live_execution_eligible: bool = False
     broker_order_submission: bool = False
@@ -141,8 +144,6 @@ class PredictionRecordV1:
             raise ValueError("NO_TRADE cannot select prediction")
         if action in {"WAIT", "NO_TRADE"} and self.parent_selected:
             raise ValueError("selected prediction cannot be non-entry")
-        if action == "NO_TRADE" and decision != "NO_TRADE":
-            raise ValueError("NO_TRADE requires NO_TRADE parent decision")
         if status != "COMPLETED":
             if self.candidate_id is not None or action not in {"WAIT", "NO_TRADE"} or any(value != 0.0 for value in (self.confidence, self.score, self.rank_value)):
                 raise ValueError("non-completed prediction coherence")
@@ -153,17 +154,28 @@ class PredictionRecordV1:
 
         for name in ("rationale", "blockers", "warnings", "errors"):
             object.__setattr__(self, name, _messages(getattr(self, name), name))
+        if self.failure_diagnostic is not None:
+            if not isinstance(self.failure_diagnostic, Mapping) or set(self.failure_diagnostic) != {"failure_stage", "exception_class", "stable_failure_code"}:
+                raise ValueError("failure_diagnostic")
+            object.__setattr__(self, "failure_diagnostic", MappingProxyType({key: _text(self.failure_diagnostic[key], f"failure_diagnostic {key}") for key in ("failure_stage", "exception_class", "stable_failure_code")}))
         if self.execution_mode != "PAPER" or self.live_execution_eligible is not False or self.broker_order_submission is not False or self.schema_version != self.SCHEMA_VERSION:
             raise ValueError("PAPER-only prediction record")
 
     def to_dict(self) -> dict[str, object]:
-        value = asdict(self)
+        # ``asdict`` recursively deep-copies fields.  The bounded failure
+        # diagnostic is intentionally an immutable MappingProxyType, which
+        # must instead be rendered explicitly at this JSON boundary.
+        value = {
+            field.name: getattr(self, field.name)
+            for field in fields(self)
+        }
         for name in ("requested_at", "completed_at", "received_at", "observed_at"):
             timestamp = getattr(self, name)
             value[name] = timestamp.isoformat() if timestamp is not None else None
         value["market_timestamp"] = self.market_timestamp.isoformat() if self.market_timestamp else None
         for name in ("rationale", "blockers", "warnings", "errors"):
             value[name] = list(getattr(self, name))
+        value["failure_diagnostic"] = None if self.failure_diagnostic is None else dict(self.failure_diagnostic)
         return value
 
     def to_json(self) -> str:

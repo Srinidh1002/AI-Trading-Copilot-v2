@@ -33,6 +33,89 @@ IST = ZoneInfo("Asia/Kolkata")
 AS_OF = datetime(2026, 8, 11, 13, 15, tzinfo=IST)
 
 
+def _session_resolver(
+    *,
+    market,
+    evaluated_at,
+    market_date,
+):
+    from datetime import time
+
+    from services.contracts.task9_market_session_policy_v1 import (
+        Task9MarketSegment,
+        Task9SessionPhase,
+    )
+    from services.contracts.task9_market_session_state_v1 import (
+        Task9SegmentSessionStateV1,
+    )
+
+    return Task9SegmentSessionStateV1(
+        segment=(
+            Task9MarketSegment.NFO_OPTIONS
+            if market == "NIFTY"
+            else Task9MarketSegment.BFO_OPTIONS
+        ),
+        market_date=market_date,
+        evaluated_at=evaluated_at,
+        timezone="Asia/Kolkata",
+        phase=Task9SessionPhase.OPEN,
+        market_open=True,
+        new_entries_allowed=True,
+        position_monitoring_allowed=True,
+        close_drain_required=False,
+        session_open_time=time(9, 15),
+        new_entry_cutoff=time(15, 30),
+        position_monitoring_until=time(15, 40),
+        session_close_time=time(15, 40),
+        calendar_status="TRADING_DAY",
+        policy_id="task925-session-policy",
+        policy_version="1",
+    )
+
+
+def _write_valid_startup_preflight(root):
+    from services.certification.task9_startup_preflight_store import (
+        Task9StartupPreflightStore,
+    )
+    from services.contracts.task9_startup_preflight_v1 import (
+        Task9StartupPreflightPhase,
+        Task9StartupPreflightPhaseResultV1,
+        Task9StartupPreflightPhaseStatus,
+        Task9StartupPreflightResultV1,
+    )
+
+    sha = "a" * 64
+
+    receipt = Task9StartupPreflightResultV1(
+        preflight_id="task9102-preflight",
+        runtime_config_snapshot_id=(
+            "task9-runtime-config-" + sha
+        ),
+        runtime_config_sha256=sha,
+        campaign_id="task9102-campaign",
+        market_date=AS_OF.date(),
+        official_run_id="task925-run",
+        run_classification="OFFICIAL_CERTIFICATION",
+        started_at=AS_OF,
+        completed_at=AS_OF,
+        phase_results=tuple(
+            Task9StartupPreflightPhaseResultV1(
+                phase,
+                Task9StartupPreflightPhaseStatus.PASS,
+                False,
+                "TASK9102_TEST_PASS",
+                None,
+                AS_OF,
+            )
+            for phase in Task9StartupPreflightPhase
+        ),
+    )
+
+    Task9StartupPreflightStore(
+        root
+    ).save(receipt)
+
+
 def _cycle(*, symbol="NIFTY", exchange="NSE"):
     policy = PaperOrchestrationPolicyV1(
         orchestration_policy_id="task925-test-policy",
@@ -157,7 +240,8 @@ class _CacheOnly:
 def _local_provider(tmp_path, *, missing=()):
     cache = _CacheOnly(missing=missing)
     provider = build_task9_precomposed_timeframe_provider(
-        live_stream_root=tmp_path / "live_stream"
+        live_stream_root=tmp_path / "live_stream",
+        session_state_resolver=_session_resolver,
     )(SimpleNamespace(cache=cache))
     return provider, cache
 
@@ -215,7 +299,8 @@ def test_optional_local_capture_failures_are_handoff_warnings_not_provider_block
 def test_local_provider_keeps_nifty_and_sensex_readiness_independent(tmp_path):
     cache = _CacheOnly(missing_by_exchange={"BSE": ("1h",)})
     provider = build_task9_precomposed_timeframe_provider(
-        live_stream_root=tmp_path / "live_stream"
+        live_stream_root=tmp_path / "live_stream",
+        session_state_resolver=_session_resolver,
     )(SimpleNamespace(cache=cache))
 
     nifty = provider(exchange="NSE", symboltoken="99926000", end_time=AS_OF)
@@ -227,11 +312,19 @@ def test_local_provider_keeps_nifty_and_sensex_readiness_independent(tmp_path):
 
 
 def test_active_typed_rate_limit_selects_fallback_without_mutating_blocker(tmp_path):
+    _write_valid_startup_preflight(tmp_path)
+
     launcher = Task9LivePaperCertificationLauncher(
         persistence_root=tmp_path, official_run_id="task925-run",
-        task8_dependencies_factory=lambda **_: None,
+            startup_preflight_id="task9102-preflight",
+            runtime_config_snapshot_id="task9-runtime-config-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            runtime_config_sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            campaign_id="task9102-campaign",
+            market_date=AS_OF.date(),
+        task9_evidence_dependencies_factory=lambda **_: None,
         runtime_factory=lambda **_: None, clock=lambda: AS_OF,
         sleep=lambda _: None,
+        session_state_resolver=_session_resolver,
     )
     active = {
         "status": "ACTIVE", "provider": "ANGEL_ONE", "endpoint": "historical-data",
@@ -256,11 +349,19 @@ def test_active_typed_rate_limit_selects_fallback_without_mutating_blocker(tmp_p
 
 
 def test_non_rate_limit_active_blocker_remains_rejected_without_fallback(tmp_path):
+    _write_valid_startup_preflight(tmp_path)
+
     launcher = Task9LivePaperCertificationLauncher(
         persistence_root=tmp_path, official_run_id="task925-run",
-        task8_dependencies_factory=lambda **_: None,
+            startup_preflight_id="task9102-preflight",
+            runtime_config_snapshot_id="task9-runtime-config-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            runtime_config_sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            campaign_id="task9102-campaign",
+            market_date=AS_OF.date(),
+        task9_evidence_dependencies_factory=lambda **_: None,
         runtime_factory=lambda **_: None, clock=lambda: AS_OF,
         sleep=lambda _: None,
+        session_state_resolver=_session_resolver,
     )
     blocker = {
         "status": "ACTIVE", "provider": "ANGEL_ONE", "endpoint": "historical-data",

@@ -1,0 +1,3 @@
+{ "_fixture_note": "TEST_FIXTURE — synthetic USDINR sample.",
+  "source": "yfinance", "timestamp": "2026-09-11T18:00:00+05:30",
+  "usdinr": 95.54, "previous_usdinr": 95.55, "change_pct": -0.01 }

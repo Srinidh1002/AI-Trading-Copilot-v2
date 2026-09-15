@@ -1,0 +1,12 @@
+{
+  "official_run_id": "task9-live-20260825-r1",
+  "records": {
+    "2026-08-25": {
+      "archive_path": "daily/2026-08-25/task9-daily-task9-live-20260825-r1-2026-08-25.json",
+      "report_id": "task9-daily-task9-live-20260825-r1-2026-08-25",
+      "semantic_hash": "810f0ba30b9dba8df6900074d6974f76b0ce196c511c2eb891b7c1a4f3369816",
+      "session_date": "2026-08-25"
+    }
+  },
+  "version": 2
+}

@@ -62,6 +62,30 @@ def _validate_raw_report(report: dict[str, object]) -> None:
             raise ValueError(name)
 
 
+def _resolved_abstention_facts(
+    *,
+    action: str,
+    counting_status: str,
+    market_facts,
+):
+    return tuple(
+        item
+        for item in market_facts
+        if (
+            _field(item, "action") == action
+            and _field(item, "counting_status")
+            == counting_status
+            and _field(item, "lifecycle_status")
+            == "RESOLVED"
+            and _field(item, "outcome")
+            in {
+                "NO_TRADE_CORRECT",
+                "NO_TRADE_MISSED_MOVE",
+            }
+        )
+    )
+
+
 def _market_progress(
     market: str,
     facts,
@@ -94,19 +118,16 @@ def _market_progress(
         for item in market_facts
     )
 
-    completed_no_trade = tuple(
-        item
-        for item in market_facts
-        if (
-            _field(item, "action") == "NO_TRADE"
-            and _field(item, "counting_status") == "INCLUDED_NON_TRADE"
-            and _field(item, "lifecycle_status") == "RESOLVED"
-            and _field(item, "outcome")
-            in {
-                "NO_TRADE_CORRECT",
-                "NO_TRADE_MISSED_MOVE",
-            }
-        )
+    completed_no_trade = _resolved_abstention_facts(
+        action="NO_TRADE",
+        counting_status="INCLUDED_NON_TRADE",
+        market_facts=market_facts,
+    )
+
+    completed_wait = _resolved_abstention_facts(
+        action="WAIT",
+        counting_status="INCLUDED_WAIT",
+        market_facts=market_facts,
     )
 
     return Task9MarketProgressV1(
@@ -124,6 +145,17 @@ def _market_progress(
             _field(item, "outcome")
             == "NO_TRADE_MISSED_MOVE"
             for item in completed_no_trade
+        ),
+        wait_completed=len(completed_wait),
+        wait_passed=sum(
+            _field(item, "outcome")
+            == "NO_TRADE_CORRECT"
+            for item in completed_wait
+        ),
+        wait_failed=sum(
+            _field(item, "outcome")
+            == "NO_TRADE_MISSED_MOVE"
+            for item in completed_wait
         ),
     )
 

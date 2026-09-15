@@ -68,9 +68,12 @@ def project_task9_abstention_prediction_observation(
             "sequence_number must be positive"
         )
 
-    if prediction.predicted_action not in {"WAIT", "NO_TRADE"}:
+    if (
+        prediction.predicted_action in {"CALL", "PUT"}
+        and prediction.parent_selected
+    ):
         raise ValueError(
-            "abstention observation requires WAIT or NO_TRADE prediction"
+            "non-entry observation cannot be used for selected directional prediction"
         )
 
     expected_identity = (

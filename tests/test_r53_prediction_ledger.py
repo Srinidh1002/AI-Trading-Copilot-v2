@@ -8,6 +8,9 @@ from services.paper_orchestration.prediction_ledger import (
 from services.paper_orchestration.prediction_record_projector import (
     project_parent_decision_predictions,
 )
+from services.analysis.pre_entry_action_resolver import (
+    resolve_pre_entry_market_action,
+)
 from services.paper_orchestration.two_market_parent_cycle_coordinator import (
     run_two_market_parent_cycle,
 )
@@ -32,9 +35,20 @@ def records():
             )
         ),
     )
+    pre_entry_actions = {
+        entry.child.observation_id: resolve_pre_entry_market_action(
+            candidate=entry.child.candidate,
+            cycle_id=decision.parent_cycle_id,
+            observation_id=entry.child.observation_id,
+            evaluated_at=decision.completed_at,
+        )
+        for entry in decision.entries
+        if entry.child.terminal_status == "COMPLETED"
+    }
     return project_parent_decision_predictions(
         decision,
         start_underlying_prices={("NIFTY", "NSE"): 25000.0, ("SENSEX", "BSE"): 80000.0},
+        pre_entry_actions=pre_entry_actions,
     )
 
 

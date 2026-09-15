@@ -190,3 +190,149 @@ def test_adapter_dependencies_are_exact():
         )
 
 
+
+
+
+def test_authoritative_entry_terminalizes_parent_for_later_child_completion(
+    tmp_path,
+):
+    from datetime import timedelta
+
+    nifty, sensex = cycles()
+
+    # Freeze the parent before child evaluation, exactly as production does.
+    parent_input = parent(
+        nifty,
+        sensex,
+    )
+
+    original_completed_at = (
+        parent_input.completed_at
+    )
+
+    nifty_terminal_at = (
+        original_completed_at
+        + timedelta(seconds=1)
+    )
+
+    sensex_terminal_at = (
+        original_completed_at
+        + timedelta(seconds=2)
+    )
+
+    # Certified child cycle identity must remain unchanged. Simulate the
+    # later real evaluation completion at the evaluator/candidate boundary.
+    def factory(
+        cycle,
+        data,
+        analysis,
+        captured,
+        shared_context,
+        *,
+        parent_cycle_id,
+    ):
+        candidate = candidate_for(
+            cycle,
+            data,
+            score=(
+                80.0
+                if cycle.underlying_symbol == "NIFTY"
+                else 60.0
+            ),
+        )
+
+        terminal_at = (
+            nifty_terminal_at
+            if cycle.underlying_symbol == "NIFTY"
+            else sensex_terminal_at
+        )
+
+        return replace(
+            candidate,
+            received_at=terminal_at,
+        )
+
+    runtime_readers = readers(
+        factory
+    )
+
+    journal = PaperOrchestrationJournal(
+        tmp_path / "parent-journal.json"
+    )
+
+    adapter = (
+        TwoMarketParentCycleJournalAdapter(
+            journal=journal,
+            clock=lambda: NOW,
+        )
+    )
+
+    decision = (
+        run_authoritative_two_market_parent_cycle(
+            parent_input,
+            nifty_cycle=nifty,
+            sensex_cycle=sensex,
+            readers=runtime_readers,
+            parent_journal_adapter=adapter,
+        )
+    )
+
+    expected_terminal_at = (
+        sensex_terminal_at
+    )
+
+    # Coordinator terminal authority follows the latest child completion.
+    assert (
+        decision.completed_at
+        == expected_terminal_at
+    )
+
+    assert (
+        decision.completed_at
+        > parent_input.completed_at
+    )
+
+    # Original frozen input remains immutable.
+    assert (
+        parent_input.completed_at
+        == original_completed_at
+    )
+
+    # Authoritative persistence must succeed using the terminalized parent.
+    assert journal.count() == 1
+
+    key = (
+        f"two-market-parent:"
+        f"{parent_input.parent_cycle_id}"
+    )
+
+    raw = journal.get_raw(key)
+
+    assert raw is not None
+
+    assert (
+        raw["cycle_result"]["completed_at"]
+        == expected_terminal_at.isoformat()
+    )
+
+    assert (
+        raw["cycle_result"]["started_at"]
+        == parent_input.requested_at.isoformat()
+    )
+
+    assert (
+        raw["cycle_result"]["metadata"][
+            "decision_result_id"
+        ]
+        == parent_input.decision_result_id
+    )
+
+    assert raw["execution_mode"] == "PAPER"
+    assert raw["live_execution_eligible"] is False
+
+    assert (
+        raw["cycle_result"]["metadata"][
+            "broker_order_submission"
+        ]
+        is False
+    )

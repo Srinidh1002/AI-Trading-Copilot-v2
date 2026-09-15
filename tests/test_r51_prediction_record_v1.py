@@ -77,6 +77,40 @@ def test_noncompleted_record_is_zeroed_and_waiting():
     assert value.terminal_status == "FAILED"
 
 
+def test_failure_diagnostic_serializes_as_a_plain_bounded_mapping():
+    value = record(
+        terminal_status="FAILED",
+        candidate_id=None,
+        market_timestamp=None,
+        predicted_direction="UNAVAILABLE",
+        predicted_action="WAIT",
+        eligibility="UNAVAILABLE",
+        confidence=0.0,
+        score=0.0,
+        rank_value=0.0,
+        eligible_for_comparison=False,
+        outcome_reason="CHILD_FAILED",
+        parent_decision="NO_TRADE",
+        parent_selected=False,
+        errors=("CANDIDATE_COMPOSITION_FAILED",),
+        failure_diagnostic={
+            "failure_stage": "ANALYSIS_AUTHORITY",
+            "exception_class": "ValueError",
+            "stable_failure_code": "CANDIDATE_COMPOSITION_FAILED",
+        },
+    )
+
+    assert dict(value.failure_diagnostic) == {
+        "failure_stage": "ANALYSIS_AUTHORITY",
+        "exception_class": "ValueError",
+        "stable_failure_code": "CANDIDATE_COMPOSITION_FAILED",
+    }
+    assert value.to_dict()["failure_diagnostic"] == dict(
+        value.failure_diagnostic
+    )
+    assert "mappingproxy" not in value.to_json().lower()
+
+
 def test_start_underlying_price_is_required_positive_finite():
     for value in (0.0, -1.0, float("nan"), float("inf"), True):
         with pytest.raises(ValueError):

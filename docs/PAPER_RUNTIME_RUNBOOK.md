@@ -2,116 +2,125 @@
 
 ## Task 9 live PAPER certification launcher
 
-Task 9 is started only with the dedicated two-market launcher. It obtains one
-current NIFTY and one current SENSEX handoff from the certified Task 8 default
-composition, then passes those exact handoffs to the Task 9 runner. Broker
-submission remains disabled; this launcher has no live-broker mode.
+Task 9 production starts only through the canonical bootstrap-first entrypoint:
+
+`services.certification.task9_production_startup_entrypoint`
+
+The operator-facing Task 9 path is:
+
+canonical runtime config
+-> one certified provider bundle
+-> one startup acquisition
+-> A1-A7 proof bundle
+-> canonical startup preflight
+-> durable approved receipt
+-> `bootstrap.launcher_kwargs()`
+-> existing Task 9 launcher using the same provider bundle.
+
+The operator must not manually provide startup-preflight IDs, runtime-config
+snapshot IDs, runtime-config hashes, approval booleans, broker-submission flags,
+or live-execution eligibility.
+
+Task 9 remains PAPER-only:
+
+- `broker_order_submission = false`
+- `live_execution_eligible = false`
 
 ### Preconditions
 
-- Activate the repository virtual environment.
-- Confirm `config.BROKER == PAPER`, PAPER trading is enabled, and live trading
-  is disabled. Startup fails closed otherwise.
-- Choose one stable, operator-assigned `official_run_id` for the entire
-  certification run, such as `task9-live-20260810-a`. Keep it unchanged for
-  every restart using that persistence root.
-- Ensure no other Task 9 launcher owns the same persistence root.
+- `config.BROKER == PAPER`
+- PAPER trading enabled
+- live trading disabled
+- Task 9 WebSocket/collector evidence healthy
+- no competing Task 9 process owns the persistence root
+- canonical campaign/run identity selected
+- approved capital, risk and policy references selected
+
+### Required policy references
+
+Pass each policy using:
+
+`--policy-reference key=value`
+
+Required keys:
+
+- `canonical_directional`
+- `session`
+- `risk`
+- `contract_selection`
+- `lifecycle`
+- `counting`
+- `failure_disposition`
+- `contract_spread`
+- `liquidity`
+- `minimum_risk_reward`
+- `stop_target`
+- `portfolio_concurrency`
 
 ### One-cycle verification
 
-Run a single PAPER cycle before the operator session:
+Use only:
 
-```powershell
-venv\Scripts\python.exe -m services.certification.task9_live_paper_certification_launcher `
-  --automated-paper `
-  --official-run-id task9-live-20260810-a `
-  --persistence-root data\paper_trading\certified_runtime\task9 `
-  --max-cycles 1
-```
+`python -m services.certification.task9_production_startup_entrypoint`
 
-This is a one-cycle operational verification, not historical/replay credit.
-Outside an entry window the existing Task 9 session authority suppresses new
-entries; it never manufactures countable records.
+with `--automated-paper`, the canonical runtime/campaign inputs, all approved
+policy references, and `--max-cycles 1`.
 
-### Monday production command
+Use:
 
-Use the same root and official ID for the intended live PAPER session:
+`python -m services.certification.task9_production_startup_entrypoint --help`
 
-```powershell
-venv\Scripts\python.exe -m services.certification.task9_live_paper_certification_launcher `
-  --automated-paper `
-  --official-run-id task9-live-20260810-a `
-  --persistence-root data\paper_trading\certified_runtime\task9 `
-  --cycle-interval-seconds 60
-```
+to display the exact operator arguments before constructing the command.
 
-The existing Task 9 session authority controls pre-open, 09:15 opening,
-15:20 new-entry cutoff, continuing active-position monitoring, and 15:40
-close. Do not add a second launcher or a second session policy.
+Do not bypass the bootstrap-first production entrypoint by invoking the
+internal Task 9 launcher directly.
 
-### Persistence, restart, and stop handling
+### Monday production session
 
-`--persistence-root` is the durable Task 9 boundary. It contains:
+Use the same bootstrap-first module:
 
-- `task9-live-paper-run.json` — stable official run identity and start time.
-- `task9-live-paper.lock` — exclusive launcher ownership while the process is
-  running.
-- `task9-cycle-results/` — idempotent runner-cycle receipts.
-- Task 9 production stores: `prediction-ledger.json`,
-  `prediction-paper-bindings.json`, `prediction-lifecycle-context.json`,
-  `prediction-observation-windows.json`, `prediction-lifecycle-outcomes.json`,
-  `prediction-lifecycle-reconciliations.json`, `paper-portfolio-policies.json`,
-  `p7-trades.json`, and `p8-portfolios.json`.
+`python -m services.certification.task9_production_startup_entrypoint`
 
-Restart with the exact same command, root, and `official_run_id`:
+with the same canonical campaign/run identity, persistence locations, capital,
+risk controls and approved policy references.
 
-```powershell
-venv\Scripts\python.exe -m services.certification.task9_live_paper_certification_launcher `
-  --automated-paper `
-  --official-run-id task9-live-20260810-a `
-  --persistence-root data\paper_trading\certified_runtime\task9 `
-  --cycle-interval-seconds 60
-```
+Use `--cycle-interval-seconds 60`.
 
-Use Ctrl+C to stop accepting new cycles. It releases the lock only after the
-current durable boundary returns and preserves the stores above for restart.
-If a process crashes, its lock remains deliberately fail-closed: do not delete
-it or start a competing process until an operator has investigated the owning
-process and durable state. This is the emergency-halt procedure; there is no
-broker or live-order emergency control because no broker submission is
-reachable.
+Do not supply `--max-cycles 1` for the continuous production session.
 
-### Post-run progress verification
+Every restart also uses the bootstrap-first entrypoint. A fresh startup
+acquisition and canonical preflight are required before the existing launcher
+can resume.
 
-Progress is built only from reconciled, archived daily Task 9 reports; the
-launcher does not mutate `/100` counters. After the existing daily-report
-authority has archived the session, recover and build its authoritative view:
+### Persistence and restart
 
-```powershell
-venv\Scripts\python.exe -c "from services.certification.task9_daily_report_index import Task9DailyReportIndex; from services.certification.task9_daily_report_recovery import recover_task9_daily_reports; from services.certification.task9_live_paper_certification_progress_builder import build_task9_live_paper_certification_progress_from_raw; root='data/paper_trading/certified_runtime/task9'; run_id='task9-live-20260810-a'; reports=recover_task9_daily_reports(index=Task9DailyReportIndex(official_run_id=run_id, file_path=root + '/task9_daily_report_index.json'), official_run_id=run_id, archive_root=root + '/certification_reports'); print(build_task9_live_paper_certification_progress_from_raw(reports).to_dict())"
-```
+The persistence root remains the durable Task 9 authority.
 
-Only entered, terminal-closed, reconciled PAPER `CALL`/`PUT` trades increment
-the two `/100` targets. Historical, replay, and test records do not count.
-`WAIT` and `NO_TRADE` remain separate analytics and never increment `/100`.
+Do not clear a surviving process lock until the owning process and durable
+state have been investigated.
 
-### Task 9 dashboard bridge
+Ctrl+C remains the graceful operator stop mechanism.
 
-Start the read-only dashboard in its own process:
+### Certification counting
 
-```powershell
-venv\Scripts\streamlit.exe run app.py
-```
+Only actual PAPER CALL/PUT trades that are entered, terminal closed, lifecycle
+resolved, reconciled and INCLUDED can increment the NIFTY or SENSEX `/100`
+executed-trade target.
 
-The Task 9 launcher atomically writes its latest typed publication to
-`data\paper_trading\certified_runtime\task9\dashboard-publication.json`.
-The Streamlit process first uses any in-process publication, then recovers that
-file after restart. Before the first Task 9 publication it displays the six-page
-Task 9.15 shell with explicit not-yet-published states, never the legacy
-fallback. After publication it displays the persisted read-only state. A
-missing file is expected before the first run; corrupt state fails closed and
-preserves the dashboard's last-known-good session view. Dashboard refreshes do
-not acquire data, submit orders, mutate progress, or count toward `/100`.
+WAIT and NO_TRADE remain separately persisted, outcome-evaluated and reported,
+but never increment `/100`.
+
+Replay, synthetic, rehearsal, diagnostic, unavailable, failed, duplicate,
+open and unreconciled records never increment `/100`.
+
+### Dashboard
+
+The dashboard remains read-only:
+
+`venv\Scripts\streamlit.exe run app.py`
+
+Dashboard refreshes do not acquire provider data, submit orders or increment
+Task 9 certification counters.
 
 ## Legacy certified runtime launcher — not Task 9 /100 authority
 

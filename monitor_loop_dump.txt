@@ -1,0 +1,60 @@
+1405:         while self.is_running and self.is_market_open():
+1406:             time.sleep(3)
+1407: 
+1408:             if trade_id not in self.active_trades:
+1409:                 break
+1410: 
+1411:             if (datetime.now() - start_time).seconds % 60 == 0:
+1412:                 if not self.reconnect_if_needed():
+1413:                     continue
+1414: 
+1415:             try:
+1416:                 current_price = 0
+1417:                 # Try WebSocket first
+1418:                 if self.ws_feed and self.ws_feed.is_healthy():
+1419:                     ws_tick = self.ws_feed.get_latest(trade['token'])
+1420:                     if ws_tick and ws_tick.get("ltp", 0) > 0:
+1421:                         current_price = ws_tick["ltp"]
+1422: 
+1423:                 # Fallback to REST if WS stale
+1424:                 if current_price <= 0:
+1425:                     self.rate_limiter.wait_if_needed("ltp_data")
+1426:                     ltp_data = self.obj.ltpData(self.option_exchange, trade['symbol'], trade['token'])
+1427:                     if ltp_data and ltp_data.get('data'):
+1428:                         current_price = float(ltp_data['data'].get('ltp', 0))
+1429: 
+1430:                 if current_price > 0:
+1431: 
+1432:                     if current_price > 0:
+1433:                         if trade['signal'] == 'BUY':
+1434:                             pnl = (current_price - entry) * self.lot_size
+1435:                             pnl_pct = ((current_price - entry) / entry) * 100
+1436:                         else:
+1437:                             pnl = (entry - current_price) * self.lot_size
+1438:                             pnl_pct = ((entry - current_price) / entry) * 100
+1439: 
+1440:                         active_trade['current_price'] = current_price
+1441:                         active_trade['pnl'] = pnl
+1442:                         active_trade['pnl_pct'] = pnl_pct
+1443: 
+1444:                         if pnl > active_trade['max_profit']:
+1445:                             active_trade['max_profit'] = pnl
+1446: 
+1447:                         # UNDERLYING INVALIDATION CHECK
+1448:                         # If spot moves >0.5% against our position, exit early
+1449:                         if self.entry_spot and self.entry_spot > 0:
+1450:                             try:
+1451:                                 current_spot = self.get_spot()
+1452:                                 if current_spot > 0:
+1453:                                     spot_move_pct = ((current_spot - self.entry_spot) / self.entry_spot) * 100
+1454: 
+1455:                                     # If long CE and spot fell >0.5%, invalidate
+1456:                                     if trade['type'] == 'CE' and spot_move_pct < -0.5:
+1457:                                         print(f'\n⚠️ UNDERLYING INVALIDATION: spot {spot_move_pct:+.2f}%')
+1458:                                         self.close_position(trade_id, current_price, 'SPOT_INVALIDATED', pnl, pnl_pct)
+1459:                                         self.stop_losses += 1
+1460:                                         break
+1461:                                     # If long PE and spot rose >0.5%, invalidate
+1462:                                     elif trade['type'] == 'PE' and spot_move_pct > 0.5:
+1463:                                         print(f'\n⚠️ UNDERLYING INVALIDATION: spot {spot_move_pct:+.2f}%')
+1464:                                         self.close_position(trade_id, current_price, 'SPOT_INVALIDATED', pnl, pnl_pct)

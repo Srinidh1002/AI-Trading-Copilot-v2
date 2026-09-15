@@ -6,6 +6,8 @@ import math
 from services.core.market_identity import SUPPORTED_MARKET_IDENTITIES
 from .timeframe_technical_evidence_v1 import TimeframeTechnicalEvidenceV1
 _T=("5m","15m","1h","1d");_STATUSES={"READY","READY_WITH_WARNINGS","MISSING_TIMEFRAMES","STALE","FUTURE","INCOMPLETE","INSUFFICIENT_HISTORY","CONFLICTING","MALFORMED","UNSUPPORTED","FAILED"};_BIASES={"BULLISH","BEARISH","NEUTRAL","MIXED","UNAVAILABLE"}
+def is_usable_technical_status(status: object) -> bool:
+ return status in {"READY","READY_WITH_WARNINGS"}
 @dataclass(frozen=True,slots=True)
 class TechnicalIntelligenceResultV1:
  technical_intelligence_result_id:str;created_at:datetime;multi_timeframe_snapshot_id:str;multi_timeframe_quality_result_id:str;underlying_symbol:str;exchange:str;timeframe_evidence:tuple[TimeframeTechnicalEvidenceV1,...];status:str;aggregate_bias:str;aggregate_strength:float;blockers:tuple[str,...]=();warnings:tuple[str,...]=();execution_mode:str="PAPER";live_execution_eligible:bool=False;schema_version:str="technical_intelligence_result.v1";required_timeframes:tuple[str,...]=();bullish_timeframes:tuple[str,...]=();bearish_timeframes:tuple[str,...]=();neutral_timeframes:tuple[str,...]=();unavailable_timeframes:tuple[str,...]=();aligned_timeframes:tuple[str,...]=();conflicting_timeframes:tuple[str,...]=();valid_indicator_count:int=0;unavailable_indicator_count:int=0

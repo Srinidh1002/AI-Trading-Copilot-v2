@@ -1,97 +1,119 @@
-"""Task 4 end-to-end PAPER recommendation runtime with an injected certified P6 seam."""
-from __future__ import annotations
+# services/trade_planning/capital_safe_recommendation_runtime.py
+# FIXED: Uses premium-based capital validation
 
-from collections.abc import Callable
+import logging
+from typing import Dict, Any, Optional
+from decimal import Decimal
 
-from services.contracts.capital_risk_authority_v1 import (
-    CapitalRiskAuthorityInputV1,
-)
-from services.contracts.final_trade_recommendation_v1 import (
-    FinalTradeRecommendationV1,
-)
-from services.contracts.integrated_three_target_trade_plan_result_v1 import (
-    IntegratedThreeTargetTradePlanResultV1,
-)
-from services.contracts.two_market_decision_result_v1 import (
-    TwoMarketDecisionResultV1,
-)
-from services.trade_planning.capital_risk_authority import (
-    evaluate_capital_risk_authority,
-)
-from services.trade_planning.final_trade_recommendation_projector import (
-    project_final_trade_recommendation,
-)
-from services.trade_planning.selected_market_planning_bridge import (
-    bridge_selected_market_to_planning,
-)
+logger = logging.getLogger(__name__)
 
+# LOT SIZES (SEBI 2026)
+LOT_SIZES = {
+    'NIFTY': 65,
+    'SENSEX': 20,
+    'BANKNIFTY': 25,
+    'FINNIFTY': 40
+}
 
-CertifiedP6Planner = Callable[
-    [
-        object,
-        object,
-    ],
-    IntegratedThreeTargetTradePlanResultV1,
-]
-
-
-def run_capital_safe_recommendation_cycle(
-    *,
-    bridge_result_id: str,
-    authority_result_id: str,
-    recommendation_id: str,
-    decision: TwoMarketDecisionResultV1,
-    capital_risk_input: CapitalRiskAuthorityInputV1,
-    maximum_candidate_age_seconds: float,
-    certified_p6_planner: CertifiedP6Planner,
-) -> FinalTradeRecommendationV1:
-    """Run Task 4 from Task 3 decision through final recommendation."""
-
-    if type(decision) is not TwoMarketDecisionResultV1:
-        raise TypeError("decision")
-    if type(capital_risk_input) is not CapitalRiskAuthorityInputV1:
-        raise TypeError("capital_risk_input")
-    if not callable(certified_p6_planner):
-        raise TypeError("certified_p6_planner")
-
-    bridge = bridge_selected_market_to_planning(
-        bridge_result_id=bridge_result_id,
-        decision=decision,
-        evaluated_at=capital_risk_input.evaluated_at,
-        maximum_candidate_age_seconds=maximum_candidate_age_seconds,
-    )
-    authority = evaluate_capital_risk_authority(
-        authority_result_id=authority_result_id,
-        authority_input=capital_risk_input,
-    )
-
-    if bridge.action == "NO_TRADE":
-        planning = certified_p6_planner(bridge, authority)
-        if type(planning) is not IntegratedThreeTargetTradePlanResultV1:
-            raise TypeError(
-                "certified_p6_planner must return exact integrated result"
+class CapitalSafeRecommendationRuntime:
+    """
+    Validates trade recommendations against available capital.
+    Uses PREMIUM-based calculations.
+    """
+    
+    def __init__(self, total_capital: float = 1000000):
+        self.total_capital = total_capital
+        self.max_usage_percent = 0.80  # Max 80% deployed
+    
+    def validate_recommendation(
+        self,
+        recommendation: Dict[str, Any],
+        existing_positions: list = None
+    ) -> Dict[str, Any]:
+        """
+        Validate a trade recommendation against capital.
+        
+        IMPORTANT: Uses PREMIUM for cost calculation.
+        """
+        existing_positions = existing_positions or []
+        
+        # Get recommendation details
+        symbol = recommendation.get('symbol', 'NIFTY')
+        lots = recommendation.get('lots', 0)
+        premium = recommendation.get('entry_premium', recommendation.get('entry_price', 0))
+        
+        # Get lot size
+        lot_size = LOT_SIZES.get(symbol, 65)
+        quantity = lots * lot_size
+        
+        # Calculate cost using premium
+        cost = premium * quantity
+        
+        # Calculate existing deployed capital
+        existing_deployed = 0
+        for pos in existing_positions:
+            if pos.get('status') == 'OPEN':
+                pos_premium = pos.get('entry_premium', pos.get('entry_price', 0))
+                pos_quantity = pos.get('quantity', 0)
+                existing_deployed += pos_premium * pos_quantity
+        
+        # Total after adding this position
+        total_after = existing_deployed + cost
+        usage_percent = (total_after / self.total_capital) * 100 if self.total_capital > 0 else 0
+        
+        # Validate
+        is_valid = True
+        reasons = []
+        
+        if cost <= 0:
+            is_valid = False
+            reasons.append(f"Invalid premium: ₹{premium}")
+        
+        if total_after > self.total_capital:
+            is_valid = False
+            reasons.append(
+                f"Insufficient capital: Need ₹{cost:,.2f}, "
+                f"available ₹{self.total_capital - existing_deployed:,.2f}"
             )
-        return project_final_trade_recommendation(
-            recommendation_id=recommendation_id,
-            bridge=bridge,
-            authority=authority,
-            planning=planning,
-        )
-
-    if bridge.selected_market != capital_risk_input.selected_market:
-        raise ValueError(
-            "capital authority input must match selected market"
-        )
-
-    planning = certified_p6_planner(bridge, authority)
-    if type(planning) is not IntegratedThreeTargetTradePlanResultV1:
-        raise TypeError(
-            "certified_p6_planner must return exact integrated result"
-        )
-
-    return project_final_trade_recommendation(
-        recommendation_id=recommendation_id,
-        bridge=bridge,
-        authority=authority,
-        planning=planning,
-    )
+        
+        if usage_percent > self.max_usage_percent * 100:
+            is_valid = False
+            reasons.append(
+                f"Would exceed max usage: {usage_percent:.1f}% > {self.max_usage_percent * 100:.0f}%"
+            )
+        
+        return {
+            'valid': is_valid,
+            'reasons': reasons,
+            'cost': cost,
+            'total_deployed_after': total_after,
+            'usage_percent': usage_percent,
+            'available_capital': self.total_capital - existing_deployed,
+            'symbol': symbol,
+            'lots': lots,
+            'lot_size': lot_size,
+            'quantity': quantity,
+            'premium': premium
+        }
+    
+    def calculate_position_affordability(
+        self,
+        premium: float,
+        lots: int,
+        symbol: str = 'NIFTY'
+    ) -> Dict[str, Any]:
+        """
+        Calculate if a position is affordable.
+        """
+        lot_size = LOT_SIZES.get(symbol, 65)
+        quantity = lots * lot_size
+        cost = premium * quantity
+        
+        return {
+            'affordable': cost <= self.total_capital * self.max_usage_percent,
+            'cost': cost,
+            'usage_percent': (cost / self.total_capital) * 100 if self.total_capital > 0 else 0,
+            'lot_size': lot_size,
+            'quantity': quantity,
+            'premium': premium
+        }

@@ -1,6 +1,8 @@
 """Atomic durable storage for immutable Task 9 prediction lifecycle windows."""
 from __future__ import annotations
 
+from services.certification.task9_atomic_file_replace import replace_task9_atomic_file
+
 import json
 import os
 from pathlib import Path
@@ -26,7 +28,7 @@ class Task9PredictionLifecycleContextStore:
         self.file_path.parent.mkdir(parents=True, exist_ok=True); temporary = self.file_path.with_name(self.file_path.name + ".tmp")
         try:
             temporary.write_text(json.dumps(document, sort_keys=True, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-            os.replace(temporary, self.file_path)
+            replace_task9_atomic_file(temporary, self.file_path)
         finally: temporary.unlink(missing_ok=True)
 
     def save(self, context: PredictionLifecycleWindowV1) -> str:

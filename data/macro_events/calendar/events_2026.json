@@ -1,0 +1,20 @@
+{
+  "description": "Event calendar seed — includes known schedule metadata only. No actual values.",
+  "events": [
+    {"event_type": "US_PPI", "reference_period": "2026-08", "release_date": "2026-09-10",
+     "scheduled_local_time": "08:30", "source_tz": "America/New_York",
+     "source_agency": "BLS", "event_group_id": null},
+    {"event_type": "US_CPI", "reference_period": "2026-08", "release_date": "2026-09-11",
+     "scheduled_local_time": "08:30", "source_tz": "America/New_York",
+     "source_agency": "BLS", "event_group_id": null},
+    {"event_type": "US_FOMC_STATEMENT", "reference_period": "2026-09", "release_date": "2026-09-16",
+     "scheduled_local_time": "14:00", "source_tz": "America/New_York",
+     "source_agency": "Federal Reserve", "event_group_id": "FOMC_2026_09"},
+    {"event_type": "US_FOMC_RATE", "reference_period": "2026-09", "release_date": "2026-09-16",
+     "scheduled_local_time": "14:00", "source_tz": "America/New_York",
+     "source_agency": "Federal Reserve", "event_group_id": "FOMC_2026_09"},
+    {"event_type": "US_PCE", "reference_period": "2026-08", "release_date": "2026-09-26",
+     "scheduled_local_time": "08:30", "source_tz": "America/New_York",
+     "source_agency": "BEA", "event_group_id": null}
+  ]
+}

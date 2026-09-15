@@ -9,6 +9,7 @@ No broker order submission.
 
 from __future__ import annotations
 
+import json
 import math
 import time
 from collections.abc import Mapping
@@ -281,23 +282,353 @@ class AngelInstrumentMaster:
             "option_type": option_type,
         }
 
+    @staticmethod
+    def _parse_range_response(
+        response,
+        *,
+        requested_start,
+        requested_end,
+        expected_total_size,
+    ):
+        """Strictly validate one HTTP byte-range response."""
+
+        if response.status_code != 206:
+            raise RuntimeError(
+                "Angel instrument-master range request "
+                "did not return HTTP 206."
+            )
+
+        content_range = response.headers.get(
+            "Content-Range"
+        )
+
+        if (
+            not isinstance(content_range, str)
+            or not content_range.strip()
+        ):
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "is missing Content-Range."
+            )
+
+        value = content_range.strip()
+
+        try:
+            unit, range_spec = value.split(
+                " ",
+                1,
+            )
+
+            span, total_text = range_spec.split(
+                "/",
+                1,
+            )
+
+            start_text, end_text = span.split(
+                "-",
+                1,
+            )
+
+            observed_start = int(
+                start_text
+            )
+            observed_end = int(
+                end_text
+            )
+            observed_total = int(
+                total_text
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "has invalid Content-Range."
+            ) from exc
+
+        if unit.lower() != "bytes":
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "has invalid range unit."
+            )
+
+        if observed_total <= 0:
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "has invalid total size."
+            )
+
+        if (
+            expected_total_size is not None
+            and observed_total
+            != expected_total_size
+        ):
+            raise RuntimeError(
+                "Angel instrument-master total size "
+                "changed during range acquisition."
+            )
+
+        expected_end = min(
+            requested_end,
+            observed_total - 1,
+        )
+
+        if (
+            observed_start
+            != requested_start
+            or observed_end
+            != expected_end
+        ):
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "does not match the requested byte range."
+            )
+
+        body = response.content
+
+        if not isinstance(
+            body,
+            (
+                bytes,
+                bytearray,
+            ),
+        ):
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "body is not bytes."
+            )
+
+        body = bytes(
+            body
+        )
+
+        expected_length = (
+            observed_end
+            - observed_start
+            + 1
+        )
+
+        if len(body) != expected_length:
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "body length mismatch."
+            )
+
+        content_length = response.headers.get(
+            "Content-Length"
+        )
+
+        if (
+            content_length is not None
+            and str(content_length).strip()
+        ):
+            try:
+                declared_length = int(
+                    str(
+                        content_length
+                    ).strip()
+                )
+            except ValueError as exc:
+                raise RuntimeError(
+                    "Angel instrument-master range response "
+                    "has invalid Content-Length."
+                ) from exc
+
+            if declared_length != expected_length:
+                raise RuntimeError(
+                    "Angel instrument-master range response "
+                    "Content-Length mismatch."
+                )
+
+        return (
+            body,
+            observed_total,
+        )
+
+    def _fetch_instruments_by_range(self):
+        """Acquire one complete master through validated HTTP byte ranges."""
+
+        chunk_size = 1024 * 1024
+        maximum_total_size = (
+            128 * 1024 * 1024
+        )
+
+        maximum_attempts_per_range = 3
+
+        payload = bytearray()
+
+        total_size = None
+        requested_start = 0
+
+        while (
+            total_size is None
+            or requested_start
+            < total_size
+        ):
+            requested_end = (
+                requested_start
+                + chunk_size
+                - 1
+            )
+
+            if total_size is not None:
+                requested_end = min(
+                    requested_end,
+                    total_size - 1,
+                )
+
+            last_exception = None
+
+            for attempt in range(
+                1,
+                maximum_attempts_per_range
+                + 1,
+            ):
+                try:
+                    response = self.session.get(
+                        INSTRUMENT_MASTER_URL,
+                        headers={
+                            "Range": (
+                                f"bytes="
+                                f"{requested_start}-"
+                                f"{requested_end}"
+                            ),
+                            # Range offsets must refer to the
+                            # uncompressed representation.
+                            "Accept-Encoding": "identity",
+                        },
+                        timeout=30,
+                    )
+
+                    response.raise_for_status()
+
+                    (
+                        body,
+                        observed_total,
+                    ) = self._parse_range_response(
+                        response,
+                        requested_start=(
+                            requested_start
+                        ),
+                        requested_end=(
+                            requested_end
+                        ),
+                        expected_total_size=(
+                            total_size
+                        ),
+                    )
+
+                    break
+
+                except requests.RequestException as exc:
+                    last_exception = exc
+
+                    if (
+                        attempt
+                        >= maximum_attempts_per_range
+                    ):
+                        raise RuntimeError(
+                            "Angel instrument-master range "
+                            "request failed after "
+                            f"{maximum_attempts_per_range} "
+                            "attempts: "
+                            f"{type(exc).__name__}"
+                        ) from exc
+
+                    time.sleep(
+                        float(
+                            2 ** (
+                                attempt - 1
+                            )
+                        )
+                    )
+
+            else:
+                raise RuntimeError(
+                    "Angel instrument-master range "
+                    "request failed: "
+                    f"{type(last_exception).__name__}"
+                ) from last_exception
+
+            if total_size is None:
+                total_size = observed_total
+
+                if (
+                    total_size <= 0
+                    or total_size
+                    > maximum_total_size
+                ):
+                    raise RuntimeError(
+                        "Angel instrument-master declared "
+                        "size is outside the permitted range."
+                    )
+
+            payload.extend(
+                body
+            )
+
+            requested_start += len(
+                body
+            )
+
+        if (
+            total_size is None
+            or len(payload)
+            != total_size
+        ):
+            raise RuntimeError(
+                "Angel instrument-master final "
+                "byte count mismatch."
+            )
+
+        try:
+            decoded = bytes(
+                payload
+            ).decode(
+                "utf-8"
+            )
+
+            return json.loads(
+                decoded
+            )
+
+        except (
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+        ) as exc:
+            raise RuntimeError(
+                "Angel instrument-master ranged response "
+                "contains invalid JSON."
+            ) from exc
+
     def fetch_instruments(self):
         """Download and minimally validate the Angel instrument master."""
 
-        response = self.session.get(
-            INSTRUMENT_MASTER_URL,
-            timeout=30,
-        )
-
-        response.raise_for_status()
-
+        # Try the normal provider representation once.  A transport-level
+        # failure switches to strict HTTP byte-range acquisition instead of
+        # restarting a large response repeatedly from byte zero.
         try:
-            data = response.json()
-        except Exception as exc:
-            raise RuntimeError(
-                "Angel instrument-master response "
-                "contains invalid JSON."
-            ) from exc
+            response = self.session.get(
+                INSTRUMENT_MASTER_URL,
+                timeout=30,
+            )
+
+            response.raise_for_status()
+
+            try:
+                data = response.json()
+
+            except Exception:
+                data = (
+                    self._fetch_instruments_by_range()
+                )
+
+        except requests.RequestException:
+            data = (
+                self._fetch_instruments_by_range()
+            )
 
         if not isinstance(data, list):
             raise RuntimeError(
@@ -325,20 +656,27 @@ class AngelInstrumentMaster:
                 )
 
             copied.append(
-                deepcopy(dict(instrument))
+                deepcopy(
+                    dict(
+                        instrument
+                    )
+                )
             )
 
         fetched_at = float(
             self.time_function()
         )
 
-        if not math.isfinite(fetched_at):
+        if not math.isfinite(
+            fetched_at
+        ):
             raise RuntimeError(
                 "Instrument-master fetch timestamp "
                 "must be finite."
             )
 
         self.instruments = copied
+
         self._metadata = {
             "source": self.SOURCE_NAME,
             "source_url": (
@@ -347,11 +685,15 @@ class AngelInstrumentMaster:
             "fetched_at_epoch_seconds": (
                 fetched_at
             ),
-            "record_count": len(copied),
+            "record_count": len(
+                copied
+            ),
             "validated": True,
         }
 
-        return deepcopy(copied)
+        return deepcopy(
+            copied
+        )
 
     def _ensure_loaded(self):
         if self.instruments is None:

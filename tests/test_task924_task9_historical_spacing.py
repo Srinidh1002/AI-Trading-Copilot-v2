@@ -25,11 +25,16 @@ def test_task9_launcher_passes_explicit_five_second_spacing(tmp_path):
     launcher = Task9LivePaperCertificationLauncher(
         persistence_root=tmp_path,
         official_run_id="run",
-        task8_dependencies_factory=factory,
+            startup_preflight_id="task9102-preflight",
+            runtime_config_snapshot_id="task9-runtime-config-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            runtime_config_sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            campaign_id="task9102-campaign",
+            market_date=__import__("datetime").date(2026, 8, 11),
+        task9_evidence_dependencies_factory=factory,
         clock=lambda: None,
         sleep=lambda _: None,
     )
-    assert launcher._build_task8_dependencies(lambda _: None)
+    assert launcher._build_task9_evidence_dependencies(lambda _: None)
     assert received["historical_request_interval_seconds"] == 15.0
 
 
