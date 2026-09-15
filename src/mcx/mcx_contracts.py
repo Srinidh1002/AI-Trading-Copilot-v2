@@ -20,6 +20,7 @@ CRUDEOILM = {
     "quote_base": "INR_PER_BARREL",
     "cash_multiplier": 10,
     "tick_size": 0.05,
+    "option_tick_size": 0.05,  # M5_option_tick_authority
     "strike_interval": 50,
     "option_type": "EUROPEAN",
     "settlement": "OPTIONS_ON_FUTURES",
@@ -39,6 +40,7 @@ GOLDM = {
     "quote_base": "INR_PER_10G",
     "cash_multiplier": 10,
     "tick_size": 1.0,
+    "option_tick_size": 0.50,  # M5_option_tick_authority
     "strike_interval": 100,
     "option_type": "EUROPEAN",
     "settlement": "OPTIONS_ON_FUTURES",
@@ -58,6 +60,7 @@ NATGASMINI = {
     "quote_base": "INR_PER_MMBTU",
     "cash_multiplier": 250,
     "tick_size": 0.10,
+    "option_tick_size": 0.05,  # M5_option_tick_authority
     "strike_interval": 5,
     "option_type": "EUROPEAN",
     "settlement": "OPTIONS_ON_FUTURES",

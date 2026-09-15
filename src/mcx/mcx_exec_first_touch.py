@@ -133,8 +133,16 @@ class FirstTouchTracker:
         t.sl_first_seen_sequence = state.get("sl_first_seen_sequence")
         t.last_seq = state.get("last_processed_sequence")
         t.last_quote_id = state.get("last_processed_quote_id")
-        t.out_of_order_rejections = int(state.get("out_of_order_tick_count", 0) or 0)
-        t.duplicate_rejections = int(state.get("duplicate_tick_count", 0) or 0)
+        # M7_first_touch_key_fix - read keys snapshot() actually writes;
+        # fall back to legacy keys for old persisted state.
+        t.out_of_order_rejections = int(
+            state.get("out_of_order_rejections",
+                      state.get("out_of_order_tick_count", 0)) or 0
+        )
+        t.duplicate_rejections = int(
+            state.get("duplicate_rejections",
+                      state.get("duplicate_tick_count", 0)) or 0
+        )
         _lt = state.get("last_processed_exchange_time")
         if _lt:
             try:

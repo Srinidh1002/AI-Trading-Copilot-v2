@@ -26,7 +26,7 @@ from mcx.mcx_mtf import compute_mtf
 from mcx.mcx_regime import classify as classify_regime, describe as describe_regime
 from mcx.mcx_decision import compose as compose_decision, print_decision
 from mcx.mcx_strike import select_strike
-from mcx.mcx_capital import compute_paper_fill, compute_lots
+from mcx.mcx_capital import compute_lots  # M8_dead_import_removed (compute_paper_fill was unused)
 from mcx.mcx_exec_quote import make_execution_quote, validate_quote
 from mcx.mcx_exec_depth import extract_depth
 from mcx.mcx_exec_fill import compute_paper_fill_v2, depth_vwap_for_sell
@@ -339,7 +339,8 @@ def try_open(obj, chain, mtf, ctx, decision, regime, structure, setup, state):
 
     trading_unit = PRODUCTS[PRODUCT]["trading_unit"]
     requested_qty = lots * trading_unit
-    fill_result = compute_paper_fill_v2(eq, "BUY", requested_qty, tick=0.05)
+    _tick_opt = PRODUCTS[PRODUCT]["option_tick_size"]  # M5_option_tick_authority
+    fill_result = compute_paper_fill_v2(eq, "BUY", requested_qty, tick=_tick_opt)
     if fill_result["status"] != "OK":
         print(f"  ENTRY_FILL_FAILED: {fill_result['status']}")
         return None
@@ -437,9 +438,11 @@ def close_and_reconcile(obj, pos, exit_reason, exit_ltp, pnl_pct, state):
         pos["lifecycle_state"] = "EXIT_PENDING"
         pos["exit_evidence_unavailable_at"] = datetime.now(IST).isoformat(timespec="seconds")
         return  # position remains OPEN; retry next cycle
-    trading_unit = PRODUCTS.get(pos.get("product", PRODUCT), {}).get("trading_unit", 1)
+    _prod_name = pos.get("product", PRODUCT)
+    trading_unit = PRODUCTS.get(_prod_name, {}).get("trading_unit", 1)
     requested_qty = max(1, pos.get("lots", 1) * trading_unit)
-    fill_result = compute_paper_fill_v2(eq, "SELL", requested_qty, tick=0.05)
+    _tick_opt = PRODUCTS.get(_prod_name, {}).get("option_tick_size", 0.05)  # M5_option_tick_authority
+    fill_result = compute_paper_fill_v2(eq, "SELL", requested_qty, tick=_tick_opt)
     if fill_result["status"] != "OK":
         print(f"  EXIT_FILL_FAILED: {fill_result['status']}")
         pos["lifecycle_state"] = "EXIT_PENDING"
