@@ -141,6 +141,8 @@ class UnifiedTradingBot:
         self.strategy_version    = STRATEGY_VERSION
         self.certification_epoch = CERTIFICATION_EPOCH
         self.certification_schema_version = "EQUITY_CERT_V2_PHASE_BUCKETS"
+        # R18_regime_plumbing - durable cross-method regime context
+        self._last_regime_ctx = {"regime": "UNKNOWN", "confidence": 0.0}
         self.is_legacy_precert   = False
         # R8_prediction_link - fingerprint of most recent prediction (per cycle)
         self._last_prediction_fingerprint = None
@@ -1145,6 +1147,9 @@ class UnifiedTradingBot:
         except Exception as e:
             print(f"[B7] Regime error: {str(e)[:50]}")
         
+        # R18_regime_plumbing - persist for downstream trade construction
+        self._last_regime_ctx = regime_ctx
+
         # ============ PHASE C: EXTERNAL INTEL ============
         ext = {}
         if self.external_intel:
@@ -1257,7 +1262,7 @@ class UnifiedTradingBot:
         #   - intraday change from open is tiny (<0.10%)
         #   - AND regime is truly range-bound or unknown
         # We DO NOT skip when there is a clear overnight gap or trend
-        _regime_for_flat = regime_ctx.get("regime", "UNKNOWN") if 'regime_ctx' in dir() else "UNKNOWN"
+        _regime_for_flat = (regime_ctx.get("regime", "UNKNOWN") if isinstance(regime_ctx, dict) else "UNKNOWN")
         _regime_is_range = _regime_for_flat in ("RANGE_BOUND", "LOW_VOLATILITY_COMPRESSION", "UNKNOWN")
         
         # Check overnight context via previous_day_engine
@@ -1666,7 +1671,7 @@ class UnifiedTradingBot:
             'certification_trade_date':
                 datetime.now().strftime("%Y-%m-%d"),
             'certification_regime':
-                (regime_ctx.get('regime', 'UNKNOWN') if 'regime_ctx' in dir() else 'UNKNOWN'),
+                ((getattr(self, '_last_regime_ctx', None) or {}).get('regime', 'UNKNOWN')),
             'market_phase_at_entry':
                 self.market_phase.describe().get('phase', 'UNKNOWN'),
             'certification_session_phase':
