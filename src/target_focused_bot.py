@@ -41,6 +41,8 @@ from target_policy import TargetPolicy
 from close_drain_policy import CloseDrainPolicy
 from prediction_ledger import PredictionLedger
 from outcome_ledger import OutcomeLedger
+from first_touch_tracker import EquityFirstTouchTracker  # R3_first_touch_wire
+from diversity_tracker import EquityCertificationDiversityTracker  # R15_diversity_authority
 
 load_dotenv()
 
@@ -85,6 +87,27 @@ for _h in logging.getLogger().handlers:
     _h.addFilter(_sf)
 
 
+# R9_epoch_metadata - immutable runtime provenance
+STRATEGY_VERSION    = "NS_DESIGN_B_BID_AUTH_V2"
+CERTIFICATION_EPOCH = "NS_CERT_20260916_V1"
+
+
+def _restore_first_touch(active_trade):
+    """R3_first_touch_wire - rebuild EquityFirstTouchTracker from persisted state."""
+    st = active_trade.get("first_touch_state")
+    if st:
+        try:
+            return EquityFirstTouchTracker.from_state(st)
+        except Exception:
+            pass
+    return EquityFirstTouchTracker(
+        t1_price=active_trade.get("t1_price"),
+        t2_price=active_trade.get("t2_price"),
+        t3_price=active_trade.get("t3_price"),
+        sl_price=active_trade.get("sl_price"),
+    )
+
+
 class UnifiedTradingBot:
     def __init__(self, market='NIFTY'):
         self.market = market.upper()
@@ -108,6 +131,21 @@ class UnifiedTradingBot:
         self.t3_hits = 0
         self.stop_losses = 0
         self.market_close_exits = 0
+
+        # R9_epoch_metadata - runtime provenance (immutable)
+        self.strategy_version    = STRATEGY_VERSION
+        self.certification_epoch = CERTIFICATION_EPOCH
+        self.is_legacy_precert   = False
+        # R8_prediction_link - fingerprint of most recent prediction (per cycle)
+        self._last_prediction_fingerprint = None
+        # R6_cert_counter - official /100 certification counters
+        # (SEPARATE from operational current_session/total_trades)
+        self.certification_counter = 0
+        self.certification_wins    = 0
+        self.certification_losses  = 0
+        self.counted_trade_ids     = set()
+        # R15_diversity_authority - per-market diversity state
+        self.certification_diversity = EquityCertificationDiversityTracker()
         
         self.T1_PERCENT = 15
         self.T2_PERCENT = 30
@@ -258,7 +296,17 @@ class UnifiedTradingBot:
             'session_history': self.session_history,
             'completed_trades': self.completed_trades,
             'active_trades': list(self.active_trades.values()),
-            'sessions_completed_today': self.sessions_completed_today
+            'sessions_completed_today': self.sessions_completed_today,
+            # R9_epoch_metadata - may be None for legacy state; do not silently relabel
+            'strategy_version':    self.strategy_version,
+            'certification_epoch': self.certification_epoch,
+            # R6_cert_counter - durable cert count + idempotency authority
+            'certification_counter': self.certification_counter,
+            'certification_wins':    self.certification_wins,
+            'certification_losses':  self.certification_losses,
+            'counted_trade_ids':     sorted(self.counted_trade_ids),
+            # R15_diversity_authority - persisted diversity state
+            'diversity_state': self.certification_diversity.to_state()
         }
         
         with open(self.state_file, 'w') as f:
@@ -288,6 +336,37 @@ class UnifiedTradingBot:
                 self.session_history = state.get('session_history', [])
                 self.completed_trades = state.get('completed_trades', [])
                 self.sessions_completed_today = state.get('sessions_completed_today', 0)
+                # R3_first_touch_wire - restore active_trades so tracker state survives restart
+                _active_list = state.get('active_trades', []) or []
+                self.active_trades = {}
+                for _t in _active_list:
+                    if isinstance(_t, dict) and _t.get('trade_id'):
+                        self.active_trades[_t['trade_id']] = _t
+
+                # R9_epoch_metadata - legacy-safe resolution.
+                # No default: if either key is missing, treat as legacy/pre-cert.
+                # Do NOT write the current CERTIFICATION_EPOCH onto old state.
+                _loaded_epoch   = state.get('certification_epoch')
+                _loaded_version = state.get('strategy_version')
+                if _loaded_epoch is None or _loaded_version is None:
+                    self.certification_epoch = None
+                    self.strategy_version    = None
+                    self.is_legacy_precert   = True
+                else:
+                    self.certification_epoch = _loaded_epoch
+                    self.strategy_version    = _loaded_version
+                    self.is_legacy_precert   = False
+
+                # R6_cert_counter - restore cert count + idempotency set.
+                # Legacy state missing these fields defaults to 0/empty.
+                self.certification_counter = int(state.get('certification_counter', 0) or 0)
+                self.certification_wins    = int(state.get('certification_wins', 0) or 0)
+                self.certification_losses  = int(state.get('certification_losses', 0) or 0)
+                _cti = state.get('counted_trade_ids', []) or []
+                self.counted_trade_ids = set(_cti) if isinstance(_cti, (list, tuple, set)) else set()
+                # R15_diversity_authority - restore (legacy-safe: fresh empty if absent)
+                _dstate = state.get('diversity_state')
+                self.certification_diversity = EquityCertificationDiversityTracker.from_state(_dstate)
                 
                 print(f"✅ Loaded {self.market} state:")
                 print(f"   Sessions: {self.current_session}/{self.total_sessions}")
@@ -1266,6 +1345,8 @@ class UnifiedTradingBot:
             print(f'  [E] Blockers: {decision["blockers"]}')
         
         # ===== PHASE G1: Record prediction to ledger =====
+        # R8_prediction_link - reset per cycle, then capture fingerprint
+        self._last_prediction_fingerprint = None
         try:
             _record = self.prediction_ledger.build_record(
                 market=self.market,
@@ -1286,6 +1367,8 @@ class UnifiedTradingBot:
                 config_version='v3-phase-g',
             )
             self.prediction_ledger.record(_record)
+            # R8_prediction_link - immutable fingerprint for trade linkage
+            self._last_prediction_fingerprint = _record.get('fingerprint')
         except Exception as _e:
             print(f'[G1] ledger error: {str(_e)[:60]}')
         
@@ -1558,6 +1641,31 @@ class UnifiedTradingBot:
                 and _bid > 0 and _ask > 0 and _ask > _bid
                 and self.lot_size > 0
             ),
+            # R9_epoch_metadata - provenance carried on every trade
+            'strategy_version':    self.strategy_version,
+            'certification_epoch': self.certification_epoch,
+            # R8_prediction_link - immutable fingerprint of the decision
+            'prediction_fingerprint': getattr(self, '_last_prediction_fingerprint', None),
+            # R5_milestone_accounting - cert result placeholders (set at close)
+            'certification_win': None,
+            'certification_loss': None,
+            # R4_quote_gap - monitoring-gap / ambiguity fields
+            'monitoring_gap_count': 0,
+            'monitoring_gap_started_at': None,
+            'monitoring_gap_ended_at': None,
+            'monitoring_gap_duration_s': None,
+            'evidence_ambiguous': False,
+            'certification_countable': True,
+            # R15_diversity_authority - authoritative diversity metadata at entry
+            'certification_trade_date':
+                datetime.now().strftime("%Y-%m-%d"),
+            'certification_regime':
+                (regime_ctx.get('regime', 'UNKNOWN') if 'regime_ctx' in dir() else 'UNKNOWN'),
+            'certification_session_phase':
+                self.market_phase.describe().get('phase', 'UNKNOWN'),
+            'diversity_daily_count_after': None,
+            'diversity_counted': False,
+            'certification_countability_reason': None,
         }
         
         self.active_trades[trade_id] = active_trade
@@ -1566,10 +1674,22 @@ class UnifiedTradingBot:
         self.mfe_mae.register(trade_id, entry)
         active_trade['t1_hit'] = False
         active_trade['t2_hit'] = False
+        # R5_milestone_accounting - one-shot guards for counter increment
+        active_trade['t1_hit_counted'] = False
+        active_trade['t2_hit_counted'] = False
         active_trade['peak_price'] = entry
         active_trade['peak_bid'] = None  # D7_D9_design_b
         active_trade['trail_stop'] = None
         active_trade['entry_spot'] = spot
+        # R3_first_touch_wire - initialize tracker state on open position
+        _ft0 = EquityFirstTouchTracker(
+            t1_price=active_trade.get("t1_price"),
+            t2_price=active_trade.get("t2_price"),
+            t3_price=active_trade.get("t3_price"),
+            sl_price=active_trade.get("sl_price"),
+        )
+        active_trade['first_touch_state'] = _ft0.to_state()
+        active_trade['first_touch_result'] = _ft0.result()
         self.total_trades += 1
         
         _notional = entry * self.lot_size
@@ -1603,24 +1723,55 @@ class UnifiedTradingBot:
                 quote = self._fetch_option_quote_full(trade['symbol'], trade['token'])
                 current_ltp = quote.get('ltp') or 0
                 current_bid = quote.get('bid')  # may be None
-                current_price = current_ltp  # LTP drives pnl/threshold decisions
+                current_price = current_ltp  # R2_bid_authority: LTP is display-only
+                # R2_bid_authority - executable bid is the sole threshold authority
+                current_mark = current_bid if (current_bid is not None and current_bid > 0) else None
+
+                # R4_quote_gap - explicit quote outage handling
+                _quote_ok = (current_mark is not None)
+                _skip_thresholds = self._handle_quote_gap(active_trade, _quote_ok)
                 
                 # Track peak executable bid
                 if current_bid is not None and current_bid > 0:
                     if active_trade.get('peak_bid') is None or current_bid > active_trade['peak_bid']:
                         active_trade['peak_bid'] = current_bid
+
+                # R3_first_touch_wire - feed executable bid to first-touch tracker
+                # Observation only; does not alter exit/entry behavior.
+                if current_bid is not None and current_bid > 0:
+                    try:
+                        _ft = _restore_first_touch(active_trade)
+                        _now_iso = datetime.now().isoformat()
+                        _out = _ft.ingest_bid(current_bid, _now_iso)
+                        active_trade['first_touch_state'] = _ft.to_state()
+                        # R4_quote_gap - once ambiguous, do not override with
+                        # later tracker result.
+                        if not active_trade.get('evidence_ambiguous'):
+                            active_trade['first_touch_result'] = _ft.result()
+                        # R5_milestone_accounting - one-shot counter increments
+                        if isinstance(_out, dict):
+                            if _out.get('t1_crossed_now') and not active_trade.get('t1_hit_counted'):
+                                self.t1_hits += 1
+                                active_trade['t1_hit_counted'] = True
+                            if _out.get('t2_crossed_now') and not active_trade.get('t2_hit_counted'):
+                                self.t2_hits += 1
+                                active_trade['t2_hit_counted'] = True
+                    except Exception as _ft_e:
+                        print(f'  [R3] first_touch ingest err: {str(_ft_e)[:60]}')
                 
-                if current_price > 0:
+                if current_mark is not None and not _skip_thresholds:
                     
-                    if current_price > 0:
+                    if current_mark is not None:  # R2_bid_authority
+                        # R2_bid_authority - pnl from executable bid
                         if trade['signal'] == 'BUY':
-                            pnl = (current_price - entry) * self.lot_size
-                            pnl_pct = ((current_price - entry) / entry) * 100
+                            pnl = (current_mark - entry) * self.lot_size
+                            pnl_pct = ((current_mark - entry) / entry) * 100
                         else:
-                            pnl = (entry - current_price) * self.lot_size
-                            pnl_pct = ((entry - current_price) / entry) * 100
+                            pnl = (entry - current_mark) * self.lot_size
+                            pnl_pct = ((entry - current_mark) / entry) * 100
                         
-                        active_trade['current_price'] = current_price
+                        active_trade['current_mark'] = current_mark   # R2_bid_authority
+                        active_trade['current_price'] = current_mark  # legacy key, now = bid
                         active_trade['pnl'] = pnl
                         active_trade['pnl_pct'] = pnl_pct
                         
@@ -1633,14 +1784,14 @@ class UnifiedTradingBot:
                         # Trail = max(entry * 1.10, peak_bid * 0.95). Never below +10%.
                         # T3 (+50%) and SL (-5%) still exit hard.
                         try:
-                            self.mfe_mae.update(trade_id, current_price)
-                            if 'peak_price' not in active_trade or current_price > active_trade['peak_price']:
-                                active_trade['peak_price'] = current_price
+                            self.mfe_mae.update(trade_id, current_mark)  # R2_bid_authority
+                            if 'peak_price' not in active_trade or current_mark > active_trade['peak_price']:
+                                active_trade['peak_price'] = current_mark
                             
                             _floor = entry * 1.10  # +10% premium lock
                             
-                            # Activation: first time LTP pnl_pct crosses T1
-                            if not active_trade.get('t1_hit') and pnl_pct >= self.T1_PERCENT:
+                            # R2_bid_authority - T1 crossing on executable bid
+                            if not active_trade.get('t1_hit') and current_mark >= active_trade['t1_price']:
                                 active_trade['t1_hit'] = True
                                 _pb = active_trade.get('peak_bid')
                                 _init_stop = _floor
@@ -1696,14 +1847,14 @@ class UnifiedTradingBot:
                                 pass
                         
                         # D7_D9_design_b — T1/T2 no longer exit here (T1 activates trail above)
-                        if pnl_pct >= self.T3_PERCENT:
+                        if current_mark >= active_trade['t3_price']:  # R2_bid_authority
                             _exit_px, _pnl, _pnl_pct = self._bid_based_exit(
                                 entry, current_bid, current_price, self.lot_size)
-                            print(f'  T3 REACHED: ltp_pct={pnl_pct:.2f}% exit={_exit_px:.2f}')
+                            print(f'  T3 REACHED: bid={current_mark:.2f} exit={_exit_px:.2f}')
                             self.close_position(trade_id, _exit_px, 'T3_50%', _pnl, _pnl_pct)
                             self.t3_hits += 1
                             break
-                        elif pnl_pct <= -self.STOP_LOSS_PERCENT:
+                        elif current_mark <= active_trade['sl_price']:  # R2_bid_authority
                             _exit_px, _pnl, _pnl_pct = self._bid_based_exit(
                                 entry, current_bid, current_price, self.lot_size)
                             self.close_position(trade_id, _exit_px, 'STOP_LOSS', _pnl, _pnl_pct)
@@ -1716,7 +1867,8 @@ class UnifiedTradingBot:
                             last_update = datetime.now()
             
             except Exception as e:
-                pass
+                # R4_quote_gap - bounded, structured cycle error
+                print(f"  [R4] CYCLE_ERROR: {str(e)[:80]}")
         
         if trade_id in self.active_trades:
             try:
@@ -1724,7 +1876,7 @@ class UnifiedTradingBot:
                 _quote = self._fetch_option_quote_full(trade['symbol'], trade['token'])
                 _ltp = _quote.get('ltp') or 0
                 _bid = _quote.get('bid')
-                if _ltp > 0:
+                if _bid is not None and _bid > 0:  # R2_bid_authority - session-close requires valid bid
                     _exit_px, _pnl, _pnl_pct = self._bid_based_exit(
                         entry, _bid, _ltp, self.lot_size)
                     self.close_position(trade_id, _exit_px, 'MARKET_CLOSE_3:28PM', _pnl, _pnl_pct)
@@ -1732,13 +1884,168 @@ class UnifiedTradingBot:
             except Exception as _e:
                 print(f"  [session-close] err: {str(_e)[:60]}")
         
+        # R10_net_pnl_reporting - session_history uses reconciled net P&L,
+        # not the mid-loop gross pnl local.
+        _pnl_for_return = pnl if 'pnl' in locals() else 0
+        _pnl_pct_for_return = pnl_pct if 'pnl_pct' in locals() else 0
+        # If close_position() ran, trade_id was removed from active_trades.
+        # active_trade is the same dict reference (mutated in place) and
+        # now carries reconciled net values.
+        if trade_id not in self.active_trades:
+            _net = active_trade.get('net_pnl')
+            _net_pct = active_trade.get('net_pnl_pct')
+            if _net is not None:
+                _pnl_for_return = _net
+            if _net_pct is not None:
+                _pnl_pct_for_return = _net_pct
+
         return {
             'market': self.market,
             'type': trade['type'],
-            'pnl': pnl if 'pnl' in locals() else 0,
-            'win': pnl > 0 if 'pnl' in locals() else False
+            'pnl': _pnl_for_return,
+            'pnl_pct': _pnl_pct_for_return,
+            'win': _pnl_for_return > 0 if isinstance(_pnl_for_return, (int, float)) else False,
+            'trade_id': trade_id,
         }
     
+    def _handle_quote_gap(self, active_trade, quote_ok):
+        """R4_quote_gap - explicit executable quote outage handling.
+
+        Returns True if this cycle should skip threshold evaluation.
+        Side effects: updates monitoring_gap_* fields on active_trade.
+        On resume with result still NONE, marks first_touch_result AMBIGUOUS
+        and certification_countable=False.
+        """
+        if not quote_ok:
+            if not active_trade.get('monitoring_gap_started_at'):
+                active_trade['monitoring_gap_started_at'] = datetime.now().isoformat()
+                active_trade['monitoring_gap_count'] = int(active_trade.get('monitoring_gap_count') or 0) + 1
+                print(f"  [R4] QUOTE_GAP_STARTED count={active_trade['monitoring_gap_count']}")
+            return True
+
+        if active_trade.get('monitoring_gap_started_at'):
+            try:
+                _gs_dt = datetime.fromisoformat(active_trade['monitoring_gap_started_at'])
+                _dur = round((datetime.now() - _gs_dt).total_seconds(), 1)
+            except Exception:
+                _dur = None
+            active_trade['monitoring_gap_ended_at'] = datetime.now().isoformat()
+            active_trade['monitoring_gap_duration_s'] = _dur
+            _ftr_prev = active_trade.get('first_touch_result')
+            if _ftr_prev is None or _ftr_prev == 'NONE':
+                active_trade['first_touch_result'] = 'AMBIGUOUS'
+                active_trade['evidence_ambiguous'] = True
+                active_trade['certification_countable'] = False
+                print(f"  [R4] QUOTE_GAP_ENDED duration={_dur}s | ORDERING_AMBIGUOUS - excluded from /100")
+            else:
+                print(f"  [R4] QUOTE_GAP_ENDED duration={_dur}s | result already {_ftr_prev}")
+            active_trade['monitoring_gap_started_at'] = None
+
+        return False
+
+    def _try_increment_certification_counter(self, trade, reconciled_ok):
+        """R6_cert_counter - official /100 increment (idempotent by trade_id).
+
+        Increments only when ALL pass:
+          entered (implicit in close_position call)
+          status == CLOSED
+          reconciled (ledger write succeeded)
+          unique trade_id
+          execution_mode == PAPER
+          broker_submission == False
+          live_execution == False
+          certification_eligible == True
+          certification_countable == True (R4 not ambiguous)
+          first_touch_result in {T1_FIRST, SL_FIRST}
+          strategy_version == STRATEGY_VERSION
+          certification_epoch == CERTIFICATION_EPOCH
+        """
+        reasons = []
+        # R15_epoch_cap - hard per-epoch cap: no trade may enter beyond 100
+        if self.certification_counter >= 100:
+            reasons.append('COUNTER_AT_CAP_100')
+        tid = trade.get('trade_id')
+        if not tid:
+            reasons.append('NO_TRADE_ID')
+        elif tid in self.counted_trade_ids:
+            reasons.append('DUPLICATE_TRADE_ID')
+        if trade.get('status') != 'CLOSED':
+            reasons.append('NOT_CLOSED')
+        if not reconciled_ok:
+            reasons.append('NOT_RECONCILED')
+        if trade.get('execution_mode') != 'PAPER':
+            reasons.append('NOT_PAPER')
+        if trade.get('broker_submission') is not False:
+            reasons.append('BROKER_SUBMISSION_NOT_FALSE')
+        if trade.get('live_execution') is not False:
+            reasons.append('LIVE_EXECUTION_NOT_FALSE')
+        if trade.get('certification_eligible') is not True:
+            reasons.append('NOT_CERT_ELIGIBLE')
+        if trade.get('certification_countable') is not True:
+            reasons.append('NOT_CERT_COUNTABLE')
+        if trade.get('strategy_version') != STRATEGY_VERSION:
+            reasons.append(f'WRONG_STRATEGY_VERSION({trade.get("strategy_version")!r})')
+        if trade.get('certification_epoch') != CERTIFICATION_EPOCH:
+            reasons.append(f'WRONG_EPOCH({trade.get("certification_epoch")!r})')
+        _ftr = trade.get('first_touch_result')
+        if _ftr not in ('T1_FIRST', 'SL_FIRST'):
+            reasons.append(f'NO_TERMINAL_FIRST_TOUCH({_ftr!r})')
+
+        if reasons:
+            print(f'  [R6] NOT_COUNTED trade={tid} reasons={reasons}')
+            return False
+
+        # R15_diversity_authority - daily-cap gate BEFORE counter increment
+        _trade_date = trade.get('certification_trade_date') or datetime.now().strftime("%Y-%m-%d")
+        _regime     = trade.get('certification_regime') or 'UNKNOWN'
+        _phase      = trade.get('certification_session_phase') or 'UNKNOWN'
+        _div_ok, _div_reason = self.certification_diversity.would_count(
+            _trade_date, _regime, _phase)
+        if not _div_ok:
+            trade['certification_countable'] = False
+            trade['certification_countability_reason'] = _div_reason
+            print(f'  [R15] NOT_COUNTED trade={tid} reason={_div_reason} '
+                  f'date={_trade_date}')
+            return False
+
+        self.certification_counter += 1
+        self.counted_trade_ids.add(tid)
+        if _ftr == 'T1_FIRST':
+            self.certification_wins += 1
+        else:
+            self.certification_losses += 1
+        # R15_diversity_authority - atomic with counter++ and counted_trade_ids
+        self.certification_diversity.record(_trade_date, _regime, _phase)
+        trade['diversity_daily_count_after'] = int(
+            self.certification_diversity.countable_by_day.get(_trade_date, 0))
+        trade['diversity_counted'] = True
+        print(f'  [R6] COUNTED trade={tid} result={_ftr} '
+              f'cert={self.certification_counter}/100 '
+              f'wins={self.certification_wins} losses={self.certification_losses}')
+        # Immediate persist to survive crash after count
+        try:
+            self.save_state()
+        except Exception as _se:
+            print(f'  [R6] save_state after count failed: {str(_se)[:60]}')
+        return True
+
+    def final_certification_evaluation(self):
+        """R15_diversity_authority - final verdict for the /100 sample.
+
+        Order:
+          1. diversity evaluated first (sample validity)
+          2. performance (>=80 T1_FIRST wins) only if diversity_ok
+        Returns status in {IN_PROGRESS, DIVERSITY_FAIL, FAIL_ACCURACY, PASS}.
+        """
+        div_ok, div = self.certification_diversity.evaluate()
+        if self.certification_counter < 100:
+            return {"status": "IN_PROGRESS", "diversity_ok": div_ok, **div}
+        if not div_ok:
+            return {"status": "DIVERSITY_FAIL", "diversity_ok": False, **div}
+        if self.certification_wins >= 80:
+            return {"status": "PASS", "diversity_ok": True, **div}
+        return {"status": "FAIL_ACCURACY", "diversity_ok": True, **div}
+
     def close_position(self, trade_id, exit_price, reason, pnl, pnl_pct):
         trade = self.active_trades[trade_id]
         trade['exit_price'] = exit_price
@@ -1779,9 +2086,26 @@ class UnifiedTradingBot:
         except Exception as _e:
             print(f'  [F] reconciliation error: {str(_e)[:60]}')
         
+        # R5_milestone_accounting - certification win/loss is determined
+        # ONLY by first-touch ordering (bid-based). Never derived from P&L.
+        _ftr = trade.get('first_touch_result')
+        if _ftr == 'T1_FIRST':
+            trade['certification_win'] = True
+            trade['certification_loss'] = False
+        elif _ftr == 'SL_FIRST':
+            trade['certification_win'] = False
+            trade['certification_loss'] = True
+        else:
+            # NONE / AMBIGUOUS / missing: unresolved, both False
+            trade['certification_win'] = False
+            trade['certification_loss'] = False
+
         # ===== PHASE G2: Record outcome to ledger =====
+        _reconciled_ok = False  # R6_cert_counter
         try:
-            self.outcome_ledger.record(trade)
+            _rec_ok = self.outcome_ledger.record(trade)
+            if _rec_ok:
+                _reconciled_ok = True
             print(f'  [G2] Outcome recorded to {self.market.lower()}_outcomes.jsonl')
             
             # Phase H: re-entry state tracking
@@ -1811,6 +2135,9 @@ class UnifiedTradingBot:
             _pnl_for_total = pnl
         self.total_pnl += _pnl_for_total
         
+        # R5_milestone_accounting - winning_trades/losing_trades remain
+        # ECONOMIC statistics only (net_pnl sign). Certification win/loss
+        # is set above from first_touch_result and is NOT derived from P&L.
         if _pnl_for_total > 0:
             self.winning_trades += 1
             self.consecutive_wins += 1
@@ -1822,6 +2149,9 @@ class UnifiedTradingBot:
         
         self.completed_trades.append(trade)
         del self.active_trades[trade_id]
+
+        # R6_cert_counter - official /100 increment (idempotent by trade_id)
+        self._try_increment_certification_counter(trade, _reconciled_ok)
         
         print(f"\n{'='*60}")
         print(f"📊 Position Closed: {reason}")

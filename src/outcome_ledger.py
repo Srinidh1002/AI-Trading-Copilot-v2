@@ -43,6 +43,53 @@ class OutcomeLedger:
             "broker_submission": trade.get("broker_submission"),
             "live_execution": trade.get("live_execution"),
             "certification_eligible": trade.get("certification_eligible"),
+            # R7_cert_evidence_schema — pure serialization, no derivation.
+            # Every field is trade.get(name). Missing -> None.
+            # Strategy epoch provenance
+            "strategy_version":             trade.get("strategy_version"),
+            "certification_epoch":          trade.get("certification_epoch"),
+            # Decision linkage
+            "prediction_fingerprint":       trade.get("prediction_fingerprint"),
+            # Entry execution
+            "entry_bid":                    trade.get("entry_bid"),
+            "entry_ask":                    trade.get("entry_ask"),
+            "entry_ltp":                    trade.get("entry_ltp"),
+            # Exit execution
+            "exit_bid":                     trade.get("exit_bid"),
+            # Milestone booleans
+            "t1_hit":                       trade.get("t1_hit"),
+            "t2_hit":                       trade.get("t2_hit"),
+            # First-touch timestamps
+            "t1_first_seen_at":             trade.get("t1_first_seen_at"),
+            "t2_first_seen_at":             trade.get("t2_first_seen_at"),
+            "t3_first_seen_at":             trade.get("t3_first_seen_at"),
+            "sl_first_seen_at":             trade.get("sl_first_seen_at"),
+            # First-touch bid levels
+            "t1_bid":                       trade.get("t1_bid"),
+            "t2_bid":                       trade.get("t2_bid"),
+            "t3_bid":                       trade.get("t3_bid"),
+            "sl_bid":                       trade.get("sl_bid"),
+            # Chronological resolution
+            "first_touch_result":           trade.get("first_touch_result"),
+            # Certification outcome
+            "certification_win":            trade.get("certification_win"),
+            "certification_loss":           trade.get("certification_loss"),
+            "certification_countable":      trade.get("certification_countable"),
+            # Design B trail evidence
+            "trail_stop":                   trade.get("trail_stop"),
+            "peak_bid":                     trade.get("peak_bid"),
+            "trough_bid":                   trade.get("trough_bid"),
+            # Monitoring-gap evidence
+            "monitoring_gap_count":         trade.get("monitoring_gap_count"),
+            "monitoring_gap_started_at":    trade.get("monitoring_gap_started_at"),
+            "evidence_ambiguous":           trade.get("evidence_ambiguous"),
+            # R15_diversity_evidence - pure serialization; None if absent
+            "certification_trade_date":         trade.get("certification_trade_date"),
+            "certification_regime":             trade.get("certification_regime"),
+            "certification_session_phase":      trade.get("certification_session_phase"),
+            "diversity_daily_count_after":      trade.get("diversity_daily_count_after"),
+            "diversity_counted":                trade.get("diversity_counted"),
+            "certification_countability_reason": trade.get("certification_countability_reason"),
         }
         try:
             with open(self.path, "a", encoding="utf-8") as f:
