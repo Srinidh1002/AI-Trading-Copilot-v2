@@ -78,7 +78,7 @@ try:
 
         # R9 metadata
         "strategy_version":     "NS_DESIGN_B_BID_AUTH_V2",
-        "certification_epoch":  "NS_CERT_20260916_V1",
+        "certification_epoch":  "NS_CERT_20260916_V2",
         # R8 linkage
         "prediction_fingerprint": "fp_abc123",
         # entry/exit execution
@@ -111,7 +111,7 @@ try:
 
     for fld, expected in [
         ("strategy_version", "NS_DESIGN_B_BID_AUTH_V2"),
-        ("certification_epoch", "NS_CERT_20260916_V1"),
+        ("certification_epoch", "NS_CERT_20260916_V2"),
         ("prediction_fingerprint", "fp_abc123"),
         ("entry_bid", 99.85), ("entry_ask", 99.95), ("entry_ltp", 99.90),
         ("exit_bid", 110.10),

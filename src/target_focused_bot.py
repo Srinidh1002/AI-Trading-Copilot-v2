@@ -89,7 +89,7 @@ for _h in logging.getLogger().handlers:
 
 # R9_epoch_metadata - immutable runtime provenance
 STRATEGY_VERSION    = "NS_DESIGN_B_BID_AUTH_V2"
-CERTIFICATION_EPOCH = "NS_CERT_20260916_V1"
+CERTIFICATION_EPOCH = "NS_CERT_20260916_V2"
 
 
 def _restore_first_touch(active_trade):
