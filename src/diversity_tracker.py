@@ -26,10 +26,26 @@ class EquityCertificationDiversityTracker:
         self.session_phases  = set()
         self.countable_by_day = {}
 
+    @staticmethod
+    def _valid_regime(regime):
+        """A regime is valid evidence iff it is a non-empty string other
+        than 'UNKNOWN'."""
+        return isinstance(regime, str) and regime != "" and regime != "UNKNOWN"
+
+    @staticmethod
+    def _valid_phase(phase):
+        """A certification session phase is valid evidence iff it is a
+        non-empty string other than 'UNKNOWN'."""
+        return isinstance(phase, str) and phase != "" and phase != "UNKNOWN"
+
     def would_count(self, trade_date, regime, phase):
         """Return (countable: bool, reason: str|None). Does NOT mutate state."""
         if not trade_date:
             return False, "MISSING_TRADE_DATE"
+        if not self._valid_regime(regime):
+            return False, "INVALID_REGIME"
+        if not self._valid_phase(phase):
+            return False, "INVALID_SESSION_PHASE"
         day_count = int(self.countable_by_day.get(trade_date, 0) or 0)
         if day_count >= DIVERSITY_MAX_PER_DAY:
             return False, "DAILY_DIVERSITY_CAP_REACHED"
@@ -38,15 +54,20 @@ class EquityCertificationDiversityTracker:
     def record(self, trade_date, regime, phase):
         """Add diversity contribution for one countable trade.
         Caller must ensure idempotency (bot uses counted_trade_ids).
+        Returns True on success, False if input rejected.
         """
         if not trade_date:
-            return
+            return False
+        if not self._valid_regime(regime):
+            return False
+        if not self._valid_phase(phase):
+            return False
         self.trading_dates.add(trade_date)
-        if regime:
-            self.regimes.add(regime)
-        if phase:
-            self.session_phases.add(phase)
-        self.countable_by_day[trade_date] = int(self.countable_by_day.get(trade_date, 0) or 0) + 1
+        self.regimes.add(regime)
+        self.session_phases.add(phase)
+        self.countable_by_day[trade_date] = int(
+            self.countable_by_day.get(trade_date, 0) or 0) + 1
+        return True
 
     def evaluate(self):
         """Return (ok: bool, details: dict). Sample validity check."""

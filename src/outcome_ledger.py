@@ -86,7 +86,9 @@ class OutcomeLedger:
             # R15_diversity_evidence - pure serialization; None if absent
             "certification_trade_date":         trade.get("certification_trade_date"),
             "certification_regime":             trade.get("certification_regime"),
+            "market_phase_at_entry": trade.get("market_phase_at_entry"),
             "certification_session_phase":      trade.get("certification_session_phase"),
+            "certification_schema_version": trade.get("certification_schema_version"),
             "diversity_daily_count_after":      trade.get("diversity_daily_count_after"),
             "diversity_counted":                trade.get("diversity_counted"),
             "certification_countability_reason": trade.get("certification_countability_reason"),

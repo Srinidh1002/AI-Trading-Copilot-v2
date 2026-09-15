@@ -108,6 +108,11 @@ def _restore_first_touch(active_trade):
     )
 
 
+from certification_phase import (
+    classify_certification_session_phase,
+    CERT_PHASE_UNKNOWN,
+)
+
 class UnifiedTradingBot:
     def __init__(self, market='NIFTY'):
         self.market = market.upper()
@@ -135,6 +140,7 @@ class UnifiedTradingBot:
         # R9_epoch_metadata - runtime provenance (immutable)
         self.strategy_version    = STRATEGY_VERSION
         self.certification_epoch = CERTIFICATION_EPOCH
+        self.certification_schema_version = "EQUITY_CERT_V2_PHASE_BUCKETS"
         self.is_legacy_precert   = False
         # R8_prediction_link - fingerprint of most recent prediction (per cycle)
         self._last_prediction_fingerprint = None
@@ -1661,8 +1667,12 @@ class UnifiedTradingBot:
                 datetime.now().strftime("%Y-%m-%d"),
             'certification_regime':
                 (regime_ctx.get('regime', 'UNKNOWN') if 'regime_ctx' in dir() else 'UNKNOWN'),
-            'certification_session_phase':
+            'market_phase_at_entry':
                 self.market_phase.describe().get('phase', 'UNKNOWN'),
+            'certification_session_phase':
+                classify_certification_session_phase(engine=self.market_phase),
+            'certification_schema_version':
+                self.certification_schema_version,
             'diversity_daily_count_after': None,
             'diversity_counted': False,
             'certification_countability_reason': None,
