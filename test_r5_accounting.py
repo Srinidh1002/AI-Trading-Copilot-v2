@@ -118,11 +118,11 @@ for label, active_fname, arch_fname, v1_prefix, day1_prefix in [
     ("nifty_experimental",
      "data/paper_trades/nifty_experimental.json",
      "data/paper_trades/_archived_NS_precert_20260915/nifty_experimental.json",
-     "3d8fdbe6", "106e57f3"),
+     "bbaace49", "106e57f3"),
     ("sensex_experimental",
      "data/paper_trades/sensex_experimental.json",
      "data/paper_trades/_archived_NS_precert_20260915/sensex_experimental.json",
-     "e58bd4a2", "a1239db0"),
+     "707dffbe", "a1239db0"),
 ]:
     h_act = sha256(active_fname)
     h_arc = sha256(arch_fname)

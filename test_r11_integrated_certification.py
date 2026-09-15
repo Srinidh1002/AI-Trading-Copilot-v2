@@ -308,11 +308,11 @@ for i, line in enumerate(src_rss.splitlines(), 1):
             cls = "INFO"
         print(f"    {cls:24} | {low[:100]}")
 
-# --- K12..K15: archived Day-1 + active V1 genesis hashes intact
+# --- K12..K15: archived Day-1 + active V2 genesis hashes intact
 _ARCH = "data/paper_trades/_archived_NS_precert_20260915"
 for label, active_fname, arch_fname, v1_prefix, day1_prefix in [
-    ("K12 nifty_experimental",  "data/paper_trades/nifty_experimental.json",  _ARCH + "/nifty_experimental.json",  "3d8fdbe6", "106e57f3"),
-    ("K13 sensex_experimental", "data/paper_trades/sensex_experimental.json", _ARCH + "/sensex_experimental.json", "e58bd4a2", "a1239db0"),
+    ("K12 nifty_experimental",  "data/paper_trades/nifty_experimental.json",  _ARCH + "/nifty_experimental.json",  "bbaace49", "106e57f3"),
+    ("K13 sensex_experimental", "data/paper_trades/sensex_experimental.json", _ARCH + "/sensex_experimental.json", "707dffbe", "a1239db0"),
     ("K14 nifty_predictions",   "data/paper_trades/nifty_predictions.jsonl",  _ARCH + "/nifty_predictions.jsonl",  "e3b0c442", "5fe634be"),
     ("K15 sensex_predictions",  "data/paper_trades/sensex_predictions.jsonl", _ARCH + "/sensex_predictions.jsonl", "e3b0c442", "d7790e3a"),
 ]:

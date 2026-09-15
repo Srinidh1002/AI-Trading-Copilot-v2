@@ -215,12 +215,12 @@ r = b._try_increment_certification_counter(t101, True)
 ok("trade 101 rejected", r is False)
 ok("counter still 100", b.certification_counter == 100)
 
-# [20] archived Day-1 + active V1 genesis
-print("\n[20] archived Day-1 + active V1 genesis")
+# [20] archived Day-1 + active V2 genesis
+print("\n[20] archived Day-1 + active V2 genesis")
 _ARCH = "data/paper_trades/_archived_NS_precert_20260915"
 for label, active_fname, arch_fname, v1_prefix, day1_prefix in [
-    ("nifty_experimental",  "data/paper_trades/nifty_experimental.json",  _ARCH + "/nifty_experimental.json",  "3d8fdbe6", "106e57f3"),
-    ("sensex_experimental", "data/paper_trades/sensex_experimental.json", _ARCH + "/sensex_experimental.json", "e58bd4a2", "a1239db0"),
+    ("nifty_experimental",  "data/paper_trades/nifty_experimental.json",  _ARCH + "/nifty_experimental.json",  "bbaace49", "106e57f3"),
+    ("sensex_experimental", "data/paper_trades/sensex_experimental.json", _ARCH + "/sensex_experimental.json", "707dffbe", "a1239db0"),
 ]:
     h_act = sha256(active_fname)
     h_arc = sha256(arch_fname)
