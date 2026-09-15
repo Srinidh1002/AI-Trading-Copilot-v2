@@ -1,0 +1,11 @@
+{
+  "reset_at": "2026-09-15T11:41:47.237810",
+  "reason": "N1 defect patches D1-D3,D5-D11 change strategy behavior (D9 Design B trail). Existing sessions pre-date certification_eligible field. Per RULE 22, new strategy = new epoch.",
+  "archived_files": [
+    "data/paper_trades/nifty_experimental.json",
+    "data/paper_trades/nifty_outcomes.jsonl",
+    "data/paper_trades/nifty_predictions.jsonl",
+    "data/paper_trades/nifty_state.json"
+  ],
+  "archive_dir": "data/paper_trades/_archived_20260915_114147"
+}

@@ -1,0 +1,105 @@
+Total lines: 193
+=== def compute_indicators(df): (L14) ===
+  14: def compute_indicators(df):
+  15:     """Compute full indicator set from OHLCV dataframe.
+  16:     Returns dict with all values, or {'status': 'INSUFFICIENT_DATA'} if too short.
+  17:     """
+  18:     if not TA_AVAILABLE:
+  19:         return {"status": "TA_LIB_UNAVAILABLE"}
+  20:     
+  21:     if df is None or len(df) < 26:
+  22:         return {"status": "INSUFFICIENT_DATA", "rows": len(df) if df is not None else 0}
+  23:     
+  24:     try:
+  25:         close = df["close"]
+  26:         high = df["high"]
+  27:         low = df["low"]
+  28:         
+  29:         # Trend
+  30:         ema20 = ta.trend.EMAIndicator(close, window=20).ema_indicator()
+  31:         ema50 = ta.trend.EMAIndicator(close, window=50).ema_indicator() if len(df) >= 50 else None
+  32:         
+  33:         ema20_val = float(ema20.iloc[-1])
+  34:         ema20_slope = float(ema20.iloc[-1] - ema20.iloc[-3]) if len(ema20) >= 3 else 0
+  35:         ema50_val = float(ema50.iloc[-1]) if ema50 is not None else None
+  36:         ema50_slope = float(ema50.iloc[-1] - ema50.iloc[-3]) if ema50 is not None and len(ema50) >= 3 else 0
+  37:         
+  38:         # Momentum
+  39:         rsi = float(ta.momentum.RSIIndicator(close, window=14).rsi().iloc[-1])
+  40:         
+  41:         macd_obj = ta.trend.MACD(close)
+  42:         macd = float(macd_obj.macd().iloc[-1])
+  43:         macd_sig = float(macd_obj.macd_signal().iloc[-1])
+  44:         macd_hist = float(macd_obj.macd_diff().iloc[-1])
+  45:         
+  46:         # Strength
+  47:         adx_val = None
+  48:         di_plus = None
+  49:         di_minus = None
+  50:         if len(df) >= 14:
+  51:             adx_obj = ta.trend.ADXIndicator(high, low, close, window=14)
+  52:             adx_val = float(adx_obj.adx().iloc[-1])
+  53:             di_plus = float(adx_obj.adx_pos().iloc[-1])
+  54:             di_minus = float(adx_obj.adx_neg().iloc[-1])
+  55:         
+  56:         # Volatility
+  57:         atr = float(ta.volatility.AverageTrueRange(high, low, close, window=14).average_true_range().iloc[-1])
+  58:         atr_pct = (atr / float(close.iloc[-1])) * 100
+  59:         
+  60:         bb = ta.volatility.BollingerBands(close, window=20, window_dev=2)
+  61:         bb_upper = float(bb.bollinger_hband().iloc[-1])
+  62:         bb_mid = float(bb.bollinger_mavg().iloc[-1])
+  63:         bb_lower = float(bb.bollinger_lband().iloc[-1])
+
+=== def timeframe_decision(ind): (L121) ===
+ 121: def timeframe_decision(ind):
+ 122:     """Convert indicator dict to (decision, confidence)."""
+ 123:     if not ind or ind.get("status") != "OK":
+ 124:         return ("UNKNOWN", 0.0)
+ 125:     
+ 126:     votes = []
+ 127:     
+ 128:     # Trend
+ 129:     if ind["trend"] == "UP":
+ 130:         votes.append(("UP", 0.35))
+ 131:     elif ind["trend"] == "DOWN":
+ 132:         votes.append(("DOWN", 0.35))
+ 133:     
+ 134:     # Momentum
+ 135:     if ind["momentum"] == "UP":
+ 136:         votes.append(("UP", 0.25))
+ 137:     elif ind["momentum"] == "DOWN":
+ 138:         votes.append(("DOWN", 0.25))
+ 139:     
+ 140:     # RSI extremes
+ 141:     if ind["rsi"] < 30:
+ 142:         votes.append(("DOWN", 0.15))
+ 143:     elif ind["rsi"] > 70:
+ 144:         votes.append(("UP", 0.15))
+ 145:     
+ 146:     # ADX strength confirms direction
+ 147:     if ind.get("adx") and ind["adx"] > 25:
+ 148:         if ind.get("di_plus") and ind.get("di_minus"):
+ 149:             if ind["di_plus"] > ind["di_minus"]:
+ 150:                 votes.append(("UP", 0.15))
+ 151:             else:
+ 152:                 votes.append(("DOWN", 0.15))
+ 153:     
+ 154:     # Tally
+ 155:     up_score = sum(w for d, w in votes if d == "UP")
+ 156:     down_score = sum(w for d, w in votes if d == "DOWN")
+ 157:     total = up_score + down_score
+ 158:     
+ 159:     if total < 0.3:
+ 160:         return ("FLAT", 0.0)
+ 161:     
+ 162:     if up_score > down_score * 1.5:
+ 163:         return ("UP", min(1.0, up_score / total))
+ 164:     elif down_score > up_score * 1.5:
+ 165:         return ("DOWN", min(1.0, down_score / total))
+ 166:     else:
+ 167:         return ("MIXED", 0.3)
+ 168: 
+ 169: 
+ 170: if __name__ == "__main__":
+

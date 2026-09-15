@@ -1037,6 +1037,7 @@ class UnifiedTradingBot:
                     if df is not None and len(df) >= 26:
                         ind = compute_mtf_indicators(df)
                         mtf_full[tf_name] = ind
+                    time.sleep(0.4)  # D12_stagger - space out candle requests
                 
                 if mtf_full:
                     regime_ctx = self.regime_engine.classify(mtf_full, vwap_ctx=vwap_ctx, or_data=or_ctx)

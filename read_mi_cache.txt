@@ -1,0 +1,85 @@
+=== def __init__ (L33) ===
+  33:     def __init__(self, obj, market="NIFTY", rate_limiter=None):
+  34:         self.obj = obj
+  35:         self.market = market
+  36:         self.rate_limiter = rate_limiter  # Optional centralized limiter
+  37:         self._cache = {}
+  38:         self._cache_time = {}
+  39:         self.cache_ttl = {
+  40:             "technicals": 600,
+  41:             "global": 1800,
+  42:             "vix": 300,
+  43:             "fii_dii": 3600,
+  44:             "candles_ONE_HOUR": 1800,
+  45:             "candles_FIFTEEN_MINUTE": 900,
+  46:             "candles_FIVE_MINUTE": 600,
+  47:         }
+
+=== def _fresh (L49) ===
+  49:     def _fresh(self, key):
+  50:         if key not in self._cache_time:
+  51:             return False
+  52:         age = time.time() - self._cache_time[key]
+  53:         return age < self.cache_ttl.get(key, 300)
+  54:     
+  55:     def _store(self, key, val):
+  56:         self._cache[key] = val
+  57:         self._cache_time[key] = time.time()
+  58:     
+  59:     def _mark_failed(self, interval):
+  60:         self._cache_time["fail_" + interval] = time.time()
+  61:     
+  62:     def _recently_failed(self, interval):
+  63:         key = "fail_" + interval
+
+=== def _store (L55) ===
+  55:     def _store(self, key, val):
+  56:         self._cache[key] = val
+  57:         self._cache_time[key] = time.time()
+  58:     
+  59:     def _mark_failed(self, interval):
+  60:         self._cache_time["fail_" + interval] = time.time()
+  61:     
+  62:     def _recently_failed(self, interval):
+  63:         key = "fail_" + interval
+  64:         if key not in self._cache_time:
+  65:             return False
+  66:         return (time.time() - self._cache_time[key]) < 120
+  67:     
+  68:     def get_candles(self, interval, days_back=3):
+  69:         if self._recently_failed(interval):
+
+=== def _recently_failed (L62) ===
+  62:     def _recently_failed(self, interval):
+  63:         key = "fail_" + interval
+  64:         if key not in self._cache_time:
+  65:             return False
+  66:         return (time.time() - self._cache_time[key]) < 120
+  67:     
+  68:     def get_candles(self, interval, days_back=3):
+  69:         if self._recently_failed(interval):
+  70:             return pd.DataFrame()
+  71:         
+  72:         cache_key = "candles_" + interval
+  73:         if self._fresh(cache_key):
+  74:             return self._cache[cache_key]
+  75:         
+  76:         idx = self.INDEX_TOKENS[self.market]
+
+=== def _mark_failed (L59) ===
+  59:     def _mark_failed(self, interval):
+  60:         self._cache_time["fail_" + interval] = time.time()
+  61:     
+  62:     def _recently_failed(self, interval):
+  63:         key = "fail_" + interval
+  64:         if key not in self._cache_time:
+  65:             return False
+  66:         return (time.time() - self._cache_time[key]) < 120
+  67:     
+  68:     def get_candles(self, interval, days_back=3):
+  69:         if self._recently_failed(interval):
+  70:             return pd.DataFrame()
+  71:         
+  72:         cache_key = "candles_" + interval
+  73:         if self._fresh(cache_key):
+

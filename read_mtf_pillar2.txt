@@ -1,0 +1,138 @@
+=== context around L22 ===
+  18: from fingerprint import fingerprint_snapshot
+  19: from websocket_feed import WebSocketFeed
+  20: from candle_builder import CandleBuilder
+  21: from previous_day_engine import PreviousDayEngine
+  22: from mtf_enhanced import compute_indicators as compute_mtf_indicators, timeframe_decision
+  23: from vwap import VWAPTracker
+  24: from opening_range import OpeningRangeTracker
+  25: from breadth_engine import BreadthEngine
+  26: from market_regime import MarketRegimeEngine
+  27: from external_intel import ExternalIntelEngine
+  28: from vix_enhanced import EnhancedVIX
+  29: from fii_dii_engine import FIIDIIEngine
+  30: from economic_calendar import EconomicCalendarEngine
+  31: from news_engine import NewsEngine
+  32: from option_chain_engine import OptionChainEngine
+  33: from oi_analyzer import OIAnalyzer
+  34: from liquidity_gate import LiquidityGate
+  35: from strike_ranker import StrikeRanker
+  36: from decision_composer import DecisionComposer
+  37: from market_selector import MarketSelector
+  38: from capital_engine import CapitalEngine
+  39: from exit_engine import ExitEngine, MFE_MAE_Tracker
+  40: from target_policy import TargetPolicy
+  41: from close_drain_policy import CloseDrainPolicy
+  42: from prediction_ledger import PredictionLedger
+  43: from outcome_ledger import OutcomeLedger
+  44: 
+  45: load_dotenv()
+  46: 
+  47: # CRITICAL: Silence SmartApi/logzero verbose logging (security)
+  48: import logging as _logging
+  49: try:
+  50:     import logzero as _lz
+  51:     _lz.loglevel(_logging.CRITICAL)
+  52:     _lz.setup_logger(level=_logging.CRITICAL)
+  53: except Exception:
+  54:     pass
+  55: for _name in ["SmartApi", "smartConnect", "smartWebSocketV2", "logzero"]:
+  56:     try:
+  57:         _logging.getLogger(_name).setLevel(_logging.CRITICAL)
+  58:         _logging.getLogger(_name).propagate = False
+  59:         _logging.getLogger(_name).addHandler(_logging.NullHandler())
+  60:     except Exception:
+  61:         pass
+
+=== context around L902 ===
+ 898:         tech_consensus = 'UNKNOWN'
+ 899:         tech_data = {}
+ 900:         if self.market_intel:
+ 901:             try:
+ 902:                 tech_data = self.market_intel.get_multi_timeframe_technicals()
+ 903:                 tech_consensus = tech_data.get('consensus', 'UNKNOWN')
+ 904:                 print(f'[3/6] Technicals (MTF): {tech_consensus}')
+ 905:                 for tf in ['1m', '5m', '15m', '1h']:
+ 906:                     if tf in tech_data:
+ 907:                         d = tech_data[tf]
+ 908:                         if 'trend' in d:
+ 909:                             rsi_v = d.get('rsi')
+ 910:                             rsi_str = f'{rsi_v:.0f}' if rsi_v else '--'
+ 911:                             print(f'      {tf}: {d["trend"]} (RSI={rsi_str})')
+ 912:             except Exception as e:
+ 913:                 print(f'[3/6] Technicals: ERROR ({str(e)[:30]})')
+ 914:         else:
+ 915:             print('[3/6] Technicals: NOT INITIALIZED')
+ 916:         
+ 917:         # ============ PILLAR 4: Global markets ============
+ 918:         global_sentiment = 'UNKNOWN'
+ 919:         if self.market_intel:
+ 920:             try:
+ 921:                 glob = self.market_intel.get_global_markets()
+ 922:                 global_sentiment = glob.get('sentiment', 'UNKNOWN')
+ 923:                 print(f'[4/6] Global: {global_sentiment}')
+ 924:                 for name in ['Dow', 'SP500', 'Nasdaq', 'Nikkei', 'HangSeng']:
+ 925:                     if name in glob and isinstance(glob[name], dict):
+ 926:                         cp = glob[name].get('change_pct', 0)
+ 927:                         print(f'      {name}: {cp:+.2f}%')
+ 928:                 if 'Crude' in glob:
+ 929:                     print(f'      Crude: {glob["Crude"].get("change_pct", 0):+.2f}%')
+ 930:             except Exception as e:
+ 931:                 print(f'[4/6] Global: ERROR ({str(e)[:30]})')
+ 932:         else:
+ 933:             print('[4/6] Global: NOT INITIALIZED')
+ 934:         
+ 935:         # ============ PILLAR 5: India VIX ============
+ 936:         vix_regime = 'UNKNOWN'
+ 937:         vix_val = None
+ 938:         if self.market_intel:
+ 939:             try:
+ 940:                 vix = self.market_intel.get_india_vix()
+ 941:                 vix_regime = vix.get('regime', 'UNKNOWN')
+
+=== context around L1038 ===
+1034:                 mtf_full = {}
+1035:                 for tf_name, tf_interval in tf_map.items():
+1036:                     df = self.market_intel.get_candles(tf_interval, days_back=10 if tf_name == "1h" else 5)
+1037:                     if df is not None and len(df) >= 26:
+1038:                         ind = compute_mtf_indicators(df)
+1039:                         mtf_full[tf_name] = ind
+1040:                     time.sleep(0.4)  # D12_stagger - space out candle requests
+1041:                 
+1042:                 if mtf_full:
+1043:                     regime_ctx = self.regime_engine.classify(mtf_full, vwap_ctx=vwap_ctx, or_data=or_ctx)
+1044:                     print(f"[B7] Regime: {regime_ctx['regime']} (conf={regime_ctx['confidence']}) ADX={regime_ctx.get('avg_adx')} {regime_ctx.get('trends_summary')}")
+1045:                     
+1046:                     # Detailed MTF decisions
+1047:                     for tf_name in ["1h", "15m", "5m"]:
+1048:                         ind = mtf_full.get(tf_name)
+1049:                         if ind and ind.get("status") == "OK":
+1050:                             dec, conf = timeframe_decision(ind)
+1051:                             print(f"     {tf_name}: {dec} (conf={conf:.2f}) trend={ind['trend']} mom={ind['momentum']} RSI={ind['rsi']:.0f} ADX={ind.get('adx', 0):.0f}")
+1052:         except Exception as e:
+1053:             print(f"[B7] Regime error: {str(e)[:50]}")
+1054:         
+1055:         # ============ PHASE C: EXTERNAL INTEL ============
+1056:         ext = {}
+1057:         if self.external_intel:
+1058:             try:
+1059:                 ext = self.external_intel.fetch()
+1060:                 if ext.get("status") == "OK":
+1061:                     r = ext.get("risk", {})
+1062:                     c = ext.get("crude", {})
+1063:                     print(f"[C] External: RISK={r.get('sentiment')} (conf={r.get('confidence')})")
+1064:                     print(f"    Crude: ${c.get('brent_price', 0):.2f} 1d={c.get('change_1d_pct', 0):+.2f}% 5d={c.get('change_5d_pct', 0):+.2f}% pct={c.get('percentile_30d', 0):.0f} -> {c.get('regime')} | India: {c.get('india_macro_pressure')}")
+1065:                     print(f"    Coverage: {ext.get('coverage')}")
+1066:             except Exception as e:
+1067:                 print(f"[C] External error: {str(e)[:50]}")
+1068: 
+1069:         # ============ PHASE C6: CALENDAR ============
+1070:         if self.calendar_engine:
+1071:             try:
+1072:                 high_impact = self.calendar_engine.minutes_to_next_high_impact(10)
+1073:                 if high_impact.get("block_entries"):
+1074:                     for ev in high_impact.get("events", []):
+1075:                         print(f"[C6] EVENT RISK: {ev['name']} in {ev['in_minutes']}min -> entries BLOCKED")
+1076:                 else:
+1077:                     today_events = self.calendar_engine.upcoming_today()
+

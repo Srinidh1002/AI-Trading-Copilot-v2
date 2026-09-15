@@ -63,7 +63,7 @@ class MarketIntelligence:
         key = "fail_" + interval
         if key not in self._cache_time:
             return False
-        return (time.time() - self._cache_time[key]) < 120
+        return (time.time() - self._cache_time[key]) < 30  # D12_cooldown_30
     
     def get_candles(self, interval, days_back=3):
         if self._recently_failed(interval):
@@ -192,7 +192,10 @@ class MarketIntelligence:
             else:
                 result["consensus"] = "MIXED"
         
-        self._store("technicals", result)
+        # D13_no_cache_incomplete - never cache transient incomplete results
+        _cons = result.get("consensus")
+        if _cons not in ("INSUFFICIENT_DATA", "UNKNOWN", None):
+            self._store("technicals", result)
         return result
     
     def get_global_markets(self):

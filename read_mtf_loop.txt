@@ -1,0 +1,41 @@
+1025:             if r.get("high"):
+1026:                 print(f"[B4] OR-{tf}: H={r['high']:.2f} L={r['low']:.2f} W={r['width']:.2f} locked={r['locked']} status={r['status']}")
+1027:         
+1028:         # ============ PHASE B: REGIME ============
+1029:         regime_ctx = {"regime": "UNKNOWN", "confidence": 0.0}
+1030:         try:
+1031:             if self.market_intel:
+1032:                 # Gather raw candles for each timeframe
+1033:                 tf_map = {"1h": "ONE_HOUR", "15m": "FIFTEEN_MINUTE", "5m": "FIVE_MINUTE"}
+1034:                 mtf_full = {}
+1035:                 for tf_name, tf_interval in tf_map.items():
+1036:                     df = self.market_intel.get_candles(tf_interval, days_back=10 if tf_name == "1h" else 5)
+1037:                     if df is not None and len(df) >= 26:
+1038:                         ind = compute_mtf_indicators(df)
+1039:                         mtf_full[tf_name] = ind
+1040:                 
+1041:                 if mtf_full:
+1042:                     regime_ctx = self.regime_engine.classify(mtf_full, vwap_ctx=vwap_ctx, or_data=or_ctx)
+1043:                     print(f"[B7] Regime: {regime_ctx['regime']} (conf={regime_ctx['confidence']}) ADX={regime_ctx.get('avg_adx')} {regime_ctx.get('trends_summary')}")
+1044:                     
+1045:                     # Detailed MTF decisions
+1046:                     for tf_name in ["1h", "15m", "5m"]:
+1047:                         ind = mtf_full.get(tf_name)
+1048:                         if ind and ind.get("status") == "OK":
+1049:                             dec, conf = timeframe_decision(ind)
+1050:                             print(f"     {tf_name}: {dec} (conf={conf:.2f}) trend={ind['trend']} mom={ind['momentum']} RSI={ind['rsi']:.0f} ADX={ind.get('adx', 0):.0f}")
+1051:         except Exception as e:
+1052:             print(f"[B7] Regime error: {str(e)[:50]}")
+1053:         
+1054:         # ============ PHASE C: EXTERNAL INTEL ============
+1055:         ext = {}
+1056:         if self.external_intel:
+1057:             try:
+1058:                 ext = self.external_intel.fetch()
+1059:                 if ext.get("status") == "OK":
+1060:                     r = ext.get("risk", {})
+1061:                     c = ext.get("crude", {})
+1062:                     print(f"[C] External: RISK={r.get('sentiment')} (conf={r.get('confidence')})")
+1063:                     print(f"    Crude: ${c.get('brent_price', 0):.2f} 1d={c.get('change_1d_pct', 0):+.2f}% 5d={c.get('change_5d_pct', 0):+.2f}% pct={c.get('percentile_30d', 0):.0f} -> {c.get('regime')} | India: {c.get('india_macro_pressure')}")
+1064:                     print(f"    Coverage: {ext.get('coverage')}")
+1065:             except Exception as e:

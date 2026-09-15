@@ -10,7 +10,7 @@ class AngelRateLimitCoordinator:
         # Angel documented limits for getCandleData: 3/sec, 150/min, 5000/hr
         # Use conservative values
         self.limits = {
-            "get_candle_data": {"per_second": 3, "per_minute": 120, "per_hour": 4500},
+            "get_candle_data": {"per_second": 1, "per_minute": 60, "per_hour": 3600},  # D12_tighter
             "ltp_data":        {"per_second": 10, "per_minute": 300, "per_hour": 10000},
             "default":         {"per_second": 5, "per_minute": 200, "per_hour": 8000},
         }

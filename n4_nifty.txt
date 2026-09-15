@@ -1,0 +1,811 @@
+[init] Contract index loaded: 6174 entries
+Γ£à Loaded NIFTY state:
+   Sessions: 4/100
+   P&L: Γé╣-110.50
+Connection attempt 1/5...
+Γ£à Connected successfully!
+Γ£à Market intelligence initialized
+[init] VIX engine ready
+[init] Calendar engine ready
+[init] Option chain engine ready
+[init] News engine ready
+[init] FII/DII engine ready
+[init] External intel engine ready
+[init] Previous day engine ready
+[WS] Connected
+[WS] Subscribed 1 groups
+[WS] Subscribed to NIFTY spot
+Γ£à Loaded 3700 NIFTY options
+Market open: True
+Starting NIFTY progress: 4/100
+Running 8 cycles (bounded)
+
+
+============================================================
+Cycle 1/8  11:26:31
+============================================================
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23325.5
+ATM: 23350
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣151.55
+  CE 23400.0: Γé╣31.65
+  CE 23450.0: Γé╣19.35
+  PE 23200.0: Γé╣13.30
+  CE 23300.0: Γé╣77.55
+  PE 23350.0: Γé╣62.50
+  PE 23500.0: Γé╣173.45
+  CE 23350.0: Γé╣50.20
+  PE 23300.0: Γé╣39.00
+  PE 23400.0: Γé╣93.15
+  CE 23500.0: Γé╣12.25
+  CE 23250.0: Γé╣112.05
+  PE 23250.0: Γé╣23.30
+  PE 23450.0: Γé╣132.35
+Total options found: 14
+
+============================================================
+ENHANCED MARKET ANALYSIS - ALL PILLARS
+============================================================
+    [day_open] FIVE_MINUTE failed: Couldn't parse the JSON response receive
+    [day_open] FIFTEEN_MINUTE failed: Couldn't parse the JSON response receive
+    [day_open] ONE_HOUR failed: Couldn't parse the JSON response receive
+MARKET_PHASE: CONTINUOUS (enter=True exit=True)
+WS_STATUS: CONNECTED_NO_TICKS
+RUN_START_SPOT: 23325.50
+SPOT_FRESHNESS: FRESH (age=0.0s)
+DAY_OPEN_STATUS: EVIDENCE_UNAVAILABLE
+DAY_OPEN_VALUE: null
+Change from day open: unavailable
+Spot trend (tick): UNKNOWN
+PCR: 0.09
+[1/6] PCR: BULLISH (0.80)
+ ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...
+  [UP] HDFCBANK (10.6%): +1.85% | contrib: +0.195
+  [DN] ICICIBANK (8.3%): -1.93% | contrib: -0.160
+  [DN] RELIANCE (8.3%): -0.16% | contrib: -0.013
+  [--] BHARTIARTL (5.2%): +0.09% | contrib: +0.005
+  [DN] LT (4.4%): -2.34% | contrib: -0.104
+  [DN] SBIN (4.0%): -1.55% | contrib: -0.062
+  [UP] INFY (3.6%): +4.62% | contrib: +0.167
+  [DN] AXISBANK (3.4%): -0.98% | contrib: -0.033
+  [DN] KOTAKBANK (2.8%): -1.68% | contrib: -0.047
+  [DN] M&M (2.7%): -0.96% | contrib: -0.026
+  Evidence: 10/10 stocks loaded
+  Weighted Bull: +0.362
+  Weighted Bear: -0.445
+[2/6] Stocks: NEUTRAL (10 valid / 0 missing)
+[B5] Breadth: BEARISH | adv=2 dec=7 | weight_adv%=26.6 weight_dec%=63.6
+     above_vwap%=0.0
+    [debug] ONE_HOUR @NSE: RATE_LIMITED | provider_msg="Couldn't parse the JSON response received from the server: b'Access denied because of exceeding acce"
+    [debug] FIFTEEN_MINUTE @NSE: RATE_LIMITED | provider_msg="Couldn't parse the JSON response received from the server: b'Access denied because of exceeding acce"
+    [debug] FIVE_MINUTE @NSE: rows=28
+[3/6] Technicals (MTF): INSUFFICIENT_DATA
+      5m: FLAT (RSI=35)
+      15m: UNKNOWN (RSI=--)
+      1h: UNKNOWN (RSI=--)
+[4/6] Global: RISK_OFF
+      Dow: -0.29%
+      SP500: -0.48%
+      Nasdaq: -0.56%
+      Nikkei: +0.20%
+      HangSeng: -0.64%
+      Crude: +1.52%
+[5/6] India VIX: 12.91 (LOW) +5.04% trend=SPIKING pct=None
+[6/6] FII/DII [PREVIOUS_SESSION_CASH_FLOW]: BULLISH
+      Date=11-Sep-2026 FII=Γé╣-931Cr DII=Γé╣1968Cr combined=Γé╣1037Cr
+[B1] Prev Day: EVIDENCE_UNAVAILABLE (ERROR:Couldn't parse the JSON response receive)
+[B3] INDEX_TWAP: 23325.50 | Price AT | H=23325.50 L=23325.50 ticks=1
+[B4] OR-5m: H=23325.50 L=23325.50 W=0.00 locked=False status=INSIDE
+[B4] OR-15m: H=23325.50 L=23325.50 W=0.00 locked=False status=INSIDE
+[B4] OR-30m: H=23325.50 L=23325.50 W=0.00 locked=False status=INSIDE
+[B7] Regime: RANGE_BOUND (conf=0.0) ADX=7.9 UP:0 DOWN:0 FLAT:1
+     5m: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=8
+[C] External: RISK=RISK_OFF (conf=0.83)
+    Crude: $107.07 1d=+1.31% 5d=+9.34% pct=92 -> EXTREME | India: HIGH
+    Coverage: 13/13
+[C6] Calendar: no events today
+[C7] News: NEUTRAL (+5/-3/20) feeds=2/3
+
+--- Composite Scoring ---
+  [PCR] Legacy PCR vote skipped (no OI provenance): BULLISH
+  Bull score: 0.50
+  Bear score: 0.50
+  Bull pillars: 2/5
+  Bear pillars: 1/5
+
+  [E] MARKET_BIAS=NEUTRAL conf=WEAK
+  [E] ENTRY_READINESS=WAIT ACTION=WAIT
+  [E] Coverage: 6/7 (86%)
+  [E] Blockers: ['TECHNICAL_MTF_INSUFFICIENT_DATA']
+
+Final Decision: NEUTRAL
+ΓÜá∩╕Å No strong signal. Skipping trade.
+>>> SKIPPED
+Γ£à State saved
+
+============================================================
+Cycle 2/8  11:27:26
+============================================================
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23318.4
+ATM: 23300
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣147.70
+  CE 23400.0: Γé╣30.15
+  CE 23450.0: Γé╣18.30
+  PE 23200.0: Γé╣13.90
+  CE 23300.0: Γé╣74.15
+  PE 23150.0: Γé╣7.75
+  PE 23350.0: Γé╣65.70
+  CE 23350.0: Γé╣47.95
+  PE 23300.0: Γé╣41.55
+  PE 23400.0: Γé╣97.45
+  CE 23150.0: Γé╣191.00
+  CE 23250.0: Γé╣107.40
+  PE 23250.0: Γé╣24.70
+  PE 23450.0: Γé╣136.00
+Total options found: 14
+
+============================================================
+ENHANCED MARKET ANALYSIS - ALL PILLARS
+============================================================
+MARKET_PHASE: CONTINUOUS (enter=True exit=True)
+WS_STATUS: CONNECTED_NO_TICKS
+RUN_START_SPOT: 23318.40
+SPOT_FRESHNESS: FRESH (age=55.5s)
+DAY_OPEN_STATUS: EVIDENCE_UNAVAILABLE
+DAY_OPEN_VALUE: null
+Change from day open: unavailable
+Spot trend (tick): FLAT
+PCR: 0.09
+[1/6] PCR: BULLISH (0.80)
+ ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...
+  [UP] HDFCBANK (10.6%): +1.83% | contrib: +0.193
+  [DN] ICICIBANK (8.3%): -1.97% | contrib: -0.164
+  [DN] RELIANCE (8.3%): -0.18% | contrib: -0.015
+  [--] BHARTIARTL (5.2%): +0.15% | contrib: +0.008
+  [DN] LT (4.4%): -2.36% | contrib: -0.104
+  [DN] SBIN (4.0%): -1.51% | contrib: -0.060
+  [UP] INFY (3.6%): +4.55% | contrib: +0.164
+  [DN] AXISBANK (3.4%): -1.00% | contrib: -0.034
+  [DN] KOTAKBANK (2.8%): -1.65% | contrib: -0.046
+  [DN] M&M (2.7%): -0.96% | contrib: -0.026
+  Evidence: 10/10 stocks loaded
+  Weighted Bull: +0.357
+  Weighted Bear: -0.449
+[2/6] Stocks: NEUTRAL (10 valid / 0 missing)
+[B5] Breadth: BEARISH | adv=3 dec=7 | weight_adv%=36.4 weight_dec%=63.6
+     above_vwap%=0.0
+[3/6] Technicals (MTF): INSUFFICIENT_DATA
+      5m: FLAT (RSI=35)
+      15m: UNKNOWN (RSI=--)
+      1h: UNKNOWN (RSI=--)
+[4/6] Global: RISK_OFF
+      Dow: -0.29%
+      SP500: -0.48%
+      Nasdaq: -0.56%
+      Nikkei: +0.20%
+      HangSeng: -0.64%
+      Crude: +1.52%
+[5/6] India VIX: 12.91 (LOW) +5.04% trend=SPIKING pct=None
+[6/6] FII/DII [PREVIOUS_SESSION_CASH_FLOW]: BULLISH
+      Date=11-Sep-2026 FII=Γé╣-931Cr DII=Γé╣1968Cr combined=Γé╣1037Cr
+[B1] Prev Day: EVIDENCE_UNAVAILABLE (ERROR:Couldn't parse the JSON response receive)
+[B3] INDEX_TWAP: 23321.95 | Price AT | H=23325.50 L=23318.40 ticks=2
+[B4] OR-5m: H=23325.50 L=23318.40 W=7.10 locked=False status=INSIDE
+[B4] OR-15m: H=23325.50 L=23318.40 W=7.10 locked=False status=INSIDE
+[B4] OR-30m: H=23325.50 L=23318.40 W=7.10 locked=False status=INSIDE
+[B7] Regime: RANGE_BOUND (conf=0.0) ADX=7.9 UP:0 DOWN:0 FLAT:1
+     5m: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=8
+[C] External: RISK=RISK_OFF (conf=0.83)
+    Crude: $107.07 1d=+1.31% 5d=+9.34% pct=92 -> EXTREME | India: HIGH
+    Coverage: 13/13
+[C6] Calendar: no events today
+[C7] News: NEUTRAL (+5/-3/20) feeds=2/3
+
+--- Composite Scoring ---
+  [PCR] Legacy PCR vote skipped (no OI provenance): BULLISH
+  Bull score: 0.50
+  Bear score: 0.50
+>>> SKIP: Market FLAT (session=+0.000% gap=None regime=RANGE_BOUND)
+
+Final Decision: NEUTRAL
+ΓÜá∩╕Å No strong signal. Skipping trade.
+>>> SKIPPED
+Γ£à State saved
+
+============================================================
+Cycle 3/8  11:28:14
+============================================================
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23318.85
+ATM: 23300
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣148.45
+  CE 23400.0: Γé╣30.50
+  CE 23450.0: Γé╣18.60
+  PE 23200.0: Γé╣13.85
+  CE 23300.0: Γé╣75.25
+  PE 23150.0: Γé╣7.55
+  PE 23350.0: Γé╣64.90
+  CE 23350.0: Γé╣48.70
+  PE 23300.0: Γé╣41.35
+  PE 23400.0: Γé╣96.70
+  CE 23150.0: Γé╣191.85
+  CE 23250.0: Γé╣109.20
+  PE 23250.0: Γé╣24.15
+  PE 23450.0: Γé╣133.75
+Total options found: 14
+
+============================================================
+ENHANCED MARKET ANALYSIS - ALL PILLARS
+============================================================
+MARKET_PHASE: CONTINUOUS (enter=True exit=True)
+WS_STATUS: CONNECTED_NO_TICKS
+RUN_START_SPOT: 23318.85
+SPOT_FRESHNESS: FRESH (age=48.1s)
+DAY_OPEN_STATUS: EVIDENCE_UNAVAILABLE
+DAY_OPEN_VALUE: null
+Change from day open: unavailable
+Spot trend (tick): FLAT
+PCR: 0.09
+[1/6] PCR: BULLISH (0.80)
+ ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...
+  [UP] HDFCBANK (10.6%): +1.83% | contrib: +0.193
+  [DN] ICICIBANK (8.3%): -1.98% | contrib: -0.165
+  [DN] RELIANCE (8.3%): -0.18% | contrib: -0.015
+  [UP] BHARTIARTL (5.2%): +0.25% | contrib: +0.013
+  [DN] LT (4.4%): -2.31% | contrib: -0.102
+  [DN] SBIN (4.0%): -1.52% | contrib: -0.060
+  [UP] INFY (3.6%): +4.61% | contrib: +0.166
+  [DN] AXISBANK (3.4%): -0.98% | contrib: -0.033
+  [DN] KOTAKBANK (2.8%): -1.62% | contrib: -0.045
+  [DN] M&M (2.7%): -0.93% | contrib: -0.025
+  Evidence: 10/10 stocks loaded
+  Weighted Bull: +0.372
+  Weighted Bear: -0.446
+[2/6] Stocks: NEUTRAL (10 valid / 0 missing)
+[B5] Breadth: BEARISH | adv=3 dec=7 | weight_adv%=36.4 weight_dec%=63.6
+     above_vwap%=0.0
+[3/6] Technicals (MTF): INSUFFICIENT_DATA
+      5m: FLAT (RSI=35)
+      15m: UNKNOWN (RSI=--)
+      1h: UNKNOWN (RSI=--)
+[4/6] Global: RISK_OFF
+      Dow: -0.29%
+      SP500: -0.48%
+      Nasdaq: -0.56%
+      Nikkei: +0.20%
+      HangSeng: -0.64%
+      Crude: +1.52%
+[5/6] India VIX: 12.91 (LOW) +5.04% trend=SPIKING pct=None
+[6/6] FII/DII [PREVIOUS_SESSION_CASH_FLOW]: BULLISH
+      Date=11-Sep-2026 FII=Γé╣-931Cr DII=Γé╣1968Cr combined=Γé╣1037Cr
+[B1] Prev Day: O=23270.30 H=23448.10 L=23231.40 C=23398.10
+     Type=RANGE_DAY Range%=0.93 CloseLoc=0.77
+     ATR14=212.65
+[B3] INDEX_TWAP: 23320.92 | Price AT | H=23325.50 L=23318.40 ticks=3
+[B4] OR-5m: H=23325.50 L=23318.40 W=7.10 locked=False status=INSIDE
+[B4] OR-15m: H=23325.50 L=23318.40 W=7.10 locked=False status=INSIDE
+[B4] OR-30m: H=23325.50 L=23318.40 W=7.10 locked=False status=INSIDE
+[B7] Regime: RANGE_BOUND (conf=0.0) ADX=7.9 UP:0 DOWN:0 FLAT:1
+     5m: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=8
+[C] External: RISK=RISK_OFF (conf=0.83)
+    Crude: $107.07 1d=+1.31% 5d=+9.34% pct=92 -> EXTREME | India: HIGH
+    Coverage: 13/13
+[C6] Calendar: no events today
+[C7] News: NEUTRAL (+5/-3/20) feeds=2/3
+
+--- Composite Scoring ---
+  [PCR] Legacy PCR vote skipped (no OI provenance): BULLISH
+  Bull score: 0.50
+  Bear score: 0.50
+>>> SKIP: Market FLAT (session=+0.000% gap=None regime=RANGE_BOUND)
+
+Final Decision: NEUTRAL
+ΓÜá∩╕Å No strong signal. Skipping trade.
+>>> SKIPPED
+Γ£à State saved
+
+============================================================
+Cycle 4/8  11:29:02
+============================================================
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23314.6
+ATM: 23300
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣142.40
+  CE 23400.0: Γé╣28.35
+  CE 23450.0: Γé╣17.50
+  PE 23200.0: Γé╣14.85
+  CE 23300.0: Γé╣70.25
+  PE 23150.0: Γé╣8.15
+  PE 23350.0: Γé╣70.10
+  CE 23350.0: Γé╣44.30
+  PE 23300.0: Γé╣44.85
+  PE 23400.0: Γé╣102.50
+  CE 23150.0: Γé╣183.70
+  CE 23250.0: Γé╣102.25
+  PE 23250.0: Γé╣26.20
+  PE 23450.0: Γé╣141.55
+Total options found: 14
+
+============================================================
+ENHANCED MARKET ANALYSIS - ALL PILLARS
+============================================================
+MARKET_PHASE: CONTINUOUS (enter=True exit=True)
+WS_STATUS: CONNECTED_NO_TICKS
+RUN_START_SPOT: 23314.60
+SPOT_FRESHNESS: FRESH (age=47.5s)
+DAY_OPEN_STATUS: EVIDENCE_UNAVAILABLE
+DAY_OPEN_VALUE: null
+Change from day open: unavailable
+Spot trend (tick): FLAT
+PCR: 0.10
+[1/6] PCR: BULLISH (0.80)
+ ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...
+  [UP] HDFCBANK (10.6%): +1.81% | contrib: +0.191
+  [DN] ICICIBANK (8.3%): -2.02% | contrib: -0.168
+  [DN] RELIANCE (8.3%): -0.17% | contrib: -0.014
+  [UP] BHARTIARTL (5.2%): +0.22% | contrib: +0.012
+  [DN] LT (4.4%): -2.33% | contrib: -0.103
+  [DN] SBIN (4.0%): -1.58% | contrib: -0.063
+  [UP] INFY (3.6%): +4.59% | contrib: +0.166
+  [DN] AXISBANK (3.4%): -1.01% | contrib: -0.034
+  [DN] KOTAKBANK (2.8%): -1.60% | contrib: -0.045
+  [DN] M&M (2.7%): -0.99% | contrib: -0.026
+  Evidence: 10/10 stocks loaded
+  Weighted Bull: +0.368
+  Weighted Bear: -0.454
+[2/6] Stocks: NEUTRAL (10 valid / 0 missing)
+[B5] Breadth: BEARISH | adv=3 dec=7 | weight_adv%=36.4 weight_dec%=63.6
+     above_vwap%=0.0
+[3/6] Technicals (MTF): INSUFFICIENT_DATA
+      5m: FLAT (RSI=35)
+      15m: UNKNOWN (RSI=--)
+      1h: UNKNOWN (RSI=--)
+[4/6] Global: RISK_OFF
+      Dow: -0.29%
+      SP500: -0.48%
+      Nasdaq: -0.56%
+      Nikkei: +0.20%
+      HangSeng: -0.64%
+      Crude: +1.52%
+[5/6] India VIX: 12.91 (LOW) +5.04% trend=SPIKING pct=None
+[6/6] FII/DII [PREVIOUS_SESSION_CASH_FLOW]: BULLISH
+      Date=11-Sep-2026 FII=Γé╣-931Cr DII=Γé╣1968Cr combined=Γé╣1037Cr
+[B1] Prev Day: O=23270.30 H=23448.10 L=23231.40 C=23398.10
+     Type=RANGE_DAY Range%=0.93 CloseLoc=0.77
+     ATR14=212.65
+[B3] INDEX_TWAP: 23319.34 | Price AT | H=23325.50 L=23314.60 ticks=4
+[B4] OR-5m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-15m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-30m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+    [debug] ONE_HOUR @NSE: rows=38
+    [debug] FIFTEEN_MINUTE @NSE: rows=50
+[B7] Regime: RANGE_BOUND (conf=0.33) ADX=24.5 UP:0 DOWN:1 FLAT:2
+     1h: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=45
+     15m: DOWN (conf=1.00) trend=DOWN mom=DOWN RSI=40 ADX=20
+     5m: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=8
+[C] External: RISK=RISK_OFF (conf=0.83)
+    Crude: $107.07 1d=+1.31% 5d=+9.34% pct=92 -> EXTREME | India: HIGH
+    Coverage: 13/13
+[C6] Calendar: no events today
+[C7] News: NEUTRAL (+5/-3/20) feeds=2/3
+
+--- Composite Scoring ---
+  [PCR] Legacy PCR vote skipped (no OI provenance): BULLISH
+  Bull score: 0.50
+  Bear score: 0.50
+>>> SKIP: Market FLAT (session=+0.000% gap=None regime=RANGE_BOUND)
+
+Final Decision: NEUTRAL
+ΓÜá∩╕Å No strong signal. Skipping trade.
+>>> SKIPPED
+Γ£à State saved
+
+============================================================
+Cycle 5/8  11:29:50
+============================================================
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23318.25
+ATM: 23300
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣144.90
+  CE 23400.0: Γé╣29.35
+  CE 23450.0: Γé╣18.05
+  PE 23200.0: Γé╣14.05
+  CE 23300.0: Γé╣72.70
+  PE 23150.0: Γé╣7.70
+  PE 23350.0: Γé╣67.45
+  CE 23350.0: Γé╣46.15
+  PE 23300.0: Γé╣42.60
+  PE 23400.0: Γé╣99.90
+  CE 23150.0: Γé╣187.80
+  CE 23250.0: Γé╣105.00
+  PE 23250.0: Γé╣25.15
+  PE 23450.0: Γé╣138.60
+Total options found: 14
+
+============================================================
+ENHANCED MARKET ANALYSIS - ALL PILLARS
+============================================================
+MARKET_PHASE: CONTINUOUS (enter=True exit=True)
+WS_STATUS: CONNECTED_NO_TICKS
+RUN_START_SPOT: 23318.25
+SPOT_FRESHNESS: FRESH (age=48.5s)
+DAY_OPEN_STATUS: EVIDENCE_UNAVAILABLE
+DAY_OPEN_VALUE: null
+Change from day open: unavailable
+Spot trend (tick): FLAT
+PCR: 0.10
+[1/6] PCR: BULLISH (0.80)
+ ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...
+  [UP] HDFCBANK (10.6%): +1.81% | contrib: +0.191
+  [DN] ICICIBANK (8.3%): -2.02% | contrib: -0.168
+  [DN] RELIANCE (8.3%): -0.18% | contrib: -0.015
+  [UP] BHARTIARTL (5.2%): +0.22% | contrib: +0.012
+  [DN] LT (4.4%): -2.31% | contrib: -0.102
+  [DN] SBIN (4.0%): -1.57% | contrib: -0.062
+  [UP] INFY (3.6%): +4.53% | contrib: +0.164
+  [DN] AXISBANK (3.4%): -1.03% | contrib: -0.035
+  [DN] KOTAKBANK (2.8%): -1.60% | contrib: -0.045
+  [DN] M&M (2.7%): -0.94% | contrib: -0.025
+  Evidence: 10/10 stocks loaded
+  Weighted Bull: +0.366
+  Weighted Bear: -0.452
+[2/6] Stocks: NEUTRAL (10 valid / 0 missing)
+[B5] Breadth: BEARISH | adv=3 dec=7 | weight_adv%=36.4 weight_dec%=63.6
+     above_vwap%=0.0
+[3/6] Technicals (MTF): INSUFFICIENT_DATA
+      5m: FLAT (RSI=35)
+      15m: UNKNOWN (RSI=--)
+      1h: UNKNOWN (RSI=--)
+[4/6] Global: RISK_OFF
+      Dow: -0.29%
+      SP500: -0.48%
+      Nasdaq: -0.56%
+      Nikkei: +0.20%
+      HangSeng: -0.64%
+      Crude: +1.52%
+[5/6] India VIX: 12.91 (LOW) +5.04% trend=SPIKING pct=None
+[6/6] FII/DII [PREVIOUS_SESSION_CASH_FLOW]: BULLISH
+      Date=11-Sep-2026 FII=Γé╣-931Cr DII=Γé╣1968Cr combined=Γé╣1037Cr
+[B1] Prev Day: O=23270.30 H=23448.10 L=23231.40 C=23398.10
+     Type=RANGE_DAY Range%=0.93 CloseLoc=0.77
+     ATR14=212.65
+[B3] INDEX_TWAP: 23319.12 | Price AT | H=23325.50 L=23314.60 ticks=5
+[B4] OR-5m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-15m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-30m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B7] Regime: RANGE_BOUND (conf=0.33) ADX=24.5 UP:0 DOWN:1 FLAT:2
+     1h: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=45
+     15m: DOWN (conf=1.00) trend=DOWN mom=DOWN RSI=40 ADX=20
+     5m: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=8
+[C] External: RISK=RISK_OFF (conf=0.83)
+    Crude: $107.07 1d=+1.31% 5d=+9.34% pct=92 -> EXTREME | India: HIGH
+    Coverage: 13/13
+[C6] Calendar: no events today
+[C7] News: NEUTRAL (+5/-3/20) feeds=2/3
+
+--- Composite Scoring ---
+  [PCR] Legacy PCR vote skipped (no OI provenance): BULLISH
+  Bull score: 0.50
+  Bear score: 0.50
+>>> SKIP: Market FLAT (session=+0.000% gap=None regime=RANGE_BOUND)
+
+Final Decision: NEUTRAL
+ΓÜá∩╕Å No strong signal. Skipping trade.
+>>> SKIPPED
+Γ£à State saved
+
+============================================================
+Cycle 6/8  11:30:38
+============================================================
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23318.4
+ATM: 23300
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣145.40
+  CE 23400.0: Γé╣28.60
+  CE 23450.0: Γé╣17.60
+  PE 23200.0: Γé╣14.35
+  CE 23300.0: Γé╣71.35
+  PE 23150.0: Γé╣7.85
+  PE 23350.0: Γé╣68.00
+  CE 23350.0: Γé╣45.20
+  PE 23300.0: Γé╣43.45
+  PE 23400.0: Γé╣101.70
+  CE 23150.0: Γé╣185.60
+  CE 23250.0: Γé╣102.90
+  PE 23250.0: Γé╣25.85
+  PE 23450.0: Γé╣140.90
+Total options found: 14
+
+============================================================
+ENHANCED MARKET ANALYSIS - ALL PILLARS
+============================================================
+MARKET_PHASE: CONTINUOUS (enter=True exit=True)
+WS_STATUS: CONNECTED_NO_TICKS
+RUN_START_SPOT: 23318.40
+SPOT_FRESHNESS: FRESH (age=47.2s)
+DAY_OPEN_STATUS: EVIDENCE_UNAVAILABLE
+DAY_OPEN_VALUE: null
+Change from day open: unavailable
+Spot trend (tick): FLAT
+PCR: 0.10
+[1/6] PCR: BULLISH (0.80)
+ ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...
+  [UP] HDFCBANK (10.6%): +1.79% | contrib: +0.189
+  [DN] ICICIBANK (8.3%): -1.96% | contrib: -0.163
+  [DN] RELIANCE (8.3%): -0.21% | contrib: -0.017
+  [UP] BHARTIARTL (5.2%): +0.23% | contrib: +0.012
+  [DN] LT (4.4%): -2.37% | contrib: -0.105
+  [DN] SBIN (4.0%): -1.58% | contrib: -0.063
+  [UP] INFY (3.6%): +4.55% | contrib: +0.164
+  [DN] AXISBANK (3.4%): -1.04% | contrib: -0.035
+  [DN] KOTAKBANK (2.8%): -1.63% | contrib: -0.046
+  [DN] M&M (2.7%): -1.01% | contrib: -0.027
+  Evidence: 10/10 stocks loaded
+  Weighted Bull: +0.365
+  Weighted Bear: -0.456
+[2/6] Stocks: NEUTRAL (10 valid / 0 missing)
+[B5] Breadth: BEARISH | adv=3 dec=7 | weight_adv%=36.4 weight_dec%=63.6
+     above_vwap%=0.0
+[3/6] Technicals (MTF): INSUFFICIENT_DATA
+      5m: FLAT (RSI=35)
+      15m: UNKNOWN (RSI=--)
+      1h: UNKNOWN (RSI=--)
+[4/6] Global: RISK_OFF
+      Dow: -0.29%
+      SP500: -0.48%
+      Nasdaq: -0.56%
+      Nikkei: +0.20%
+      HangSeng: -0.64%
+      Crude: +1.52%
+[5/6] India VIX: 12.91 (LOW) +5.04% trend=SPIKING pct=None
+[6/6] FII/DII [PREVIOUS_SESSION_CASH_FLOW]: BULLISH
+      Date=11-Sep-2026 FII=Γé╣-931Cr DII=Γé╣1968Cr combined=Γé╣1037Cr
+[B1] Prev Day: O=23270.30 H=23448.10 L=23231.40 C=23398.10
+     Type=RANGE_DAY Range%=0.93 CloseLoc=0.77
+     ATR14=212.65
+[B3] INDEX_TWAP: 23319.00 | Price AT | H=23325.50 L=23314.60 ticks=6
+[B4] OR-5m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-15m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-30m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B7] Regime: RANGE_BOUND (conf=0.33) ADX=24.5 UP:0 DOWN:1 FLAT:2
+     1h: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=45
+     15m: DOWN (conf=1.00) trend=DOWN mom=DOWN RSI=40 ADX=20
+     5m: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=8
+[C] External: RISK=RISK_OFF (conf=0.83)
+    Crude: $107.07 1d=+1.31% 5d=+9.34% pct=92 -> EXTREME | India: HIGH
+    Coverage: 13/13
+[C6] Calendar: no events today
+[C7] News: NEUTRAL (+5/-3/20) feeds=2/3
+
+--- Composite Scoring ---
+  [PCR] Legacy PCR vote skipped (no OI provenance): BULLISH
+  Bull score: 0.50
+  Bear score: 0.50
+>>> SKIP: Market FLAT (session=+0.000% gap=None regime=RANGE_BOUND)
+
+Final Decision: NEUTRAL
+ΓÜá∩╕Å No strong signal. Skipping trade.
+>>> SKIPPED
+Γ£à State saved
+
+============================================================
+Cycle 7/8  11:31:25
+============================================================
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23316.35
+ATM: 23300
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣145.60
+  CE 23400.0: Γé╣29.25
+  CE 23450.0: Γé╣18.05
+  PE 23200.0: Γé╣13.75
+  CE 23300.0: Γé╣72.65
+  PE 23150.0: Γé╣7.55
+  PE 23350.0: Γé╣66.40
+  CE 23350.0: Γé╣46.80
+  PE 23300.0: Γé╣41.75
+  PE 23400.0: Γé╣99.00
+  CE 23150.0: Γé╣188.80
+  CE 23250.0: Γé╣106.15
+  PE 23250.0: Γé╣24.25
+  PE 23450.0: Γé╣136.55
+Total options found: 14
+
+============================================================
+ENHANCED MARKET ANALYSIS - ALL PILLARS
+============================================================
+MARKET_PHASE: CONTINUOUS (enter=True exit=True)
+WS_STATUS: CONNECTED_NO_TICKS
+RUN_START_SPOT: 23316.35
+SPOT_FRESHNESS: FRESH (age=47.6s)
+DAY_OPEN_STATUS: EVIDENCE_UNAVAILABLE
+DAY_OPEN_VALUE: null
+Change from day open: unavailable
+Spot trend (tick): FLAT
+PCR: 0.09
+[1/6] PCR: BULLISH (0.80)
+ ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...
+  [UP] HDFCBANK (10.6%): +1.80% | contrib: +0.190
+  [DN] ICICIBANK (8.3%): -1.97% | contrib: -0.164
+  [DN] RELIANCE (8.3%): -0.22% | contrib: -0.018
+  [UP] BHARTIARTL (5.2%): +0.26% | contrib: +0.013
+  [DN] LT (4.4%): -2.35% | contrib: -0.104
+  [DN] SBIN (4.0%): -1.54% | contrib: -0.061
+  [UP] INFY (3.6%): +4.61% | contrib: +0.166
+  [DN] AXISBANK (3.4%): -1.04% | contrib: -0.035
+  [DN] KOTAKBANK (2.8%): -1.60% | contrib: -0.045
+  [DN] M&M (2.7%): -0.86% | contrib: -0.023
+  Evidence: 10/10 stocks loaded
+  Weighted Bull: +0.370
+  Weighted Bear: -0.451
+[2/6] Stocks: NEUTRAL (10 valid / 0 missing)
+[B5] Breadth: BEARISH | adv=3 dec=7 | weight_adv%=36.4 weight_dec%=63.6
+     above_vwap%=0.0
+[3/6] Technicals (MTF): INSUFFICIENT_DATA
+      5m: FLAT (RSI=35)
+      15m: UNKNOWN (RSI=--)
+      1h: UNKNOWN (RSI=--)
+[4/6] Global: RISK_OFF
+      Dow: -0.29%
+      SP500: -0.48%
+      Nasdaq: -0.56%
+      Nikkei: +0.20%
+      HangSeng: -0.64%
+      Crude: +1.52%
+[5/6] India VIX: 12.91 (LOW) +5.04% trend=SPIKING pct=None
+[6/6] FII/DII [PREVIOUS_SESSION_CASH_FLOW]: BULLISH
+      Date=11-Sep-2026 FII=Γé╣-931Cr DII=Γé╣1968Cr combined=Γé╣1037Cr
+[B1] Prev Day: O=23270.30 H=23448.10 L=23231.40 C=23398.10
+     Type=RANGE_DAY Range%=0.93 CloseLoc=0.77
+     ATR14=212.65
+[B3] INDEX_TWAP: 23318.62 | Price AT | H=23325.50 L=23314.60 ticks=7
+[B4] OR-5m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-15m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-30m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B7] Regime: RANGE_BOUND (conf=0.33) ADX=24.5 UP:0 DOWN:1 FLAT:2
+     1h: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=45
+     15m: DOWN (conf=1.00) trend=DOWN mom=DOWN RSI=40 ADX=20
+     5m: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=8
+[C] External: RISK=RISK_OFF (conf=0.83)
+    Crude: $107.07 1d=+1.31% 5d=+9.34% pct=92 -> EXTREME | India: HIGH
+    Coverage: 13/13
+[C6] Calendar: no events today
+[C7] News: NEUTRAL (+5/-3/20) feeds=2/3
+
+--- Composite Scoring ---
+  [PCR] Legacy PCR vote skipped (no OI provenance): BULLISH
+  Bull score: 0.50
+  Bear score: 0.50
+>>> SKIP: Market FLAT (session=+0.000% gap=None regime=RANGE_BOUND)
+
+Final Decision: NEUTRAL
+ΓÜá∩╕Å No strong signal. Skipping trade.
+>>> SKIPPED
+Γ£à State saved
+
+============================================================
+Cycle 8/8  11:32:13
+============================================================
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23318.55
+ATM: 23300
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣146.15
+  CE 23400.0: Γé╣29.55
+  CE 23450.0: Γé╣18.25
+  PE 23200.0: Γé╣13.50
+  CE 23300.0: Γé╣73.30
+  PE 23150.0: Γé╣7.35
+  PE 23350.0: Γé╣65.25
+  CE 23350.0: Γé╣47.60
+  PE 23300.0: Γé╣40.00
+  PE 23400.0: Γé╣95.80
+  CE 23150.0: Γé╣191.95
+  CE 23250.0: Γé╣107.65
+  PE 23250.0: Γé╣23.30
+  PE 23450.0: Γé╣134.10
+Total options found: 14
+
+============================================================
+ENHANCED MARKET ANALYSIS - ALL PILLARS
+============================================================
+MARKET_PHASE: CONTINUOUS (enter=True exit=True)
+WS_STATUS: CONNECTED_NO_TICKS
+RUN_START_SPOT: 23318.55
+SPOT_FRESHNESS: FRESH (age=47.5s)
+DAY_OPEN_STATUS: EVIDENCE_UNAVAILABLE
+DAY_OPEN_VALUE: null
+Change from day open: unavailable
+Spot trend (tick): FLAT
+PCR: 0.09
+[1/6] PCR: BULLISH (0.80)
+ ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...
+  [UP] HDFCBANK (10.6%): +1.79% | contrib: +0.189
+  [DN] ICICIBANK (8.3%): -1.96% | contrib: -0.163
+  [DN] RELIANCE (8.3%): -0.22% | contrib: -0.018
+  [UP] BHARTIARTL (5.2%): +0.27% | contrib: +0.014
+  [DN] LT (4.4%): -2.30% | contrib: -0.102
+  [DN] SBIN (4.0%): -1.48% | contrib: -0.059
+  [UP] INFY (3.6%): +4.65% | contrib: +0.168
+  [DN] AXISBANK (3.4%): -1.03% | contrib: -0.035
+  [DN] KOTAKBANK (2.8%): -1.53% | contrib: -0.043
+  [DN] M&M (2.7%): -0.87% | contrib: -0.023
+  Evidence: 10/10 stocks loaded
+  Weighted Bull: +0.372
+  Weighted Bear: -0.443
+[2/6] Stocks: NEUTRAL (10 valid / 0 missing)
+[B5] Breadth: BEARISH | adv=3 dec=7 | weight_adv%=36.4 weight_dec%=63.6
+     above_vwap%=0.0
+[3/6] Technicals (MTF): INSUFFICIENT_DATA
+      5m: FLAT (RSI=35)
+      15m: UNKNOWN (RSI=--)
+      1h: UNKNOWN (RSI=--)
+[4/6] Global: RISK_OFF
+      Dow: -0.29%
+      SP500: -0.48%
+      Nasdaq: -0.56%
+      Nikkei: +0.20%
+      HangSeng: -0.64%
+      Crude: +1.52%
+[5/6] India VIX: 12.90 (LOW) +4.96% trend=RISING pct=96.8
+[6/6] FII/DII [PREVIOUS_SESSION_CASH_FLOW]: BULLISH
+      Date=11-Sep-2026 FII=Γé╣-931Cr DII=Γé╣1968Cr combined=Γé╣1037Cr
+[B1] Prev Day: O=23270.30 H=23448.10 L=23231.40 C=23398.10
+     Type=RANGE_DAY Range%=0.93 CloseLoc=0.77
+     ATR14=212.65
+[B3] INDEX_TWAP: 23318.61 | Price AT | H=23325.50 L=23314.60 ticks=8
+[B4] OR-5m: H=23325.50 L=23314.60 W=10.90 locked=True status=INSIDE
+[B4] OR-15m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B4] OR-30m: H=23325.50 L=23314.60 W=10.90 locked=False status=INSIDE
+[B7] Regime: RANGE_BOUND (conf=0.33) ADX=24.5 UP:0 DOWN:1 FLAT:2
+     1h: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=45
+     15m: DOWN (conf=1.00) trend=DOWN mom=DOWN RSI=40 ADX=20
+     5m: FLAT (conf=0.00) trend=FLAT mom=MIXED RSI=35 ADX=8
+[C] External: RISK=RISK_OFF (conf=0.83)
+    Crude: $107.07 1d=+1.31% 5d=+9.34% pct=92 -> EXTREME | India: HIGH
+    Coverage: 13/13
+[C6] Calendar: no events today
+[C7] News: NEUTRAL (+5/-3/20) feeds=2/3
+
+--- Composite Scoring ---
+  [PCR] Legacy PCR vote skipped (no OI provenance): BULLISH
+  Bull score: 0.50
+  Bear score: 0.50
+>>> SKIP: Market FLAT (session=+0.000% gap=None regime=RANGE_BOUND)
+
+Final Decision: NEUTRAL
+ΓÜá∩╕Å No strong signal. Skipping trade.
+>>> SKIPPED
+Γ£à State saved
+
+============================================================
+N4 BOUNDED SMOKE COMPLETE - NIFTY
+============================================================
+  cycles run    : 8
+  trades fired  : 0
+  skipped       : 8
+  errors        : 0
+  counter       : 4/100
