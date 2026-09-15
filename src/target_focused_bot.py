@@ -219,8 +219,16 @@ class UnifiedTradingBot:
             print(f"[init] Contract index FAILED: {_e}")
         self.entry_spot = None  # For invalidation tracking
         
-        signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)
+        # D14_thread_safe_signal - skip SIGINT registration in worker threads
+        try:
+            signal.signal(signal.SIGINT, self.signal_handler)
+        except ValueError:
+            pass  # not in main thread; main thread owns SIGINT
+        # D14b_thread_safe_sigterm - skip SIGTERM registration in worker threads
+        try:
+            signal.signal(signal.SIGTERM, self.signal_handler)
+        except ValueError:
+            pass  # not in main thread; main thread owns SIGTERM
         
     def signal_handler(self, signum, frame):
         print("\n\n🛑 Shutdown signal received!")
