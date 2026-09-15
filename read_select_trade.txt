@@ -1,0 +1,80 @@
+1296:     def select_trade(self, sentiment, spot, options):
+1297:         """PHASE D: Full chain + liquidity gate + strike ranking."""
+1298:         if not options:
+1299:             return None
+1300:         
+1301:         atm = round(spot / self.strike_interval) * self.strike_interval
+1302:         expiry = self.get_expiry()
+1303:         
+1304:         # Try full chain engine first (Phase D)
+1305:         if self.option_chain_engine and self.strike_ranker:
+1306:             try:
+1307:                 inst_flat = [
+1308:                     {
+1309:                         "symbol": i["symbol"],
+1310:                         "token": i["token"],
+1311:                         "strike": i["strike"],
+1312:                         "expiry": i["expiry"],
+1313:                         "type": i["type"],
+1314:                         "market": self.market,
+1315:                         "exchange": i.get("exchange", self.option_exchange),
+1316:                     }
+1317:                     for i in self.instruments
+1318:                 ]
+1319:                 
+1320:                 chain = self.option_chain_engine.fetch(expiry, atm, inst_flat, strike_range=200)
+1321:                 self._last_chain = chain  # Phase H: for PCR provenance check
+1322:                 
+1323:                 if chain and chain.get("status") == "OK":
+1324:                     print(f"\n  [D1] CHAIN: {self.option_chain_engine.describe(chain)}")
+1325:                     
+1326:                     oi_analysis = self.oi_analyzer.analyze(chain)
+1327:                     if oi_analysis.get("status") == "OK":
+1328:                         print(f"  [D2] {self.oi_analyzer.describe(oi_analysis)}")
+1329:                     
+1330:                     ranking = self.strike_ranker.rank(chain, sentiment, atm)
+1331:                     if ranking.get("status") == "OK":
+1332:                         top = ranking.get("top_pick")
+1333:                         if top:
+1334:                             print(f"  [D3/D4] RANKED top={top['type']} {top['strike']} score={top['score']} LTP={top['ltp']} spread={top.get('spread_pct')}% vol={top['volume']}")
+1335:                             for c in ranking.get("candidates", [])[1:4]:
+1336:                                 status = "OK " if c["passes_liquidity"] else "REJ"
+1337:                                 print(f"          [{status}] {c['type']} {c['strike']} score={c['score']} LTP={c['ltp']}")
+1338:                             sym = top.get("symbol")
+1339:                             tok = top.get("token")
+1340:                             if sym and tok:
+1341:                                 return {
+1342:                                     "type": top["type"],
+1343:                                     "strike": top["strike"],
+1344:                                     "signal": "BUY",
+1345:                                     "entry": top["ltp"],
+1346:                                     "ltp": top.get("ltp", 0),
+1347:                                     "bid": top.get("bid", 0),
+1348:                                     "ask": top.get("ask", 0),
+1349:                                     "oi": top.get("oi", 0),
+1350:                                     "volume": top.get("volume", 0),
+1351:                                     "spread_pct": top.get("spread_pct"),
+1352:                                     "token": tok,
+1353:                                     "symbol": sym,
+1354:                                     "reason": f"Ranked D4 #{top['score']}",
+1355:                                     "rank_score": top["score"],
+1356:                                 }
+1357:                         else:
+1358:                             print("  [D3] NO ELIGIBLE candidate passed liquidity gate")
+1359:             except Exception as e:
+1360:                 print(f"  [D] Chain error: {str(e)[:60]}")
+1361:         
+1362:         # PHASE H CRITICAL FIX: No fallback allowed
+1363:         # If chain module returned no eligible candidate, we do NOT trade.
+1364:         # This was previously bypassing the liquidity gate.
+1365:         print('  >>> ENTRY BLOCKED: NO_ELIGIBLE_OPTION_PASSED_GATES')
+1366:         print('  >>> Reason: chain/liquidity/ranking produced no tradeable strike')
+1367:         self.decision_state = 'BLOCKED'
+1368:         return None
+1369: 
+1370:     
+1371: 
+1372:     def run_single_session(self):
+1373:         # D2_safety_flags ΓÇö hard refuse if any mode flag is misconfigured
+1374:         assert self.EXECUTION_MODE == "PAPER", "EXECUTION_MODE must be PAPER"
+1375:         assert self.BROKER_SUBMISSION is False, "BROKER_SUBMISSION must be False"

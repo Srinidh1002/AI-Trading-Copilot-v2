@@ -1,0 +1,26 @@
+=== F09 candle-cache hits in bot ===
+  L20: from candle_builder import CandleBuilder
+  L170: self.candle_builder = CandleBuilder(max_history=500)
+  L1036: df = self.market_intel.get_candles(tf_interval, days_back=10 if tf_name == "1h" else 5)
+
+=== F10 failure-TTL hits across src/ ===
+  external_intel.py:33: def __init__(self, cache_ttl=900):
+  external_intel.py:34: self.cache_ttl = cache_ttl
+  external_intel.py:41: return (time.time() - self._cache_at) < self.cache_ttl
+  fii_dii_engine.py:13: def __init__(self, cache_ttl=1800):
+  fii_dii_engine.py:14: self.cache_ttl = cache_ttl
+  fii_dii_engine.py:19: if not force and self._cache and (time.time() - self._cache_at) < self.cache_ttl:
+  market_intelligence.py:39: self.cache_ttl = {
+  market_intelligence.py:53: return age < self.cache_ttl.get(key, 300)
+  news_engine.py:41: def __init__(self, cache_ttl=1800):
+  news_engine.py:42: self.cache_ttl = cache_ttl
+  news_engine.py:47: if not force and self._cache and (time.time() - self._cache_at) < self.cache_ttl:
+  option_chain_engine.py:10: rate_limiter=None, cache_ttl=60):
+  option_chain_engine.py:16: self.cache_ttl = cache_ttl
+  option_chain_engine.py:27: if (time.time() - self._cache_at[cache_key]) < self.cache_ttl:
+  target_focused_bot.py:347: cache_ttl=60
+  target_focused_bot.py:356: self.news_engine = NewsEngine(cache_ttl=1800)
+  target_focused_bot.py:364: self.fii_dii_engine = FIIDIIEngine(cache_ttl=1800)
+  target_focused_bot.py:372: self.external_intel = ExternalIntelEngine(cache_ttl=900)
+  vix_enhanced.py:16: self.cache_ttl = 300
+  vix_enhanced.py:19: if not force and self._cache and (time.time() - self._cache_at) < self.cache_ttl:

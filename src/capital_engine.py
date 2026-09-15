@@ -4,6 +4,9 @@ Includes realistic bid/ask fills + transaction costs.
 
 
 class CapitalEngine:
+    # D6_tick_align - options trade on a 0.05 grid on NSE/BSE F&O
+    OPTION_TICK = 0.05
+
     def __init__(self, deployable_capital=100000,
                  brokerage_per_order=20,
                  stt_pct=0.0625,      # 0.0625% on sell side only
@@ -20,7 +23,17 @@ class CapitalEngine:
         self.sebi_pct = sebi_pct
         self.stamp_pct = stamp_duty_pct
         self.slippage_pct = slippage_pct
-    
+
+    @staticmethod
+    def _round_to_tick(price, tick=None):
+        """D6_tick_align - round to nearest valid tick (0.05 default)."""
+        if price is None:
+            return None
+        t = tick if tick is not None else CapitalEngine.OPTION_TICK
+        if t <= 0:
+            return round(price, 2)
+        return round(round(price / t) * t, 2)
+
     def compute_lot_size(self, premium, lot_size):
         """How many lots fit within capital?"""
         if premium <= 0 or lot_size <= 0:
@@ -48,7 +61,8 @@ class CapitalEngine:
         
         slippage = base * (self.slippage_pct / 100)
         fill = base + slippage if direction == "BUY" else base - slippage
-        return (round(fill, 2), "OK")
+        # D6_tick_align - round to 0.05 grid
+        return (self._round_to_tick(fill), "OK")
     
     def compute_costs(self, entry_price, exit_price, quantity, side="BUY"):
         """Estimate total transaction costs for one round-trip trade."""

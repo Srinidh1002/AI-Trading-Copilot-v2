@@ -1,0 +1,70 @@
+ 642:     def get_options(self, spot, expiry):
+ 643:         atm = round(spot / self.strike_interval) * self.strike_interval
+ 644:         
+ 645:         print(f"Spot: {spot}")
+ 646:         print(f"ATM: {atm}")
+ 647:         print(f"Expiry: {expiry}")
+ 648:         
+ 649:         options = []
+ 650:         
+ 651:         for inst in self.instruments:
+ 652:             if inst['expiry'] == expiry and abs(inst['strike'] - atm) <= self.strike_interval * 3:
+ 653:                 try:
+ 654:                     ltp_data = self.obj.ltpData(inst['exchange'], inst['symbol'], inst['token'])
+ 655:                     if ltp_data and ltp_data.get('data'):
+ 656:                         ltp = float(ltp_data['data'].get('ltp', 0))
+ 657:                         if ltp > 0:
+ 658:                             inst['ltp'] = ltp
+ 659:                             options.append(inst)
+ 660:                             print(f"  {inst['type']} {inst['strike']}: Γé╣{ltp:.2f}")
+ 661:                 except:
+ 662:                     pass
+ 663:                 time.sleep(0.2)
+ 664:         
+ 665:         print(f"Total options found: {len(options)}")
+ 666:         return options, atm
+ 667:     
+ 668:     def get_market_sentiment(self, spot, options):
+ 669:         """Basic PCR sentiment"""
+ 670:         if not options:
+ 671:             return 'NEUTRAL', 0.5
+ 672:         
+ 673:         ce_options = [o for o in options if o['type'] == 'CE' and o['ltp'] > 10]
+ 674:         pe_options = [o for o in options if o['type'] == 'PE' and o['ltp'] > 10]
+ 675:         
+ 676:         if ce_options and pe_options:
+ 677:             ce_premium = ce_options[0]['ltp']
+ 678:             pe_premium = pe_options[0]['ltp']
+ 679:             
+ 680:             pcr = pe_premium / ce_premium if ce_premium > 0 else 1
+ 681:             
+ 682:             print(f"PCR: {pcr:.2f}")
+ 683:             
+ 684:             if pcr < 0.7:
+ 685:                 return 'BULLISH', 0.8
+ 686:             elif pcr > 1.3:
+ 687:                 return 'BEARISH', 0.8
+ 688:             elif pcr < 0.9:
+ 689:                 return 'BULLISH', 0.6
+ 690:             elif pcr > 1.1:
+ 691:                 return 'BEARISH', 0.6
+ 692:             else:
+ 693:                 return 'NEUTRAL', 0.4
+ 694:         
+ 695:         return 'NEUTRAL', 0.3
+ 696:     
+ 697:     def analyze_top_stocks(self):
+ 698:         """Analyze FIXED weighted stock universe - NIFTY/SENSEX constituents"""
+ 699:         print(' ≡ƒôè Analyzing Weighted Constituents (FIXED UNIVERSE)...')
+ 700:         
+ 701:         if self.market == 'NIFTY':
+ 702:             universe = self.index_weights
+ 703:         else:
+ 704:             universe = self.index_weights
+ 705:         
+ 706:         if not hasattr(self, '_token_cache'):
+ 707:             self._token_cache = {}
+ 708:             try:
+ 709:                 with open('data/instruments.json', 'r') as f:
+ 710:                     raw = json.load(f)
+ 711:                 for inst in raw:

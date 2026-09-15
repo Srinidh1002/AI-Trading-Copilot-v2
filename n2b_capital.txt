@@ -1,0 +1,113 @@
+==========================================================================================
+NIFTY
+==========================================================================================
+[init] Contract index loaded: 6174 entries
+Connection attempt 1/5...
+Γ£à Connected successfully!
+Γ£à Market intelligence initialized
+[init] VIX engine ready
+[init] Calendar engine ready
+[init] Option chain engine ready
+[init] News engine ready
+[init] FII/DII engine ready
+[init] External intel engine ready
+[init] Previous day engine ready
+[WS] Connected
+[WS] Subscribed 1 groups
+[WS] Subscribed to NIFTY spot
+Γ£à Loaded 3700 NIFTY options
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+  spot   = 23347.55
+  expiry = 15SEP2026
+Spot: 23347.55
+ATM: 23350
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣164.20
+  CE 23400.0: Γé╣36.80
+  CE 23450.0: Γé╣22.60
+  PE 23200.0: Γé╣11.80
+  CE 23300.0: Γé╣87.35
+  PE 23350.0: Γé╣56.50
+  PE 23500.0: Γé╣162.80
+  CE 23350.0: Γé╣57.00
+  PE 23300.0: Γé╣35.65
+  PE 23400.0: Γé╣85.95
+  CE 23500.0: Γé╣13.75
+  CE 23250.0: Γé╣121.75
+  PE 23250.0: Γé╣20.95
+  PE 23450.0: Γé╣121.80
+Total options found: 14
+  atm    = 23350
+  chain options returned = 14
+  deployable capital = 100000
+
+    strike type        ltp        bid        ask    1lot_cost   afford
+  --------------------------------------------------------------------
+     23350 PE        56.50       0.00       0.00      4237.50       23
+     23350 CE        57.00       0.00       0.00      4275.00       23
+     23400 CE        36.80       0.00       0.00      2760.00       36
+     23300 CE        87.35       0.00       0.00      6551.25       15
+     23300 PE        35.65       0.00       0.00      2673.75       37
+     23400 PE        85.95       0.00       0.00      6446.25       15
+
+==========================================================================================
+SENSEX
+==========================================================================================
+[init] Contract index loaded: 6174 entries
+Connection attempt 1/5...
+Γ£à Connected successfully!
+Γ£à Market intelligence initialized
+[init] VIX engine ready
+[init] Calendar engine ready
+[init] Option chain engine ready
+[init] News engine ready
+[init] FII/DII engine ready
+[init] External intel engine ready
+[init] Previous day engine ready
+[WS] Connected
+[WS] Subscribed 1 groups
+[WS] Subscribed to SENSEX spot
+Γ£à Loaded 3208 SENSEX options
+  Expiry: 17SEP2026
+  CALENDAR_DTE: 2
+  TRADING_DAYS_TO_EXPIRY: 2
+  spot   = 74682.24
+  expiry = 17SEP2026
+Spot: 74682.24
+ATM: 74700
+Expiry: 17SEP2026
+  CE 74900.0: Γé╣277.10
+  PE 74900.0: Γé╣528.65
+  PE 75000.0: Γé╣590.00
+  CE 74400.0: Γé╣533.80
+  CE 74600.0: Γé╣420.80
+  PE 74700.0: Γé╣419.50
+  PE 74600.0: Γé╣370.15
+  PE 74500.0: Γé╣324.90
+  CE 75000.0: Γé╣240.10
+  CE 74800.0: Γé╣321.00
+  CE 74500.0: Γé╣474.60
+  PE 74400.0: Γé╣287.35
+  PE 74800.0: Γé╣472.20
+  CE 74700.0: Γé╣367.75
+Total options found: 14
+  atm    = 74700
+  chain options returned = 14
+  deployable capital = 100000
+
+    strike type        ltp        bid        ask    1lot_cost   afford
+  --------------------------------------------------------------------
+     74700 PE       419.50       0.00       0.00      8390.00       11
+     74700 CE       367.75       0.00       0.00      7355.00       13
+     74600 CE       420.80       0.00       0.00      8416.00       11
+     74600 PE       370.15       0.00       0.00      7403.00       13
+     74800 CE       321.00       0.00       0.00      6420.00       15
+     74800 PE       472.20       0.00       0.00      9444.00       10
+
+==========================================================================================
+NIFTY spot token cross-check
+==========================================================================================
+  token=99926000     -> ltp=23340.85
+  token=26000        -> ltp=23341.95

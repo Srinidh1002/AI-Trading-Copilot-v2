@@ -38,6 +38,11 @@ class OutcomeLedger:
             "peak_pnl_pct": trade.get("peak_pnl_pct"),
             "trough_pnl_pct": trade.get("trough_pnl_pct"),
             "rank_score": trade.get("rank_score"),
+            # D3_cert_eligible — certification contract fields
+            "execution_mode": trade.get("execution_mode"),
+            "broker_submission": trade.get("broker_submission"),
+            "live_execution": trade.get("live_execution"),
+            "certification_eligible": trade.get("certification_eligible"),
         }
         try:
             with open(self.path, "a", encoding="utf-8") as f:

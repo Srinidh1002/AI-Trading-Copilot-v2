@@ -1,0 +1,137 @@
+=== lines 1545-1680 (monitor loop) ===
+1545:         active_trade['trail_stop'] = None
+1546:         active_trade['entry_spot'] = spot
+1547:         self.total_trades += 1
+1548:         
+1549:         _notional = entry * self.lot_size
+1550:         print(f"\n{'='*60}")
+1551:         print(f"≡ƒôè {self.market} Trade: {trade['signal']} {trade['type']} {trade['strike']}")
+1552:         print(f"{'='*60}")
+1553:         print(f"Entry: Γé╣{entry:.2f}")
+1554:         print(f"Lot Size: {self.lot_size} (source: {_lot_source})")
+1555:         print(f"Notional: Γé╣{_notional:,.2f}")
+1556:         print(f"Stop Loss: Γé╣{sl_price:.2f} (-{self.STOP_LOSS_PERCENT}%)")
+1557:         print(f"T1: Γé╣{t1_price:.2f} (+{self.T1_PERCENT}%)")
+1558:         print(f"T2: Γé╣{t2_price:.2f} (+{self.T2_PERCENT}%)")
+1559:         print(f"T3: Γé╣{t3_price:.2f} (+{self.T3_PERCENT}%)")
+1560:         print(f"Will close at 3:28 PM if no target/SL hit")
+1561:         
+1562:         start_time = datetime.now()
+1563:         last_update = start_time
+1564:         
+1565:         while self.is_running and self.is_market_open():
+1566:             time.sleep(3)
+1567:             
+1568:             if trade_id not in self.active_trades:
+1569:                 break
+1570:             
+1571:             if (datetime.now() - start_time).seconds % 60 == 0:
+1572:                 if not self.reconnect_if_needed():
+1573:                     continue
+1574:             
+1575:             try:
+1576:                 current_price = 0
+1577:                 # Try WebSocket first
+1578:                 if self.ws_feed and self.ws_feed.is_healthy():
+1579:                     ws_tick = self.ws_feed.get_latest(trade['token'])
+1580:                     if ws_tick and ws_tick.get("ltp", 0) > 0:
+1581:                         current_price = ws_tick["ltp"]
+1582:                 
+1583:                 # Fallback to REST if WS stale
+1584:                 if current_price <= 0:
+1585:                     self.rate_limiter.wait_if_needed("ltp_data")
+1586:                     ltp_data = self.obj.ltpData(self.option_exchange, trade['symbol'], trade['token'])
+1587:                     if ltp_data and ltp_data.get('data'):
+1588:                         current_price = float(ltp_data['data'].get('ltp', 0))
+1589:                 
+1590:                 if current_price > 0:
+1591:                     
+1592:                     if current_price > 0:
+1593:                         if trade['signal'] == 'BUY':
+1594:                             pnl = (current_price - entry) * self.lot_size
+1595:                             pnl_pct = ((current_price - entry) / entry) * 100
+1596:                         else:
+1597:                             pnl = (entry - current_price) * self.lot_size
+1598:                             pnl_pct = ((entry - current_price) / entry) * 100
+1599:                         
+1600:                         active_trade['current_price'] = current_price
+1601:                         active_trade['pnl'] = pnl
+1602:                         active_trade['pnl_pct'] = pnl_pct
+1603:                         
+1604:                         if pnl > active_trade['max_profit']:
+1605:                             active_trade['max_profit'] = pnl
+1606:                         
+1607:                         
+1608:                         # ===== PHASE F: MFE/MAE + Target policy =====
+1609:                         try:
+1610:                             self.mfe_mae.update(trade_id, current_price)
+1611:                             if 'peak_price' not in active_trade or current_price > active_trade['peak_price']:
+1612:                                 active_trade['peak_price'] = current_price
+1613:                             target_state = {
+1614:                                 'entry_price': entry,
+1615:                                 'current_price': current_price,
+1616:                                 'peak_price': active_trade.get('peak_price', current_price),
+1617:                                 'trail_stop': active_trade.get('trail_stop'),
+1618:                                 't1_hit': active_trade.get('t1_hit', False),
+1619:                                 't2_hit': active_trade.get('t2_hit', False),
+1620:                             }
+1621:                             action, reason, new_trail, updates = self.target_policy.evaluate(target_state)
+1622:                             for k, v in updates.items():
+1623:                                 active_trade[k] = v
+1624:                             if new_trail is not None:
+1625:                                 active_trade['trail_stop'] = new_trail
+1626:                             if action == 'EXIT_T3':
+1627:                                 print(f'  T3 REACHED at {current_price:.2f}')
+1628:                                 self.close_position(trade_id, current_price, 'T3_50%', pnl, pnl_pct)
+1629:                                 self.t3_hits += 1
+1630:                                 break
+1631:                             if active_trade.get('trail_stop') and current_price <= active_trade['trail_stop']:
+1632:                                 print(f'  TRAIL STOP HIT at {current_price:.2f}')
+1633:                                 self.close_position(trade_id, current_price, 'TRAIL_STOP', pnl, pnl_pct)
+1634:                                 break
+1635:                         except Exception as _e:
+1636:                             print(f'[F] policy error: {str(_e)[:60]}')
+1637:                         
+1638:                         # UNDERLYING INVALIDATION CHECK
+1639:                         # If spot moves >0.5% against our position, exit early
+1640:                         if self.entry_spot and self.entry_spot > 0:
+1641:                             try:
+1642:                                 current_spot = self.get_spot()
+1643:                                 if current_spot > 0:
+1644:                                     spot_move_pct = ((current_spot - self.entry_spot) / self.entry_spot) * 100
+1645:                                     
+1646:                                     # If long CE and spot fell >0.5%, invalidate
+1647:                                     if trade['type'] == 'CE' and spot_move_pct < -0.5:
+1648:                                         print(f'\nΓÜá∩╕Å UNDERLYING INVALIDATION: spot {spot_move_pct:+.2f}%')
+1649:                                         self.close_position(trade_id, current_price, 'SPOT_INVALIDATED', pnl, pnl_pct)
+1650:                                         self.stop_losses += 1
+1651:                                         break
+1652:                                     # If long PE and spot rose >0.5%, invalidate
+1653:                                     elif trade['type'] == 'PE' and spot_move_pct > 0.5:
+1654:                                         print(f'\nΓÜá∩╕Å UNDERLYING INVALIDATION: spot {spot_move_pct:+.2f}%')
+1655:                                         self.close_position(trade_id, current_price, 'SPOT_INVALIDATED', pnl, pnl_pct)
+1656:                                         self.stop_losses += 1
+1657:                                         break
+1658:                             except Exception:
+1659:                                 pass
+1660:                         
+1661:                         if pnl_pct >= self.T3_PERCENT:
+1662:                             self.close_position(trade_id, current_price, 'T3_50%', pnl, pnl_pct)
+1663:                             self.t3_hits += 1
+1664:                             break
+1665:                         elif pnl_pct >= self.T2_PERCENT:
+1666:                             self.close_position(trade_id, current_price, 'T2_30%', pnl, pnl_pct)
+1667:                             self.t2_hits += 1
+1668:                             break
+1669:                         elif pnl_pct >= self.T1_PERCENT:
+1670:                             self.close_position(trade_id, current_price, 'T1_15%', pnl, pnl_pct)
+1671:                             self.t1_hits += 1
+1672:                             break
+1673:                         elif pnl_pct <= -self.STOP_LOSS_PERCENT:
+1674:                             self.close_position(trade_id, current_price, 'STOP_LOSS', pnl, pnl_pct)
+1675:                             self.stop_losses += 1
+1676:                             break
+1677:                         
+1678:                         if (datetime.now() - last_update).seconds >= 30:
+1679:                             elapsed = (datetime.now() - start_time).seconds // 60
+1680:                             print(f"\n[{elapsed}min] Price: Γé╣{current_price:.2f} | P&L: {pnl_pct:.2f}%")

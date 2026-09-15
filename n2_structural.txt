@@ -1,0 +1,41 @@
+==========================================================================================
+N2.1 - STRUCTURAL IDENTITY FROM INSTRUMENT MASTER
+==========================================================================================
+
+[NIFTY spot]
+  symbol=NIFTY token=26000 exchange=NSE
+
+[SENSEX spot]
+  symbol=SENSEX token=99919000 exchange=BSE
+
+[NIFTY option expiries present in master] 18 total
+  06OCT2026
+  08SEP2026
+  15SEP2026
+  22SEP2026
+  23NOV2026
+  24DEC2029
+
+[SENSEX option expiries present in master] 20 total
+  01OCT2026
+  08OCT2026
+  10SEP2026
+  15OCT2026
+  17SEP2026
+  22OCT2026
+
+[Sample NIFTY options for expiry 06OCT2026]
+  NIFTY06OCT2622100CE  token=40671  strike=2210000.000000
+  NIFTY06OCT2622400PE  token=40688  strike=2240000.000000
+  NIFTY06OCT2622750CE  token=40712  strike=2275000.000000
+  NIFTY06OCT2622800PE  token=40716  strike=2280000.000000
+  NIFTY06OCT2622950PE  token=40724  strike=2295000.000000
+
+[Sample SENSEX options for expiry 01OCT2026]
+  SENSEX26O0169600PE  token=1122336  strike=6960000.000000
+  SENSEX26O0169500PE  token=1124004  strike=6950000.000000
+  SENSEX26O0169400CE  token=1124391  strike=6940000.000000
+  SENSEX26O0169500CE  token=1125161  strike=6950000.000000
+  SENSEX26O0169400PE  token=1125546  strike=6940000.000000
+
+Done.
