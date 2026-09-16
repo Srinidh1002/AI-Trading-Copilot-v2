@@ -56,6 +56,9 @@ from mcx.mcx_health import print_health
 
 load_dotenv()
 
+from smartapi_log_redaction import install_smartapi_log_redaction
+install_smartapi_log_redaction()
+
 import argparse
 
 # MCX_IST_fix - module-level timezone constant

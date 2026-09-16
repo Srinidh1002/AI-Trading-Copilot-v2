@@ -113,6 +113,10 @@ from certification_phase import (
     CERT_PHASE_UNKNOWN,
 )
 
+from smartapi_log_redaction import install_smartapi_log_redaction
+
+install_smartapi_log_redaction()
+
 class UnifiedTradingBot:
     def __init__(self, market='NIFTY'):
         self.market = market.upper()
