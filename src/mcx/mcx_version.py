@@ -10,8 +10,8 @@ from datetime import datetime
 # GOLDM / NATGASMINI use PRECERT epochs (never certified until later sections).
 PRODUCT_EPOCHS = {
     "CRUDEOILM": {
-        "strategy_version": "MCX_POST_PRECISION_V3",
-        "epoch": "POST_PRECISION_V3",
+        "strategy_version": "MCX_POST_PRECISION_V4",
+        "epoch": "POST_PRECISION_V4",
         "version_path": "data/paper_trades/mcx_strategy_version.json",
         "certification_eligible": True,
     },

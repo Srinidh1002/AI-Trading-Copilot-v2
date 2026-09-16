@@ -1,4 +1,4 @@
-"""MCX PAPER BOT V3 — POST_PRECISION_V2.
+"""MCX PAPER BOT V4 — POST_PRECISION_V4.
 Full integration: calendar, data quality, structure, price/OI, greeks,
 stable PCR, event risk, setup classifier, position manager, reconciliation.
 NO broker orders. PAPER only. Version frozen per spec §34.
@@ -542,7 +542,7 @@ def main():
 
     cfg = get_product_epochs(PRODUCT)
     print("=" * 100)
-    print(f"MCX PAPER BOT V3 — {PRODUCT}")
+    print(f"MCX PAPER BOT V4 — {PRODUCT}")
     print(f"  strategy_version = {cfg['strategy_version']}")
     print(f"  epoch            = {cfg['epoch']}")
     print(f"  cert_eligible    = {cfg['certification_eligible']}")
@@ -887,7 +887,7 @@ def main():
 
     save_state(state)
     print(f"\n{'=' * 100}")
-    print(f"MCX PAPER BOT V3 stopped. Attempts={attempts} Trades={state['total_trades']}/100 "
+    print(f"MCX PAPER BOT V4 stopped. Attempts={attempts} Trades={state['total_trades']}/100 "
           f"P&L=₹{state['total_pnl']:.2f}")
     print(f"{'=' * 100}")
     print()

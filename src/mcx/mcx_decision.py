@@ -304,13 +304,40 @@ def compose(chain, ctx, mtf, regime_dict, vwap_ctx=None, event_state=None,
     tech, tech_detail = _technical_direction_score(mtf)
     ext, ext_detail = _external_context_score(ctx)
 
-    # Prefer stable PCR (spec §2) when provided
+    # StablePCR is authoritative when explicitly supplied.
+    #
+    # V4 certification rule:
+    # - stable_pcr is None:
+    #     preserve legacy/non-StablePCR compose behaviour.
+    # - stable_pcr status == OK:
+    #     use StablePCR evidence.
+    # - stable_pcr supplied but status != OK:
+    #     do NOT silently fall back to raw chain PCR.
+    #     The chain PCR score is neutralized and a hard blocker is
+    #     added below, forcing NO_TRADE.
     chain_for_score = dict(chain) if chain else {}
-    if stable_pcr and stable_pcr.get("status") == "OK":
-        chain_for_score["pcr_oi"] = stable_pcr.get("PCR_EMA_3") or stable_pcr.get("PCR_TOTAL_OI")
-        chain_for_score["pcr_stable_source"] = True
-        chain_for_score["pcr_raw"] = stable_pcr.get("PCR_TOTAL_OI")
-        chain_for_score["pcr_change_rate"] = stable_pcr.get("PCR_CHANGE_RATE")
+    stable_pcr_status = None
+
+    if stable_pcr is not None:
+        stable_pcr_status = (
+            stable_pcr.get("status")
+            if isinstance(stable_pcr, dict)
+            else None
+        )
+
+        if stable_pcr_status == "OK":
+            chain_for_score["pcr_oi"] = (
+                stable_pcr.get("PCR_EMA_3")
+                or stable_pcr.get("PCR_TOTAL_OI")
+            )
+            chain_for_score["pcr_stable_source"] = True
+            chain_for_score["pcr_raw"] = stable_pcr.get("PCR_TOTAL_OI")
+            chain_for_score["pcr_change_rate"] = stable_pcr.get(
+                "PCR_CHANGE_RATE"
+            )
+        else:
+            chain_for_score["pcr_oi"] = None
+            chain_for_score["pcr_stable_source"] = False
 
     chain_s, chain_detail = _option_chain_score(chain_for_score)
     long_q, short_q, entry_detail = _entry_quality_scores(mtf, chain, regime_dict, vwap_ctx)
@@ -318,6 +345,16 @@ def compose(chain, ctx, mtf, regime_dict, vwap_ctx=None, event_state=None,
     LONG_CONF, SHORT_CONF = _combine_scores(tech, ext, chain_s, long_q, short_q)
 
     blockers = _apply_hard_gates(tech, LONG_CONF, SHORT_CONF, mtf, regime_dict, ctx, vwap_ctx)
+
+    # V4 fail-closed StablePCR authority.
+    #
+    # Only applies when StablePCR was explicitly supplied by the
+    # canonical MCX runtime. Legacy callers that omit stable_pcr keep
+    # their historical behaviour.
+    if stable_pcr is not None and stable_pcr_status != "OK":
+        blockers.append(
+            f"STABLE_PCR_{stable_pcr_status or 'UNAVAILABLE'}"
+        )
 
     # Event risk gate (spec §22)
     if event_state and event_state.get("block_entries"):
