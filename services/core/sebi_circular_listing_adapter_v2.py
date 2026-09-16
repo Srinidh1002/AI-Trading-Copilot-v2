@@ -137,6 +137,27 @@ class _TableParser(
             name == "tr"
             and self._row is not None
         ):
+            # The live SEBI circular table currently contains rows
+            # where the final <td> is not explicitly closed before
+            # </tr>.  Preserve that open cell instead of dropping
+            # its title/link provenance.
+            if self._cell is not None:
+                value = " ".join(
+                    "".join(
+                        self._cell
+                    ).split()
+                )
+
+                self._row.append(
+                    (
+                        value,
+                        self._href,
+                    )
+                )
+
+                self._cell = None
+                self._href = None
+
             if self._row:
                 self.rows.append(
                     self._row
