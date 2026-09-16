@@ -103,10 +103,10 @@ ok("trade dict has certification_epoch",
 # --- Case E: constants are exact strings ---
 print("\n[E] Constants match approved values")
 ok("STRATEGY_VERSION exact",
-   STRATEGY_VERSION == "NS_DESIGN_B_BID_AUTH_V2",
+   STRATEGY_VERSION == "NS_DESIGN_B_BID_AUTH_V3",
    f"{STRATEGY_VERSION!r}")
 ok("CERTIFICATION_EPOCH exact",
-   CERTIFICATION_EPOCH == "NS_CERT_20260916_V2",
+   CERTIFICATION_EPOCH == "NS_CERT_20260916_V3",
    f"{CERTIFICATION_EPOCH!r}")
 
 # --- Summary ---

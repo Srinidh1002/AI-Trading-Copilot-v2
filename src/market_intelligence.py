@@ -172,15 +172,34 @@ class MarketIntelligence:
             except Exception as e:
                 result[tf_name] = {"trend": "UNKNOWN", "error": str(e)[:40]}
         
-        # Consensus with 3 timeframes
-        real = [r.get("trend") for r in result.values() 
-                if isinstance(r, dict) and r.get("trend") in ("UP", "DOWN", "FLAT")]
-        
-        if len(real) < 2:
+        # R19_equity_v3_required_mtf_complete
+        #
+        # Entry-authoritative technical evidence requires all three
+        # configured timeframes. A partial 1h/15m/5m snapshot must not
+        # be promoted to BULLISH/BEARISH/MIXED and must not enter the
+        # aggregate "technicals" cache.
+        required_tfs = ("1h", "15m", "5m")
+
+        required_trends = [
+            (
+                (result.get(tf) or {}).get("trend")
+                if isinstance(result.get(tf), dict)
+                else None
+            )
+            for tf in required_tfs
+        ]
+
+        if any(
+            trend not in ("UP", "DOWN", "FLAT")
+            for trend in required_trends
+        ):
             result["consensus"] = "INSUFFICIENT_DATA"
         else:
+            real = required_trends
+
             up = real.count("UP")
             down = real.count("DOWN")
+
             if up >= 2 and down == 0:
                 result["consensus"] = "BULLISH"
             elif down >= 2 and up == 0:
@@ -191,7 +210,7 @@ class MarketIntelligence:
                 result["consensus"] = "WEAK_BEARISH"
             else:
                 result["consensus"] = "MIXED"
-        
+
         # D13_no_cache_incomplete - never cache transient incomplete results
         _cons = result.get("consensus")
         if _cons not in ("INSUFFICIENT_DATA", "UNKNOWN", None):
