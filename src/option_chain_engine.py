@@ -120,10 +120,13 @@ class OptionChainEngine:
                     bs = d.get("bestFiveSellData") or []
                     if bs and isinstance(bs, list) and bs[0]:
                         ask_v = float(bs[0].get("price", 0) or 0)
-                # Last-resort estimate so spread_pct is not None-blocked (does NOT relax min_oi)
-                if bid_v <= 0 and ask_v <= 0 and ltp_v > 0:
-                    bid_v = ltp_v * 0.999
-                    ask_v = ltp_v * 1.001
+                # P8A.1 - provider bid/ask is authoritative for liquidity.
+                # Never synthesize executable/liquidity evidence from LTP.
+                bid_ask_source = (
+                    "PROVIDER_MARKET_DATA"
+                    if bid_v > 0 and ask_v > 0
+                    else "UNAVAILABLE"
+                )
                 entry = {
                     "strike": strike,
                     "type": opt_type,
@@ -138,6 +141,7 @@ class OptionChainEngine:
                     "oi": oi_v,
                     "bid": bid_v,
                     "ask": ask_v,
+                    "bid_ask_source": bid_ask_source,
                     "fetched_at": datetime.now().isoformat(),
                 }
                 entry["spread"] = (ask_v - bid_v) if bid_v > 0 and ask_v > 0 else None
