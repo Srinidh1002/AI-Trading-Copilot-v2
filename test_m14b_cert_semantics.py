@@ -6,7 +6,8 @@ from mcx.mcx_certification import classify_win, update_counters
 
 def _trade(ft=None, reason="", net=0.0, product="CRUDEOILM"):
     t = {"trade_id": "T_" + str(ft) + reason, "product": product,
-         "certification_eligible": True, "net_pnl": net}
+         "certification_eligible": True, "net_pnl": net,
+         "entry_time": "2026-09-16T10:00:00"}
     if ft is not None:
         t["first_touch_result"] = ft
     t["exit_reason"] = reason
@@ -43,8 +44,8 @@ class TestM14B(unittest.TestCase):
         self.assertEqual(classify_win(t), "NONCOUNTABLE")
         s = {}
         update_counters(s, t)
-        self.assertEqual(s["t1_hit_wins"], 0)
-        self.assertEqual(s["sl_losses"], 0)
+        self.assertEqual(s.get("t1_hit_wins", 0), 0)
+        self.assertEqual(s.get("sl_losses", 0), 0)
         self.assertIn(t["trade_id"], s.get("_cert_rejected_trade_ids", []))
 
     def test_missing_first_touch_is_noncountable(self):
@@ -62,7 +63,9 @@ class TestM14B(unittest.TestCase):
         t["certification_eligible"] = False
         s = {}
         update_counters(s, t)
-        self.assertEqual(s["t1_hit_wins"], 0)
+        self.assertEqual(s.get("t1_hit_wins", 0), 0)
+        self.assertNotIn(t["trade_id"], s.get("_counted_trade_ids", []))
+        self.assertIn(t["trade_id"], s.get("_cert_rejected_trade_ids", []))
         self.assertEqual(t.get("_counter_rejected"), "RECORD_NOT_CERTIFICATION_ELIGIBLE")
 
     def test_net_pnl_no_longer_cert_authority(self):

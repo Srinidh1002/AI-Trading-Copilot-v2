@@ -109,12 +109,12 @@ def main():
     if obj is None:
         return
 
-    import argparse as _ap
-_parser = _ap.ArgumentParser()
-_parser.add_argument("--product", default="CRUDEOILM",
-                     choices=["CRUDEOILM", "GOLDM", "NATGASMINI"])
-_args, _ = _parser.parse_known_args()
-product = _args.product.upper()
+    import argparse as _ap  # M12_5_indent_fix
+    _parser = _ap.ArgumentParser()
+    _parser.add_argument("--product", default="CRUDEOILM",
+                         choices=["CRUDEOILM", "GOLDM", "NATGASMINI"])
+    _args, _ = _parser.parse_known_args()
+    product = _args.product.upper()
     spec = PRODUCTS[product]
     print(f"\nProduct: {product} ({spec['display_name']})")
     print(f"  trading_unit={spec['trading_unit']}  cash_multiplier={spec['cash_multiplier']}  "

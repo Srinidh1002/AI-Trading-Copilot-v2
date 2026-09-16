@@ -103,12 +103,12 @@ def main():
         sys.exit(1)
     print("✅ Angel session established")
 
-    import argparse as _ap
-_parser = _ap.ArgumentParser()
-_parser.add_argument("--product", default="CRUDEOILM",
-                     choices=["CRUDEOILM", "GOLDM", "NATGASMINI"])
-_args, _ = _parser.parse_known_args()
-product = _args.product.upper()
+    import argparse as _ap  # M12_5_indent_fix
+    _parser = _ap.ArgumentParser()
+    _parser.add_argument("--product", default="CRUDEOILM",
+                         choices=["CRUDEOILM", "GOLDM", "NATGASMINI"])
+    _args, _ = _parser.parse_known_args()
+    product = _args.product.upper()
 
     print("\n" + "─" * 100)
     print(f"PART 1 — CHAIN ({product})")

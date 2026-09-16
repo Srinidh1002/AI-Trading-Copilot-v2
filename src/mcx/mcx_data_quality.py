@@ -64,7 +64,7 @@ def check_candles(mtf, min_tfs=3):
     return True, "OK"
 
 
-def check_chain(chain, max_age=CHAIN_MAX_AGE):
+def check_chain(chain, max_age=CHAIN_MAX_AGE, as_of=None):  # M13_DQ_as_of_fix
     if not chain or chain.get("status") != "OK":
         return False, "CHAIN_UNAVAILABLE"
     age = _age_seconds(chain.get("fetched_at"), as_of=as_of)
@@ -106,7 +106,7 @@ def check_identity(identity_res):
 
 
 def evaluate_all(*, future_quote=None, option_quote=None, mtf=None, chain=None,
-                 external=None, session=None, identity=None):
+                 external=None, session=None, identity=None, as_of=None):  # M13_DQ_as_of_fix
     """Returns (ok: bool, blockers: list[str])."""
     blockers = []
 
@@ -116,7 +116,7 @@ def evaluate_all(*, future_quote=None, option_quote=None, mtf=None, chain=None,
     ok, r = check_session(session)
     if not ok: blockers.append(r)
 
-    ok, r = check_chain(chain)
+    ok, r = check_chain(chain, as_of=as_of)
     if not ok: blockers.append(r)
 
     ok, r = check_candles(mtf)
