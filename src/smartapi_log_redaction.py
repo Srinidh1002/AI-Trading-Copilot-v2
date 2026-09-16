@@ -24,6 +24,35 @@ _GENERIC_BEARER_RE = re.compile(
 )
 
 
+
+# SmartAPI logs request/response payload dictionaries on some failure
+# and debug paths. These fields must therefore be treated as secrets
+# even when they appear outside HTTP headers.
+#
+# Case-insensitive matching also covers camel-case variants such as
+# clientCode. Snake-case aliases are included for local/adapter logs.
+_SENSITIVE_FIELD_NAMES = (
+    r"(?:"
+    r"clientcode|client_code|"
+    r"password|pin|"
+    r"totp|totp_secret|"
+    r"refreshToken|refresh_token|"
+    r"jwtToken|jwt_token|"
+    r"feedToken|feed_token"
+    r")"
+)
+
+# Python dict repr / JSON / key=value where the value is quoted.
+_SENSITIVE_QUOTED_FIELD_RE = re.compile(
+    rf"""(?i)(['"]?{_SENSITIVE_FIELD_NAMES}['"]?\s*[:=]\s*)(['"])(.*?)(\2)"""
+)
+
+# Defensive support for unquoted forms such as:
+# clientCode=ABC123
+_SENSITIVE_BARE_FIELD_RE = re.compile(
+    rf"""(?i)(['"]?{_SENSITIVE_FIELD_NAMES}['"]?\s*[:=]\s*)(?!['"])(?!\[REDACTED\])([^,\s}}\]]+)"""
+)
+
 def redact_text(value: object) -> str:
     """Return log-safe text with SmartAPI auth material removed."""
     text = str(value)
@@ -34,6 +63,22 @@ def redact_text(value: object) -> str:
     )
 
     text = _PRIVATE_KEY_RE.sub(
+        lambda m: m.group(1) + "[REDACTED]",
+        text,
+    )
+
+    # SmartAPI request/response body credentials and tokens.
+    text = _SENSITIVE_QUOTED_FIELD_RE.sub(
+        lambda m: (
+            m.group(1)
+            + m.group(2)
+            + "[REDACTED]"
+            + m.group(2)
+        ),
+        text,
+    )
+
+    text = _SENSITIVE_BARE_FIELD_RE.sub(
         lambda m: m.group(1) + "[REDACTED]",
         text,
     )
