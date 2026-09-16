@@ -111,10 +111,12 @@ def t11_natgas_default_state_shape():
     assert s["certification_eligible"] is False
 
 
-def t12_crude_default_state_preserves_v2_epoch():
+def t12_crude_default_state_preserves_v3_epoch():
+    # M14C: POST_PRECISION_V2 invalidated by decision-affecting exit
+    # control flow defect; superseded by POST_PRECISION_V3.
     from mcx.mcx_paper_bot import _default_state_for
     s = _default_state_for("CRUDEOILM")
-    assert s["epoch"] == "POST_PRECISION_V2"
+    assert s["epoch"] == "POST_PRECISION_V3"
     assert s["certification_eligible"] is True
     assert s["starting_capital"] == 100000
 
@@ -180,6 +182,7 @@ def t20_valid_crude_record_accepted():
     st = {"product": "CRUDEOILM", "t1_hit_wins": 0, "sl_losses": 0, "_counted_trade_ids": []}
     tr = {"trade_id": "CRUDE_TEST_1", "product": "CRUDEOILM",
           "exit_reason": "T1_15%", "net_pnl": 100.0,
+          "first_touch_result": "T1_FIRST",
           "certification_eligible": True}
     update_counters(st, tr)
     assert st["t1_hit_wins"] == 1, f"should count: {st}"
@@ -223,7 +226,7 @@ def run_all():
         t9_state_paths_distinct_per_product,
         t10_goldm_default_state_shape,
         t11_natgas_default_state_shape,
-        t12_crude_default_state_preserves_v2_epoch,
+        t12_crude_default_state_preserves_v3_epoch,
         t13_presession_header_product_aware,
         t14_crude_obs_only_false,
         t15_goldm_obs_only_true,

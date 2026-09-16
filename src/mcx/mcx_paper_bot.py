@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from datetime import datetime, time as dtime
+from zoneinfo import ZoneInfo  # MCX_IST_fix
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SRC = os.path.dirname(_HERE)
@@ -57,6 +58,9 @@ load_dotenv()
 
 import argparse
 
+# MCX_IST_fix - module-level timezone constant
+IST = ZoneInfo("Asia/Kolkata")
+
 _SUPPORTED_PRODUCTS = ("CRUDEOILM", "GOLDM", "NATGASMINI")
 
 
@@ -73,6 +77,14 @@ def _parse_args():
 
 
 PRODUCT = "CRUDEOILM"  # overridden in main() from CLI
+
+# M13_S_paper_safety_flags - explicit PAPER-only contract
+# BROKER_SUBMISSION=False  -> no live order path exists in src/mcx/
+# LIVE_EXECUTION=False     -> no live execution path exists in src/mcx/
+# EXECUTION_MODE="PAPER"   -> PAPER-only mode required for certification
+BROKER_SUBMISSION = False
+LIVE_EXECUTION = False
+EXECUTION_MODE = "PAPER"
 STATE_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_experimental.json"
 PREDICTIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_predictions.jsonl"
 OUTCOMES_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_outcomes.jsonl"
@@ -513,6 +525,11 @@ def close_and_reconcile(obj, pos, exit_reason, exit_ltp, pnl_pct, state):
 
 
 def main():
+    # M13_S_paper_safety_flags - hard refuse if any mode flag is misconfigured
+    assert EXECUTION_MODE == "PAPER", "EXECUTION_MODE must be PAPER"
+    assert BROKER_SUBMISSION is False, "BROKER_SUBMISSION must be False"
+    assert LIVE_EXECUTION is False, "LIVE_EXECUTION must be False"
+
     global PRODUCT, STATE_PATH, PREDICTIONS_PATH, OUTCOMES_PATH, DECISIONS_PATH
     PRODUCT = _parse_args()
     STATE_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_experimental.json"
@@ -814,34 +831,34 @@ def main():
             if pnl_pct < active.get("min_profit_pct", 0):
                 active["min_profit_pct"] = round(pnl_pct, 2)
 
-                entry_dt = datetime.fromisoformat(active["entry_time"])
-                mins = int((datetime.now() - entry_dt).total_seconds() / 60)
+            entry_dt = datetime.fromisoformat(active["entry_time"])
+            mins = int((datetime.now() - entry_dt).total_seconds() / 60)
 
-                closed = False
-                if pnl_pct <= STOP_LOSS_PCT:
-                    close_and_reconcile(obj, active, "STOP_LOSS", ltp, pnl_pct, state); closed = True
-                elif pnl_pct >= T3_PCT:
-                    close_and_reconcile(obj, active, "T3_50%", ltp, pnl_pct, state); closed = True
-                elif pnl_pct >= T2_PCT:
-                    close_and_reconcile(obj, active, "T2_30%", ltp, pnl_pct, state); closed = True
-                elif pnl_pct >= T1_PCT:
-                    close_and_reconcile(obj, active, "T1_15%", ltp, pnl_pct, state); closed = True
-                elif datetime.now().time() >= dtime(23, 10):
-                    close_and_reconcile(obj, active, "MCX_CLOSE_2310", ltp, pnl_pct, state); closed = True
+            closed = False
+            if pnl_pct <= STOP_LOSS_PCT:
+                close_and_reconcile(obj, active, "STOP_LOSS", ltp, pnl_pct, state); closed = True
+            elif pnl_pct >= T3_PCT:
+                close_and_reconcile(obj, active, "T3_50%", ltp, pnl_pct, state); closed = True
+            elif pnl_pct >= T2_PCT:
+                close_and_reconcile(obj, active, "T2_30%", ltp, pnl_pct, state); closed = True
+            elif pnl_pct >= T1_PCT:
+                close_and_reconcile(obj, active, "T1_15%", ltp, pnl_pct, state); closed = True
+            elif datetime.now().time() >= dtime(23, 10):
+                close_and_reconcile(obj, active, "MCX_CLOSE_2310", ltp, pnl_pct, state); closed = True
+            else:
+                should_exit, reason, new_stop = pm_evaluate_exit(
+                    active, ltp, decision, regime, mins)
+                if should_exit:
+                    close_and_reconcile(obj, active, reason, ltp, pnl_pct, state); closed = True
                 else:
-                    should_exit, reason, new_stop = pm_evaluate_exit(
-                        active, ltp, decision, regime, mins)
-                    if should_exit:
-                        close_and_reconcile(obj, active, reason, ltp, pnl_pct, state); closed = True
-                    else:
-                        if new_stop and new_stop > active.get("stop_loss", 0):
-                            active["stop_loss"] = new_stop
-                        print(f"  holding {active['type']} {active['strike']:.0f}  "
-                              f"ltp=₹{ltp:.2f}  pnl={pnl_pct:+.2f}%  "
-                              f"MFE={active.get('max_profit_pct')}%  "
-                              f"SL=₹{active.get('stop_loss')}  min={mins}")
-                if not closed:
-                    save_state(state)
+                    if new_stop and new_stop > active.get("stop_loss", 0):
+                        active["stop_loss"] = new_stop
+                    print(f"  holding {active['type']} {active['strike']:.0f}  "
+                          f"ltp=₹{ltp:.2f}  pnl={pnl_pct:+.2f}%  "
+                          f"MFE={active.get('max_profit_pct')}%  "
+                          f"SL=₹{active.get('stop_loss')}  min={mins}")
+            if not closed:
+                save_state(state)
         else:
             # Entry logic
             if not dq_ok:

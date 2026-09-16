@@ -14,35 +14,46 @@ DIVERSITY_MAX_PER_DAY = 40
 
 
 def classify_win(trade):
-    """Return 'T1_WIN' | 'SL_LOSS' | 'NON_T1_NON_SL_EXIT' based on exit_reason."""
-    r = (trade.get("exit_reason") or "").upper()
-    # T1 hit — explicit target exits
-    if r.startswith("T1") or r.startswith("T2") or r.startswith("T3"):
+    """Return 'T1_WIN' | 'SL_LOSS' | 'NONCOUNTABLE' from authoritative
+    first-touch evidence.
+
+    exit_reason prefix and net_pnl sign are NOT certification authorities;
+    they describe realized P&L, which is orthogonal to certification.
+    """
+    ft = (trade.get("first_touch_result") or "").upper()
+    if ft == "T1_FIRST":
         return "T1_WIN"
-    if r == "STOP_LOSS":
+    if ft == "SL_FIRST":
         return "SL_LOSS"
-    # Other exits: outcome-based
-    net = trade.get("net_pnl") or 0
-    return "T1_WIN" if net > 0 else "SL_LOSS"
+    return "NONCOUNTABLE"
 
 
 def update_counters(state, trade):
-    """Mutate state dict in-place; idempotent per trade_id."""
+    """Mutate state dict in-place; idempotent per trade_id.
+
+    First-touch is the certification authority.
+    Non-countable trades (missing/ambiguous first-touch) are rejected.
+    """
     tid = trade.get("trade_id")
     if not tid:
         return state
     seen = state.setdefault("_counted_trade_ids", [])
-    if tid in seen:
+    rejected = state.setdefault("_cert_rejected_trade_ids", [])
+    if tid in seen or tid in rejected:
         return state
 
-    # PATCH C: counter hard gate — registry authority overrides record flag
+    # Counter hard gate — registry authority overrides record flag
     from mcx.mcx_version import is_certification_eligible
     product = trade.get("product") or state.get("product")
     if not is_certification_eligible(product):
         trade["_counter_rejected"] = "PRODUCT_NOT_CERTIFICATION_ELIGIBLE"
+        rejected.append(tid)
+        state["_cert_rejected_trade_ids"] = rejected[-500:]
         return state
     if not bool(trade.get("certification_eligible", False)):
         trade["_counter_rejected"] = "RECORD_NOT_CERTIFICATION_ELIGIBLE"
+        rejected.append(tid)
+        state["_cert_rejected_trade_ids"] = rejected[-500:]
         return state
 
     cls = classify_win(trade)
@@ -50,10 +61,16 @@ def update_counters(state, trade):
     state.setdefault("sl_losses", 0)
     if cls == "T1_WIN":
         state["t1_hit_wins"] += 1
-    else:
+        seen.append(tid)
+    elif cls == "SL_LOSS":
         state["sl_losses"] += 1
-    seen.append(tid)
-    state["_counted_trade_ids"] = seen[-500:]  # bound growth
+        seen.append(tid)
+    else:
+        trade["_cert_noncountable_reason"] = "FIRST_TOUCH_MISSING_OR_AMBIGUOUS"
+        rejected.append(tid)
+
+    state["_counted_trade_ids"] = seen[-500:]
+    state["_cert_rejected_trade_ids"] = rejected[-500:]
     return state
 
 
@@ -98,9 +115,9 @@ def evaluate_diversity(state):
 
 def status(state):
     """Return certification status dict."""
-    total = state.get("total_trades", 0)
     t1 = state.get("t1_hit_wins", 0)
     sl = state.get("sl_losses", 0)
+    total = t1 + sl  # certification denominator: first-touch-resolved only
     passes = t1 >= CERTIFICATION_THRESHOLD and total >= 100
     div_pass, div_details = evaluate_diversity(state)
     return {

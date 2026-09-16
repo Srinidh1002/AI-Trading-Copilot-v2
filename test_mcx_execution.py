@@ -556,8 +556,14 @@ def t73_counters_unchanged():
             assert st["total_trades"] == 0
 
 def t74_official_hashes_unchanged():
+    # M14C: CRUDEOILM active state replaced with fresh V3 genesis.
+    # Original POST_PRECISION_V2 evidence archived at
+    #   data/paper_trades/_archived_MCX_POST_PRECISION_V2_invalidated/
+    # CRUDEOILM V3 active state is expected to drift on live operation
+    # and is therefore NOT hash-pinned here; only the archived V2 is.
+    # GOLDM / NATGASMINI remain PRECERT and frozen.
     expected = {
-        "data/paper_trades/mcx_crudeoilm_experimental.json": "7c5d47bbb01c3437",
+        "data/paper_trades/_archived_MCX_POST_PRECISION_V2_invalidated/mcx_crudeoilm_experimental.json": "955b080a97fd197c",
         "data/paper_trades/mcx_goldm_experimental.json": "c157f083d805959b",
         "data/paper_trades/mcx_natgasmini_experimental.json": "57225ee87ceac5a5",
     }
