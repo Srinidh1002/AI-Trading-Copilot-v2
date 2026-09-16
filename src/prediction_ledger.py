@@ -46,7 +46,7 @@ class PredictionLedger:
     def build_record(self, market, bias, bias_confidence, readiness, action,
                      blockers, bull_score, bear_score, bull_pillars, bear_pillars,
                      evidence_coverage_pct, spot, spot_freshness, regime,
-                     selected_trade=None, config_version="v3"):
+                     selected_trade=None, config_version="v3", premarket_state=None):
         """Build a standard prediction record."""
         record = {
             "timestamp": datetime.now().isoformat(),
@@ -66,6 +66,7 @@ class PredictionLedger:
             "regime": regime,
             "config_version": config_version,
             "selected_trade": selected_trade,
+            "premarket_state": premarket_state,
         }
         # Fingerprint
         record["fingerprint"] = fingerprint_snapshot(

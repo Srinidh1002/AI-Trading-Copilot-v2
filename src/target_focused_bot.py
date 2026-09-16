@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from SmartApi import SmartConnect
 import pyotp
 from collections import defaultdict
+from dataclasses import asdict
 from market_intelligence import MarketIntelligence
 from index_weights import load_index_weights
 from contract_metadata import load_contract_index, resolve_lot_size
@@ -43,6 +44,7 @@ from prediction_ledger import PredictionLedger
 from outcome_ledger import OutcomeLedger
 from first_touch_tracker import EquityFirstTouchTracker  # R3_first_touch_wire
 from diversity_tracker import EquityCertificationDiversityTracker  # R15_diversity_authority
+from services.core.premarket_state_builder_v2 import build_premarket_state_v2
 
 load_dotenv()
 
@@ -147,6 +149,8 @@ class UnifiedTradingBot:
         self.certification_schema_version = "EQUITY_CERT_V2_PHASE_BUCKETS"
         # R18_regime_plumbing - durable cross-method regime context
         self._last_regime_ctx = {"regime": "UNKNOWN", "confidence": 0.0}
+        # P8B.2 - canonical previous-session/pre-market evidence for current cycle.
+        self._last_premarket_state = None
         self.is_legacy_precert   = False
         # R8_prediction_link - fingerprint of most recent prediction (per cycle)
         self._last_prediction_fingerprint = None
@@ -917,6 +921,9 @@ class UnifiedTradingBot:
         print('ENHANCED MARKET ANALYSIS - ALL PILLARS')
         print('='*60)
         
+        # P8B.2 - each evaluation must build fresh canonical pre-market evidence.
+        self._last_premarket_state = None
+
         # Session open tracking
         if not hasattr(self, '_session_open_price'):
             # Fetch day open with honest status reporting
@@ -1045,6 +1052,7 @@ class UnifiedTradingBot:
         # ============ PILLAR 5: India VIX ============
         vix_regime = 'UNKNOWN'
         vix_val = None
+        evix = {}
         if self.market_intel:
             try:
                 vix = self.market_intel.get_india_vix()
@@ -1077,6 +1085,7 @@ class UnifiedTradingBot:
         
         # ============ PILLAR 6: FII/DII ============
         fii_bias = 'UNKNOWN'
+        efii = {}
         if self.market_intel:
             try:
                 # Enhanced FII/DII (Phase C5)
@@ -1180,12 +1189,13 @@ class UnifiedTradingBot:
                 print(f"[C] External error: {str(e)[:50]}")
 
         # ============ PHASE C6: CALENDAR ============
+        high_impact = {}
         if self.calendar_engine:
             try:
                 high_impact = self.calendar_engine.minutes_to_next_high_impact(10)
                 if high_impact.get("block_entries"):
                     for ev in high_impact.get("events", []):
-                        print(f"[C6] EVENT RISK: {ev['name']} in {ev['in_minutes']}min -> entries BLOCKED")
+                        print(f"[C6] EVENT RISK: {ev['name']} in {ev['in_minutes']}min -> LEGACY UNVERIFIED ADVISORY")
                 else:
                     today_events = self.calendar_engine.upcoming_today()
                     if today_events:
@@ -1195,6 +1205,58 @@ class UnifiedTradingBot:
             except Exception as e:
                 print(f"[C6] Calendar error: {str(e)[:50]}")
         
+        # ============ P8B.2: CANONICAL PRE-MARKET V2 ============
+        try:
+            _session_open_for_v2 = (
+                self._day_open_value
+                if getattr(self, '_day_open_status', None) == 'OK'
+                else None
+            )
+            self._last_premarket_state = build_premarket_state_v2(
+                market_symbol=self.market,
+                generated_at=datetime.now().astimezone(),
+                previous_day_payload=prev_ctx,
+                session_open=_session_open_for_v2,
+                external_payload=ext,
+                vix_payload=evix,
+                fii_dii_payload=efii,
+                event_payload=high_impact,
+                # Legacy EconomicCalendarEngine uses approximate recurring dates.
+                # P8C will replace this with authoritative event evidence.
+                event_source_authoritative=False,
+            )
+            _pm = self._last_premarket_state
+            _pm_gap = _pm.gap
+            _pm_prev = _pm.previous_session
+            print(
+                f'[P8B.2] PremarketV2 prev={_pm.previous_session_status} '
+                f'global={_pm.global_risk.evidence_status} '
+                f'vix={_pm.volatility.evidence_status} '
+                f'flow={_pm.institutional_flow.evidence_status} '
+                f'event={_pm.event_risk.evidence_status}'
+            )
+            if _pm_prev is not None:
+                print(
+                    f'        Prev={_pm_prev.day_type} '
+                    f'dir={_pm_prev.direction} '
+                    f'closeLoc={_pm_prev.close_location:.2f} '
+                    f'ATR14={_pm_prev.atr14}'
+                )
+            if _pm_gap is not None:
+                print(
+                    f'        Gap={_pm_gap.gap_pct:+.3f}% '
+                    f'ATRmult={_pm_gap.atr_multiple} '
+                    f'dir={_pm_gap.direction}'
+                )
+            if _pm.event_risk.provider_block_entries and not _pm.event_risk.hard_block_eligible:
+                print(
+                    '[P8B.2] Legacy calendar requested block, but source is UNVERIFIED; '
+                    'canonical hard block remains disabled.'
+                )
+        except Exception as _e:
+            self._last_premarket_state = None
+            print(f'[P8B.2] PremarketV2 unavailable: {str(_e)[:80]}')
+
         # ============ PHASE C7: NEWS ============
         if self.news_engine:
             try:
@@ -1280,13 +1342,12 @@ class UnifiedTradingBot:
         _regime_for_flat = (regime_ctx.get("regime", "UNKNOWN") if isinstance(regime_ctx, dict) else "UNKNOWN")
         _regime_is_range = _regime_for_flat in ("RANGE_BOUND", "LOW_VOLATILITY_COMPRESSION", "UNKNOWN")
         
-        # Check overnight context via previous_day_engine
+        # P8B.2 - overnight gap authority now comes from canonical pre-market state.
         _gap_pct = None
         try:
-            if self.prev_day_engine:
-                _pd = self.prev_day_engine.fetch()
-                if _pd.get("status") == "OK" and _pd.get("close"):
-                    _gap_pct = ((self._session_open_price - _pd["close"]) / _pd["close"]) * 100 if self._session_open_price else None
+            _pm = getattr(self, '_last_premarket_state', None)
+            if _pm is not None and _pm.gap is not None:
+                _gap_pct = _pm.gap.gap_pct
         except Exception:
             pass
         
@@ -1354,13 +1415,14 @@ class UnifiedTradingBot:
         print(f'  Bull pillars: {bull_pillars}/5')
         print(f'  Bear pillars: {bear_pillars}/5')
 
+        # P8B.2 - only authoritative canonical event evidence may hard-block.
         event_block = False
-        if self.calendar_engine:
-            try:
-                _evt = self.calendar_engine.minutes_to_next_high_impact(10)
-                event_block = _evt.get('block_entries', False)
-            except Exception:
-                pass
+        try:
+            _pm = getattr(self, '_last_premarket_state', None)
+            if _pm is not None:
+                event_block = bool(_pm.event_risk.hard_block_eligible)
+        except Exception:
+            event_block = False
         
         decision_ctx = {
             'market_identity_ok': True,
@@ -1377,6 +1439,7 @@ class UnifiedTradingBot:
             'evidence_coverage_pct': coverage_pct,
             'regime': regime_ctx.get('regime', 'UNKNOWN'),
             'event_block': event_block,
+            'premarket_state': getattr(self, '_last_premarket_state', None),
         }
         
         decision = self.decision_composer.compose(decision_ctx)
@@ -1530,16 +1593,15 @@ class UnifiedTradingBot:
             print("⚠️ No strong signal. Skipping trade.")
             return None
         
-        # Event gate - block if high-impact event within 10 min
-        if self.calendar_engine:
-            try:
-                _evt = self.calendar_engine.minutes_to_next_high_impact(10)
-                if _evt.get("block_entries"):
-                    _names = ", ".join(e["name"] for e in _evt.get("events", []))
-                    print(f'>>> SKIP: High-impact event within 10min: {_names}')
-                    return None
-            except Exception:
-                pass
+        # P8B.2 - post-signal event gate accepts canonical authoritative events only.
+        try:
+            _pm = getattr(self, '_last_premarket_state', None)
+            if _pm is not None and _pm.event_risk.hard_block_eligible:
+                _names = ', '.join(_pm.event_risk.event_names) or 'AUTHORITATIVE_EVENT'
+                print(f'>>> SKIP: Authoritative high-impact event: {_names}')
+                return None
+        except Exception:
+            pass
         
         # RE-ENTRY + DAILY LIMIT GATES (Phase H critical fix)
         from datetime import datetime as _dt2
@@ -2263,6 +2325,12 @@ class UnifiedTradingBot:
         """
         self._last_prediction_fingerprint = None
         try:
+            _premarket_state = getattr(self, '_last_premarket_state', None)
+            _premarket_payload = (
+                asdict(_premarket_state)
+                if _premarket_state is not None
+                else None
+            )
             _record = self.prediction_ledger.build_record(
                 market=self.market,
                 bias=bias,
@@ -2279,6 +2347,7 @@ class UnifiedTradingBot:
                 spot_freshness=spot_freshness,
                 regime=regime,
                 selected_trade=selected_trade,
+                premarket_state=_premarket_payload,
                 config_version=config_version,
             )
         except Exception as _e:
