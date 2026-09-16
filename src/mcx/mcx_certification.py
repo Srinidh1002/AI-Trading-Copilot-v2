@@ -28,55 +28,230 @@ def classify_win(trade):
     return "NONCOUNTABLE"
 
 
-def update_counters(state, trade):
-    """Mutate state dict in-place; idempotent per trade_id.
+def countable_total(state):
+    """Authoritative fixed-sample certification denominator."""
+    return (
+        int(state.get("t1_hit_wins", 0) or 0)
+        + int(state.get("sl_losses", 0) or 0)
+    )
 
-    First-touch is the certification authority.
-    Non-countable trades (missing/ambiguous first-touch) are rejected.
+
+def _counted_completed_trades(state):
+    """Return only completed trades accepted into certification."""
+    counted = set(
+        state.get("_counted_trade_ids", [])
+    )
+
+    return [
+        trade
+        for trade in state.get(
+            "completed_trades",
+            [],
+        )
+        if trade.get("trade_id") in counted
+    ]
+
+
+def _entry_day(trade):
+    return str(
+        trade.get("entry_time") or ""
+    )[:10]
+
+
+def update_counters(state, trade):
+    """Mutate certification counters exactly once per accepted trade.
+
+    Authority:
+    - first-touch resolved trades only;
+    - exactly the first 100 accepted countable trades;
+    - maximum 40 accepted countable trades per entry date;
+    - trade 101+ cannot alter the fixed sample.
     """
     tid = trade.get("trade_id")
+
     if not tid:
         return state
-    seen = state.setdefault("_counted_trade_ids", [])
-    rejected = state.setdefault("_cert_rejected_trade_ids", [])
+
+    seen = state.setdefault(
+        "_counted_trade_ids",
+        [],
+    )
+
+    rejected = state.setdefault(
+        "_cert_rejected_trade_ids",
+        [],
+    )
+
     if tid in seen or tid in rejected:
         return state
 
-    # Counter hard gate — registry authority overrides record flag
-    from mcx.mcx_version import is_certification_eligible
-    product = trade.get("product") or state.get("product")
-    if not is_certification_eligible(product):
-        trade["_counter_rejected"] = "PRODUCT_NOT_CERTIFICATION_ELIGIBLE"
+    # Registry authority remains mandatory.
+    from mcx.mcx_version import (
+        is_certification_eligible,
+    )
+
+    product = (
+        trade.get("product")
+        or state.get("product")
+    )
+
+    if not is_certification_eligible(
+        product
+    ):
+        trade["_counter_rejected"] = (
+            "PRODUCT_NOT_CERTIFICATION_ELIGIBLE"
+        )
+
         rejected.append(tid)
-        state["_cert_rejected_trade_ids"] = rejected[-500:]
-        return state
-    if not bool(trade.get("certification_eligible", False)):
-        trade["_counter_rejected"] = "RECORD_NOT_CERTIFICATION_ELIGIBLE"
-        rejected.append(tid)
-        state["_cert_rejected_trade_ids"] = rejected[-500:]
+
+        state[
+            "_cert_rejected_trade_ids"
+        ] = rejected[-500:]
+
         return state
 
+    if not bool(
+        trade.get(
+            "certification_eligible",
+            False,
+        )
+    ):
+        trade["_counter_rejected"] = (
+            "RECORD_NOT_CERTIFICATION_ELIGIBLE"
+        )
+
+        rejected.append(tid)
+
+        state[
+            "_cert_rejected_trade_ids"
+        ] = rejected[-500:]
+
+        return state
+
+
+    # First-touch remains the outcome authority.
     cls = classify_win(trade)
-    state.setdefault("t1_hit_wins", 0)
-    state.setdefault("sl_losses", 0)
+
+    if cls == "NONCOUNTABLE":
+
+        trade[
+            "_cert_noncountable_reason"
+        ] = (
+            "FIRST_TOUCH_MISSING_OR_AMBIGUOUS"
+        )
+
+        rejected.append(tid)
+
+        state[
+            "_cert_rejected_trade_ids"
+        ] = rejected[-500:]
+
+        return state
+
+
+    # Fixed first-100 authority.
+    #
+    # Once 100 countable trades have been accepted,
+    # no later trade can repair or change the epoch.
+    if len(seen) >= 100:
+
+        trade["_counter_rejected"] = (
+            "CERTIFICATION_FIRST_100_COMPLETE"
+        )
+
+        rejected.append(tid)
+
+        state[
+            "_cert_rejected_trade_ids"
+        ] = rejected[-500:]
+
+        return state
+
+
+    # Daily diversity authority must be enforced at
+    # counting time, not merely evaluated afterward.
+    entry_day = _entry_day(trade)
+
+    if not entry_day:
+
+        trade["_counter_rejected"] = (
+            "ENTRY_DATE_MISSING_FOR_DAILY_CAP"
+        )
+
+        rejected.append(tid)
+
+        state[
+            "_cert_rejected_trade_ids"
+        ] = rejected[-500:]
+
+        return state
+
+
+    same_day_count = sum(
+        1
+        for prior
+        in _counted_completed_trades(
+            state
+        )
+        if _entry_day(prior)
+        == entry_day
+    )
+
+
+    if same_day_count >= DIVERSITY_MAX_PER_DAY:
+
+        trade["_counter_rejected"] = (
+            "DAILY_COUNTABLE_CAP_REACHED"
+        )
+
+        rejected.append(tid)
+
+        state[
+            "_cert_rejected_trade_ids"
+        ] = rejected[-500:]
+
+        return state
+
+
+    state.setdefault(
+        "t1_hit_wins",
+        0,
+    )
+
+    state.setdefault(
+        "sl_losses",
+        0,
+    )
+
+
     if cls == "T1_WIN":
         state["t1_hit_wins"] += 1
-        seen.append(tid)
+
     elif cls == "SL_LOSS":
         state["sl_losses"] += 1
-        seen.append(tid)
-    else:
-        trade["_cert_noncountable_reason"] = "FIRST_TOUCH_MISSING_OR_AMBIGUOUS"
-        rejected.append(tid)
 
-    state["_counted_trade_ids"] = seen[-500:]
-    state["_cert_rejected_trade_ids"] = rejected[-500:]
+    else:
+        raise AssertionError(
+            f"unexpected certification class: {cls}"
+        )
+
+
+    seen.append(tid)
+
+    state[
+        "_counted_trade_ids"
+    ] = seen[-500:]
+
+    state[
+        "_cert_rejected_trade_ids"
+    ] = rejected[-500:]
+
     return state
 
 
 def evaluate_diversity(state):
     """Return (passes: bool, details: dict)."""
-    trades = state.get("completed_trades", [])
+    trades = _counted_completed_trades(state)
     days = set()
     regimes = set()
     phases = set()
@@ -117,8 +292,8 @@ def status(state):
     """Return certification status dict."""
     t1 = state.get("t1_hit_wins", 0)
     sl = state.get("sl_losses", 0)
-    total = t1 + sl  # certification denominator: first-touch-resolved only
-    passes = t1 >= CERTIFICATION_THRESHOLD and total >= 100
+    total = countable_total(state)  # fixed certification denominator
+    passes = t1 >= CERTIFICATION_THRESHOLD and total == 100
     div_pass, div_details = evaluate_diversity(state)
     return {
         "epoch": state.get("epoch"),

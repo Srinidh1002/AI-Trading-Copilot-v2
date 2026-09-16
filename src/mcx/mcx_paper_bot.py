@@ -49,7 +49,7 @@ from mcx.mcx_price_oi import PriceOITracker, score as price_oi_score
 from mcx.mcx_setup import classify as classify_setup, describe as setup_describe
 from mcx.mcx_reconcile import reconcile as reconcile_trade, append_outcome
 from mcx.mcx_greeks import analyze_option
-from mcx.mcx_certification import update_counters as cert_update, print_status as cert_print
+from mcx.mcx_certification import update_counters as cert_update, print_status as cert_print, status as cert_status
 from mcx.mcx_learning import collect as learn_collect
 from mcx.mcx_presession import build_report as ps_build, print_report as ps_print, fetch_previous_session
 from mcx.mcx_health import print_health
@@ -114,6 +114,25 @@ def compute_observation_only(product, integrity_ready):
     cert_eligible = is_certification_eligible(product)
     return not (integrity_ok and cert_eligible)
 
+
+
+
+def certification_target_reached(state, product=None):
+    """True once the fixed first-100 certification sample is complete."""
+    p = (
+        product
+        or state.get("product")
+        or PRODUCT
+    )
+
+    if not is_certification_eligible(p):
+        return False
+
+    return (
+        cert_status(state)
+        .get("total_countable_trades", 0)
+        >= 100
+    )
 
 def login():
     api_key = os.getenv("ANGEL_API_KEY")
@@ -522,8 +541,17 @@ def close_and_reconcile(obj, pos, exit_reason, exit_ltp, pnl_pct, state):
     print(f"  {pos['type']} {pos['strike']:.0f}  entry=₹{pos['entry']:.2f} → exit=₹{fill:.2f}")
     print(f"  MFE={pos['mfe_pct']:.2f}%  MAE={pos['mae_pct']:.2f}%  giveback={rec.get('profit_giveback_pct')}")
     print(f"  Gross=₹{rec.get('gross_pnl')}  Costs=₹{rec.get('costs_total')}  NET=₹{rec.get('net_pnl')}")
-    print(f"  Total P&L=₹{state['total_pnl']:.2f}  Progress={state['total_trades']}/100  "
-          f"W={state['winning_trades']} L={state['losing_trades']}")
+    _cert_total = cert_status(
+        state
+    )["total_countable_trades"]
+
+    print(
+        f"  Total P&L=₹{state['total_pnl']:.2f}  "
+        f"Cert={_cert_total}/100  "
+        f"RawClosed={state['total_trades']}  "
+        f"W={state['winning_trades']} "
+        f"L={state['losing_trades']}"
+    )
     print(f"{'=' * 90}")
 
 
@@ -600,7 +628,7 @@ def main():
     print(f"[state] epoch={state.get('epoch')}  {state['total_trades']}/100  "
           f"P&L=₹{state['total_pnl']:.2f}  obs_only={observation_only}")
     _cfg = get_product_epochs(PRODUCT) or {}
-    _ctr = f"{state['total_trades']}/100" if _cfg.get("certification_eligible") else "PRECERT"
+    _ctr = (f"{cert_status(state)['total_countable_trades']}/100" if _cfg.get("certification_eligible") else "PRECERT")
     print(f"  CERTIFICATION_ELIGIBLE={_cfg.get('certification_eligible', False)}   CERTIFICATION_COUNTER={_ctr}")
 
     obj = login()
@@ -639,13 +667,37 @@ def main():
 
     attempts = 0
     while attempts < MAX_ATTEMPTS:
+        if (
+            certification_target_reached(
+                state,
+                PRODUCT,
+            )
+            and not state.get(
+                "active_position"
+            )
+        ):
+            print(
+                "CERTIFICATION_FIRST_100_COMPLETE — "
+                "fixed sample frozen; stop."
+            )
+            break
+
         attempts += 1
 
         # Calendar check (replaces market_status)
         cal = get_session()
         print(f"\n{'=' * 100}")
-        print(f"Attempt {attempts} | Trades: {state['total_trades']}/100 | "
-              f"MCX: {cal['status']} ({cal.get('note', '')})")
+        _cert_total = cert_status(
+            state
+        )["total_countable_trades"]
+
+        print(
+            f"Attempt {attempts} | "
+            f"Countable: {_cert_total}/100 | "
+            f"Raw closed: {state['total_trades']} | "
+            f"MCX: {cal['status']} "
+            f"({cal.get('note', '')})"
+        )
         print(f"{'=' * 100}")
 
         if not cal.get("tradable"):
@@ -887,8 +939,17 @@ def main():
 
     save_state(state)
     print(f"\n{'=' * 100}")
-    print(f"MCX PAPER BOT V4 stopped. Attempts={attempts} Trades={state['total_trades']}/100 "
-          f"P&L=₹{state['total_pnl']:.2f}")
+    _cert_total = cert_status(
+        state
+    )["total_countable_trades"]
+
+    print(
+        f"MCX PAPER BOT V4 stopped. "
+        f"Attempts={attempts} "
+        f"Countable={_cert_total}/100 "
+        f"RawClosed={state['total_trades']} "
+        f"P&L=₹{state['total_pnl']:.2f}"
+    )
     print(f"{'=' * 100}")
     print()
     cert_print(state)
