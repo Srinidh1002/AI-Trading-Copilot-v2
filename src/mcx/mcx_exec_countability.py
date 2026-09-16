@@ -27,6 +27,8 @@ REJECTIONS = (
     "FILL_NOT_REPRODUCIBLE_FROM_DEPTH",
     "ENTRY_QUOTE_NOT_VALID_STATUS",
     "EXIT_QUOTE_NOT_VALID_STATUS",
+    "ENTRY_QUOTE_EVIDENCE_VERIFICATION_ERROR",
+    "EXIT_QUOTE_EVIDENCE_VERIFICATION_ERROR",
 )
 
 VERIFY_EXECUTION_EVIDENCE = True
@@ -160,9 +162,12 @@ def is_countable(trade, product=None, known_trade_ids=None, *,
             reasons.append("DEPTH_QUANTITY_SEMANTICS_UNVERIFIED")
         try:
             reasons.extend(_evidence_verify_one(trade, trade.get("entry_quote_id"), "ENTRY", p))
+        except Exception:
+            reasons.append("ENTRY_QUOTE_EVIDENCE_VERIFICATION_ERROR")
+        try:
             reasons.extend(_evidence_verify_one(trade, trade.get("exit_quote_id"), "EXIT", p))
         except Exception:
-            pass
+            reasons.append("EXIT_QUOTE_EVIDENCE_VERIFICATION_ERROR")
     return (len(reasons) == 0, reasons)
 
 

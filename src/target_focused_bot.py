@@ -977,6 +977,17 @@ class UnifiedTradingBot:
         if stock_sentiment == 'INCOMPLETE':
             print('>>> SKIP: Stock data incomplete')
             self.decision_state = 'WAIT_DATA'
+            _persist_ok = self._persist_prediction(
+                bias='NEUTRAL', bias_confidence='WEAK',
+                readiness='WAIT', action='WAIT',
+                blockers=['STOCK_EVIDENCE_INCOMPLETE'],
+                coverage_pct=0, spot=spot,
+                spot_freshness=getattr(self, '_last_spot_freshness', {}).get('status', 'UNKNOWN'),
+                regime='UNKNOWN',
+                config_version='v3-phase-g',
+            )
+            if not _persist_ok:
+                self.decision_state = 'BLOCKED_LEDGER_PERSISTENCE'
             return 'NEUTRAL'
         print(f'[2/6] Stocks: {stock_sentiment} ({valid_count} valid / {missing_count} missing)')
         
@@ -1284,13 +1295,10 @@ class UnifiedTradingBot:
             _big_move = True
         if _gap_pct is not None and abs(_gap_pct) >= 0.30:
             _big_move = True
-        
-        if spot_trend == 'FLAT' and not _big_move and _regime_is_range:
-            print(f'>>> SKIP: Market FLAT (session={session_change:+.3f}% gap={_gap_pct if _gap_pct is None else round(_gap_pct,3)} regime={_regime_for_flat})')
-            self.decision_state = 'WAIT_CONFIRMATION'
-            return 'NEUTRAL'
-        
-        # Rule 2: Need 2+ independent pillars agreeing
+
+        # P20 P2B.4a - compute pillar counts, coverage, spot_fresh,
+        # session_state BEFORE the flat-market gate. Computation-only
+        # reorder; no decision condition, threshold, or branch changes.
         bull_pillars = sum([
             pcr_sentiment == 'BULLISH',
             stock_sentiment == 'BULLISH',
@@ -1305,15 +1313,8 @@ class UnifiedTradingBot:
             global_sentiment == 'RISK_OFF',
             fii_bias == 'BEARISH',
         ])
-        
-        print(f'  Bull pillars: {bull_pillars}/5')
-        print(f'  Bear pillars: {bear_pillars}/5')
-        
-        # ============ PHASE E: DECISION COMPOSER ============
-        session_state = self.market_phase.describe()
         spot_fresh = getattr(self, '_last_spot_freshness', {}).get('status', 'UNKNOWN')
         tech_ok = tech_consensus not in ('UNKNOWN', 'INSUFFICIENT_DATA')
-        
         total_pillars = 7
         loaded_pillars = sum([
             pcr_sentiment != 'NEUTRAL',
@@ -1325,7 +1326,34 @@ class UnifiedTradingBot:
             regime_ctx.get('regime', 'UNKNOWN') != 'UNKNOWN',
         ])
         coverage_pct = (loaded_pillars / total_pillars) * 100
-        
+        session_state = self.market_phase.describe()
+
+        if spot_trend == 'FLAT' and not _big_move and _regime_is_range:
+            print(f'>>> SKIP: Market FLAT (session={session_change:+.3f}% gap={_gap_pct if _gap_pct is None else round(_gap_pct,3)} regime={_regime_for_flat})')
+            self.decision_state = 'WAIT_CONFIRMATION'
+            _persist_ok = self._persist_prediction(
+                bias='NEUTRAL', bias_confidence='WEAK',
+                readiness='WAIT', action='WAIT',
+                blockers=['MARKET_FLAT_RANGE_BOUND'],
+                bull_score=bull_score,
+                bear_score=bear_score,
+                bull_pillars=bull_pillars,
+                bear_pillars=bear_pillars,
+                coverage_pct=coverage_pct, spot=spot,
+                spot_freshness=spot_fresh,
+                regime=_regime_for_flat,
+                config_version='v3-phase-g',
+            )
+            if not _persist_ok:
+                self.decision_state = 'BLOCKED_LEDGER_PERSISTENCE'
+            return 'NEUTRAL'
+
+        # Rule 2: Need 2+ independent pillars agreeing
+        # (bull_pillars / bear_pillars / coverage_pct / spot_fresh
+        #  are computed above the flat gate per P20 P2B.4a.)
+        print(f'  Bull pillars: {bull_pillars}/5')
+        print(f'  Bear pillars: {bear_pillars}/5')
+
         event_block = False
         if self.calendar_engine:
             try:
@@ -1360,32 +1388,27 @@ class UnifiedTradingBot:
             print(f'  [E] Blockers: {decision["blockers"]}')
         
         # ===== PHASE G1: Record prediction to ledger =====
-        # R8_prediction_link - reset per cycle, then capture fingerprint
-        self._last_prediction_fingerprint = None
-        try:
-            _record = self.prediction_ledger.build_record(
-                market=self.market,
-                bias=decision['bias'],
-                bias_confidence=decision['bias_confidence'],
-                readiness=decision['readiness'],
-                action=decision['action'],
-                blockers=decision.get('blockers', []),
-                bull_score=bull_score,
-                bear_score=bear_score,
-                bull_pillars=bull_pillars,
-                bear_pillars=bear_pillars,
-                evidence_coverage_pct=coverage_pct,
-                spot=spot,
-                spot_freshness=spot_fresh,
-                regime=regime_ctx.get('regime', 'UNKNOWN'),
-                selected_trade=None,
-                config_version='v3-phase-g',
-            )
-            self.prediction_ledger.record(_record)
-            # R8_prediction_link - immutable fingerprint for trade linkage
-            self._last_prediction_fingerprint = _record.get('fingerprint')
-        except Exception as _e:
-            print(f'[G1] ledger error: {str(_e)[:60]}')
+        # P20 P2B.4 - centralized fail-closed persistence
+        _persist_ok = self._persist_prediction(
+            bias=decision['bias'],
+            bias_confidence=decision['bias_confidence'],
+            readiness=decision['readiness'],
+            action=decision['action'],
+            blockers=decision.get('blockers', []),
+            bull_score=bull_score,
+            bear_score=bear_score,
+            bull_pillars=bull_pillars,
+            bear_pillars=bear_pillars,
+            coverage_pct=coverage_pct,
+            spot=spot,
+            spot_freshness=spot_fresh,
+            regime=regime_ctx.get('regime', 'UNKNOWN'),
+            selected_trade=None,
+            config_version='v3-phase-g',
+        )
+        if not _persist_ok:
+            self.decision_state = 'BLOCKED_LEDGER_PERSISTENCE'
+            return 'NEUTRAL'
         
         if decision['action'] == 'BUY_CALL':
             self.decision_state = 'ENTRY_ELIGIBLE'
@@ -1799,7 +1822,7 @@ class UnifiedTradingBot:
                         
                         
                         # ===== D7_D9_design_b — inline Design B trail (Reading B) =====
-                        # T1 (+15% LTP) activates trail, does NOT exit.
+                        # T1 (+15% executable BID) activates trail, does NOT exit.
                         # Trail = max(entry * 1.10, peak_bid * 0.95). Never below +10%.
                         # T3 (+50%) and SL (-5%) still exit hard.
                         try:
@@ -1833,7 +1856,7 @@ class UnifiedTradingBot:
                                 if _stop is not None and current_bid is not None:
                                     if current_bid <= _stop:
                                         _exit_px, _pnl, _pnl_pct = self._bid_based_exit(
-                                            entry, current_bid, current_price, self.lot_size)
+                                            entry, current_bid, self.lot_size)
                                         print(f'  TRAIL STOP HIT: bid={current_bid:.2f} stop={_stop:.2f} exit={_exit_px:.2f}')
                                         self.close_position(trade_id, _exit_px, 'TRAIL_STOP', _pnl, _pnl_pct)
                                         break
@@ -1851,14 +1874,14 @@ class UnifiedTradingBot:
                                     # If long CE and spot fell >0.5%, invalidate
                                     if trade['type'] == 'CE' and spot_move_pct < -0.5:
                                         print(f'\n⚠️ UNDERLYING INVALIDATION: spot {spot_move_pct:+.2f}%')
-                                        _exit_px, _pnl, _pnl_pct = self._bid_based_exit(entry, current_bid, current_price, self.lot_size)
+                                        _exit_px, _pnl, _pnl_pct = self._bid_based_exit(entry, current_bid, self.lot_size)
                                         self.close_position(trade_id, _exit_px, 'SPOT_INVALIDATED', _pnl, _pnl_pct)
                                         self.stop_losses += 1
                                         break
                                     # If long PE and spot rose >0.5%, invalidate
                                     elif trade['type'] == 'PE' and spot_move_pct > 0.5:
                                         print(f'\n⚠️ UNDERLYING INVALIDATION: spot {spot_move_pct:+.2f}%')
-                                        _exit_px, _pnl, _pnl_pct = self._bid_based_exit(entry, current_bid, current_price, self.lot_size)
+                                        _exit_px, _pnl, _pnl_pct = self._bid_based_exit(entry, current_bid, self.lot_size)
                                         self.close_position(trade_id, _exit_px, 'SPOT_INVALIDATED', _pnl, _pnl_pct)
                                         self.stop_losses += 1
                                         break
@@ -1868,14 +1891,14 @@ class UnifiedTradingBot:
                         # D7_D9_design_b — T1/T2 no longer exit here (T1 activates trail above)
                         if current_mark >= active_trade['t3_price']:  # R2_bid_authority
                             _exit_px, _pnl, _pnl_pct = self._bid_based_exit(
-                                entry, current_bid, current_price, self.lot_size)
+                                entry, current_bid, self.lot_size)
                             print(f'  T3 REACHED: bid={current_mark:.2f} exit={_exit_px:.2f}')
                             self.close_position(trade_id, _exit_px, 'T3_50%', _pnl, _pnl_pct)
                             self.t3_hits += 1
                             break
                         elif current_mark <= active_trade['sl_price']:  # R2_bid_authority
                             _exit_px, _pnl, _pnl_pct = self._bid_based_exit(
-                                entry, current_bid, current_price, self.lot_size)
+                                entry, current_bid, self.lot_size)
                             self.close_position(trade_id, _exit_px, 'STOP_LOSS', _pnl, _pnl_pct)
                             self.stop_losses += 1
                             break
@@ -1896,8 +1919,7 @@ class UnifiedTradingBot:
                 _ltp = _quote.get('ltp') or 0
                 _bid = _quote.get('bid')
                 if _bid is not None and _bid > 0:  # R2_bid_authority - session-close requires valid bid
-                    _exit_px, _pnl, _pnl_pct = self._bid_based_exit(
-                        entry, _bid, _ltp, self.lot_size)
+                    _exit_px, _pnl, _pnl_pct = self._bid_based_exit(entry, _bid, self.lot_size)
                     self.close_position(trade_id, _exit_px, 'MARKET_CLOSE_3:28PM', _pnl, _pnl_pct)
                     self.market_close_exits += 1
             except Exception as _e:
@@ -2226,12 +2248,66 @@ class UnifiedTradingBot:
         slip = bid * (self.capital_engine.slippage_pct / 100.0)
         return round(bid - slip, 2)
 
-    def _bid_based_exit(self, entry, exit_bid, fallback_ltp, lot_size):
-        """(exit_px, pnl, pnl_pct) using executable bid. Falls back to LTP with warning."""
+    def _persist_prediction(self, *, bias, bias_confidence, readiness, action,
+                            blockers, bull_score=0.0, bear_score=0.0,
+                            bull_pillars=0, bear_pillars=0,
+                            coverage_pct=0, spot=0, spot_freshness='UNKNOWN',
+                            regime='UNKNOWN', selected_trade=None,
+                            config_version='v3-phase-g'):
+        """P20 P2B.4 - centralized fail-closed prediction persistence.
+
+        Resets _last_prediction_fingerprint to None first, builds the
+        normal ledger record, calls record(), and only assigns the
+        fingerprint on an explicit True return.
+        Prints [G1] LEDGER_PERSISTENCE_FAILED and returns False on failure.
+        """
+        self._last_prediction_fingerprint = None
+        try:
+            _record = self.prediction_ledger.build_record(
+                market=self.market,
+                bias=bias,
+                bias_confidence=bias_confidence,
+                readiness=readiness,
+                action=action,
+                blockers=blockers or [],
+                bull_score=bull_score,
+                bear_score=bear_score,
+                bull_pillars=bull_pillars,
+                bear_pillars=bear_pillars,
+                evidence_coverage_pct=coverage_pct,
+                spot=spot,
+                spot_freshness=spot_freshness,
+                regime=regime,
+                selected_trade=selected_trade,
+                config_version=config_version,
+            )
+        except Exception as _e:
+            print(f'[G1] LEDGER_PERSISTENCE_FAILED build={str(_e)[:60]}')
+            return False
+        try:
+            _ok = self.prediction_ledger.record(_record)
+        except Exception as _e:
+            print(f'[G1] LEDGER_PERSISTENCE_FAILED record={str(_e)[:60]}')
+            return False
+        if not _ok:
+            print('[G1] LEDGER_PERSISTENCE_FAILED')
+            return False
+        _fp = _record.get('fingerprint')
+        if _fp:
+            self._last_prediction_fingerprint = _fp
+        return True
+
+    def _bid_based_exit(self, entry, exit_bid, lot_size):
+        """(exit_px, pnl, pnl_pct) using executable bid.
+
+        P20 P2B.4 - invariant: no LTP fallback. If no valid BID, raise
+        RuntimeError("EXIT_BID_UNAVAILABLE") so the outer monitoring loop
+        keeps the position active and retries next cycle with fresh
+        evidence. Never close on LTP.
+        """
         exit_px = self._exit_price_from_bid(exit_bid)
         if exit_px is None:
-            exit_px = fallback_ltp
-            print(f"  [D7] WARN: no bid available, using LTP {exit_px:.2f} as exit")
+            raise RuntimeError("EXIT_BID_UNAVAILABLE")
         pnl = (exit_px - entry) * lot_size
         pnl_pct = ((exit_px - entry) / entry) * 100 if entry else 0.0
         return exit_px, pnl, pnl_pct
