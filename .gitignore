@@ -26,3 +26,5 @@ phase6_gate1_provider_check.py
 artifacts/certification/task7a_replay_work/
 artifacts/diagnostics/
 artifacts/certification/task2/
+data/task9/live-decision-audit.json
+data/task9/live_stream/
