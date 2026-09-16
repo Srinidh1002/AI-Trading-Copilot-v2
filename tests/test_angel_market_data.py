@@ -3,7 +3,33 @@ from datetime import date
 
 import pytest
 
+import services.broker.angel_client as angel_client_module
 from services.broker.angel_client import AngelMarketDataClient
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_angel_credentials(monkeypatch):
+    """Keep Angel unit tests independent of the developer's real .env."""
+    monkeypatch.setattr(
+        angel_client_module,
+        "ANGEL_API_KEY",
+        "TEST_ONLY_API_KEY",
+    )
+    monkeypatch.setattr(
+        angel_client_module,
+        "ANGEL_CLIENT_ID",
+        "TEST_ONLY_CLIENT_ID",
+    )
+    monkeypatch.setattr(
+        angel_client_module,
+        "ANGEL_PIN",
+        "0000",
+    )
+    monkeypatch.setattr(
+        angel_client_module,
+        "ANGEL_TOTP_SECRET",
+        "JBSWY3DPEHPK3PXP",
+    )
 
 
 @patch("services.broker.angel_client.pyotp.TOTP")
