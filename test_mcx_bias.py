@@ -1,40 +1,116 @@
-import os, sys
-_HERE = os.path.dirname(os.path.abspath("src/mcx/mcx_snapshot.py"))
-sys.path.insert(0, "src")
-os.chdir(".")
+"""Offline MCX bias/provider-boundary checks.
 
-from dotenv import load_dotenv
-import pyotp
-from SmartApi import SmartConnect
+No credentials.
+No network.
+No PAPER state.
+"""
 
-from mcx.mcx_identity import MCXIdentityResolver
-from mcx.mcx_chain import build_chain
-from mcx.mcx_external_context import fetch_context
-from mcx.mcx_mtf import compute_mtf, print_mtf
-from mcx.mcx_bias import compose, print_bias
+import ast
+from pathlib import Path
 
-load_dotenv()
+from mcx.mcx_chain import (
+    LEGACY_CHAIN_RETIRED,
+    build_chain,
+)
 
-def login():
-    obj = SmartConnect(api_key=os.getenv("ANGEL_API_KEY"))
-    r = obj.generateSession(clientCode=os.getenv("ANGEL_USER_ID"),
-                            password=os.getenv("ANGEL_PASSWORD"),
-                            totp=pyotp.TOTP(os.getenv("ANGEL_TOTP_SECRET")).now())
-    return obj if r and r.get("status") else None
 
-obj = login()
-print("session OK" if obj else "session FAILED")
-if not obj: sys.exit(1)
+class FakeFYERSChain:
+    provider = "FYERS"
 
-res = MCXIdentityResolver().resolve_active("CRUDEOILM")
-fut_token = str(res["futures"]["token"])
-print(f"future token = {fut_token}")
+    def build(
+        self,
+        product,
+        window_steps=10,
+    ):
+        return {
+            "status": "OK",
+            "provider": "FYERS",
+            "product": product,
+            "window_steps": window_steps,
+        }
 
-mtf = compute_mtf(obj, fut_token, "MCX")
-print_mtf(mtf)
 
-chain = build_chain(obj, "CRUDEOILM", window_steps=10)
-ctx = fetch_context("CRUDEOILM")
+def test_legacy_chain_is_retired():
+    assert LEGACY_CHAIN_RETIRED is True
 
-b = compose(chain, ctx, mtf)
-print_bias(b)
+
+def test_legacy_chain_delegates_only_to_fyers_engine():
+    result = build_chain(
+        FakeFYERSChain(),
+        "CRUDEOILM",
+        window_steps=10,
+    )
+
+    assert result["status"] == "OK"
+    assert result["provider"] == "FYERS"
+
+
+def test_non_fyers_legacy_chain_fails_closed():
+    result = build_chain(
+        object(),
+        "CRUDEOILM",
+    )
+
+    assert (
+        result["status"]
+        == "LEGACY_CHAIN_RETIRED"
+    )
+
+
+def test_bias_test_has_no_broker_login_authority():
+    """Inspect Python structure, not raw self-referential text."""
+
+    source = Path(
+        "test_mcx_bias.py"
+    ).read_text(
+        encoding="utf-8"
+    )
+
+    tree = ast.parse(source)
+
+    imported_modules = set()
+    referenced_names = set()
+    referenced_attributes = set()
+
+    for node in ast.walk(tree):
+
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imported_modules.add(
+                    alias.name
+                )
+
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imported_modules.add(
+                    node.module
+                )
+
+        elif isinstance(node, ast.Name):
+            referenced_names.add(
+                node.id
+            )
+
+        elif isinstance(node, ast.Attribute):
+            referenced_attributes.add(
+                node.attr
+            )
+
+    # Structural provider-login checks.
+    assert not any(
+        module.lower().startswith(
+            "smartapi"
+        )
+        for module in imported_modules
+    )
+
+    assert "pyotp" not in imported_modules
+
+    assert "SmartConnect" not in referenced_names
+
+    assert (
+        "generateSession"
+        not in referenced_attributes
+    )
+
+    assert "getenv" not in referenced_attributes

@@ -13,8 +13,9 @@ def check():
     results = []
     modules = [
         ("contracts", "mcx.mcx_contracts", "PRODUCTS"),
-        ("identity", "mcx.mcx_identity", "MCXIdentityResolver"),
-        ("chain", "mcx.mcx_chain", "build_chain"),
+        ("fyers_identity", "mcx.mcx_fyers_bridge_v2", "MCXFyersIdentityResolverV2"),
+        ("fyers_chain", "mcx.mcx_fyers_native_chain_v2", "MCXFyersNativeChainV2"),
+        ("fyers_runtime", "mcx.mcx_fyers_runtime_v2", "MCXFyersRuntimeV2"),
         ("mtf", "mcx.mcx_mtf", "compute_mtf"),
         ("regime", "mcx.mcx_regime", "classify"),
         ("decision", "mcx.mcx_decision", "compose"),
@@ -68,7 +69,7 @@ def product_readiness():
     """Report per-product readiness: contract, state, ledgers, runner, status."""
     import os
     out = {}
-    for product in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
+    for product in ("CRUDEOILM", "GOLDM", "SILVERM"):
         try:
             from mcx.mcx_version import get_product_epochs
             cfg = get_product_epochs(product) or {}
@@ -291,7 +292,7 @@ def execution_health():
             from mcx.mcx_exec_config import (is_freshness_calibrated,
                                              get_execution_quote_max_age_seconds,
                                              is_quantity_semantics_verified)
-            for p in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
+            for p in ("CRUDEOILM", "GOLDM", "SILVERM"):
                 checks[f"freshness_{p}"] = (
                     "PASS" if is_freshness_calibrated(p) else "UNCALIBRATED")
                 checks[f"max_age_{p}_s"] = get_execution_quote_max_age_seconds(p)
@@ -350,7 +351,7 @@ def execution_health():
         except Exception:
             _cert_elig = lambda p: False
 
-        for _p in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
+        for _p in ("CRUDEOILM", "GOLDM", "SILVERM"):
             _pc = _cfg.get(_p, {}) or {}
             _depth_ok = bool(_pc.get("rest_depth_supported"))
             _qty_ok = bool(_pc.get("depth_quantity_semantics_verified"))
@@ -368,7 +369,7 @@ def execution_health():
             checks[f"live_depth_verified_{_p}"] = _status
 
         # Aggregate: for backward compatibility, one combined key
-        _all = [checks.get(f"live_depth_verified_{_p}") for _p in ("CRUDEOILM", "GOLDM", "NATGASMINI")]
+        _all = [checks.get(f"live_depth_verified_{_p}") for _p in ("CRUDEOILM", "GOLDM", "SILVERM")]
         if all(_s == "PASS" for _s in _all):
             checks["live_depth_verified"] = "PASS"
         elif all(_s in ("PASS", "PASS_EXECUTION_PRECERT") for _s in _all):

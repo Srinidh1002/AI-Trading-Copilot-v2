@@ -574,17 +574,30 @@ def t74_official_hashes_unchanged():
             assert h == exp, f"{p}: {h} != {exp}"
 
 def t75_execution_health_reportable():
-    from mcx.mcx_exec_quote import (EXECUTION_QUOTE_MAX_AGE_SECONDS,
-                                    EXECUTION_FRESHNESS_CALIBRATED)
-    # §7.7 — until live calibration, max_age MUST be None and flag MUST be False
-    if EXECUTION_FRESHNESS_CALIBRATED:
-        assert EXECUTION_QUOTE_MAX_AGE_SECONDS is not None
-        assert EXECUTION_QUOTE_MAX_AGE_SECONDS > 0
-    else:
-        assert EXECUTION_QUOTE_MAX_AGE_SECONDS is None
+    """Operational freshness may exist while certification stays uncalibrated."""
+    from mcx.mcx_exec_quote import (
+        EXECUTION_QUOTE_MAX_AGE_SECONDS,
+        EXECUTION_FRESHNESS_CALIBRATED,
+        EXECUTION_FRESHNESS_SOURCE,
+        OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS,
+    )
 
+    assert EXECUTION_FRESHNESS_CALIBRATED is False
 
-# ---- Section 7 offline integrity close-out tests ----
+    assert (
+        EXECUTION_FRESHNESS_SOURCE
+        == "PROVIDER_SCOPED_CALIBRATION_REQUIRED"
+    )
+
+    assert (
+        EXECUTION_QUOTE_MAX_AGE_SECONDS
+        == OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
+    )
+
+    assert (
+        OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
+        > 0
+    )
 
 def t76_first_touch_persists():
     from mcx.mcx_exec_first_touch import FirstTouchTracker
@@ -747,51 +760,216 @@ def t90_fake_quote_id_rejected():
     assert any("NOT_FOUND" in x for x in r)
 
 def t91_quantity_semantics_config_loads():
-    # S7_STAGE_6_TEST_UPDATE — after Stage 2 evidence, all 3 products are verified.
-    from mcx.mcx_exec_config import is_quantity_semantics_verified
-    for p in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
-        assert is_quantity_semantics_verified(p) is True, f"{p} should be verified"
+    """Legacy unscoped provider calibration must not authorize FYERS."""
+    from mcx import mcx_exec_config as cfg
+
+    original = cfg.load_config
+
+    cfg.load_config = lambda: {
+        "CRUDEOILM": {
+            "depth_quantity_semantics_verified": True,
+            "depth_quantity_unit": "LEGACY",
+        },
+        "GOLDM": {
+            "depth_quantity_semantics_verified": True,
+            "depth_quantity_unit": "LEGACY",
+        },
+        "SILVERM": {
+            "depth_quantity_semantics_verified": True,
+            "depth_quantity_unit": "LEGACY",
+        },
+    }
+
+    try:
+        for product in (
+            "CRUDEOILM",
+            "GOLDM",
+            "SILVERM",
+        ):
+            assert (
+                cfg.is_quantity_semantics_verified(
+                    product,
+                    provider="FYERS",
+                )
+                is False
+            )
+    finally:
+        cfg.load_config = original
 
 def t92_freshness_calibration_flag_exists():
-    # S7_STAGE_6_TEST_UPDATE — after Stage 4 evidence, global flag reflects calibrated state.
-    from mcx.mcx_exec_quote import EXECUTION_FRESHNESS_CALIBRATED
-    assert EXECUTION_FRESHNESS_CALIBRATED is True
+    """Global certification calibration is deliberately disabled."""
+    from mcx.mcx_exec_quote import (
+        EXECUTION_FRESHNESS_CALIBRATED,
+        EXECUTION_FRESHNESS_SOURCE,
+    )
+
+    assert (
+        EXECUTION_FRESHNESS_CALIBRATED
+        is False
+    )
+
+    assert (
+        EXECUTION_FRESHNESS_SOURCE
+        == "PROVIDER_SCOPED_CALIBRATION_REQUIRED"
+    )
 
 def t93_freshness_none_default():
-    # S7_STAGE_6_TEST_UPDATE — global fallback is now the max of per-product values.
-    from mcx.mcx_exec_quote import EXECUTION_QUOTE_MAX_AGE_SECONDS
-    assert EXECUTION_QUOTE_MAX_AGE_SECONDS is not None
-    assert EXECUTION_QUOTE_MAX_AGE_SECONDS > 0
+    """Operational fallback stays available for safe exit/recovery."""
+    from mcx.mcx_exec_quote import (
+        EXECUTION_QUOTE_MAX_AGE_SECONDS,
+        OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS,
+    )
+
+    assert (
+        EXECUTION_QUOTE_MAX_AGE_SECONDS
+        == OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
+    )
+
+    assert (
+        EXECUTION_QUOTE_MAX_AGE_SECONDS
+        > 0
+    )
 
 def t95_per_product_freshness_lookup():
-    """S7 Stage 6 — verify per-product config is read correctly."""
-    from mcx.mcx_exec_config import get_freshness_config, is_freshness_calibrated, get_execution_quote_max_age_seconds
-    for p, expect in (("CRUDEOILM", 10.0), ("GOLDM", 12.0), ("NATGASMINI", 20.0)):
-        ok, age = get_freshness_config(p)
-        assert ok is True, f"{p}: not calibrated"
-        assert age == expect, f"{p}: expected {expect}, got {age}"
-        assert is_freshness_calibrated(p) is True
-        assert get_execution_quote_max_age_seconds(p) == expect
-    # Unknown product -> uncalibrated
-    ok, age = get_freshness_config("NOT_A_PRODUCT")
-    assert ok is False and age is None
+    """Provider-scoped FYERS calibration reads exact per-product values."""
+    from mcx import mcx_exec_config as cfg
+
+    original = cfg.load_config
+
+    def record(product, age):
+        return {
+            "calibration_provider": "FYERS",
+            "depth_quantity_semantics_verified": True,
+            "depth_quantity_unit": "CONTRACT_UNITS",
+            "execution_freshness_calibrated": True,
+            "execution_quote_max_age_seconds": age,
+            "calibrated_at": "2026-09-18T09:30:00+05:30",
+            "evidence_ref": f"fyers-live-{product}",
+            "evidence_kind": "LIVE_MARKET_DEPTH",
+        }
+
+    cfg.load_config = lambda: {
+        "schema_version": 2,
+        "providers": {
+            "FYERS": {
+                "CRUDEOILM": record(
+                    "CRUDEOILM",
+                    10.0,
+                ),
+                "GOLDM": record(
+                    "GOLDM",
+                    12.0,
+                ),
+                "SILVERM": record(
+                    "SILVERM",
+                    20.0,
+                ),
+            }
+        },
+    }
+
+    try:
+        for product, expected in (
+            ("CRUDEOILM", 10.0),
+            ("GOLDM", 12.0),
+            ("SILVERM", 20.0),
+        ):
+            ok, age = (
+                cfg.get_freshness_config(
+                    product,
+                    provider="FYERS",
+                )
+            )
+
+            assert ok is True
+            assert age == expected
+
+            assert (
+                cfg.is_freshness_calibrated(
+                    product,
+                    provider="FYERS",
+                )
+                is True
+            )
+
+            assert (
+                cfg.get_execution_quote_max_age_seconds(
+                    product,
+                    provider="FYERS",
+                )
+                == expected
+            )
+
+        ok, age = (
+            cfg.get_freshness_config(
+                "NOT_A_PRODUCT",
+                provider="FYERS",
+            )
+        )
+
+        assert ok is False
+        assert age is None
+
+    finally:
+        cfg.load_config = original
 
 def t96_validate_quote_reads_per_product_config():
-    """S7 Stage 6 — validate_quote falls back to config when no explicit max_age."""
-    from mcx.mcx_exec_quote import validate_quote, make_execution_quote
-    q = make_execution_quote(
-        product="CRUDEOILM", option_symbol="T", token="999", exchange="MCX",
-        option_type="CE", strike=9900, expiry="2026-09-17", ltp=100.0,
-        bids=[{"price": 99.9, "quantity": 100}],
-        asks=[{"price": 100.1, "quantity": 100}],
-        tick_size=0.05,
-        exchange_feed_time="2026-09-15T10:00:00+00:00",
-        provider_received_at="2026-09-15T10:00:01+00:00",
+    """Without FYERS calibration, validate_quote uses operational fallback only."""
+    from mcx.mcx_exec_quote import (
+        make_execution_quote,
+        validate_quote,
     )
-    # now_iso = 5s after received -> should be within CRUDEOILM's 10s ceiling
-    ok, q2 = validate_quote(q, "999", now_iso="2026-09-15T10:00:06+00:00")
-    assert ok, q2.get("rejection_reasons")
-    assert "EXECUTION_FRESHNESS_UNCALIBRATED" not in (q2.get("rejection_reasons") or [])
+
+    q = make_execution_quote(
+        product="CRUDEOILM",
+        option_symbol="T",
+        token="999",
+        exchange="MCX",
+        option_type="CE",
+        strike=9900,
+        expiry="2026-09-17",
+        ltp=100.0,
+        bids=[{
+            "price": 99.9,
+            "quantity": 100,
+        }],
+        asks=[{
+            "price": 100.1,
+            "quantity": 100,
+        }],
+        tick_size=0.05,
+        exchange_feed_time=(
+            "2026-09-15T10:00:00+00:00"
+        ),
+        provider_received_at=(
+            "2026-09-15T10:00:01+00:00"
+        ),
+        provider="FYERS",
+    )
+
+    ok, checked = validate_quote(
+        q,
+        "999",
+        now_iso=(
+            "2026-09-15T10:00:06+00:00"
+        ),
+    )
+
+    assert ok is True
+
+    assert (
+        checked[
+            "execution_freshness_status"
+        ]
+        == "OPERATIONAL_UNCALIBRATED"
+    )
+
+    assert (
+        checked[
+            "certification_freshness_calibrated"
+        ]
+        is False
+    )
 
 def t94_recorded_quote_roundtrip():
     from mcx.mcx_exec_recorder import record_quote_hash_addressed, load_quote_by_hash

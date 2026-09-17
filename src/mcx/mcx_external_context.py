@@ -39,13 +39,15 @@ DRIVERS = {
             ("US10Y", "^TNX", "US 10Y yield (gold vs yield)"),
         ],
     },
-    "NATGASMINI": {
+    "SILVERM": {
         "primary": [
-            ("NatGas", "NG=F", "Henry Hub natural gas"),
+            ("Silver", "SI=F", "COMEX silver — global silver benchmark"),
         ],
         "cross_asset": [
             ("USDINR", "USDINR=X", "INR translation"),
-            ("Crude", "CL=F", "Energy complex correlation"),
+            ("DXY", "DX-Y.NYB", "Dollar strength"),
+            ("US10Y", "^TNX", "US yield / precious-metals pressure"),
+            ("Copper", "HG=F", "Industrial-metals demand proxy"),
         ],
     },
 }
@@ -160,6 +162,6 @@ if __name__ == "__main__":
     print("=" * 100)
     print("MCX EXTERNAL CONTEXT — read only")
     print("=" * 100)
-    for prod in ["CRUDEOILM", "GOLDM", "NATGASMINI"]:
+    for prod in ["CRUDEOILM", "GOLDM", "SILVERM"]:
         ctx = fetch_context(prod)
         print_context(ctx)

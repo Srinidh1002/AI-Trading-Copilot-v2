@@ -1,189 +1,186 @@
-"""MCX live probe — READ ONLY. No trades. No ledger writes.
-Proves data flows from Angel One for CRUDEOILM futures + options.
+"""FYERS MCX live probe — READ ONLY.
+
+No trades.
+No PAPER state writes.
+No certification mutation.
+No Angel fallback.
 """
+
+from __future__ import annotations
+
+import argparse
 import os
 import sys
-from datetime import date, datetime
+from datetime import datetime
+
+from dotenv import load_dotenv
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SRC = os.path.dirname(_HERE)
+
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from dotenv import load_dotenv
-import pyotp
-from SmartApi import SmartConnect
-
-from mcx.mcx_contracts import ANGEL_MASTER_SCALE, PRODUCTS
-from mcx.mcx_identity import MCXIdentityResolver
-
-load_dotenv()
+from mcx.mcx_contracts import PRODUCTS
+from mcx.mcx_fyers_runtime_v2 import (
+    build_mcx_fyers_runtime_from_env_v2,
+)
 
 
-def _f(v, default=0.0):
+SUPPORTED = (
+    "CRUDEOILM",
+    "GOLDM",
+    "SILVERM",
+)
+
+
+def build_runtime():
+    load_dotenv()
+
+    log_dir = os.path.join(
+        "logs",
+        "mcx_fyers_probe",
+    )
+
+    os.makedirs(
+        log_dir,
+        exist_ok=True,
+    )
+
     try:
-        return float(v or 0)
-    except Exception:
-        return default
-
-
-def _i(v, default=0):
-    try:
-        return int(v or 0)
-    except Exception:
-        return default
-
-
-def login():
-    api_key = os.getenv("ANGEL_API_KEY")
-    user_id = os.getenv("ANGEL_USER_ID")
-    password = os.getenv("ANGEL_PASSWORD")
-    totp_secret = os.getenv("ANGEL_TOTP_SECRET")
-
-    if not all([api_key, user_id, password, totp_secret]):
-        print("MISSING_ENV — check ANGEL_API_KEY / USER_ID / PASSWORD / TOTP_SECRET")
+        return (
+            build_mcx_fyers_runtime_from_env_v2(
+                log_path=log_dir,
+            )
+        )
+    except Exception as exc:
+        print(
+            "FYERS_RUNTIME_UNAVAILABLE: "
+            f"{type(exc).__name__}: "
+            f"{str(exc)[:120]}"
+        )
         return None
-
-    obj = SmartConnect(api_key=api_key)
-    totp = pyotp.TOTP(totp_secret).now()
-    resp = obj.generateSession(clientCode=user_id, password=password, totp=totp)
-    if not resp or not resp.get("status"):
-        print(f"LOGIN_FAILED: {resp}")
-        return None
-    print("✅ Angel session established")
-    return obj
-
-
-def fetch_full(obj, tokens):
-    """One getMarketData(FULL) call for a list of MCX tokens."""
-    if not tokens:
-        return {}
-    try:
-        resp = obj.getMarketData("FULL", {"MCX": [str(t) for t in tokens]})
-    except Exception as e:
-        print(f"  [getMarketData err] {str(e)[:100]}")
-        return {}
-    if not resp or not resp.get("data"):
-        return {}
-    fetched = resp["data"].get("fetched") or []
-    out = {}
-    for row in fetched:
-        out[str(row.get("symbolToken", ""))] = row
-    return out
-
-
-def print_option_row(label, master_rec, quote_row, atm_strike):
-    if not quote_row:
-        print(f"  {label:<22} NO_QUOTE")
-        return
-    ltp = _f(quote_row.get("ltp"))
-    oi = _i(quote_row.get("oi", quote_row.get("opnInterest")))
-    vol = _i(quote_row.get("volume", quote_row.get("tradeVolume")))
-    bid = _f(quote_row.get("bid"))
-    ask = _f(quote_row.get("ask"))
-    # bestFive fallback
-    if bid <= 0:
-        bb = quote_row.get("bestFiveBuyData") or []
-        if bb and isinstance(bb, list) and bb[0]:
-            bid = _f(bb[0].get("price"))
-    if ask <= 0:
-        bs = quote_row.get("bestFiveSellData") or []
-        if bs and isinstance(bs, list) and bs[0]:
-            ask = _f(bs[0].get("price"))
-    spread_pct = ((ask - bid) / ltp * 100) if (bid > 0 and ask > 0 and ltp > 0) else None
-    strike = _f(master_rec.get("strike")) / ANGEL_MASTER_SCALE
-    dist = strike - atm_strike
-    spread_str = f"{spread_pct:.2f}%" if spread_pct is not None else "N/A"
-    print(f"  {label:<22} sym={master_rec.get('symbol'):<32} "
-          f"strike={strike:>7.0f} d={dist:>+6.0f} "
-          f"ltp={ltp:>8.2f} bid={bid:>8.2f} ask={ask:>8.2f} "
-          f"spread={spread_str:>7} oi={oi:>7} vol={vol:>8}")
 
 
 def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--product",
+        default="CRUDEOILM",
+        choices=SUPPORTED,
+    )
+
+    args = parser.parse_args()
+
+    product = args.product.upper()
+
     print("=" * 100)
-    print("MCX PROBE — read only, no trades")
+    print("MCX FYERS PROBE — read only")
     print("=" * 100)
 
-    obj = login()
-    if obj is None:
-        return
+    runtime = build_runtime()
 
-    import argparse as _ap  # M12_5_indent_fix
-    _parser = _ap.ArgumentParser()
-    _parser.add_argument("--product", default="CRUDEOILM",
-                         choices=["CRUDEOILM", "GOLDM", "NATGASMINI"])
-    _args, _ = _parser.parse_known_args()
-    product = _args.product.upper()
+    if runtime is None:
+        return 2
+
     spec = PRODUCTS[product]
-    print(f"\nProduct: {product} ({spec['display_name']})")
-    print(f"  trading_unit={spec['trading_unit']}  cash_multiplier={spec['cash_multiplier']}  "
-          f"tick={spec['tick_size']}  strike_step={spec['strike_interval']}")
 
-    resolver = MCXIdentityResolver()
-    res = resolver.resolve_active(product)
-    print(f"\nIdentity: status={res['status']}")
-    if res["status"] != "OK" or not res["futures"]:
-        print("Identity unavailable. Stop.")
-        return
+    print(f"Product: {product}")
+    print(f"Provider: {runtime.provider}")
+    print(f"Data only: {runtime.data_only}")
 
-    fut = res["futures"]
-    fut_token = str(fut["token"])
-    print(f"  active_future={fut['symbol']} token={fut_token} exp={fut['expiry']}")
-    print(f"  option_expiry={res['option_expiry']}")
+    print(
+        f"trading_unit={spec['trading_unit']} "
+        f"cash_multiplier={spec['cash_multiplier']} "
+        f"tick={spec['tick_size']} "
+        f"strike_step={spec['strike_interval']}"
+    )
 
-    # Fetch future quote
-    print(f"\nFetching futures quote ...")
-    fut_quotes = fetch_full(obj, [fut_token])
-    fq = fut_quotes.get(fut_token)
-    if not fq:
-        print("  FUTURE NO_QUOTE — full response:")
-        try:
-            raw = obj.getMarketData("FULL", {"MCX": [fut_token]})
-            print(f"  {str(raw)[:400]}")
-        except Exception as e:
-            print(f"  {e}")
-        return
+    identity = runtime.identity.resolve_active(
+        product
+    )
 
-    fut_ltp = _f(fq.get("ltp"))
-    fut_oi = _i(fq.get("oi", fq.get("opnInterest")))
-    fut_vol = _i(fq.get("volume", fq.get("tradeVolume")))
-    print(f"  {fut['symbol']:<24} ltp=₹{fut_ltp:.2f}  oi={fut_oi}  vol={fut_vol}")
-    if fut_ltp <= 0:
-        print("  future ltp=0, cannot derive ATM. Stop.")
-        return
+    print(
+        "Identity:",
+        identity.get("status"),
+    )
 
-    # Determine ATM strike (round to strike_interval)
-    step = spec["strike_interval"]
-    atm = round(fut_ltp / step) * step
-    print(f"\n  Derived ATM strike: ₹{atm:.0f} (spot ₹{fut_ltp:.2f}, step ₹{step})")
+    if identity.get("status") != "OK":
+        return 3
 
-    # Pick 5 CE + 5 PE around ATM (±2 steps)
-    calls = res["calls"]
-    puts = res["puts"]
-    offsets = [-2, -1, 0, 1, 2]
-    pick_strikes = [atm + o * step for o in offsets]
+    fut = identity["futures"]
 
-    ce_recs = [(s, calls[s]) for s in pick_strikes if s in calls]
-    pe_recs = [(s, puts[s]) for s in pick_strikes if s in puts]
+    print(
+        "Future:",
+        fut.get("symbol"),
+        "expiry=",
+        fut.get("expiry"),
+    )
 
-    all_tokens = [str(r["token"]) for _, r in ce_recs] + [str(r["token"]) for _, r in pe_recs]
-    print(f"\nFetching {len(all_tokens)} option quotes in one batched call ...")
-    opt_quotes = fetch_full(obj, all_tokens)
-    print(f"  received={len(opt_quotes)}/{len(all_tokens)}")
+    print(
+        "Option expiry:",
+        identity.get("option_expiry"),
+    )
 
-    print(f"\n  --- CE side (strikes around ATM ₹{atm:.0f}) ---")
-    for strike, rec in ce_recs:
-        print_option_row("CE", rec, opt_quotes.get(str(rec["token"])), atm)
+    chain = runtime.native_chain.build(
+        product,
+        window_steps=10,
+    )
 
-    print(f"\n  --- PE side ---")
-    for strike, rec in pe_recs:
-        print_option_row("PE", rec, opt_quotes.get(str(rec["token"])), atm)
+    print(
+        "Chain:",
+        chain.get("status"),
+    )
 
-    print(f"\n{'=' * 100}")
-    print(f"PROBE COMPLETE. As of {datetime.now().isoformat(timespec='seconds')}")
-    print(f"{'=' * 100}")
+    if chain.get("status") != "OK":
+        print(
+            "reason=",
+            chain.get("reason"),
+        )
+        return 4
+
+    print(
+        "future_ltp=",
+        chain.get("future_ltp"),
+        "ATM=",
+        chain.get("atm"),
+    )
+
+    print(
+        "PCR_OI=",
+        chain.get("pcr_oi"),
+        "max_pain=",
+        chain.get("max_pain"),
+    )
+
+    print(
+        "native_option_chain_requests=",
+        chain.get(
+            "option_chain_request_count"
+        ),
+    )
+
+    print(
+        "per_contract_depth_requests=",
+        chain.get(
+            "per_contract_depth_requests"
+        ),
+    )
+
+    print(
+        "fetched_at=",
+        datetime.now().isoformat(
+            timespec="seconds"
+        ),
+    )
+
+    print("BROKER_SUBMISSION=false")
+    print("LIVE_EXECUTION=false")
+    print("CERTIFICATION_COUNTER_DELTA=0")
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

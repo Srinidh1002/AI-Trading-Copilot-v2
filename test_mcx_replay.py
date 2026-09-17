@@ -277,13 +277,13 @@ def t30_official_ledger_unchanged():
 def t31_product_isolation():
     from mcx.mcx_version import get_product_epochs
     assert get_product_epochs("CRUDEOILM")["epoch"] != get_product_epochs("GOLDM")["epoch"]
-    assert get_product_epochs("GOLDM")["epoch"] != get_product_epochs("NATGASMINI")["epoch"]
+    assert get_product_epochs("GOLDM")["epoch"] != get_product_epochs("SILVERM")["epoch"]
 
 
 def t32_unsupported_rejected():
     from mcx.mcx_replay import SUPPORTED
     assert "SILVER" not in SUPPORTED
-    assert set(SUPPORTED) == {"CRUDEOILM", "GOLDM", "NATGASMINI"}
+    assert set(SUPPORTED) == {"CRUDEOILM", "GOLDM", "SILVERM"}
 
 
 def t33_strategy_version_grouping():

@@ -353,7 +353,7 @@ def test_future_authoritative_event_source_can_be_hard_block_eligible():
         "SENSEX",
         "CRUDEOILM",
         "GOLDM",
-        "NATGASMINI",
+        "SILVERM",
     ),
 )
 def test_all_five_canonical_markets_accept_premarket_state(market):

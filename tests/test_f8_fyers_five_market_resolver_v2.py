@@ -146,11 +146,11 @@ MCX_COM_ROWS = [
      "instrument_type": "FUT", "underlying_symbol": "GOLDM",
      "expiry": "2026-10-31", "fyToken": "G1", "lot_size": "1",
      "tick_size": "1.00"},
-    # NATGASMINI
-    {"symbol": "MCX:NATGASMINI", "exch": "MCX", "segment": "MCX_COM",
-     "instrument_type": "COMMODITY", "underlying_symbol": "NATGASMINI"},
-    {"symbol": "MCX:NATGASMINI26SEPFUT", "exch": "MCX", "segment": "MCX_COM",
-     "instrument_type": "FUT", "underlying_symbol": "NATGASMINI",
+    # SILVERM
+    {"symbol": "MCX:SILVERM", "exch": "MCX", "segment": "MCX_COM",
+     "instrument_type": "COMMODITY", "underlying_symbol": "SILVERM"},
+    {"symbol": "MCX:SILVERM26SEPFUT", "exch": "MCX", "segment": "MCX_COM",
+     "instrument_type": "FUT", "underlying_symbol": "SILVERM",
      "expiry": "2026-09-30", "fyToken": "N1", "lot_size": "1",
      "tick_size": "0.10"},
     # Expired MCX future (must never be chosen)
@@ -290,12 +290,12 @@ class TestFutures:
         assert r["provider_symbol"] == "MCX:GOLDM26OCTFUT"
         assert r["expiry"] == "2026-10-31"
 
-    def test_natgasmini_front_future_from_master(self):
+    def test_silverm_front_future_from_master(self):
         r = _resolver().resolve(
-            market_symbol="NATGASMINI", instrument_type="FUTURE",
+            market_symbol="SILVERM", instrument_type="FUTURE",
             as_of=_fixed_as_of(),
         )
-        assert r["provider_symbol"] == "MCX:NATGASMINI26SEPFUT"
+        assert r["provider_symbol"] == "MCX:SILVERM26SEPFUT"
 
     def test_nifty_requested_future_expiry(self):
         fc = {
@@ -506,7 +506,7 @@ class TestContractAndSafety:
             ("SENSEX", "UNDERLYING", None, None, None),
             ("CRUDEOILM", "UNDERLYING", None, None, None),
             ("CRUDEOILM", "FUTURE", None, None, None),
-            ("NATGASMINI", "FUTURE", None, None, None),
+            ("SILVERM", "FUTURE", None, None, None),
         ]
         for ms, it, ex, st, ot in cases:
             r = _resolver().resolve(
@@ -710,7 +710,7 @@ class TestSameDayExpiryValidity(unittest.TestCase):
             _is_expiry_tradable,
         )
         as_of = datetime(2026, 9, 17, 10, 0, tzinfo=timezone.utc)
-        for mk in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
+        for mk in ("CRUDEOILM", "GOLDM", "SILVERM"):
             self.assertFalse(
                 _is_expiry_tradable(date(2026, 9, 17), as_of, mk),
                 "MCX same-day must fail closed for " + mk,

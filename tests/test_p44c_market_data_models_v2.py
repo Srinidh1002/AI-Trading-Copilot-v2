@@ -78,7 +78,7 @@ def test_quote_supports_all_five_market_exchange_topologies():
             "OPTION",
         ),
         (
-            "NATGASMINI",
+            "SILVERM",
             "MCX",
             "FUTURE",
         ),

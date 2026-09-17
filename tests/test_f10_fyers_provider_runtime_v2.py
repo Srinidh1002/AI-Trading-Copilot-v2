@@ -146,7 +146,7 @@ def test_all_25_operational_primary_routes_resolve_only_fyers():
         "SENSEX",
         "CRUDEOILM",
         "GOLDM",
-        "NATGASMINI",
+        "SILVERM",
     )
     kinds = (
         "INSTRUMENT",

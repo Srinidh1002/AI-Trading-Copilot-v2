@@ -42,7 +42,7 @@ MARKETS = (
     "SENSEX",
     "CRUDEOILM",
     "GOLDM",
-    "NATGASMINI",
+    "SILVERM",
 )
 DATA_KINDS = (
     "INSTRUMENT",

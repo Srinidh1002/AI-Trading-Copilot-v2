@@ -82,7 +82,7 @@ def main() -> int:
         print("  SENSEX FUT error:", type(e).__name__, str(e)[:80])
 
     # MCX front futures
-    for ms in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
+    for ms in ("CRUDEOILM", "GOLDM", "SILVERM"):
         try:
             r = resolver.resolve(
                 market_symbol=ms, instrument_type="FUTURE", as_of=as_of,

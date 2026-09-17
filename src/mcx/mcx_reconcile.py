@@ -20,7 +20,10 @@ def reconcile(pos, product="CRUDEOILM"):
     Returns dict with gross/net P&L + terminal status.
     """
     from mcx.mcx_costs import net_pnl as compute_net
-    from mcx.mcx_version import is_certification_eligible as _is_cert_eligible
+    from mcx.mcx_version import (
+        get_product_epochs as _get_product_epochs,
+        is_certification_eligible as _is_cert_eligible,
+    )
     from mcx.mcx_certification import classify_win as _classify_win
 
     required = ["trade_id", "entry", "exit", "lots"]
@@ -31,6 +34,12 @@ def reconcile(pos, product="CRUDEOILM"):
     net = compute_net(pos["entry"], pos["exit"], pos["lots"], product, side="BUY")
     if net.get("status") != "OK":
         return {"status": "COST_ERROR"}
+
+    # Product registry is the sole epoch/version authority.
+    product_cfg = (
+        _get_product_epochs(product)
+        or {}
+    )
 
     # Certification gate: unique, closed, reconciled, non-synthetic
     registry_ok = _is_cert_eligible(product)
@@ -44,8 +53,10 @@ def reconcile(pos, product="CRUDEOILM"):
 
     result = dict(pos)
     result.update({
-        "epoch_id": "POST_PRECISION_V2",
-        "strategy_version": "MCX_POST_PRECISION_V2",
+        "epoch_id": product_cfg.get("epoch"),
+        "strategy_version": product_cfg.get(
+            "strategy_version"
+        ),
         "certification_eligible": cert_eligible,
         "registry_certification_eligible": registry_ok,
         "gross_pnl": net["gross_pnl"],
@@ -120,4 +131,4 @@ def count_certified(product="CRUDEOILM"):
 
 if __name__ == "__main__":
     print("mcx_reconcile module loaded OK")
-    print(f"Current POST_PRECISION_V2 certified count: {count_certified()}")
+    print(f"Current certified count: {count_certified()}")

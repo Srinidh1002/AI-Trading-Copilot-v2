@@ -49,28 +49,31 @@ GOLDM = {
     "status": "PROVISIONAL",
 }
 
-NATGASMINI = {
-    "product": "NATGASMINI",
-    "display_name": "Natural Gas Mini",
+SILVERM = {
+    "product": "SILVERM",
+    "display_name": "Silver Mini",
     "exchange": "MCX",
     "exch_seg": "MCX",
     "future_instr_type": "FUTCOM",
     "option_instr_type": "OPTFUT",
-    "trading_unit": 250,
-    "quote_base": "INR_PER_MMBTU",
-    "cash_multiplier": 250,
-    "tick_size": 0.10,
-    "option_tick_size": 0.05,  # M5_option_tick_authority
-    "strike_interval": 5,
+    "trading_unit": 5,
+    "quote_base": "INR_PER_KG",
+    "cash_multiplier": 5,
+    "tick_size": 1.0,
+    "option_tick_size": 0.50,
+    "strike_interval": 1000,
     "option_type": "EUROPEAN",
     "settlement": "OPTIONS_ON_FUTURES",
     "session": {"start": "09:00", "end_default": "23:30", "end_dst_us_summer": "23:55"},
-    "provenance": "Blueprint §4 / MCX circular [S7]",
+    "provenance": (
+        "MCX Silver Mini Aug-2026 futures specification; "
+        "MCX/TRD/046/2026 option strike specification"
+    ),
     "status": "PROVISIONAL",
 }
 
 PRODUCTS = {
     "CRUDEOILM": CRUDEOILM,
     "GOLDM": GOLDM,
-    "NATGASMINI": NATGASMINI,
+    "SILVERM": SILVERM,
 }

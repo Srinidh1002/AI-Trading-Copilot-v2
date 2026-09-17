@@ -225,7 +225,7 @@ def test_planned_route_is_fyers_primary_and_angel_shadow_for_all_five_markets():
         "SENSEX",
         "CRUDEOILM",
         "GOLDM",
-        "NATGASMINI",
+        "SILVERM",
     )
 
     kinds = (

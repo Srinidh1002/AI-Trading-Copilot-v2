@@ -34,7 +34,7 @@ def _resolve_five_markets(resolver, as_of):
         ("SENSEX", "UNDERLYING"),
         ("CRUDEOILM", "FUTURE"),
         ("GOLDM", "FUTURE"),
-        ("NATGASMINI", "FUTURE"),
+        ("SILVERM", "FUTURE"),
     )
     return tuple(
         resolver.resolve(

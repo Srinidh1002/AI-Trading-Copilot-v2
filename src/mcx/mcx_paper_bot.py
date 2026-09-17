@@ -16,12 +16,9 @@ if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
 from dotenv import load_dotenv
-import pyotp
-from SmartApi import SmartConnect
 
 from mcx.mcx_contracts import PRODUCTS
-from mcx.mcx_identity import MCXIdentityResolver
-from mcx.mcx_chain import build_chain
+from mcx.mcx_fyers_runtime_v2 import build_mcx_fyers_runtime_from_env_v2
 from mcx.mcx_external_context import fetch_context
 from mcx.mcx_mtf import compute_mtf
 from mcx.mcx_regime import classify as classify_regime, describe as describe_regime
@@ -34,6 +31,8 @@ from mcx.mcx_exec_fill import compute_paper_fill_v2, depth_vwap_for_sell
 from mcx.mcx_exec_first_touch import FirstTouchTracker
 from mcx.mcx_exec_recorder import record_quote_hash_addressed
 from mcx.mcx_exec_countability import is_countable as exec_is_countable
+from mcx.mcx_exec_config import is_entry_execution_calibrated
+from mcx.mcx_exec_recovery import recovery_status
 from mcx.mcx_pcr import StablePCR
 from mcx.mcx_event_risk import get_state as event_get_state, describe as event_describe
 from mcx.mcx_position_manager import evaluate_exit as pm_evaluate_exit
@@ -56,15 +55,12 @@ from mcx.mcx_health import print_health
 
 load_dotenv()
 
-from smartapi_log_redaction import install_smartapi_log_redaction
-install_smartapi_log_redaction()
-
 import argparse
 
 # MCX_IST_fix - module-level timezone constant
 IST = ZoneInfo("Asia/Kolkata")
 
-_SUPPORTED_PRODUCTS = ("CRUDEOILM", "GOLDM", "NATGASMINI")
+_SUPPORTED_PRODUCTS = ("CRUDEOILM", "GOLDM", "SILVERM")
 
 
 def _parse_args():
@@ -135,16 +131,34 @@ def certification_target_reached(state, product=None):
     )
 
 def login():
-    api_key = os.getenv("ANGEL_API_KEY")
-    user_id = os.getenv("ANGEL_USER_ID")
-    password = os.getenv("ANGEL_PASSWORD")
-    totp_secret = os.getenv("ANGEL_TOTP_SECRET")
-    if not all([api_key, user_id, password, totp_secret]):
+    """Build the FYERS-only data runtime.
+
+    Historical function name retained to avoid unnecessary call-site churn.
+    No broker login/order authority exists here.
+    """
+    log_dir = os.path.join(
+        "logs",
+        "mcx_fyers_client",
+    )
+
+    os.makedirs(
+        log_dir,
+        exist_ok=True,
+    )
+
+    try:
+        return (
+            build_mcx_fyers_runtime_from_env_v2(
+                log_path=log_dir,
+            )
+        )
+    except Exception as exc:
+        print(
+            "FYERS_RUNTIME_UNAVAILABLE: "
+            f"{type(exc).__name__}: "
+            f"{str(exc)[:120]}"
+        )
         return None
-    obj = SmartConnect(api_key=api_key)
-    resp = obj.generateSession(clientCode=user_id, password=password,
-                               totp=pyotp.TOTP(totp_secret).now())
-    return obj if resp and resp.get("status") else None
 
 
 def _state_path_for(product):
@@ -232,7 +246,57 @@ def fetch_execution_quote_or_none(obj, product, token, option_meta=None, tick=0.
             "token": str(token),
         }
 
-    now_iso = datetime.now(IST).isoformat()
+    provider_received_at = datetime.now(IST).isoformat()
+
+    # FYERS Market Depth is authoritative for executable depth/OI.
+    # Do not invent an exchange timestamp from provider_received_at.
+    provider_timestamp = (
+        row.get("exchange_timestamp")
+        or row.get("timestamp")
+        or row.get("exchFeedTime")
+        or row.get("exchTradeTime")
+    )
+
+    timestamp_evidence = None
+
+    if not provider_timestamp:
+        try:
+            trading_symbol = str(
+                (option_meta or {}).get("symbol")
+                or token
+            )
+
+            timestamp_response = obj.ltpData(
+                "MCX",
+                trading_symbol,
+                str(token),
+            )
+
+            if isinstance(timestamp_response, dict):
+                timestamp_evidence = (
+                    timestamp_response.get("data")
+                    or {}
+                )
+
+                if isinstance(timestamp_evidence, dict):
+                    provider_timestamp = (
+                        timestamp_evidence.get(
+                            "exchange_timestamp"
+                        )
+                        or timestamp_evidence.get(
+                            "timestamp"
+                        )
+                    )
+
+        except Exception as timestamp_error:
+            print(
+                "  [exec_q] FYERS timestamp evidence "
+                f"unavailable: "
+                f"{str(timestamp_error)[:60]}"
+            )
+
+    now_iso = provider_received_at
+
     q = make_execution_quote(
         product=product,
         option_symbol=(option_meta or {}).get("symbol", ""),
@@ -245,12 +309,15 @@ def fetch_execution_quote_or_none(obj, product, token, option_meta=None, tick=0.
         bids=bids, asks=asks,
         volume=int(row.get("volume", row.get("tradeVolume", 0)) or 0),
         open_interest=int(row.get("oi", row.get("opnInterest", 0)) or 0),
-        exchange_feed_time=row.get("exchFeedTime") or now_iso,
-        exchange_trade_time=row.get("exchTradeTime") or now_iso,
-        provider_received_at=now_iso,
-        provider="AngelOne", source_mode="REST_FULL",
+        exchange_feed_time=provider_timestamp,
+        exchange_trade_time=provider_timestamp,
+        provider_received_at=provider_received_at,
+        provider="FYERS", source_mode="REST_FULL",
         tick_size=tick,
-        raw_payload=row,
+        raw_payload={
+            "depth": row,
+            "timestamp_evidence": timestamp_evidence,
+        },
     )
     ok, q = validate_quote(q, expected_token=str(token),
                            expected_exchange="MCX", now_iso=now_iso)
@@ -338,6 +405,18 @@ def _restore_first_touch(pos):
 
 
 def try_open(obj, chain, mtf, ctx, decision, regime, structure, setup, state):
+    # New entries require provider-scoped live FYERS execution calibration.
+    # Existing open-position monitoring/exit never enters via try_open().
+    if not is_entry_execution_calibrated(
+        PRODUCT,
+        provider="FYERS",
+    ):
+        print(
+            "  EXECUTION_CALIBRATION_BLOCKED: "
+            f"{PRODUCT}:FYERS"
+        )
+        return None
+
     if setup.get("blocked"):
         print(f"  setup blocked: {setup_describe(setup)}")
         return None
@@ -631,11 +710,17 @@ def main():
     _ctr = (f"{cert_status(state)['total_countable_trades']}/100" if _cfg.get("certification_eligible") else "PRECERT")
     print(f"  CERTIFICATION_ELIGIBLE={_cfg.get('certification_eligible', False)}   CERTIFICATION_COUNTER={_ctr}")
 
-    obj = login()
-    if not obj:
-        print("LOGIN_FAILED")
+    runtime = login()
+
+    if runtime is None:
+        print("FYERS_RUNTIME_FAILED")
         return
-    print("✅ Session established")
+
+    obj = runtime.data
+
+    print(
+        "✅ FYERS data-only runtime established"
+    )
 
     # Health check
     print()
@@ -643,10 +728,10 @@ def main():
 
     # Pre-session report (context only, no entry authority)
     try:
-        _res0 = MCXIdentityResolver().resolve_active(PRODUCT)
+        _res0 = runtime.identity.resolve_active(PRODUCT)
         if _res0.get("status") == "OK":
             _tok0 = str(_res0["futures"]["token"])
-            _chain0 = build_chain(obj, PRODUCT, window_steps=20)
+            _chain0 = runtime.native_chain.build(PRODUCT, window_steps=20)
             _mtf0 = compute_mtf(obj, _tok0, "MCX")
             _ctx0 = fetch_context(PRODUCT)
             _reg0 = classify_regime(_mtf0.get("timeframes", {}), chain=_chain0)
@@ -659,7 +744,7 @@ def main():
     except Exception as _e:
         print(f"[presession] failed: {str(_e)[:80]}")
 
-    resolver = MCXIdentityResolver()
+    resolver = runtime.identity
     stable_pcr = StablePCR(strike_step=PRODUCTS[PRODUCT]["strike_interval"],
                            epoch=integ["current_epoch"])
     price_oi = PriceOITracker()
@@ -700,11 +785,73 @@ def main():
         )
         print(f"{'=' * 100}")
 
-        if not cal.get("tradable"):
-            if cal["status"] in ("WEEKEND", "HOLIDAY"):
-                print(f"  {cal['status']}. Stop.")
+        # Calendar governs NEW entries only.
+        #
+        # An already-open PAPER position must continue through evidence
+        # acquisition, monitoring, exit, reconciliation and recovery even if
+        # the calendar is in close-buffer/closed/holiday/unknown-year state.
+        recovery = recovery_status(
+            state,
+            PRODUCT,
+            calendar_state=cal,
+        )
+
+        calendar_entry_allowed = bool(
+            recovery[
+                "calendar_new_entries_allowed"
+            ]
+        )
+
+        if (
+            recovery[
+                "recovery_required"
+            ]
+            and not calendar_entry_allowed
+        ):
+            print(
+                "  CALENDAR_ENTRY_BLOCKED — "
+                "existing PAPER position remains "
+                "under recovery/management"
+            )
+
+        elif not calendar_entry_allowed:
+            status_name = str(
+                cal.get(
+                    "status"
+                )
+                or ""
+            ).upper()
+
+            terminal_flat_status = (
+                status_name
+                in (
+                    "WEEKEND",
+                    "HOLIDAY",
+                    "CLOSED",
+                )
+                or "UNKNOWN"
+                in status_name
+                or "UNSUPPORTED"
+                in status_name
+            )
+
+            if terminal_flat_status:
+                print(
+                    f"  {status_name}. "
+                    "Flat runtime stop — "
+                    "new entries blocked."
+                )
                 break
-            time.sleep(CYCLE_SECONDS)
+
+            print(
+                "  CALENDAR_ENTRY_BLOCKED: "
+                f"{status_name} "
+                f"{cal.get('note', '')}"
+            )
+
+            time.sleep(
+                CYCLE_SECONDS
+            )
             continue
 
         # Resolve identity
@@ -715,7 +862,7 @@ def main():
         fut_token = str(res["futures"]["token"])
 
         # Build chain + mtf + external
-        chain = build_chain(obj, PRODUCT, window_steps=20)
+        chain = runtime.native_chain.build(PRODUCT, window_steps=20)
         if chain.get("status") != "OK":
             print(f"  Chain: {chain['status']}")
             time.sleep(CYCLE_SECONDS); continue
@@ -915,13 +1062,37 @@ def main():
             if not closed:
                 save_state(state)
         else:
-            # Entry logic
-            if not dq_ok:
-                print(f"  NO_TRADE_DATA_QUALITY: {dq_blockers}")
+            # Entry logic — calendar/recovery is checked again here as
+            # defense in depth immediately before any entry path.
+            recovery = recovery_status(
+                state,
+                PRODUCT,
+                calendar_state=cal,
+            )
+
+            if not recovery.get(
+                "new_entries_allowed"
+            ):
+                print(
+                    "  ENTRY_BLOCKED: "
+                    f"calendar={cal.get('status')} "
+                    f"recovery="
+                    f"{recovery.get('recovery_required')}"
+                )
+
+            elif not dq_ok:
+                print(
+                    f"  NO_TRADE_DATA_QUALITY: "
+                    f"{dq_blockers}"
+                )
+
             elif observation_only:
-                print(f"  OBSERVATION_ONLY — entry suppressed (epoch integrity not ready)")
-            elif _recovery_only:
-                print(f"  RECOVERY_ONLY — new entries suppressed until open position reconciled")
+                print(
+                    "  OBSERVATION_ONLY — "
+                    "entry suppressed "
+                    "(epoch integrity not ready)"
+                )
+
             elif decision["action"] in ("BUY_CALL", "BUY_PUT") and signals_agree(history, decision["action"]):
                 pos = try_open(obj, chain, mtf, ctx, decision, regime, structure, setup, state)
                 if pos:

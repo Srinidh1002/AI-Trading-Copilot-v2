@@ -29,12 +29,21 @@ REJECTIONS = (
     "EXIT_QUOTE_NOT_VALID_STATUS",
     "ENTRY_QUOTE_EVIDENCE_VERIFICATION_ERROR",
     "EXIT_QUOTE_EVIDENCE_VERIFICATION_ERROR",
+    "ENTRY_PROVIDER_MISMATCH",
+    "EXIT_PROVIDER_MISMATCH",
 )
 
 VERIFY_EXECUTION_EVIDENCE = True
 
 
-def _evidence_verify_one(trade, quote_id, prefix, product, date_iso=None):
+def _evidence_verify_one(
+    trade,
+    quote_id,
+    prefix,
+    product,
+    date_iso=None,
+    expected_provider="FYERS",
+):
     """Verify one side (ENTRY or EXIT). Returns list of rejection reasons."""
     reasons = []
     if not quote_id:
@@ -55,8 +64,37 @@ def _evidence_verify_one(trade, quote_id, prefix, product, date_iso=None):
         reasons.append(f"{prefix}_QUOTE_EVIDENCE_NOT_FOUND")
         return reasons
     if q.get("validation_status") != "VALID":
-        reasons.append(f"{prefix}_QUOTE_NOT_VALID_STATUS")
+        reasons.append(
+            f"{prefix}_QUOTE_NOT_VALID_STATUS"
+        )
         return reasons
+
+    actual_provider = (
+        str(
+            q.get("provider")
+            or ""
+        )
+        .strip()
+        .upper()
+    )
+
+    expected_provider = (
+        str(
+            expected_provider
+            or ""
+        )
+        .strip()
+        .upper()
+    )
+
+    if (
+        actual_provider
+        != expected_provider
+    ):
+        reasons.append(
+            f"{prefix}_PROVIDER_MISMATCH"
+        )
+
     # Identity match
     want_product = product
     want_token = trade.get("token")
@@ -149,23 +187,60 @@ def is_countable(trade, product=None, known_trade_ids=None, *,
     if not _allow_evidence_bypass:
         # S7_STAGE_6_FRESHNESS_PER_PRODUCT — use config per-product
         try:
-            from mcx.mcx_exec_config import is_freshness_calibrated as _cfg_fc
-            if not _cfg_fc(p):
-                reasons.append("EXECUTION_FRESHNESS_UNCALIBRATED")
+            from mcx.mcx_exec_config import (
+                is_freshness_calibrated
+                as _cfg_fc,
+            )
+
+            if not _cfg_fc(
+                p,
+                provider="FYERS",
+            ):
+                reasons.append(
+                    "EXECUTION_FRESHNESS_UNCALIBRATED"
+                )
         except Exception:
             reasons.append("EXECUTION_FRESHNESS_UNCALIBRATED")
         try:
-            from mcx.mcx_exec_config import is_quantity_semantics_verified
-            if not is_quantity_semantics_verified(p):
-                reasons.append("DEPTH_QUANTITY_SEMANTICS_UNVERIFIED")
+            from mcx.mcx_exec_config import (
+                is_quantity_semantics_verified,
+            )
+
+            if not is_quantity_semantics_verified(
+                p,
+                provider="FYERS",
+            ):
+                reasons.append(
+                    "DEPTH_QUANTITY_SEMANTICS_UNVERIFIED"
+                )
         except Exception:
             reasons.append("DEPTH_QUANTITY_SEMANTICS_UNVERIFIED")
         try:
-            reasons.extend(_evidence_verify_one(trade, trade.get("entry_quote_id"), "ENTRY", p))
+            reasons.extend(
+                _evidence_verify_one(
+                    trade,
+                    trade.get(
+                        "entry_quote_id"
+                    ),
+                    "ENTRY",
+                    p,
+                    expected_provider="FYERS",
+                )
+            )
         except Exception:
             reasons.append("ENTRY_QUOTE_EVIDENCE_VERIFICATION_ERROR")
         try:
-            reasons.extend(_evidence_verify_one(trade, trade.get("exit_quote_id"), "EXIT", p))
+            reasons.extend(
+                _evidence_verify_one(
+                    trade,
+                    trade.get(
+                        "exit_quote_id"
+                    ),
+                    "EXIT",
+                    p,
+                    expected_provider="FYERS",
+                )
+            )
         except Exception:
             reasons.append("EXIT_QUOTE_EVIDENCE_VERIFICATION_ERROR")
     return (len(reasons) == 0, reasons)

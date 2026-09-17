@@ -15,11 +15,9 @@ if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
 from dotenv import load_dotenv
-import pyotp
-from SmartApi import SmartConnect
 
 from mcx.mcx_contracts import PRODUCTS
-from mcx.mcx_identity import MCXIdentityResolver
+from mcx.mcx_fyers_runtime_v2 import build_mcx_fyers_runtime_from_env_v2
 from mcx.mcx_mtf import compute_mtf
 from mcx.mcx_structure import compute_structure, session_vwap
 from mcx.mcx_regime import classify as classify_regime, describe as describe_regime
@@ -33,7 +31,7 @@ from mcx.mcx_replay_evidence import (
 load_dotenv()
 IST = ZoneInfo("Asia/Kolkata")
 
-SUPPORTED = ("CRUDEOILM", "GOLDM", "NATGASMINI")
+SUPPORTED = ("CRUDEOILM", "GOLDM", "SILVERM")
 REPLAY_ROOT = "data/replay/mcx"
 
 # Per-timeframe interval in seconds (for close-time computation)
@@ -58,11 +56,30 @@ def _parse_args():
 
 
 def login():
-    obj = SmartConnect(api_key=os.getenv("ANGEL_API_KEY"))
-    r = obj.generateSession(clientCode=os.getenv("ANGEL_USER_ID"),
-                            password=os.getenv("ANGEL_PASSWORD"),
-                            totp=pyotp.TOTP(os.getenv("ANGEL_TOTP_SECRET")).now())
-    return obj if r and r.get("status") else None
+    """Compose FYERS data-only runtime for historical replay."""
+    log_dir = os.path.join(
+        "logs",
+        "mcx_fyers_replay",
+    )
+
+    os.makedirs(
+        log_dir,
+        exist_ok=True,
+    )
+
+    try:
+        return (
+            build_mcx_fyers_runtime_from_env_v2(
+                log_path=log_dir,
+            )
+        )
+    except Exception as exc:
+        print(
+            "FYERS_RUNTIME_UNAVAILABLE: "
+            f"{type(exc).__name__}: "
+            f"{str(exc)[:120]}"
+        )
+        return None
 
 
 def _hash(decisions):
@@ -96,14 +113,20 @@ def main():
     print(f"  window {start_ist.isoformat()} → {end_ist.isoformat()}  step={step}s")
     print("=" * 100)
 
-    obj = login()
-    if not obj:
-        print("LOGIN_FAILED")
-        return
-    print("✅ Session established")
+    runtime = login()
 
-    # Resolve contract as_of replay_date
-    resolver = MCXIdentityResolver()
+    if runtime is None:
+        print("FYERS_RUNTIME_FAILED")
+        return
+
+    obj = runtime.data
+
+    print(
+        "✅ FYERS data-only replay runtime established"
+    )
+
+    # Resolve contract as_of replay_date.
+    resolver = runtime.identity
     res = resolver.resolve_active(product, as_of=replay_date)
     if res.get("status") != "OK" or not res.get("futures"):
         print(f"CONTRACT_IDENTITY_UNVERIFIED: {res.get('status')}")

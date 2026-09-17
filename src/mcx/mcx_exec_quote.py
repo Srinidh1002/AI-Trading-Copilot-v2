@@ -3,10 +3,20 @@ import hashlib
 import json
 from datetime import datetime, timezone
 
-# Section 7.7 default (uncalibrated — will be replaced by Monday live smoke)
-EXECUTION_QUOTE_MAX_AGE_SECONDS = 20.0  # S7_STAGE_6_CALIBRATION — max of per-product (see exec_config.json)
-EXECUTION_FRESHNESS_CALIBRATED = True  # S7_STAGE_6_CALIBRATION
-EXECUTION_FRESHNESS_SOURCE = "S7_STAGE_6_CALIBRATION_2026-09-15"  # S7_STAGE_6_CALIBRATION
+# Certification freshness is provider-scoped in mcx_exec_config.
+# This conservative fallback is operational only, allowing an already-open
+# PAPER position to remain monitorable/closable while calibration is pending.
+OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS = 20.0
+
+EXECUTION_QUOTE_MAX_AGE_SECONDS = (
+    OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
+)
+
+EXECUTION_FRESHNESS_CALIBRATED = False
+
+EXECUTION_FRESHNESS_SOURCE = (
+    "PROVIDER_SCOPED_CALIBRATION_REQUIRED"
+)
 
 QUOTE_SOURCES = ("WS_DEPTH", "REST_FULL")
 
@@ -43,7 +53,7 @@ def make_execution_quote(
     volume=None, open_interest=None,
     exchange_feed_time=None, exchange_trade_time=None,
     provider_received_at=None,
-    provider="AngelOne", source_mode="REST_FULL",
+    provider="UNSPECIFIED", source_mode="REST_FULL",
     sequence_number=None, tick_size=None,
     raw_payload=None,
 ):
@@ -150,42 +160,161 @@ def validate_quote(q, expected_token, expected_exchange="MCX",
         reasons.append("MISSING_FEED_TIME")
     if not q.get("provider_received_at"):
         reasons.append("MISSING_PROVIDER_TIME")
-    # freshness
-    ref_now = now_iso or datetime.now(timezone.utc).isoformat()
-    # S7_STAGE_6_CALIBRATION — resolution order:
-    #   1. explicit max_age_seconds arg (tests)
-    #   2. per-product config (exec_config.json)
-    #   3. module-level global (fallback)
-    #   4. UNCALIBRATED rejection
-    _resolved_max_age = max_age_seconds
-    if _resolved_max_age is None:
-        _product = q.get("product")
+    # Freshness resolution:
+    # 1. explicit max age for controlled tests/recovery callers;
+    # 2. exact product + provider calibration;
+    # 3. conservative operational fallback.
+    #
+    # The operational fallback never makes a trade certification-countable.
+    ref_now = (
+        now_iso
+        or datetime.now(
+            timezone.utc
+        ).isoformat()
+    )
+
+    resolved_max_age = (
+        max_age_seconds
+    )
+
+    freshness_mode = None
+
+    provider_calibrated = (
+        False
+    )
+
+    if (
+        resolved_max_age
+        is not None
+    ):
+        freshness_mode = (
+            "EXPLICIT_OPERATIONAL"
+        )
+
+    if (
+        resolved_max_age
+        is None
+    ):
+        product = q.get(
+            "product"
+        )
+
+        provider = (
+            str(
+                q.get(
+                    "provider"
+                )
+                or ""
+            )
+            .strip()
+            .upper()
+        )
+
         try:
-            from mcx.mcx_exec_config import get_execution_quote_max_age_seconds as _cfg_age
-            _resolved_max_age = _cfg_age(_product)
+            from mcx.mcx_exec_config import (
+                get_execution_quote_max_age_seconds
+                as _config_age,
+            )
+
+            resolved_max_age = (
+                _config_age(
+                    product,
+                    provider=provider,
+                )
+            )
+
         except Exception:
-            _resolved_max_age = None
-        if _resolved_max_age is None and EXECUTION_FRESHNESS_CALIBRATED:
-            _resolved_max_age = EXECUTION_QUOTE_MAX_AGE_SECONDS
-    if _resolved_max_age is None:
-        reasons.append("EXECUTION_FRESHNESS_UNCALIBRATED")
-        q["execution_freshness_status"] = "UNCALIBRATED"
-    else:
-        max_age = _resolved_max_age
-        try:
-            recv = datetime.fromisoformat(q.get("provider_received_at"))
-            now = datetime.fromisoformat(ref_now)
-            if recv.tzinfo is None:
-                recv = recv.replace(tzinfo=timezone.utc)
-            if now.tzinfo is None:
-                now = now.replace(tzinfo=timezone.utc)
-            age = (now - recv).total_seconds()
-            if age > max_age:
-                reasons.append("STALE_QUOTE")
-            q["_age_seconds"] = round(age, 3)
-            q["execution_freshness_status"] = "CALIBRATED"
-        except Exception:
-            reasons.append("MISSING_PROVIDER_TIME")
+            resolved_max_age = (
+                None
+            )
+
+        if (
+            resolved_max_age
+            is not None
+        ):
+            freshness_mode = (
+                "PROVIDER_CALIBRATED"
+            )
+
+            provider_calibrated = (
+                True
+            )
+
+    if (
+        resolved_max_age
+        is None
+    ):
+        resolved_max_age = (
+            OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
+        )
+
+        freshness_mode = (
+            "OPERATIONAL_UNCALIBRATED"
+        )
+
+    try:
+        max_age = float(
+            resolved_max_age
+        )
+
+        received = (
+            datetime.fromisoformat(
+                q.get(
+                    "provider_received_at"
+                )
+            )
+        )
+
+        now = (
+            datetime.fromisoformat(
+                ref_now
+            )
+        )
+
+        if received.tzinfo is None:
+            received = (
+                received.replace(
+                    tzinfo=timezone.utc
+                )
+            )
+
+        if now.tzinfo is None:
+            now = now.replace(
+                tzinfo=timezone.utc
+            )
+
+        age = (
+            now - received
+        ).total_seconds()
+
+        if age > max_age:
+            reasons.append(
+                "STALE_QUOTE"
+            )
+
+        q["_age_seconds"] = (
+            round(
+                age,
+                3,
+            )
+        )
+
+    except Exception:
+        reasons.append(
+            "MISSING_PROVIDER_TIME"
+        )
+
+    q[
+        "execution_freshness_status"
+    ] = freshness_mode
+
+    q[
+        "certification_freshness_calibrated"
+    ] = provider_calibrated
+
+    q[
+        "execution_quote_max_age_seconds_used"
+    ] = resolved_max_age
 
     q["validation_status"] = "INVALID" if reasons else "VALID"
     q["rejection_reasons"] = reasons

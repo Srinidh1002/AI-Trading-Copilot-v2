@@ -29,7 +29,7 @@ EXPECTED_TARGET_IDENTITIES = (
     ("SENSEX", "BSE"),
     ("CRUDEOILM", "MCX"),
     ("GOLDM", "MCX"),
-    ("NATGASMINI", "MCX"),
+    ("SILVERM", "MCX"),
 )
 
 
@@ -43,7 +43,7 @@ def test_five_market_universe_is_exact_and_paper_only():
         "SENSEX",
         "CRUDEOILM",
         "GOLDM",
-        "NATGASMINI",
+        "SILVERM",
     )
 
     assert (
@@ -98,9 +98,9 @@ def test_alias_resolution_is_provider_independent():
 
     assert (
         normalize_target_market_symbol(
-            "natural gas mini"
+            "silver mini"
         )
-        == "NATGASMINI"
+        == "SILVERM"
     )
 
     assert is_target_market(
