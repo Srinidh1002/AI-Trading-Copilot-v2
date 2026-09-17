@@ -13,6 +13,7 @@ import sys
 import threading
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -45,14 +46,35 @@ def _resolve_five_markets(resolver, as_of):
     )
 
 
+def _load_environment(env_file: str | None) -> bool:
+    if env_file is None:
+        load_dotenv()
+        return True
+
+    path = Path(env_file).expanduser().resolve()
+    if not path.is_file():
+        print("ENV FILE NOT FOUND")
+        return False
+
+    load_dotenv(dotenv_path=path, override=False)
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeout", type=float, default=15.0)
     parser.add_argument("--ipv4-only", action="store_true")
     parser.add_argument("--min-ticks", type=int, default=1)
+    parser.add_argument(
+        "--env-file",
+        default=None,
+        help="Explicit dotenv path. The path is never printed.",
+    )
     args = parser.parse_args()
 
-    load_dotenv()
+    if not _load_environment(args.env_file):
+        return 2
+
     app_id = os.getenv("FYERS_APP_ID")
     token = os.getenv("FYERS_ACCESS_TOKEN")
     if not app_id or not token:
