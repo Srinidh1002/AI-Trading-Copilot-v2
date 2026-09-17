@@ -28,3 +28,4 @@ artifacts/diagnostics/
 artifacts/certification/task2/
 data/task9/live-decision-audit.json
 data/task9/live_stream/
+data/provider_cache/
