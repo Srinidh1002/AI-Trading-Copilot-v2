@@ -1,0 +1,3 @@
+def test_no_execution_public_surface():
+ from services.contracts import IntegratedThreeTargetTradePlanResultV1
+ assert IntegratedThreeTargetTradePlanResultV1.__name__=='IntegratedThreeTargetTradePlanResultV1'

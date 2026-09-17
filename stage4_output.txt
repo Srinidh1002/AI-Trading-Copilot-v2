@@ -1,0 +1,249 @@
+====================================================================================================
+STAGE 4 - REST QUOTE AGE + CADENCE CALIBRATION
+Run at: 2026-09-15T09:49:12.317468+05:30
+Duration: 720s    Poll: 4.0s    Output: data\execution_evidence\mcx\_freshness\2026-09-15_094912_samples.jsonl
+====================================================================================================
+[I 260915 09:49:12 smartConnect:124] in pool
+Session established
+Resolved 9 targets:
+  CRUDEOILM    FUT        token=565900
+  CRUDEOILM    CE_9900    token=576713
+  CRUDEOILM    PE_9900    token=576867
+  GOLDM        FUT        token=569003
+  GOLDM        CE_151500  token=578835
+  GOLDM        PE_151500  token=578935
+  NATGASMINI   FUT        token=568246
+  NATGASMINI   CE_275     token=578429
+  NATGASMINI   PE_275     token=578509
+  [   0s] polled 9/9 tokens
+  [   4s] polled 9/9 tokens
+  [   8s] polled 9/9 tokens
+  [  12s] polled 9/9 tokens
+  [  16s] polled 9/9 tokens
+  [  20s] polled 9/9 tokens
+  [  24s] polled 9/9 tokens
+  [  28s] polled 9/9 tokens
+  [  32s] polled 9/9 tokens
+  [  36s] polled 9/9 tokens
+  [  40s] polled 9/9 tokens
+  [  44s] polled 9/9 tokens
+  [  48s] polled 9/9 tokens
+  [  52s] polled 9/9 tokens
+  [  56s] polled 9/9 tokens
+  [  60s] polled 9/9 tokens
+  [  64s] polled 9/9 tokens
+  [  68s] polled 9/9 tokens
+  [  72s] polled 9/9 tokens
+  [  76s] polled 9/9 tokens
+  [  80s] polled 9/9 tokens
+  [  84s] polled 9/9 tokens
+  [  88s] polled 9/9 tokens
+  [  92s] polled 9/9 tokens
+  [  96s] polled 9/9 tokens
+  [ 100s] polled 9/9 tokens
+  [ 104s] polled 9/9 tokens
+  [ 108s] polled 9/9 tokens
+  [ 112s] polled 9/9 tokens
+  [ 116s] polled 9/9 tokens
+  [ 120s] polled 9/9 tokens
+  [ 124s] polled 9/9 tokens
+  [ 128s] polled 9/9 tokens
+  [ 132s] polled 9/9 tokens
+  [ 136s] polled 9/9 tokens
+  [ 140s] polled 9/9 tokens
+  [ 144s] polled 9/9 tokens
+  [ 148s] polled 9/9 tokens
+  [ 152s] polled 9/9 tokens
+  [ 156s] polled 9/9 tokens
+  [ 160s] polled 9/9 tokens
+  [ 164s] polled 9/9 tokens
+  [ 168s] polled 9/9 tokens
+  [ 172s] polled 9/9 tokens
+  [ 176s] polled 9/9 tokens
+  [ 180s] polled 9/9 tokens
+  [ 184s] polled 9/9 tokens
+  [ 188s] polled 9/9 tokens
+  [ 192s] polled 9/9 tokens
+  [ 196s] polled 9/9 tokens
+  [ 200s] polled 9/9 tokens
+  [ 204s] polled 9/9 tokens
+  [ 208s] polled 9/9 tokens
+  [ 212s] polled 9/9 tokens
+  [ 216s] polled 9/9 tokens
+  [ 220s] polled 9/9 tokens
+  [ 224s] polled 9/9 tokens
+  [ 228s] polled 9/9 tokens
+  [ 232s] polled 9/9 tokens
+  [ 236s] polled 9/9 tokens
+  [ 240s] polled 9/9 tokens
+  [ 244s] polled 9/9 tokens
+  [ 248s] polled 9/9 tokens
+  [ 252s] polled 9/9 tokens
+  [ 256s] polled 9/9 tokens
+  [ 260s] polled 9/9 tokens
+  [ 264s] polled 9/9 tokens
+  [ 268s] polled 9/9 tokens
+  [ 272s] polled 9/9 tokens
+  [ 276s] polled 9/9 tokens
+  [ 280s] polled 9/9 tokens
+  [ 284s] polled 9/9 tokens
+  [ 288s] polled 9/9 tokens
+  [ 292s] polled 9/9 tokens
+  [ 302s] polled 9/9 tokens
+  [ 302s] polled 9/9 tokens
+  [ 306s] polled 9/9 tokens
+  [ 310s] polled 9/9 tokens
+  [ 314s] polled 9/9 tokens
+  [ 318s] polled 9/9 tokens
+  [ 322s] polled 9/9 tokens
+  [ 326s] polled 9/9 tokens
+  [ 330s] polled 9/9 tokens
+  [ 334s] polled 9/9 tokens
+  [ 338s] polled 9/9 tokens
+  [ 342s] polled 9/9 tokens
+  [ 346s] polled 9/9 tokens
+  [ 350s] polled 9/9 tokens
+  [ 354s] polled 9/9 tokens
+  [ 358s] polled 9/9 tokens
+  [ 362s] polled 9/9 tokens
+  [ 366s] polled 9/9 tokens
+  [ 370s] polled 9/9 tokens
+  [ 374s] polled 9/9 tokens
+  [ 378s] polled 9/9 tokens
+  [ 382s] polled 9/9 tokens
+  [ 386s] polled 9/9 tokens
+  [ 390s] polled 9/9 tokens
+  [ 394s] polled 9/9 tokens
+  [ 398s] polled 9/9 tokens
+  [ 402s] polled 9/9 tokens
+  [ 406s] polled 9/9 tokens
+  [ 410s] polled 9/9 tokens
+  [ 414s] polled 9/9 tokens
+  [ 418s] polled 9/9 tokens
+  [ 422s] polled 9/9 tokens
+  [ 426s] polled 9/9 tokens
+  [ 430s] polled 9/9 tokens
+  [ 434s] polled 9/9 tokens
+  [ 438s] polled 9/9 tokens
+  [ 442s] polled 9/9 tokens
+  [ 446s] polled 9/9 tokens
+  [ 450s] polled 9/9 tokens
+  [ 454s] polled 9/9 tokens
+  [ 458s] polled 9/9 tokens
+  [ 462s] polled 9/9 tokens
+  [ 466s] polled 9/9 tokens
+  [ 470s] polled 9/9 tokens
+  [ 474s] polled 9/9 tokens
+  [ 478s] polled 9/9 tokens
+  [ 483s] polled 9/9 tokens
+  [ 486s] polled 9/9 tokens
+  [ 490s] polled 9/9 tokens
+  [ 494s] polled 9/9 tokens
+  [ 498s] polled 9/9 tokens
+  [ 502s] polled 9/9 tokens
+  [ 506s] polled 9/9 tokens
+  [ 510s] polled 9/9 tokens
+  [ 514s] polled 9/9 tokens
+  [ 518s] polled 9/9 tokens
+  [ 522s] polled 9/9 tokens
+  [ 526s] polled 9/9 tokens
+  [ 530s] polled 9/9 tokens
+  [ 534s] polled 9/9 tokens
+  [ 538s] polled 9/9 tokens
+  [ 542s] polled 9/9 tokens
+  [ 546s] polled 9/9 tokens
+  [ 550s] polled 9/9 tokens
+  [ 555s] polled 9/9 tokens
+  [ 558s] polled 9/9 tokens
+  [ 562s] polled 9/9 tokens
+  [ 566s] polled 9/9 tokens
+  [ 570s] polled 9/9 tokens
+  [ 574s] polled 9/9 tokens
+  [ 578s] polled 9/9 tokens
+  [ 582s] polled 9/9 tokens
+  [ 586s] polled 9/9 tokens
+  [ 590s] polled 9/9 tokens
+  [ 594s] polled 9/9 tokens
+  [ 599s] polled 9/9 tokens
+  [ 602s] polled 9/9 tokens
+  [ 606s] polled 9/9 tokens
+  [ 610s] polled 9/9 tokens
+  [ 614s] polled 9/9 tokens
+  [ 618s] polled 9/9 tokens
+  [ 622s] polled 9/9 tokens
+  [ 626s] polled 9/9 tokens
+  [ 630s] polled 9/9 tokens
+  [ 634s] polled 9/9 tokens
+  [ 638s] polled 9/9 tokens
+  [ 642s] polled 9/9 tokens
+  [ 646s] polled 9/9 tokens
+  [ 650s] polled 9/9 tokens
+  [ 654s] polled 9/9 tokens
+  [ 658s] polled 9/9 tokens
+  [ 662s] polled 9/9 tokens
+  [ 666s] polled 9/9 tokens
+  [ 670s] polled 9/9 tokens
+  [ 674s] polled 9/9 tokens
+  [ 678s] polled 9/9 tokens
+  [ 682s] polled 9/9 tokens
+  [ 686s] polled 9/9 tokens
+  [ 690s] polled 9/9 tokens
+  [ 695s] polled 9/9 tokens
+  [ 698s] polled 9/9 tokens
+  [ 702s] polled 9/9 tokens
+  [ 706s] polled 9/9 tokens
+  [ 711s] polled 9/9 tokens
+  [ 714s] polled 9/9 tokens
+  [ 718s] polled 9/9 tokens
+
+====================================================================================================
+STATS
+====================================================================================================
+
+token=565900
+  samples=180  ltp_changes=102  dups=1  errs=0
+  age_s: median=5.574  p95=6.572  max=7.056
+  interval_s: median=4.000  p95=4.001  max=4.001  n=102
+
+token=576713
+  samples=180  ltp_changes=158  dups=1  errs=0
+  age_s: median=6.033  p95=6.579  max=7.055
+  interval_s: median=4.000  p95=4.001  max=4.001  n=158
+
+token=576867
+  samples=180  ltp_changes=122  dups=1  errs=0
+  age_s: median=6.039  p95=7.034  max=7.577
+  interval_s: median=4.000  p95=4.001  max=4.001  n=122
+
+token=569003
+  samples=180  ltp_changes=78  dups=1  errs=0
+  age_s: median=6.027  p95=7.048  max=9.577
+  interval_s: median=4.000  p95=4.001  max=4.001  n=78
+
+token=578835
+  samples=180  ltp_changes=32  dups=1  errs=0
+  age_s: median=6.055  p95=7.562  max=9.578
+  interval_s: median=4.000  p95=4.001  max=4.001  n=32
+
+token=578935
+  samples=180  ltp_changes=28  dups=1  errs=0
+  age_s: median=6.050  p95=7.566  max=8.555
+  interval_s: median=4.000  p95=4.001  max=4.001  n=28
+
+token=568246
+  samples=180  ltp_changes=41  dups=14  errs=0
+  age_s: median=6.569  p95=10.573  max=14.043
+  interval_s: median=4.000  p95=4.001  max=4.001  n=41
+
+token=578429
+  samples=180  ltp_changes=13  dups=23  errs=0
+  age_s: median=7.547  p95=11.573  max=18.554
+  interval_s: median=4.000  p95=4.001  max=4.001  n=13
+
+token=578509
+  samples=180  ltp_changes=27  dups=25  errs=0
+  age_s: median=7.056  p95=11.578  max=16.564
+  interval_s: median=4.000  p95=4.001  max=4.001  n=27
+
+Raw samples: data\execution_evidence\mcx\_freshness\2026-09-15_094912_samples.jsonl
+====================================================================================================

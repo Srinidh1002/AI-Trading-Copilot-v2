@@ -1,0 +1,185 @@
+{
+  "timestamp": "2026-09-03T23:01:53.204275",
+  "date": "2026-09-03",
+  "time": "23:01:53",
+  "market_summary": {
+    "market_bias": "STRONGLY_BULLISH",
+    "volatility_level": "LOW",
+    "recommended_market": "BOTH",
+    "overall_sentiment": "STRONG BULLISH"
+  },
+  "global_markets": {
+    "us": {
+      "markets": {
+        "S&P 500": {
+          "price": 7744.58,
+          "change": 0.75
+        },
+        "NASDAQ": {
+          "price": 26567.63,
+          "change": 0.88
+        },
+        "Dow Jones": {
+          "price": 53695.62,
+          "change": 0.72
+        }
+      },
+      "sentiment": "BULLISH"
+    },
+    "asia": {
+      "markets": {
+        "NIKKEI 225": {
+          "price": 64214.48,
+          "change": -0.79
+        },
+        "HANG SENG": {
+          "price": 25213.31,
+          "change": -1.06
+        }
+      },
+      "sentiment": "BEARISH"
+    },
+    "europe": {
+      "markets": {
+        "FTSE 100": {
+          "price": 10831.52,
+          "change": 0.69
+        },
+        "DAX": {
+          "price": 26003.32,
+          "change": 0.63
+        },
+        "CAC 40": {
+          "price": 8286.4,
+          "change": 0.13
+        }
+      },
+      "sentiment": "BULLISH"
+    }
+  },
+  "economic_events": [
+    {
+      "time": "10:00 AM",
+      "event": "US ISM Manufacturing PMI",
+      "impact": "HIGH",
+      "expected": "47.5",
+      "previous": "46.8"
+    },
+    {
+      "time": "10:30 AM",
+      "event": "US Unemployment Claims",
+      "impact": "HIGH",
+      "expected": "220K",
+      "previous": "215K"
+    },
+    {
+      "time": "11:00 AM",
+      "event": "US Crude Oil Inventories",
+      "impact": "MEDIUM",
+      "expected": "-2.5M",
+      "previous": "-3.2M"
+    }
+  ],
+  "news_analysis": {
+    "overall_sentiment": "NEUTRAL",
+    "sentiment_score": 0.3,
+    "volatility_expected": "MEDIUM",
+    "key_events": [
+      {
+        "headline": "RBI keeps repo rate unchanged at 6.5%",
+        "impact": "POSITIVE"
+      },
+      {
+        "headline": "Global markets show mixed signals",
+        "impact": "NEUTRAL"
+      },
+      {
+        "headline": "Oil prices rise on supply concerns",
+        "impact": "NEGATIVE"
+      }
+    ]
+  },
+  "previous_session": {
+    "date": "",
+    "nifty": {
+      "close": 23914.45,
+      "open": 23914.45,
+      "high": 23914.45,
+      "low": 23914.45,
+      "change": 0.0,
+      "change_percent": 0.0,
+      "volume": 1500000
+    },
+    "sensex": {},
+    "summary": "Consolidation with slight bullish bias",
+    "key_levels": {
+      "nifty_support": 23800,
+      "nifty_resistance": 23950,
+      "sensex_support": 76300,
+      "sensex_resistance": 76600
+    }
+  },
+  "fii_dii": {
+    "fii_net_buy": 850.5,
+    "dii_net_buy": 320.75,
+    "fii_derivatives": {
+      "index_futures": "BUY",
+      "index_options": "CALL_BUYING",
+      "stock_futures": "SELL"
+    },
+    "fii_sentiment": "BULLISH"
+  },
+  "vix_analysis": {
+    "current": 11.34,
+    "change": -0.35,
+    "change_percent": -2.36,
+    "level": "LOW"
+  },
+  "sectors": {
+    "best_performing": [
+      [
+        "IT",
+        0.85
+      ],
+      [
+        "METAL",
+        0.62
+      ],
+      [
+        "BANKING",
+        0.45
+      ]
+    ],
+    "worst_performing": [
+      [
+        "OIL_GAS",
+        -0.25
+      ],
+      [
+        "AUTO",
+        -0.12
+      ],
+      [
+        "FMCG",
+        -0.08
+      ]
+    ],
+    "all": {
+      "IT": 0.85,
+      "BANKING": 0.45,
+      "AUTO": -0.12,
+      "PHARMA": 0.32,
+      "FMCG": -0.08,
+      "METAL": 0.62,
+      "OIL_GAS": -0.25,
+      "REALTY": 0.18
+    }
+  },
+  "recommendations": {
+    "market": "BOTH",
+    "bias": "STRONGLY_BULLISH",
+    "action": "BUY CALL",
+    "reason": "Strong bullish bias across markets"
+  },
+  "conclusion": "Market Bias: STRONGLY_BULLISH | Volatility Level: LOW | Recommended Market: BOTH | Overall: Bullish outlook - Look for CALL opportunities"
+}

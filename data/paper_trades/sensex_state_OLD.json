@@ -1,0 +1,54 @@
+{
+  "market": "SENSEX",
+  "timestamp": "2026-09-10T12:35:10.249833",
+  "current_session": 1,
+  "total_sessions": 100,
+  "total_trades": 1,
+  "winning_trades": 0,
+  "losing_trades": 1,
+  "total_pnl": -574.0000000000009,
+  "t1_hits": 0,
+  "t2_hits": 0,
+  "t3_hits": 0,
+  "stop_losses": 1,
+  "market_close_exits": 0,
+  "consecutive_wins": 0,
+  "consecutive_losses": 1,
+  "session_history": [
+    {
+      "market": "SENSEX",
+      "type": "CE",
+      "pnl": -574.0000000000009,
+      "win": false
+    }
+  ],
+  "completed_trades": [
+    {
+      "trade_id": "TRD_20260910_122840",
+      "market": "SENSEX",
+      "type": "CE",
+      "strike": 74900.0,
+      "signal": "BUY",
+      "entry": 561.45,
+      "token": "865649",
+      "symbol": "SENSEX2691774900CE",
+      "quantity": 20,
+      "entry_time": "2026-09-10 12:28:40.967533",
+      "current_price": 532.75,
+      "pnl": -574.0000000000009,
+      "pnl_pct": -5.111764182028684,
+      "max_profit": 15.99999999999909,
+      "t1_price": 645.6675,
+      "t2_price": 729.8850000000001,
+      "t3_price": 842.1750000000001,
+      "sl_price": 533.3775,
+      "reason": "Enhanced Bullish signal",
+      "status": "CLOSED",
+      "exit_price": 532.75,
+      "exit_reason": "STOP_LOSS",
+      "exit_time": "2026-09-10 12:34:52.887022"
+    }
+  ],
+  "active_trades": [],
+  "sessions_completed_today": 1
+}

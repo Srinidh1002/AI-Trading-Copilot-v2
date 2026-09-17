@@ -1,0 +1,3 @@
+from tests.test_p5_8i_confirmation_replay import test_fresh_confirmation_matrix
+from tests.fixtures.broader_market_intelligence import PAIRS
+def test_matrix_has_all_four_canonical_relationships():assert len(PAIRS)==4

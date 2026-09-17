@@ -1,3 +1,5 @@
+"""Legacy research dashboard page; not the Task 9 Streamlit entrypoint."""
+
 import streamlit as st
 
 from dashboard.sidebar import sidebar

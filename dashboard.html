@@ -1,0 +1,80 @@
+# dashboard.html
+# HTML Dashboard - Open in browser
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Trading Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #00ff88; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card { background: #16213e; padding: 20px; border-radius: 10px; border: 1px solid #0f3460; }
+        .card h3 { color: #00ff88; margin-top: 0; }
+        .value { font-size: 24px; font-weight: bold; }
+        .positive { color: #00ff88; }
+        .negative { color: #ff4444; }
+        .neutral { color: #ffaa00; }
+        .signal { background: #0f3460; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .trade { background: #1a3a6a; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .refresh { text-align: center; color: #666; margin-top: 20px; }
+        .status-running { color: #00ff88; }
+        .status-stopped { color: #ff4444; }
+        .status-waiting { color: #ffaa00; }
+    </style>
+    <script>
+        async function refreshDashboard() {
+            try {
+                const response = await fetch('data/dashboard/dashboard_*.json');
+                // Since we can't directly read files, we'll use the Python backend
+                // This is a placeholder for the full HTML version
+            } catch(e) {
+                console.log('Waiting for data...');
+            }
+        }
+        setInterval(refreshDashboard, 5000);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 AI TRADING COPILOT DASHBOARD</h1>
+        <div class="grid">
+            <div class="card">
+                <h3>🟢 System Status</h3>
+                <div id="status">Loading...</div>
+                <div id="uptime">Uptime: --</div>
+                <div id="cycle">Cycle: --</div>
+            </div>
+            <div class="card">
+                <h3>📈 Market Data</h3>
+                <div id="nifty">NIFTY: --</div>
+                <div id="sensex">SENSEX: --</div>
+            </div>
+            <div class="card">
+                <h3>📊 Positions</h3>
+                <div id="positions">No positions</div>
+            </div>
+            <div class="card">
+                <h3>💰 P&L</h3>
+                <div id="daily">Daily: --</div>
+                <div id="weekly">Weekly: --</div>
+                <div id="monthly">Monthly: --</div>
+            </div>
+            <div class="card">
+                <h3>🎯 Recent Signals</h3>
+                <div id="signals">No signals</div>
+            </div>
+            <div class="card">
+                <h3>📋 Certification</h3>
+                <div id="cert">Loading...</div>
+            </div>
+        </div>
+        <div class="refresh">🔄 Refreshing automatically every 5 seconds</div>
+    </div>
+    <script>
+        // For full HTML dashboard, use: python -m http.server 8000
+        // Then open browser to http://localhost:8000/dashboard.html
+    </script>
+</body>
+</html>

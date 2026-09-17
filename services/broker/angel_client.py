@@ -16,7 +16,10 @@ No orders are placed from this client.
 """
 
 import logging
+import re
 import time
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import pyotp
 from utils.debug import debug_print
@@ -36,7 +39,50 @@ from services.broker.market_data_control import (
 
 
 LOGGER = logging.getLogger(__name__)
+_TRADING_TIMEZONE = ZoneInfo("Asia/Kolkata")
+_SECRET_VALUE = re.compile(r"(?i)((?:x-privatekey|api[_ -]?key|authorization|jwt|refresh[_ -]?token|feed[_ -]?token|pin|totp|cookie|session)[\"']?\s*[:=]\s*[\"']?)([^,\s}\]'\"]+)")
 
+
+def _safe_provider_reason(value):
+    """Retain a bounded operational reason without credentials or headers."""
+    raw = str(value)
+    if _SECRET_VALUE.search(raw):
+        return "REDACTED_PROVIDER_ERROR"
+    text = raw
+    return " ".join(text.split())[:200]
+
+
+def _current_trading_date() -> date:
+    """Return Angel's local session date without retaining credentials."""
+    return datetime.now(_TRADING_TIMEZONE).date()
+
+
+def _suppress_smartapi_logs():
+    """Prevent SmartAPI SDK loggers from exposing request headers."""
+    logger_names = {
+        "SmartApi",
+        "smartapi",
+        "smartapi-python",
+        "smartConnect",
+        "SmartApi.smartConnect",
+        "logzero_default",
+    }
+
+    logger_names.update(
+        name
+        for name in logging.root.manager.loggerDict
+        if (
+            "smartapi" in name.lower()
+            or "smartconnect" in name.lower()
+        )
+    )
+
+    for name in logger_names:
+        logger = logging.getLogger(name)
+        logger.handlers.clear()
+        logger.disabled = True
+        logger.propagate = False
+        logger.setLevel(logging.CRITICAL + 1)
 
 class AngelMarketDataClient:
     """
@@ -55,6 +101,7 @@ class AngelMarketDataClient:
         rate_limit_cooldown_seconds=None,
         max_rate_limit_retries=None,
         request_controller=None,
+        current_date=None,
         
     ):
         if not ANGEL_API_KEY:
@@ -78,10 +125,14 @@ class AngelMarketDataClient:
                 "be at least 1."
             )
 
+        if current_date is not None and not callable(current_date):
+            raise TypeError("current_date must be callable.")
+
+        _suppress_smartapi_logs()
         self.api = SmartConnect(
             api_key=ANGEL_API_KEY
         )
-
+        _suppress_smartapi_logs()
         self.max_retries = (
             max_retries
         )
@@ -115,7 +166,7 @@ class AngelMarketDataClient:
                 rate_limit_cooldown_seconds=(
                     rate_limit_cooldown_seconds
                 ),
-                
+
             )
             
         )
@@ -123,11 +174,13 @@ class AngelMarketDataClient:
         self.authenticated = False
 
         self.session = None
+        self._current_date = current_date or _current_trading_date
+        self._authenticated_on = None
 
     # ---------------------------------
     # AUTHENTICATION
     # ---------------------------------
-    
+
     def login(
             
         self,
@@ -141,11 +194,17 @@ class AngelMarketDataClient:
         When force=True, create a fresh session.
         """
 
-        if (
-            self.authenticated
-            and not force
-        ):
-            return self.session
+        if self.authenticated and not force:
+            # Sessions are valid only through local midnight.  Test doubles
+            # created before this guard have no authenticated-date metadata;
+            # retain their legacy injected-client behaviour rather than
+            # guessing a date for them.
+            if (
+                self._authenticated_on is None
+                or self._authenticated_on == self._current_date()
+            ):
+                return self.session
+            self._reset_session()
 
         if not ANGEL_CLIENT_ID:
             raise ValueError(
@@ -163,8 +222,7 @@ class AngelMarketDataClient:
             )
 
         if force:
-            self.authenticated = False
-            self.session = None
+            self._reset_session()
 
         totp = pyotp.TOTP(
             ANGEL_TOTP_SECRET
@@ -194,18 +252,9 @@ class AngelMarketDataClient:
             )
 
         except Exception as exc:
-            self.authenticated = False
-            self.session = None
+            self._reset_session()
 
-            raise RuntimeError(
-                "Angel One login request failed: "
-                f"{exc}"
-            ) from exc
-        debug_print(
-            f"LOGIN: "
-            f"status={response.get('status')} "
-            f"message={response.get('message', '')}"
-        )
+            raise RuntimeError("Angel One login request failed: " + _safe_provider_reason(exc)) from exc
         if self._is_rate_limit_error(
             response=response,
         ):
@@ -215,38 +264,64 @@ class AngelMarketDataClient:
                 self.retry_backoff_multiplier,
             )
 
-        if (
-            not response
-            or not isinstance(
-                response,
+        try:
+            validated_response = (
+                self._validate_response(
+                    response,
+                    "login",
+                )
+            )
+
+            session_data = (
+                validated_response.get(
+                    "data"
+                )
+            )
+
+            if not isinstance(
+                session_data,
                 dict,
-            )
-        ):
-            self.authenticated = False
-            self.session = None
+            ):
+                raise RuntimeError(
+                    "Angel One login returned "
+                    "invalid session data."
+                )
 
-            raise RuntimeError(
-                "Angel One login returned "
-                "an invalid response."
+            required_tokens = (
+                "jwtToken",
+                "refreshToken",
+                "feedToken",
             )
 
-        if not response.get(
-            "status",
-            False,
-        ):
-            self.authenticated = False
-            self.session = None
-
-            raise RuntimeError(
-                "Angel One login failed: "
-                f"{response.get('message', 'Unknown login error')}"
+            missing_tokens = tuple(
+                name
+                for name in required_tokens
+                if (
+                    not isinstance(
+                        session_data.get(name),
+                        str,
+                    )
+                    or not session_data[
+                        name
+                    ].strip()
+                )
             )
+
+            if missing_tokens:
+                raise RuntimeError(
+                    "Angel One login returned "
+                    "incomplete authentication data."
+                )
+
+        except Exception:
+            self._reset_session()
+            raise
 
         self.authenticated = True
+        self.session = validated_response
+        self._authenticated_on = self._current_date()
 
-        self.session = response
-
-        return response
+        return validated_response
 
     # ---------------------------------
     # SESSION HELPERS
@@ -258,6 +333,13 @@ class AngelMarketDataClient:
         """
         Ensure an authenticated session exists.
         """
+
+        if (
+            self.authenticated
+            and self._authenticated_on is not None
+            and self._authenticated_on != self._current_date()
+        ):
+            self._reset_session()
 
         if not self.authenticated:
             self.login()
@@ -275,6 +357,7 @@ class AngelMarketDataClient:
         self.authenticated = False
 
         self.session = None
+        self._authenticated_on = None
 
     # ---------------------------------
     # ERROR CLASSIFICATION
@@ -285,78 +368,118 @@ class AngelMarketDataClient:
         response=None,
         exception=None,
     ):
-        """
-        Detect only genuine broker rate-limit errors.
-        """
+        """Detect documented Angel One rate-limit failures."""
 
-        if isinstance(response, dict):
+        from services.broker.angel_provider_failure import (
+            classify_angel_provider_failure,
+            is_angel_rate_limit_failure,
+        )
 
-            #
-            # SUCCESS responses are NEVER rate limited
-            #
-            if response.get("status") is True:
+        classification = classify_angel_provider_failure(
+            response=response,
+            exception=exception,
+        )
+
+        return is_angel_rate_limit_failure(
+            classification
+        )
+
+    @staticmethod
+    def _normalized_response_status(response):
+        """Return True, False, or None for an Angel response envelope."""
+
+        if not isinstance(response, dict):
+            return None
+
+        if "status" in response:
+            raw_status = response.get("status")
+        elif "success" in response:
+            raw_status = response.get("success")
+        else:
+            return None
+
+        if raw_status is True:
+            return True
+
+        if raw_status is False:
+            return False
+
+        if isinstance(raw_status, str):
+            normalized = raw_status.strip().lower()
+
+            if normalized in {
+                "true",
+                "success",
+                "successful",
+            }:
+                return True
+
+            if normalized in {
+                "false",
+                "failure",
+                "failed",
+                "error",
+            }:
                 return False
 
-        messages = []
+        return None
 
-        if isinstance(response, dict):
-            messages.extend(
-                [
-                    str(response.get("message", "")),
-                    str(response.get("errorcode", "")),
-                ]
-            )
-
-        if exception is not None:
-            messages.append(str(exception))
-
-        combined = " ".join(messages).lower()
-
-        rate_limit_terms = (
-            "exceeding access rate",
-            "access rate exceeded",
-            "rate limit exceeded",
-            "too many requests",
-            "too many request",
-            "429",
-        )
-
-        return any(
-            term in combined
-            for term in rate_limit_terms
-        )
     @staticmethod
+    def _response_error_code(response):
+        """Return a normalized Angel error code without guessing."""
+
+        if not isinstance(response, dict):
+            return ""
+
+        value = response.get(
+            "errorcode",
+            response.get(
+                "errorCode",
+                "",
+            ),
+        )
+
+        if value is None:
+            return ""
+
+        return str(value).strip().upper()
+
+    @staticmethod
+    def _response_message(response):
+        """Return a bounded sanitized Angel response message."""
+
+        if not isinstance(response, dict):
+            return ""
+
+        return _safe_provider_reason(
+            response.get(
+                "message",
+                "",
+            )
+        )
+
+    @classmethod
     def _is_authentication_error(
+        cls,
         response=None,
         exception=None,
     ):
-        messages = []
+        """Classify documented Angel authentication/session failures."""
 
-        if isinstance(response, dict):
-            messages.extend([
-                str(response.get("message", "")),
-                str(response.get("errorcode", "")),
-            ])
-
-        if exception is not None:
-            messages.append(str(exception))
-
-        combined = " ".join(messages).lower()
-
-        auth_terms = (
-            "session expired",
-            "invalid session",
-            "invalid token",
-            "token expired",
-            "jwt",
-            "unauthorized",
-            "authentication failed",
+        from services.broker.angel_provider_failure import (
+            classify_angel_provider_failure,
+            is_angel_authentication_failure,
         )
 
-        return any(
-            term in combined
-            for term in auth_terms
+        classification = classify_angel_provider_failure(
+            response=response,
+            exception=exception,
         )
+
+        return is_angel_authentication_failure(
+            classification
+        )
+
     @staticmethod
     def _is_retryable_exception(
         exception,
@@ -470,43 +593,111 @@ class AngelMarketDataClient:
     # RESPONSE VALIDATION
     # ---------------------------------
 
-    @staticmethod
+    @classmethod
     def _validate_response(
+        cls,
         response,
         request_name,
+        *,
+        require_data=True,
     ):
-        """
-        Validate a SmartAPI response.
+        """Validate the common Angel response envelope."""
 
-        Returns the response when valid.
-        Raises RuntimeError when invalid.
-        """
-
-        if not response:
+        if response is None or response == {} or response == []:
             raise RuntimeError(
                 f"Angel One returned an empty "
                 f"{request_name} response."
             )
 
-        if not isinstance(
-            response,
-            dict,
-        ):
+        if not isinstance(response, dict):
             raise RuntimeError(
                 f"Angel One returned an invalid "
                 f"{request_name} response type."
             )
 
-        if response.get(
-            "status"
-        ) is False:
+        status = cls._normalized_response_status(
+            response
+        )
+
+        if status is None:
             raise RuntimeError(
-                f"Angel One {request_name} "
-                f"request failed: "
-                f"{response.get('message', 'Unknown error')}"
+                f"Angel One returned an invalid "
+                f"{request_name} response envelope."
             )
 
+        if status is False:
+            error_code = cls._response_error_code(
+                response
+            )
+            message = cls._response_message(
+                response
+            )
+
+            details = []
+
+            if error_code:
+                details.append(error_code)
+
+            if message:
+                details.append(message)
+
+            reason = (
+                " - ".join(details)
+                if details
+                else "Unknown error"
+            )
+
+            raise RuntimeError(
+                f"Angel One {request_name} "
+                f"request failed: {reason}"
+            )
+
+        if "data" not in response and require_data:
+            raise RuntimeError(
+                f"Angel One returned a successful "
+                f"{request_name} response without data."
+            )
+
+        if require_data:
+            data = response["data"]
+            if data is None or (
+                isinstance(data, str)
+                and data.strip().lower() == "null"
+            ):
+                raise RuntimeError(
+                    f"Angel One returned a successful "
+                    f"{request_name} response without usable data."
+                )
+
         return response
+
+    @classmethod
+    def _provider_failure_error(
+        cls,
+        *,
+        request_name,
+        attempts,
+        response=None,
+        exception=None,
+        detail="Provider request failed.",
+    ):
+        """Build a typed, sanitized provider failure without retaining payloads."""
+        from services.broker.angel_provider_failure import (
+            classify_angel_provider_failure,
+        )
+
+        return BrokerMarketDataRequestError(
+            request_name,
+            attempts,
+            "provider_failure",
+            _safe_provider_reason(detail),
+            provider_failure_kind=(
+                classify_angel_provider_failure(
+                    response=response,
+                    exception=exception,
+                )
+            ),
+        )
 
     # ---------------------------------
     # RESILIENT REQUEST EXECUTION
@@ -517,6 +708,7 @@ class AngelMarketDataClient:
         request_callable,
         request_name,
         cache_key=None,
+        require_data=True,
     ):
         debug_print(f"REQUEST -> instance={id(self)} request={request_name}")
         """
@@ -569,15 +761,14 @@ class AngelMarketDataClient:
                     attempt,
                 )
 
+                # Pacing can span midnight.  Recheck at the actual outbound
+                # boundary so a session authenticated on the prior local day
+                # is never used for the SDK request.
+                self._ensure_authenticated()
+
                 try:
                     response = request_callable()
-                    debug_print("\n========== BROKER RESPONSE ==========")
-                    debug_print(
-                        f"{request_name}: "
-                        f"status={response.get('status')} "
-                        f"message={response.get('message', '')}"
-                    )
-                    debug_print("=====================================\n")
+                    LOGGER.info("broker_request request_type=%s endpoint_category=%s response_type=%s", request_name, request_name, type(response).__name__)
                 finally:
                     self.request_controller.mark_request_complete(
                         request_name
@@ -597,10 +788,7 @@ class AngelMarketDataClient:
                             request_name,
                             rate_limit_attempts,
                             "rate_limited",
-                            response.get(
-                                "message",
-                                "Unknown rate-limit error",
-                            ),
+                            _safe_provider_reason(response.get("message", "Unknown rate-limit error")),
                         )
 
                     self.request_controller.record_rate_limit(
@@ -620,10 +808,14 @@ class AngelMarketDataClient:
                 ):
 
                     if authentication_retry_used:
-                        raise RuntimeError(
-                            f"Angel One {request_name} "
-                            "failed after session "
-                            "re-authentication."
+                        raise self._provider_failure_error(
+                            request_name=request_name,
+                            attempts=attempt,
+                            response=response,
+                            detail=(
+                                "Provider request failed after session "
+                                "re-authentication."
+                            ),
                         )
 
                     authentication_retry_used = True
@@ -648,11 +840,11 @@ class AngelMarketDataClient:
                         attempt
                         >= self.max_retries
                     ):
-                        return (
-                            self._validate_response(
-                                response,
-                                request_name,
-                            )
+                        raise self._provider_failure_error(
+                            request_name=request_name,
+                            attempts=attempt,
+                            response=response,
+                            detail="Provider request retry budget exhausted.",
                         )
 
                     time.sleep(
@@ -669,10 +861,22 @@ class AngelMarketDataClient:
                 # NORMAL RESPONSE
                 # -------------------------
 
-                validated = self._validate_response(
-                        response,
-                        request_name,
+                if (
+                    self._normalized_response_status(response)
+                    is False
+                ):
+                    raise self._provider_failure_error(
+                        request_name=request_name,
+                        attempts=attempt,
+                        response=response,
+                        detail="Provider returned an unsuccessful response.",
                     )
+
+                validated = self._validate_response(
+                    response,
+                    request_name,
+                    require_data=require_data,
+                )
 
                 self.request_controller.record_success(
                         request_name,
@@ -687,10 +891,7 @@ class AngelMarketDataClient:
                 return validated
 
             except Exception as exc:
-                debug_print(
-                    f"RATE LIMIT EXCEPTION: "
-                    f"{type(exc).__name__}: {exc}"
-                )
+                LOGGER.warning("broker_request_failed request_type=%s error_type=%s retry=%s reason=%s", request_name, type(exc).__name__, attempt, _safe_provider_reason(exc))
                 last_exception = exc
 
                 if isinstance(
@@ -706,7 +907,7 @@ class AngelMarketDataClient:
                             request_name,
                             rate_limit_attempts,
                             "rate_limited",
-                            exc,
+                            _safe_provider_reason(exc),
                         ) from exc
                     self.request_controller.record_rate_limit(
                         request_name,
@@ -723,6 +924,17 @@ class AngelMarketDataClient:
                     exception=exc,
                 ):
 
+                    if authentication_retry_used:
+                        raise self._provider_failure_error(
+                            request_name=request_name,
+                            attempts=attempt,
+                            exception=exc,
+                            detail=(
+                                "Provider request failed after session "
+                                "re-authentication."
+                            ),
+                        ) from exc
+
                     if not authentication_retry_used:
 
                         authentication_retry_used = True
@@ -735,10 +947,14 @@ class AngelMarketDataClient:
                             )
 
                         except Exception as login_exc:
-                            raise RuntimeError(
-                                "Angel One session "
-                                "re-authentication failed: "
-                                f"{login_exc}"
+                            raise self._provider_failure_error(
+                                request_name=request_name,
+                                attempts=attempt,
+                                exception=login_exc,
+                                detail=(
+                                    "Provider session re-authentication "
+                                    "failed."
+                                ),
                             ) from login_exc
 
                         continue
@@ -774,10 +990,14 @@ class AngelMarketDataClient:
                     self.retry_backoff_multiplier
                 )
 
-        raise RuntimeError(
-            f"Angel One {request_name} request "
-            f"failed after {self.max_retries} attempts: "
-            f"{last_exception}"
+        raise self._provider_failure_error(
+            request_name=request_name,
+            attempts=maximum_attempts,
+            exception=last_exception,
+            detail=(
+                f"Provider request failed after {self.max_retries} "
+                "attempts."
+            ),
         ) from last_exception
 
     @staticmethod
@@ -789,6 +1009,144 @@ class AngelMarketDataClient:
                 (str(exchange).upper(), tuple(sorted(map(str, tokens))))
                 for exchange, tokens in exchange_tokens.items()
             )),
+        )
+
+    @staticmethod
+    def _validate_market_data_payload(
+        response,
+    ):
+        """Validate Angel batched quote payload shape."""
+
+        data = response.get("data")
+
+        if not isinstance(data, dict):
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains invalid data."
+            )
+
+        fetched = data.get("fetched")
+        unfetched = data.get("unfetched")
+
+        if not isinstance(fetched, list):
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains invalid fetched data."
+            )
+
+        if not isinstance(unfetched, list):
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains invalid unfetched data."
+            )
+
+        for item in fetched:
+            if not isinstance(item, dict):
+                raise RuntimeError(
+                    "Angel One market-data response "
+                    "contains an invalid fetched item."
+                )
+
+        for item in unfetched:
+            if not isinstance(item, dict):
+                raise RuntimeError(
+                    "Angel One market-data response "
+                    "contains an invalid unfetched item."
+                )
+
+        return response
+
+    @staticmethod
+    def _validate_historical_payload(
+        response,
+    ):
+        """Validate Angel historical candle payload shape."""
+
+        data = response.get("data")
+
+        if not isinstance(data, list):
+            raise BrokerMarketDataRequestError(
+                "historical-data",
+                1,
+                "invalid_response",
+                "Historical payload data is not a list.",
+            )
+
+        if not data:
+            raise BrokerMarketDataRequestError(
+                "historical-data",
+                1,
+                "empty_data",
+                "Historical payload data is empty.",
+            )
+
+        try:
+            from services.data_normalizer import (
+                normalize_angel_candles,
+            )
+
+            normalize_angel_candles(
+                data
+            )
+        except (TypeError, ValueError) as exc:
+            raise BrokerMarketDataRequestError(
+                "historical-data",
+                1,
+                "normalization_failed",
+                "Historical payload contains invalid candle rows.",
+            ) from exc
+
+        return response
+
+    @staticmethod
+    def _validate_option_greeks_payload(
+        response,
+    ):
+        """Validate Angel option-Greeks payload shape."""
+
+        data = response.get("data")
+
+        if not isinstance(data, list):
+            raise RuntimeError(
+                "Angel One Option Greeks response "
+                "contains invalid data."
+            )
+
+        for item in data:
+            if not isinstance(item, dict):
+                raise RuntimeError(
+                    "Angel One Option Greeks response "
+                    "contains an invalid item."
+                )
+
+        return response
+
+    @staticmethod
+    def _normalized_market_identity(
+        exchange,
+        symboltoken,
+    ):
+        normalized_exchange = str(
+            exchange
+        ).strip().upper()
+
+        normalized_token = str(
+            symboltoken
+        ).strip()
+
+        if not normalized_exchange:
+            raise ValueError(
+                "exchange is required."
+            )
+
+        if not normalized_token:
+            raise ValueError(
+                "symboltoken is required."
+            )
+
+        return (
+            normalized_exchange,
+            normalized_token,
         )
 
     # ---------------------------------
@@ -845,7 +1203,7 @@ class AngelMarketDataClient:
                 "exchange_tokens cannot be empty."
             )
 
-        return self._execute_request(
+        response = self._execute_request(
             request_callable=lambda: (
                 self.api.getMarketData(
                     mode,
@@ -853,7 +1211,14 @@ class AngelMarketDataClient:
                 )
             ),
             request_name="market-data",
-            cache_key=self._market_data_cache_key(mode, exchange_tokens),
+            cache_key=self._market_data_cache_key(
+                mode,
+                exchange_tokens,
+            ),
+        )
+
+        return self._validate_market_data_payload(
+            response
         )
     def get_ltp(
         self,
@@ -861,24 +1226,160 @@ class AngelMarketDataClient:
         tradingsymbol,
         symboltoken,
     ):
+        expected_exchange, expected_token = (
+            self._normalized_market_identity(
+                exchange,
+                symboltoken,
+            )
+        )
+
         response = self.get_market_data(
             "LTP",
             {
-                exchange: [symboltoken],
+                expected_exchange: [
+                    expected_token
+                ],
             },
         )
 
-        data = response["data"]["fetched"][0]
+        payload = response["data"]
+        fetched = payload["fetched"]
+        unfetched = payload["unfetched"]
+
+        matching_unfetched = [
+            item
+            for item in unfetched
+            if (
+                str(
+                    item.get(
+                        "exchange",
+                        "",
+                    )
+                ).strip().upper()
+                == expected_exchange
+                and str(
+                    item.get(
+                        "symbolToken",
+                        item.get(
+                            "symboltoken",
+                            "",
+                        ),
+                    )
+                ).strip()
+                == expected_token
+            )
+        ]
+
+        if matching_unfetched:
+            item = matching_unfetched[0]
+
+            error_code = str(
+                item.get(
+                    "errorCode",
+                    item.get(
+                        "errorcode",
+                        "",
+                    ),
+                )
+            ).strip()
+
+            reason = _safe_provider_reason(
+                item.get(
+                    "message",
+                    "Unable to fetch requested token",
+                )
+            )
+
+            detail = (
+                f"{error_code} - {reason}"
+                if error_code
+                else reason
+            )
+
+            raise RuntimeError(
+                "Angel One failed to fetch "
+                f"{expected_exchange}:"
+                f"{expected_token}: {detail}"
+            )
+
+        matches = []
+
+        for item in fetched:
+            item_exchange = str(
+                item.get(
+                    "exchange",
+                    "",
+                )
+            ).strip().upper()
+
+            item_token = str(
+                item.get(
+                    "symbolToken",
+                    item.get(
+                        "symboltoken",
+                        "",
+                    ),
+                )
+            ).strip()
+
+            if (
+                item_exchange
+                == expected_exchange
+                and item_token
+                == expected_token
+            ):
+                matches.append(item)
+
+        if len(matches) != 1:
+            raise RuntimeError(
+                "Angel One market-data response "
+                "did not contain exactly one matching "
+                f"{expected_exchange}:{expected_token} quote."
+            )
+
+        data = matches[0]
+
+        try:
+            ltp = float(data["ltp"])
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains an invalid LTP."
+            ) from exc
+
+        if ltp <= 0:
+            raise RuntimeError(
+                "Angel One market-data response "
+                "contains a non-positive LTP."
+            )
+
+        returned_symbol = str(
+            data.get(
+                "tradingSymbol",
+                data.get(
+                    "tradingsymbol",
+                    tradingsymbol,
+                ),
+            )
+        ).strip()
 
         return {
             "status": True,
             "data": {
-                "ltp": float(data["ltp"]),
-                "tradingsymbol": tradingsymbol,
-                "symboltoken": symboltoken,
-                "exchange": exchange,
+                "ltp": ltp,
+                "tradingsymbol": (
+                    returned_symbol
+                    or str(tradingsymbol)
+                ),
+                "symboltoken": expected_token,
+                "exchange": expected_exchange,
             },
         }
+
     # ---------------------------------
     # HISTORICAL CANDLE DATA
     # ---------------------------------
@@ -928,18 +1429,21 @@ class AngelMarketDataClient:
             "todate": todate,
         }
 
-       
-        return self._execute_request(
-    request_callable=lambda: (
-        self.api.getCandleData(
-            params
+
+        response = self._execute_request(
+            request_callable=lambda: (
+                self.api.getCandleData(
+                    params
+                )
+            ),
+            request_name="historical-data",
+            cache_key=None,
+            require_data=False,
         )
-        
-    ),
-    
-    request_name="historical-data",
-    cache_key=None,
-)
+
+        return self._validate_historical_payload(
+            response
+        )
 
     # ---------------------------------
     # OPTION GREEKS
@@ -982,14 +1486,22 @@ class AngelMarketDataClient:
             "expirydate": expiry_date,
         }
 
-        return self._execute_request(
+        response = self._execute_request(
             request_callable=lambda: (
                 self.api.optionGreek(
                     params
                 )
             ),
             request_name="Option Greeks",
-            cache_key=("option-greeks", params["name"], expiry_date),
+            cache_key=(
+                "option-greeks",
+                params["name"],
+                expiry_date,
+            ),
+        )
+
+        return self._validate_option_greeks_payload(
+            response
         )
     # ---------------------------------
     # OPTION CHAIN (LIVE)

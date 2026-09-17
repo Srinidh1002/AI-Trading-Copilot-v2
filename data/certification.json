@@ -1,0 +1,66 @@
+{
+  "scores": {
+    "NIFTY": 0,
+    "SENSEX": 0
+  },
+  "trades": [],
+  "positions": {
+    "NIFTY": {
+      "symbol": "NIFTY",
+      "strike": 24450,
+      "option_type": "CALL",
+      "entry_premium": 107.63,
+      "entry_underlying": 24461.3,
+      "entry_time": "2026-09-04T14:28:48.060332",
+      "entry_cycle": 0,
+      "quantity": 65,
+      "lot_size": 65,
+      "deployed_capital": 6995.95,
+      "status": "OPEN",
+      "current_premium": 107.63,
+      "current_underlying": 24461.3,
+      "hold_count": 0,
+      "pnl": 0,
+      "pnl_percent": 0,
+      "target1": 123.77449999999999,
+      "target2": 139.919,
+      "target3": 161.445,
+      "stop_loss": 102.24849999999999,
+      "targets_hit": {
+        "T1": false,
+        "T2": false,
+        "T3": false
+      }
+    },
+    "SENSEX": {
+      "symbol": "SENSEX",
+      "strike": 78200,
+      "option_type": "CALL",
+      "entry_premium": 117.27,
+      "entry_underlying": 78180.31,
+      "entry_time": "2026-09-04T14:28:48.062190",
+      "entry_cycle": 0,
+      "quantity": 20,
+      "lot_size": 20,
+      "deployed_capital": 2345.4,
+      "status": "OPEN",
+      "current_premium": 117.27,
+      "current_underlying": 78180.31,
+      "hold_count": 0,
+      "pnl": 0,
+      "pnl_percent": 0,
+      "target1": 134.86049999999997,
+      "target2": 152.451,
+      "target3": 175.905,
+      "stop_loss": 111.4065,
+      "targets_hit": {
+        "T1": false,
+        "T2": false,
+        "T3": false
+      }
+    }
+  },
+  "updated": "2026-09-04T14:28:48.063473",
+  "cycle": 0,
+  "entry_count": 2
+}

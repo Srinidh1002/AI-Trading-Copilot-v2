@@ -1,0 +1,2 @@
+from tests.test_external_context_integration import test_pipeline_calls_injected_evaluators_once_in_order
+def test_exact_call_order():test_pipeline_calls_injected_evaluators_once_in_order()

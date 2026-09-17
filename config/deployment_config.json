@@ -1,0 +1,10 @@
+{
+  "deployed_capital": 1000000,
+  "risk_per_trade": 2,
+  "max_risk_per_day": 10,
+  "position_sizing": "fixed",
+  "max_lots_per_trade": 5,
+  "min_lots_per_trade": 1,
+  "prefer_options": true,
+  "last_updated": "2026-09-03T20:00:00"
+}

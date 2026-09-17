@@ -1,0 +1,39 @@
+{
+  "product": "CRUDEOILM",
+  "option_symbol": "T",
+  "token": "999",
+  "exchange": "MCX",
+  "option_type": "CE",
+  "strike": 9500,
+  "expiry": "2026-09-17",
+  "ltp": 100.0,
+  "bids": [
+    {
+      "price": 99.9,
+      "quantity": 100
+    }
+  ],
+  "asks": [
+    {
+      "price": 100.1,
+      "quantity": 100
+    }
+  ],
+  "best_bid": 99.9,
+  "best_ask": 100.1,
+  "spread": 0.2,
+  "spread_ticks": 4.0,
+  "midpoint": 100.0,
+  "volume": null,
+  "open_interest": null,
+  "exchange_feed_time": "2026-09-12T10:00:00+00:00",
+  "exchange_trade_time": null,
+  "provider_received_at": "2026-09-12T10:00:01+00:00",
+  "provider": "AngelOne",
+  "source_mode": "REST_FULL",
+  "sequence_number": null,
+  "raw_payload_hash": "e8ed4ae31fc5022f0f3c139d3b75674e8c6a8f6f3bc627c14e124a147723c28b",
+  "tick_size": 0.05,
+  "validation_status": "PENDING",
+  "rejection_reasons": []
+}

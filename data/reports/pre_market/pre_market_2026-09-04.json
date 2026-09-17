@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-09-04T12:27:12.858815",
+  "market_summary": {
+    "market_bias": "STRONGLY_BULLISH",
+    "overall_sentiment": "BULLISH",
+    "volatility_level": "LOW"
+  },
+  "global_markets": {
+    "us": {
+      "sp500": 7751.82,
+      "nasdaq": 26614.6,
+      "dow": 53673.48,
+      "sentiment": "BULLISH"
+    },
+    "asia": {
+      "nikkei": 64214.48,
+      "hang_seng": 25213.31,
+      "sentiment": "BEARISH"
+    },
+    "europe": {
+      "ftse": 10831.52,
+      "dax": 26003.32,
+      "cac": 8286.4,
+      "sentiment": "BULLISH"
+    }
+  },
+  "economic_calendar": {
+    "events": [
+      {
+        "time": "09:30",
+        "event": "RBI Interest Rate Decision",
+        "impact": "HIGH"
+      },
+      {
+        "time": "12:00",
+        "event": "CPI Data Release",
+        "impact": "MEDIUM"
+      }
+    ]
+  },
+  "news_sentiment": {
+    "overall": "NEUTRAL",
+    "score": 0.3,
+    "volatility_expected": "MEDIUM"
+  },
+  "vix_data": {
+    "india_vix": 11.34,
+    "level": "LOW"
+  },
+  "yesterday_data": {
+    "nifty_close": 23864.55,
+    "sensex_close": 76413.5,
+    "nifty_change": 0.0,
+    "sensex_change": 0.0,
+    "summary": "NIFTY: 23864.55, SENSEX: 76413.50"
+  },
+  "recommendations": {
+    "action": "BUY CALL",
+    "market": "NIFTY",
+    "reason": "Bullish outlook - Look for CALL opportunities"
+  },
+  "conclusion": "Market Bias: STRONGLY_BULLISH | Volatility Level: LOW | Recommended Market: NIFTY | Overall: Bullish outlook - Look for CALL opportunities"
+}

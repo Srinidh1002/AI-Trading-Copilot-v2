@@ -1,0 +1,316 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Trading Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a1a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a3e, #0f3460);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #00ff8844;
+        }
+        .header h1 { color: #00ff88; font-size: 28px; }
+        .header .status {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .status-running { background: #00ff8822; color: #00ff88; border: 1px solid #00ff88; }
+        .status-stopped { background: #ff444422; color: #ff4444; border: 1px solid #ff4444; }
+        .status-waiting { background: #ffaa0022; color: #ffaa00; border: 1px solid #ffaa00; }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #0f3460;
+        }
+        .card h3 {
+            color: #00ff88;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #0f3460;
+            padding-bottom: 10px;
+        }
+        .value { font-size: 22px; font-weight: bold; margin: 5px 0; }
+        .positive { color: #00ff88; }
+        .negative { color: #ff4444; }
+        .neutral { color: #ffaa00; }
+        .small { font-size: 14px; color: #888; }
+        
+        .signal-item {
+            background: #0f1a30;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 6px;
+            font-size: 13px;
+            border-left: 3px solid #00ff88;
+        }
+        .signal-item.wait { border-left-color: #ffaa00; }
+        .signal-item.trade { border-left-color: #00ff88; }
+        .signal-item.error { border-left-color: #ff4444; }
+        
+        .position-item {
+            background: #0f1a30;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .position-item .symbol { font-weight: bold; }
+        .position-item .pnl-positive { color: #00ff88; }
+        .position-item .pnl-negative { color: #ff4444; }
+        
+        .market-data {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #0f1a30;
+        }
+        .market-data:last-child { border-bottom: none; }
+        
+        .refresh-info {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-top: 20px;
+            padding: 15px;
+            border-top: 1px solid #0f3460;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .last-update { color: #888; font-size: 12px; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI TRADING COPILOT</h1>
+            <div>
+                <span id="status-badge" class="status status-waiting">⏳ LOADING</span>
+                <span id="last-update" class="last-update" style="margin-left: 15px;">Loading...</span>
+            </div>
+        </div>
+        
+        <div class="grid" id="dashboard-grid">
+            <!-- Market Data -->
+            <div class="card">
+                <h3>📈 Market Data</h3>
+                <div id="market-data">
+                    <div class="loading">Loading market data...</div>
+                </div>
+            </div>
+            
+            <!-- Positions -->
+            <div class="card">
+                <h3>📊 Active Positions</h3>
+                <div id="positions">
+                    <div class="loading">No positions</div>
+                </div>
+            </div>
+            
+            <!-- P&L -->
+            <div class="card">
+                <h3>💰 P&L</h3>
+                <div id="pnl">
+                    <div class="loading">Loading P&L...</div>
+                </div>
+            </div>
+            
+            <!-- Signals -->
+            <div class="card">
+                <h3>🎯 Recent Signals</h3>
+                <div id="signals">
+                    <div class="loading">No signals</div>
+                </div>
+            </div>
+            
+            <!-- Decisions -->
+            <div class="card">
+                <h3>📋 Decisions</h3>
+                <div id="decisions">
+                    <div class="loading">No decisions</div>
+                </div>
+            </div>
+            
+            <!-- Certification -->
+            <div class="card">
+                <h3>📋 Certification</h3>
+                <div id="certification">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="refresh-info">
+            🔄 Auto-refreshes every 5 seconds | Data from: <span id="data-file">...</span>
+        </div>
+    </div>
+
+    <script>
+        async function fetchDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('status-badge').textContent = '⚠️ ERROR';
+                    document.getElementById('status-badge').className = 'status status-stopped';
+                    return;
+                }
+                
+                updateDashboard(data);
+            } catch (e) {
+                console.error('Fetch error:', e);
+                document.getElementById('status-badge').textContent = '⚠️ CONNECTION ERROR';
+            }
+        }
+        
+        function updateDashboard(data) {
+            // Status
+            const status = data.system_status || {};
+            const statusText = status.status || 'UNKNOWN';
+            const statusBadge = document.getElementById('status-badge');
+            statusBadge.textContent = statusText;
+            statusBadge.className = 'status status-' + statusText.toLowerCase();
+            
+            // Last update
+            document.getElementById('last-update').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+            document.getElementById('data-file').textContent = data._file || '...';
+            
+            // Market Data
+            const marketData = data.market_data || {};
+            let marketHtml = '';
+            for (const [symbol, market] of Object.entries(marketData)) {
+                const change = market.change_percent || 0;
+                const cls = change >= 0 ? 'positive' : 'negative';
+                marketHtml += `
+                    <div class="market-data">
+                        <span><strong>${symbol}</strong></span>
+                        <span>${market.ltp || 0}</span>
+                        <span class="${cls}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                    </div>
+                `;
+            }
+            document.getElementById('market-data').innerHTML = marketHtml || '<div class="loading">No market data</div>';
+            
+            // Positions
+            const positions = data.active_positions || [];
+            let posHtml = '';
+            if (positions.length === 0) {
+                posHtml = '<div class="loading">No open positions</div>';
+            } else {
+                for (const pos of positions) {
+                    const pnl = pos.pnl_percent || 0;
+                    const cls = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                    posHtml += `
+                        <div class="position-item">
+                            <span><span class="symbol">${pos.symbol}</span> #${pos.position_number || 1}</span>
+                            <span>${pos.option_type} @ ${pos.entry_price}</span>
+                            <span class="${cls}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%</span>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('positions').innerHTML = posHtml;
+            
+            // P&L
+            const pnl = data.pnl_data || {};
+            const daily = pnl.daily || {};
+            const weekly = pnl.weekly || {};
+            const monthly = pnl.monthly || {};
+            const netDaily = (daily.profit || 0) - (daily.loss || 0);
+            const netWeekly = (weekly.profit || 0) - (weekly.loss || 0);
+            const netMonthly = (monthly.profit || 0) - (monthly.loss || 0);
+            
+            document.getElementById('pnl').innerHTML = `
+                <div><strong>Daily:</strong> <span class="${netDaily >= 0 ? 'positive' : 'negative'}">₹${netDaily.toFixed(2)}</span> <span class="small">(${daily.trades || 0} trades, ${(daily.win_rate || 0).toFixed(1)}% win)</span></div>
+                <div style="margin-top:8px;"><strong>Weekly:</strong> <span class="${netWeekly >= 0 ? 'positive' : 'negative'}">₹${netWeekly.toFixed(2)}</span> <span class="small">(${weekly.trades || 0} trades)</span></div>
+                <div style="margin-top:8px;"><strong>Monthly:</strong> <span class="${netMonthly >= 0 ? 'positive' : 'negative'}">₹${netMonthly.toFixed(2)}</span> <span class="small">(${monthly.trades || 0} trades)</span></div>
+            `;
+            
+            // Signals
+            const signals = data.trade_signals || [];
+            let sigHtml = '';
+            if (signals.length === 0) {
+                sigHtml = '<div class="loading">No signals</div>';
+            } else {
+                for (const sig of signals.slice(-5).reverse()) {
+                    const cls = sig.signal === 'TRADE' ? 'trade' : 'wait';
+                    sigHtml += `
+                        <div class="signal-item ${cls}">
+                            <strong>${sig.signal || 'WAIT'}</strong>: ${sig.market || ''} ${sig.option_type || ''} - ${sig.reason || ''}
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('signals').innerHTML = sigHtml;
+            
+            // Decisions
+            const decisions = data.decisions || [];
+            let decHtml = '';
+            if (decisions.length === 0) {
+                decHtml = '<div class="loading">No decisions</div>';
+            } else {
+                for (const dec of decisions.slice(-3).reverse()) {
+                    decHtml += `
+                        <div class="signal-item trade">
+                            ${dec.decision || ''}: ${dec.market || ''} ${dec.option_type || ''} @ ${dec.entry_price || 0}
+                            <div class="small" style="color:#888;">${dec.reason || ''}</div>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('decisions').innerHTML = decHtml;
+            
+            // Certification
+            const cert = data.certification || {};
+            document.getElementById('certification').innerHTML = `
+                <div><strong>NIFTY:</strong> <span class="value">${cert.NIFTY || 0}/100</span></div>
+                <div style="margin-top:8px;"><strong>SENSEX:</strong> <span class="value">${cert.SENSEX || 0}/100</span></div>
+                <div style="margin-top:12px; font-size:12px; color:#666;">Target: 100/100 each</div>
+            `;
+        }
+        
+        // Auto-refresh every 5 seconds
+        fetchDashboard();
+        setInterval(fetchDashboard, 5000);
+    </script>
+</body>
+</html>

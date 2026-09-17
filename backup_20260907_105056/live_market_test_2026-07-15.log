@@ -1,0 +1,2399 @@
+
+================================
+AI TRADING COPILOT
+CONTINUOUS PAPER TRADING RUNTIME
+================================
+
+Mode: PAPER TRADING ONLY
+Startup Recovery: ENABLED
+Runtime Health Reporting: ENABLED
+Runtime Heartbeat Persistence: ENABLED
+Cycle Interval: 60.0 seconds
+Script Timeout: 300.0 seconds
+Real Order Execution: DISABLED
+
+Press Ctrl+C to stop safely.
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T08:57:14.935250+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T08:58:11.838592+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T08:59:11.812723+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:00:11.759088+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:01:11.760849+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:02:11.770371+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:03:11.867273+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:04:11.780203+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:05:11.764191+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:06:11.978523+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:07:11.759884+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:08:11.764180+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:09:11.761591+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:10:11.763126+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:11:11.745152+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:12:11.847306+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:13:11.765323+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T09:14:11.780523+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:16:19.843276+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:46:26.729169+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:16:19 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:17:11.500331+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:47:12.373770+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:17:11 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:17:31.106332+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:47:31.943933+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:17:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:18:31.049617+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:48:31.884969+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:18:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:19:31.060355+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:49:31.884916+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:19:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:20:31.033897+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:50:31.851802+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:20:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:21:57.052185+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:51:57.881618+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:21:57 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:22:31.433541+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:52:32.294395+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:22:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:23:32.031767+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:53:32.881441+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:23:32 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:24:31.091352+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:54:31.922326+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:24:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:25:32.357391+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:55:33.163340+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:25:32 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:26:37.172267+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:56:38.043307+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:26:37 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:27:36.165299+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:57:37.005730+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:27:36 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:28:31.034788+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:58:31.861376+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:28:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:29:31.039798+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T03:59:31.846328+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:29:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:30:31.116160+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T04:00:31.972371+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 09:30:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:31:33.906134+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:31:33 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:31:33 smartConnect:124] in pool
+[E 260714 09:31:33 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '492781'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:32:32.352939+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:32:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:32:32 smartConnect:124] in pool
+[E 260714 09:32:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '025738'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:33:32.303034+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:33:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:33:32 smartConnect:124] in pool
+[E 260714 09:33:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '241207'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:34:32.262162+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:34:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:34:32 smartConnect:124] in pool
+[E 260714 09:34:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '897250'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:35:32.294893+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:35:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:35:32 smartConnect:124] in pool
+[E 260714 09:35:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '608368'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:36:32.306115+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:36:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:36:32 smartConnect:124] in pool
+[E 260714 09:36:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '306413'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:37:32.291663+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:37:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:37:32 smartConnect:124] in pool
+[E 260714 09:37:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '278136'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:38:32.322839+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:38:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:38:32 smartConnect:124] in pool
+[E 260714 09:38:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '197874'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:39:32.368531+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:39:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:39:32 smartConnect:124] in pool
+[E 260714 09:39:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '608353'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:40:32.275328+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:40:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:40:32 smartConnect:124] in pool
+[E 260714 09:40:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '275732'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:41:32.295849+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:41:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:41:32 smartConnect:124] in pool
+[E 260714 09:41:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '608895'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:42:32.312317+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:42:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:42:32 smartConnect:124] in pool
+[E 260714 09:42:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '576370'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:43:32.300341+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:43:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:43:32 smartConnect:124] in pool
+[E 260714 09:43:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '035806'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:44:32.356463+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:44:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:44:32 smartConnect:124] in pool
+[E 260714 09:44:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '511553'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:45:32.289646+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:45:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:45:32 smartConnect:124] in pool
+[E 260714 09:45:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '947005'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:46:32.318046+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:46:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:46:32 smartConnect:124] in pool
+[E 260714 09:46:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '194396'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:47:32.272253+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:47:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:47:32 smartConnect:124] in pool
+[E 260714 09:47:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '767245'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:48:32.318982+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:48:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:48:32 smartConnect:124] in pool
+[E 260714 09:48:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '974303'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:49:32.422524+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:49:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:49:32 smartConnect:124] in pool
+[E 260714 09:49:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '172332'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:50:32.425942+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:50:32 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:50:32 smartConnect:124] in pool
+[E 260714 09:50:32 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '436632'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:51:30.770366+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:51:30 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:51:30 smartConnect:124] in pool
+[E 260714 09:51:30 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '742384'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T09:52:31.170275+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 09:52:31 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 09:52:31 smartConnect:124] in pool
+[E 260714 09:52:31 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '624800'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))

@@ -1,0 +1,49 @@
+{
+  "event_id": "BE_OIL_SUPPLY_DISRUPTION_01e2463b9a65",
+  "event_cluster_id": null,
+  "event_version": 1,
+  "event_type": "OIL_SUPPLY_DISRUPTION",
+  "event_subtype": null,
+  "headline": "rev test 1",
+  "normalized_summary": null,
+  "occurrence_time": "UNKNOWN",
+  "source_published_at": "2026-09-12T10:00:00+00:00",
+  "first_seen_at": "2026-09-13T08:37:17.939952+00:00",
+  "received_at": "2026-09-13T08:37:17.939952+00:00",
+  "last_updated_at": "2026-09-13T08:37:17.939952+00:00",
+  "source_name": "TEST_WIRE_A",
+  "source_type": "WIRE",
+  "source_url": null,
+  "source_tier": "TIER_2_MAJOR_WIRE",
+  "source_reliability": null,
+  "verification_status": "UNVERIFIED",
+  "entities": [],
+  "countries": [
+    "IRQ"
+  ],
+  "regions": [],
+  "infrastructure": [],
+  "companies": [],
+  "commodities": [
+    "CRUDE"
+  ],
+  "affected_products": [
+    "CRUDEOILM"
+  ],
+  "severity": "INFO",
+  "urgency": "LOW",
+  "geographic_scope": null,
+  "expected_duration": null,
+  "theoretical_impact": "UNCERTAIN",
+  "theoretical_channels": [],
+  "observed_market_reaction": null,
+  "status": "DETECTED",
+  "supersedes_event_version": null,
+  "correction_of": null,
+  "retraction_of": null,
+  "raw_payload_hash": null,
+  "parser_version": "v1",
+  "shadow_only": true,
+  "trade_influence": false,
+  "stored_at": "2026-09-13T08:37:17.941333+00:00"
+}

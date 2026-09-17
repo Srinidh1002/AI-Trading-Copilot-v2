@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-09-07T14:50:49.107731",
+  "total_trades": 10,
+  "winning": 2,
+  "losing": 8,
+  "t1_hits": 2,
+  "t2_hits": 0,
+  "t3_hits": 0,
+  "stop_losses": 8,
+  "market_close_exits": 0,
+  "total_pnl": -768.7499999999994,
+  "win_rate": 20.0
+}

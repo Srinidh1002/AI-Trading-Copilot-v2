@@ -1,0 +1,8 @@
+{ "_fixture_note": "TEST_FIXTURE — synthetic. NOT a real event.",
+  "event_type": "LNG_OUTAGE",
+  "headline": "TEST: Notional LNG terminal outage",
+  "source_name": "TEST_WIRE_A", "source_tier": "TIER_2_MAJOR_WIRE",
+  "source_published_at": "2026-09-12T11:00:00+00:00",
+  "countries": ["US"], "commodities": ["NATGAS"],
+  "affected_products": ["NATGASMINI"], "severity": "HIGH", "urgency": "HIGH",
+  "theoretical_impact": "BULLISH" }

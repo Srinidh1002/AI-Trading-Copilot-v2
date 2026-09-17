@@ -1,0 +1,6 @@
+{
+  "_fixture_note": "TEST_FIXTURE — synthetic real-yield samples.",
+  "source": "Treasury", "timestamp": "2026-09-11T12:30:00+00:00",
+  "us_10y_real_yield_pct": 1.85, "us_10y_nominal_pct": 4.25,
+  "us_2y_nominal_pct": 4.05, "previous_real_pct": 1.82
+}

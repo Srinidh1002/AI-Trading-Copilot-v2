@@ -1,0 +1,87 @@
+==========================================================================================
+STRUCTURAL DUMP ΓÇö src/target_focused_bot.py
+Lines: 1939    Bytes: 85077
+==========================================================================================
+
+--- MODULE-LEVEL IMPORTS ---
+  import os
+  import json
+  import time
+  import signal
+  import sys
+  import requests
+  from datetime import datetime, timedelta
+  from dotenv import load_dotenv
+  from SmartApi import SmartConnect
+  import pyotp
+  from collections import defaultdict
+  from market_intelligence import MarketIntelligence
+  from index_weights import load_index_weights
+  from contract_metadata import load_contract_index, resolve_lot_size
+  from quote_freshness import QuoteFreshnessTracker
+  from rate_limiter import AngelRateLimitCoordinator
+  from market_phase import MarketPhaseEngine
+  from fingerprint import fingerprint_snapshot
+  from websocket_feed import WebSocketFeed
+  from candle_builder import CandleBuilder
+  from previous_day_engine import PreviousDayEngine
+  from mtf_enhanced import compute_indicators, timeframe_decision
+  from vwap import VWAPTracker
+  from opening_range import OpeningRangeTracker
+  from breadth_engine import BreadthEngine
+  from market_regime import MarketRegimeEngine
+  from external_intel import ExternalIntelEngine
+  from vix_enhanced import EnhancedVIX
+  from fii_dii_engine import FIIDIIEngine
+  from economic_calendar import EconomicCalendarEngine
+  from news_engine import NewsEngine
+  from option_chain_engine import OptionChainEngine
+  from oi_analyzer import OIAnalyzer
+  from liquidity_gate import LiquidityGate
+  from strike_ranker import StrikeRanker
+  from decision_composer import DecisionComposer
+  from market_selector import MarketSelector
+  from capital_engine import CapitalEngine
+  from exit_engine import ExitEngine, MFE_MAE_Tracker
+  from target_policy import TargetPolicy
+  from close_drain_policy import CloseDrainPolicy
+  from prediction_ledger import PredictionLedger
+  from outcome_ledger import OutcomeLedger
+  import logging
+  import logging
+  from src.sensitive_filter import SensitiveFilter
+  import os
+
+--- MODULE-LEVEL CONSTANTS ---
+  _sensitive = [os.getenv('ANGEL_API_KEY'), os.getenv('ANGEL_API_SECRET'), os.getenv('ANGEL_USER_ID'), os.getenv('A...
+  _sf = SensitiveFilter(_sensitive)
+
+--- CLASSES ---
+
+  class UnifiedTradingBot():
+      def __init__(self, market)
+      def signal_handler(self, signum, frame)
+      def save_state(self)
+      def load_state(self)
+      def connect_with_retry(self, max_retries, retry_delay)
+      def check_connection(self)
+      def reconnect_if_needed(self)
+      def wait_for_market_open(self)
+      def is_market_open(self)
+      def load_instruments(self)
+      def _start_websocket(self)
+      def get_spot(self)
+      def get_day_open(self, spot)
+      def get_expiry(self)
+      def get_options(self, spot, expiry)
+      def get_market_sentiment(self, spot, options)
+      def analyze_top_stocks(self)
+      def get_stock_token(self, stock)
+      def get_enhanced_sentiment(self, spot, options)
+      def select_trade(self, sentiment, spot, options)
+      def run_single_session(self)
+      def close_position(self, trade_id, exit_price, reason, pnl, pnl_pct)
+      def run_daily_sessions(self)
+      def show_daily_summary(self)
+      def generate_certification(self)
+      def show_summary(self)

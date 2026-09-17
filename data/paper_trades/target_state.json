@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-09-07T13:24:31.463977",
+  "current_session": 2,
+  "total_sessions": 10,
+  "total_trades": 2,
+  "winning_trades": 0,
+  "losing_trades": 0,
+  "total_pnl": 0,
+  "t1_hits": 0,
+  "t2_hits": 0,
+  "t3_hits": 0,
+  "stop_losses": 0,
+  "market_close_exits": 0,
+  "session_history": [],
+  "completed_trades": []
+}

@@ -1,0 +1,24 @@
+====================================================================================================
+STAGE 3 ΓÇö MCX WEBSOCKET PROBE (READ ONLY)
+Run at: 2026-09-14T17:40:40.472164+05:30
+Duration: 60s    Output: data\execution_evidence\mcx\_ws_raw\2026-09-14_174040_ws_messages.jsonl
+====================================================================================================
+[I 260914 17:40:40 smartConnect:124] in pool
+Session established
+Resolved 9 targets:
+    CRUDEOILM    FUT        token=565900
+    CRUDEOILM    CE_9850    token=576712
+    CRUDEOILM    PE_9850    token=576866
+    GOLDM        FUT        token=569003
+    GOLDM        CE_151000  token=578834
+    GOLDM        PE_151000  token=578934
+    NATGASMINI   FUT        token=568246
+    NATGASMINI   CE_280     token=578428
+    NATGASMINI   PE_280     token=578508
+  WS opened ΓÇö subscribing (mode=3, snapquote)
+  Subscribe sent for 9 tokens
+
+  Window elapsed; closing WS (captured 432 msgs)
+[W 260914 17:41:45 smartWebSocketV2:318] Attempting to resubscribe/reconnect (Attempt 1)...
+  WS opened ΓÇö subscribing (mode=3, snapquote)
+  Subscribe sent for 18 tokens

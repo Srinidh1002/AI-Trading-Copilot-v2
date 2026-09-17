@@ -1,8 +1,9 @@
 """
-Historical Market Service
+Unsupported legacy historical market compatibility service.
 
-Downloads and normalizes historical market data
-using the centralized Broker Session Manager.
+This module is intentionally isolated from Task 8/9 certified production,
+replay, and dashboard authority.  It remains only for its local legacy test;
+supported historical reads use LiveMultiTimeframeData instead.
 """
 
 import pandas as pd

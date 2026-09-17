@@ -1,0 +1,1 @@
+def test_import():from services.contracts import CapitalQuantityTradingCostEvidenceV1;assert CapitalQuantityTradingCostEvidenceV1

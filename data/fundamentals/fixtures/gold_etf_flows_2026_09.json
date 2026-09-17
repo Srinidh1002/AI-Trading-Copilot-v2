@@ -1,0 +1,4 @@
+{ "_fixture_note": "TEST_FIXTURE — schema only.",
+  "source": "UNCONFIGURED", "period": "2026-09",
+  "holdings_tonnes": null, "daily_flow_tonnes": null, "weekly_flow_tonnes": null,
+  "status": "ETF_FLOW_DATA_UNAVAILABLE" }

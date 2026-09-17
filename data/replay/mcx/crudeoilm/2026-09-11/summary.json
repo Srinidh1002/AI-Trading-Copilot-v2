@@ -1,0 +1,23 @@
+{
+  "product": "CRUDEOILM",
+  "date": "2026-09-11",
+  "execution_mode": "REPLAY_DIAGNOSTIC",
+  "market_origin": "HISTORICAL",
+  "certification_eligible": false,
+  "window": "2026-09-11T17:00:00+05:30 \u2192 2026-09-11T20:00:00+05:30",
+  "step_seconds": 300,
+  "contract_resolved": "CRUDEOILM21SEP26FUT",
+  "contract_token": "565900",
+  "evals_attempted": 37,
+  "evals_complete": 0,
+  "incomplete_evidence": 37,
+  "time_travel_violations": 0,
+  "live_boundary_violations": 0,
+  "levels": {
+    "level_a": "PASS",
+    "level_b": "UNAVAILABLE",
+    "level_c": "UNAVAILABLE",
+    "level_a_reason": "historical futures candles available"
+  },
+  "determinism_hash": "ab4533884b4247072e763f1fc6cf3dbfee24a783619d72b512866b388f56d303"
+}

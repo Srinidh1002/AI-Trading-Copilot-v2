@@ -1,0 +1,32 @@
+=== lines 1473-1502 ===
+1473:         
+1474:         # Use resolved lot size (overrides __init__ default)
+1475:         self.lot_size = _lot_size
+1476:         
+1477:         # ===== PHASE F: Realistic paper fill =====
+1478:         _bid = float(trade.get("bid", 0) or 0)
+1479:         _ask = float(trade.get("ask", 0) or 0)
+1480:         _ltp = float(trade.get("entry", 0))
+1481:         _fill, _fill_status = self.capital_engine.compute_paper_fill(_bid, _ask, _ltp, direction="BUY")
+1482:         print(f"\n  [F1] PAPER_FILL:")
+1483:         print(f"        quoted_ltp=Γé╣{_ltp:.2f} bid=Γé╣{_bid:.2f} ask=Γé╣{_ask:.2f}")
+1484:         if _fill is None or _fill_status != "OK":
+1485:             print(f"  EXECUTION_EVIDENCE_UNAVAILABLE: {_fill_status}")
+1486:             print(f"  Refusing trade - no valid executable quote")
+1487:             self.decision_state = 'BLOCKED'
+1488:             return None
+1489:         _paper_fill = _fill
+1490:         print(f"        simulated_buy_fill=Γé╣{_paper_fill:.2f} (incl slippage)")
+1491:         
+1492:         # Affordability check
+1493:         _lots = self.capital_engine.compute_lot_size(_paper_fill, self.lot_size)
+1494:         print(f"        capital=Γé╣{self.capital_engine.capital:,.0f} lot_size={self.lot_size}")
+1495:         print(f"        lots_affordable={_lots}")
+1496:         if _lots < 1:
+1497:             print(f"  CAPITAL_INSUFFICIENT - refusing trade")
+1498:             self.decision_state = 'BLOCKED'
+1499:             return None
+1500:         
+1501:         entry = _paper_fill  # Use simulated fill as entry
+1502:         t1_price = entry * (1 + self.T1_PERCENT/100)
+

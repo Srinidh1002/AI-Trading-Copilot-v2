@@ -15,9 +15,13 @@ Flow:
 
 Read-only. No orders are placed.
 """
+from collections.abc import Mapping
 
 from services.live_analysis_pipeline import (
     LiveAnalysisPipeline,
+)
+from services.market.live_multi_timeframe_data import (
+    LiveMultiTimeframeData,
 )
 from services.market_data_validator import MarketDataValidationError
 
@@ -69,6 +73,9 @@ from services.trade_plan_engine import (
 
 from services.decision_audit_trail import (
     DecisionAuditTrail,
+)
+from services.contracts.live_option_capture_result_v1 import (
+    LiveOptionCaptureResultV1,
 )
 
 
@@ -123,7 +130,11 @@ class LiveOptionDecisionPipeline:
         self.analysis_pipeline = (
             analysis_pipeline
             if analysis_pipeline is not None
-            else LiveAnalysisPipeline()
+            else LiveAnalysisPipeline(
+                data_service=LiveMultiTimeframeData(
+                    client=shared_market_client
+                )
+            )
         )
 
         self.option_chain_builder = (
@@ -134,15 +145,12 @@ class LiveOptionDecisionPipeline:
             )
         )
 
-        self.completed_candle_service = (
-            completed_candle_service
-            if completed_candle_service is not None
-            else CompletedCandleService(
-                market_client=(
-                    shared_market_client
-                )
-            )
-        )
+        # Certified Task 8/9 calls only ``capture_option_inputs`` and must
+        # never construct the legacy full-decision historical fallback.
+        # Preserve the direct legacy API by creating it only if full analysis
+        # actually asks for a completed candle.
+        self._completed_candle_service = completed_candle_service
+        self._completed_candle_market_client = shared_market_client
 
         self.holiday_calendar = (
             holiday_calendar
@@ -154,6 +162,98 @@ class LiveOptionDecisionPipeline:
 
         self.persist_audit = bool(
             persist_audit
+        )
+
+    @property
+    def completed_candle_service(self):
+        """Compatibility-only full-analysis fallback, constructed on demand."""
+
+        if self._completed_candle_service is None:
+            self._completed_candle_service = CompletedCandleService(
+                market_client=self._completed_candle_market_client,
+            )
+        return self._completed_candle_service
+
+    def capture_option_inputs(
+        self,
+        *,
+        underlying,
+        spot_price,
+        option_exchange="NFO",
+        strikes_each_side=5,
+        provider_timestamp,
+        evaluated_at,
+    ):
+        """Capture the existing normalized chain once, without ranking it.
+
+        This seam deliberately delegates to the existing live chain builder;
+        it adds no scoring, confidence, or candidate construction.
+        """
+        try:
+            chain = self.option_chain_builder.build_chain(
+                underlying=underlying,
+                spot_price=spot_price,
+                strikes_each_side=strikes_each_side,
+                option_exchange=option_exchange,
+            )
+            if not isinstance(chain, Mapping):
+                raise TypeError("option chain builder must return a mapping")
+            greek_capture = chain.get("greek_capture", {})
+            if not isinstance(greek_capture, Mapping):
+                greek_capture = {}
+            greek_state = str(greek_capture.get("state", "")).upper()
+            greek_reason = str(greek_capture.get("reason", "")).strip()
+            # NIFTY is provider-supported: a failed Greek capture must be
+            # visible to the certified candidate as unavailable evidence and
+            # cannot silently degrade into a trade.  SENSEX capability absence
+            # remains truthful but non-fabricated provider-capability evidence.
+            blockers = (
+                (greek_reason,)
+                if greek_state in {
+                    "PROVIDER_FAILURE",
+                    "DATA_UNAVAILABLE",
+                    "DATA_MALFORMED",
+                } and greek_reason
+                else ()
+            )
+            warnings = (
+                (greek_reason,)
+                if greek_state == "UNSUPPORTED_BY_PROVIDER" and greek_reason
+                else ()
+            )
+        except Exception as exc:
+            chain = {"underlying": underlying, "spot_price": spot_price, "contracts": ()}
+            blockers = (f"OPTION_CAPTURE_{type(exc).__name__.upper()}",)
+            warnings = ()
+
+        capture_clock = getattr(
+            self.option_chain_builder,
+            "clock",
+            None,
+        )
+        capture_evaluated_at = (
+            capture_clock()
+            if callable(capture_clock)
+            else evaluated_at
+        )
+
+        return LiveOptionCaptureResultV1(
+            underlying_symbol=str(underlying).strip().upper(),
+            option_exchange=str(option_exchange).strip().upper(),
+            option_chain=chain,
+            provider_timestamp=provider_timestamp,
+            evaluated_at=capture_evaluated_at,
+            blockers=blockers,
+            warnings=warnings,
+            metadata={
+                "capture_source": "LIVE_OPTION_CHAIN_BUILDER",
+                "greek_capture": (
+                    dict(chain.get("greek_capture", {}))
+                    if isinstance(chain, Mapping)
+                    and isinstance(chain.get("greek_capture", {}), Mapping)
+                    else {}
+                ),
+            },
         )
 
     @staticmethod
@@ -811,6 +911,7 @@ class LiveOptionDecisionPipeline:
         enforce_market_session=False,
         session_now=None,
         maximum_candle_age_minutes=10,
+        captured_option_input=None,
     ):
         """
         Run the complete pipeline, attach a structured
@@ -855,6 +956,7 @@ class LiveOptionDecisionPipeline:
             maximum_candle_age_minutes=(
                 maximum_candle_age_minutes
             ),
+            captured_option_input=captured_option_input,
         )
 
         # ---------------------------------
@@ -903,6 +1005,7 @@ class LiveOptionDecisionPipeline:
         enforce_market_session=False,
         session_now=None,
         maximum_candle_age_minutes=10,
+        captured_option_input=None,
     ):
         """
         Run the core safety-gated option decision pipeline.
@@ -1369,7 +1472,10 @@ class LiveOptionDecisionPipeline:
         # BUILD LIVE OPTION CHAIN
         # ---------------------------------
 
-        option_chain = (
+        if isinstance(captured_option_input, LiveOptionCaptureResultV1):
+            option_chain = captured_option_input.option_chain
+        else:
+            option_chain = (captured_option_input if captured_option_input is not None else
             self.option_chain_builder.build_chain(
                 underlying=underlying,
                 spot_price=spot_price,
@@ -1378,7 +1484,10 @@ class LiveOptionDecisionPipeline:
                 ),
                 option_exchange=option_exchange,
             )
-        )
+            )
+
+        if not isinstance(option_chain, Mapping):
+            raise TypeError("captured_option_input must be a mapping")
 
         contracts = option_chain.get(
             "contracts",

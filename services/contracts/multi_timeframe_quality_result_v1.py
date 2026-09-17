@@ -1,0 +1,9 @@
+from dataclasses import dataclass
+from datetime import datetime
+@dataclass(frozen=True,slots=True)
+class MultiTimeframeQualityResultV1:
+ multi_timeframe_quality_result_id:str;created_at:datetime;multi_timeframe_snapshot_id:str|None;quality_status:str;underlying_symbol:str|None;exchange:str|None;required_timeframes:tuple[str,...];available_timeframes:tuple[str,...];missing_timeframes:tuple[str,...];stale_timeframes:tuple[str,...];future_timeframes:tuple[str,...];incomplete_timeframes:tuple[str,...];insufficient_history_timeframes:tuple[str,...];misaligned_timeframes:tuple[str,...];timeframe_count:int;ready_timeframe_count:int;synchronization_reference_at:datetime|None;maximum_alignment_gap_seconds:float|None;blockers:tuple[str,...]=();warnings:tuple[str,...]=();execution_mode:str="PAPER";live_execution_eligible:bool=False;schema_version:str="multi_timeframe_quality_result.v1"
+ def __post_init__(self):
+  bad={"MISSING_TIMEFRAMES","STALE","FUTURE","INCOMPLETE","INSUFFICIENT_HISTORY","MISALIGNED","MALFORMED","UNSUPPORTED","FAILED"}
+  if not self.multi_timeframe_quality_result_id or not isinstance(self.created_at,datetime) or not self.created_at.tzinfo or self.quality_status not in bad|{"READY","READY_WITH_WARNINGS"} or self.timeframe_count<0 or self.ready_timeframe_count<0 or self.ready_timeframe_count>self.timeframe_count or (self.quality_status in bad and not self.blockers) or (self.quality_status=="READY" and self.blockers) or (self.quality_status=="READY_WITH_WARNINGS" and (self.blockers or not self.warnings)) or self.execution_mode!="PAPER" or self.live_execution_eligible is not False:raise ValueError("Invalid MTF quality result.")
+  for n in ("required_timeframes","available_timeframes","missing_timeframes","stale_timeframes","future_timeframes","incomplete_timeframes","insufficient_history_timeframes","misaligned_timeframes","blockers","warnings"):object.__setattr__(self,n,tuple(getattr(self,n)))

@@ -1,0 +1,132 @@
+
+==========================================================================================
+src/target_focused_bot.py
+==========================================================================================
+
+  [SESSION_COUNTER] ΓÇö 12 hits
+      115:         self.current_session = 0
+      227:             'current_session': self.current_session,
+      257:                 self.current_session = state.get('current_session', 0)
+      275:                 print(f"   Sessions: {self.current_session}/{self.total_sessions}")
+     1798:         print(f"Total Sessions: {self.current_session}/{self.total_sessions}")
+     1803:         if self.current_session >= self.total_sessions:
+     1807:             remaining = self.total_sessions - self.current_session
+     1856:         print(f"Sessions: {self.current_session}/{self.total_sessions}")
+     1887:     if bot.current_session >= bot.total_sessions:
+     1892:     if has_previous_state and bot.current_session > 0:
+
+  [SESSION_HISTORY] ΓÇö 3 hits
+      112:         self.session_history = []
+      240:             'session_history': self.session_history,
+      270:                 self.session_history = state.get('session_history', [])
+
+  [CAPITAL] ΓÇö 6 hits
+       38: from capital_engine import CapitalEngine
+      182:         self.capital_engine = CapitalEngine(deployable_capital=100000)
+     1462:         _fill, _fill_status = self.capital_engine.compute_paper_fill(_bid, _ask, _ltp, direction="BUY")
+     1474:         _lots = self.capital_engine.compute_lot_size(_paper_fill, self.lot_size)
+     1475:         print(f"        capital=Γé╣{self.capital_engine.capital:,.0f} lot_size={self.lot_size}")
+     1710:                 net_info = self.capital_engine.compute_net_pnl(
+
+  [SESSION_TIME] ΓÇö 15 hits
+      122:         self.MARKET_OPEN = datetime.now().replace(hour=9, minute=15, second=0, microsecond=0)
+      124:         self.FINAL_EXIT = datetime.now().replace(hour=15, minute=28, second=0, microsecond=0)
+      421:         if now < self.MARKET_OPEN:
+      422:             wait_seconds = (self.MARKET_OPEN - now).seconds
+      426:             while datetime.now() < self.MARKET_OPEN and self.is_running:
+      428:                 remaining = (self.MARKET_OPEN - datetime.now()).seconds
+      437:     def is_market_open(self):
+      439:         return self.MARKET_OPEN <= now <= self.FINAL_EXIT
+     1543:         while self.is_running and self.is_market_open():
+     1773:         while self.is_running and not self.is_market_open():
+
+  [WS] ΓÇö 8 hits
+       19: from websocket_feed import WebSocketFeed
+       55: for _name in ["SmartApi", "smartConnect", "smartWebSocketV2", "logzero"]:
+      158:         # WebSocket + live candle state
+      299:                     # Store tokens for WebSocket
+      378:                     # Start WebSocket feed
+      477:         """Start WebSocket feed and subscribe to spot tokens."""
+      486:             self.ws_feed = WebSocketFeed(
+     1555:                 # Try WebSocket first
+
+  [CHAIN_FETCH] ΓÇö 7 hits
+       32: from option_chain_engine import OptionChainEngine
+      174:         self.option_chain_engine = None
+      332:                     if self.option_chain_engine is None:
+      334:                             self.option_chain_engine = OptionChainEngine(
+     1291:         if self.option_chain_engine and self.strike_ranker:
+     1306:                 chain = self.option_chain_engine.fetch(expiry, atm, inst_flat, strike_range=200)
+     1310:                     print(f"\n  [D1] CHAIN: {self.option_chain_engine.describe(chain)}")
+
+  [TARGETS] ΓÇö 22 hits
+      107:         self.T1_PERCENT = 15
+      108:         self.T2_PERCENT = 30
+      109:         self.T3_PERCENT = 50
+     1483:         t1_price = entry * (1 + self.T1_PERCENT/100)
+     1484:         t2_price = entry * (1 + self.T2_PERCENT/100)
+     1485:         t3_price = entry * (1 + self.T3_PERCENT/100)
+     1535:         print(f"T1: Γé╣{t1_price:.2f} (+{self.T1_PERCENT}%)")
+     1536:         print(f"T2: Γé╣{t2_price:.2f} (+{self.T2_PERCENT}%)")
+     1537:         print(f"T3: Γé╣{t3_price:.2f} (+{self.T3_PERCENT}%)")
+     1604:                             if action == 'EXIT_T3':
+
+  [STOPS] ΓÇö 11 hits
+      104:         self.stop_losses = 0
+      236:             'stop_losses': self.stop_losses,
+      266:                 self.stop_losses = state.get('stop_losses', 0)
+     1538:         print(f"Will close at 3:28 PM if no target/SL hit")
+     1624:                                     # If long CE and spot fell >0.5%, invalidate
+     1628:                                         self.stop_losses += 1
+     1630:                                     # If long PE and spot rose >0.5%, invalidate
+     1634:                                         self.stop_losses += 1
+     1653:                             self.stop_losses += 1
+     1824:             'stop_losses': self.stop_losses,
+
+==========================================================================================
+run_nifty.py
+==========================================================================================
+
+  [SESSION_COUNTER] ΓÇö 7 hits
+       16: print('NIFTY Progress:', bot.current_session, '/100 trades')
+       21: while bot.is_market_open() and bot.current_session < 100 and attempts < max_attempts:
+       25:     print('Attempt', attempts, '| Trades:', bot.current_session, '/100')
+       31:         bot.current_session += 1  # Only count actual trades
+       34:         print(f'>>> TRADE TAKEN - Progress: {bot.current_session}/100')
+       40:     if bot.is_market_open() and bot.current_session < 100 and attempts < max_attempts:
+       47: print('  Trades:', bot.current_session, '/100')
+
+  [SESSION_HISTORY] ΓÇö 1 hits
+       32:         bot.session_history.append(result)
+
+  [SESSION_TIME] ΓÇö 6 hits
+       12: bot.MARKET_OPEN = datetime.now().replace(hour=9, minute=15, second=0, microsecond=0)
+       13: bot.FINAL_EXIT = datetime.now().replace(hour=15, minute=28, second=0, microsecond=0)
+       15: print('Market open:', bot.is_market_open())
+       19: max_attempts = 1000  # safety valve only; is_market_open() is the real stop  # Max attempts per day
+       21: while bot.is_market_open() and bot.current_session < 100 and attempts < max_attempts:
+       40:     if bot.is_market_open() and bot.current_session < 100 and attempts < max_attempts:
+
+==========================================================================================
+run_sensex.py
+==========================================================================================
+
+  [SESSION_COUNTER] ΓÇö 7 hits
+       16: print('SENSEX Progress:', bot.current_session, '/100 trades')
+       21: while bot.is_market_open() and bot.current_session < 100 and attempts < max_attempts:
+       25:     print('Attempt', attempts, '| Trades:', bot.current_session, '/100')
+       31:         bot.current_session += 1
+       34:         print(f'>>> TRADE TAKEN - Progress: {bot.current_session}/100')
+       40:     if bot.is_market_open() and bot.current_session < 100 and attempts < max_attempts:
+       47: print('  Trades:', bot.current_session, '/100')
+
+  [SESSION_HISTORY] ΓÇö 1 hits
+       32:         bot.session_history.append(result)
+
+  [SESSION_TIME] ΓÇö 6 hits
+       12: bot.MARKET_OPEN = datetime.now().replace(hour=9, minute=15, second=0, microsecond=0)
+       13: bot.FINAL_EXIT = datetime.now().replace(hour=15, minute=28, second=0, microsecond=0)
+       15: print('Market open:', bot.is_market_open())
+       19: max_attempts = 1000  # safety valve only; is_market_open() is the real stop
+       21: while bot.is_market_open() and bot.current_session < 100 and attempts < max_attempts:
+       40:     if bot.is_market_open() and bot.current_session < 100 and attempts < max_attempts:

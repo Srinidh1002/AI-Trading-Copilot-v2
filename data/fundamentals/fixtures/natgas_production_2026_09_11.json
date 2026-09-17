@@ -1,0 +1,5 @@
+{
+  "_fixture_note": "TEST_FIXTURE — schema only.",
+  "source": "EIA", "dry_gas_production_bcfd": null, "period": "2026-09",
+  "status": "PRODUCTION_DATA_UNAVAILABLE"
+}

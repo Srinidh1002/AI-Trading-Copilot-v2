@@ -1,0 +1,1 @@
+def test_regime_contract_imports():import services.contracts.canonical_market_regime_result_v1

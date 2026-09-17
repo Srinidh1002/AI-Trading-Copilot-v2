@@ -1,0 +1,15 @@
+[18:10:47.421] === MINIMAL WS REPRO ===
+[I 260914 18:10:47 smartConnect:124] in pool
+[18:10:49.169] login status: True
+[18:10:49.169] jwt length=1242  feed length=186
+[18:10:49.169] logout err: 'SmartConnect' object has no attribute 'logout'
+[I 260914 18:10:49 smartConnect:124] in pool
+[18:10:50.828] relogin status: True
+[18:10:50.828] new jwt length=1242  feed length=186
+[18:10:50.830] calling sws.connect() ...
+[18:10:51.061] ON_OPEN #1
+[18:10:51.062] SUBSCRIBE SENT for token 565900
+[18:10:51.122] DATA #1: token=565900 seq=5357199 ltp=1003500 keys=['52_week_high_price', '52_week_low_price', 'average_traded_price', 'best_5_buy_data', 'best_5_sell_data', 'closed_price', 'exchange_timestamp', 'exchange_type']
+[18:10:52.085] DATA #2: token=565900 seq=5358062 ltp=1003700 keys=['52_week_high_price', '52_week_low_price', 'average_traded_price', 'best_5_buy_data', 'best_5_sell_data', 'closed_price', 'exchange_timestamp', 'exchange_type']
+[18:10:52.903] DATA #3: token=565900 seq=5358805 ltp=1003300 keys=['52_week_high_price', '52_week_low_price', 'average_traded_price', 'best_5_buy_data', 'best_5_sell_data', 'closed_price', 'exchange_timestamp', 'exchange_type']
+[18:11:20.831] 30s elapsed ΓÇö hard exit (msgs=30, opens=1)

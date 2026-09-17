@@ -1,0 +1,126 @@
+====================================================================================================
+STAGE 5A - DEPTH QUANTITY DISTRIBUTION
+Run at: 2026-09-15T10:04:08.690988+05:30
+Duration: 300s  Poll: 4.0s  Out: data\execution_evidence\mcx\_depth\2026-09-15_100408_depth.jsonl
+====================================================================================================
+[I 260915 10:04:08 smartConnect:124] in pool
+Resolved 9 targets
+  [   0s] polled
+  [   4s] polled
+  [   8s] polled
+  [  12s] polled
+  [  16s] polled
+  [  20s] polled
+  [  24s] polled
+  [  28s] polled
+  [  32s] polled
+  [  36s] polled
+  [  40s] polled
+  [  44s] polled
+  [  48s] polled
+  [  52s] polled
+  [  56s] polled
+  [  60s] polled
+  [  64s] polled
+  [  68s] polled
+  [  72s] polled
+  [  76s] polled
+  [  80s] polled
+  [  84s] polled
+  [  88s] polled
+  [  92s] polled
+  [  96s] polled
+  [ 100s] polled
+  [ 104s] polled
+  [ 108s] polled
+  [ 112s] polled
+  [ 116s] polled
+  [ 120s] polled
+  [ 124s] polled
+  [ 128s] polled
+  [ 132s] polled
+  [ 136s] polled
+  [ 140s] polled
+  [ 144s] polled
+  [ 148s] polled
+  [ 152s] polled
+  [ 156s] polled
+  [ 160s] polled
+  [ 164s] polled
+  [ 168s] polled
+  [ 172s] polled
+  [ 176s] polled
+  [ 180s] polled
+  [ 184s] polled
+  [ 188s] polled
+  [ 192s] polled
+  [ 196s] polled
+  [ 200s] polled
+  [ 204s] polled
+  [ 208s] polled
+  [ 212s] polled
+  [ 216s] polled
+  [ 220s] polled
+  [ 224s] polled
+  [ 228s] polled
+  [ 232s] polled
+  [ 236s] polled
+  [ 240s] polled
+  [ 244s] polled
+  [ 248s] polled
+  [ 252s] polled
+  [ 256s] polled
+  [ 260s] polled
+  [ 264s] polled
+  [ 268s] polled
+  [ 272s] polled
+  [ 276s] polled
+  [ 280s] polled
+  [ 284s] polled
+  [ 288s] polled
+  [ 292s] polled
+  [ 296s] polled
+
+==============================================================================================================
+DEPTH QUANTITY STATS
+==============================================================================================================
+token      product      label      metric        n       min       med       p95       max   1lot_req  exec?
+--------------------------------------------------------------------------------------------------------------
+565900     CRUDEOILM    FUT        best_bid     75        10        70       160       200         10    YES
+565900     CRUDEOILM    FUT        best_ask     75        10        50       250       360         10    YES
+565900     CRUDEOILM    FUT        agg5_bid     75       510       910      1150      1270         10    YES
+565900     CRUDEOILM    FUT        agg5_ask     75       640      1150      1520      1610         10    YES
+576713     CRUDEOILM    CE_9900    best_bid     75        10        20        40       100         10    YES
+576713     CRUDEOILM    CE_9900    best_ask     75        10        30       130       320         10    YES
+576713     CRUDEOILM    CE_9900    agg5_bid     75        60       140       370       500         10    YES
+576713     CRUDEOILM    CE_9900    agg5_ask     75        90       240       470       780         10    YES
+576867     CRUDEOILM    PE_9900    best_bid     75        10        10        90       190         10    YES
+576867     CRUDEOILM    PE_9900    best_ask     75        10        30       110       850         10    YES
+576867     CRUDEOILM    PE_9900    agg5_bid     75        50       220       400       680         10    YES
+576867     CRUDEOILM    PE_9900    agg5_ask     75        80       190       560      1030         10    YES
+569003     GOLDM        FUT        best_bid     75       100       100       300       400        100    YES
+569003     GOLDM        FUT        best_ask     75       100       200       400      1100        100    YES
+569003     GOLDM        FUT        agg5_bid     75       500       800      1100      1200        100    YES
+569003     GOLDM        FUT        agg5_ask     75       600      1000      1800      2200        100    YES
+578834     GOLDM        CE_151000  best_bid     75       100       100       100       200        100    YES
+578834     GOLDM        CE_151000  best_ask     75       100       100       200       300        100    YES
+578834     GOLDM        CE_151000  agg5_bid     75       500       600      1600      1800        100    YES
+578834     GOLDM        CE_151000  agg5_ask     75       500       700      1000      1300        100    YES
+578934     GOLDM        PE_151000  best_bid     75       100       200       200       900        100    YES
+578934     GOLDM        PE_151000  best_ask     75       100       100       200       300        100    YES
+578934     GOLDM        PE_151000  agg5_bid     75       500       700      1200      1600        100    YES
+578934     GOLDM        PE_151000  agg5_ask     75       500       700      1100      1300        100    YES
+568246     NATGASMINI   FUT        best_bid     75       250     64000     75250     75250        250    YES
+568246     NATGASMINI   FUT        best_ask     75       250     15000     44500     60000        250    YES
+568246     NATGASMINI   FUT        agg5_bid     75    233750    266750    269250    269500        250    YES
+568246     NATGASMINI   FUT        agg5_ask     75     85000    115250    125000    138500        250    YES
+578429     NATGASMINI   CE_275     best_bid     75       750     13500     17500     17500        250    YES
+578429     NATGASMINI   CE_275     best_ask     75      2000      4750     11250     11750        250    YES
+578429     NATGASMINI   CE_275     agg5_bid     75     70000     78250     82250     83000        250    YES
+578429     NATGASMINI   CE_275     agg5_ask     75     56750     62500     72500     78500        250    YES
+578509     NATGASMINI   PE_275     best_bid     75       500     19500     55500     61500        250    YES
+578509     NATGASMINI   PE_275     best_ask     75     27500     52250     55000     55000        250    YES
+578509     NATGASMINI   PE_275     agg5_bid     75    131500    169000    205750    217500        250    YES
+578509     NATGASMINI   PE_275     agg5_ask     75    194000    217750    224250    237000        250    YES
+==============================================================================================================
+Raw: data\execution_evidence\mcx\_depth\2026-09-15_100408_depth.jsonl

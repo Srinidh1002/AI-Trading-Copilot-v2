@@ -1,0 +1,87 @@
+    def select_trade(self, sentiment, spot, options):
+        """PHASE D: Full chain + liquidity gate + strike ranking."""
+        if not options:
+            return None
+        
+        atm = round(spot / self.strike_interval) * self.strike_interval
+        expiry = self.get_expiry()
+        
+        # Try full chain engine first (Phase D)
+        if self.option_chain_engine and self.strike_ranker:
+            try:
+                inst_flat = [
+                    {
+                        "symbol": i["symbol"],
+                        "token": i["token"],
+                        "strike": i["strike"],
+                        "expiry": i["expiry"],
+                        "type": i["type"],
+                        "market": self.market,
+                        "exchange": i.get("exchange", self.option_exchange),
+                    }
+                    for i in self.instruments
+                ]
+                
+                chain = self.option_chain_engine.fetch(expiry, atm, inst_flat, strike_range=200)
+                
+                if chain and chain.get("status") == "OK":
+                    print(f"\n  [D1] CHAIN: {self.option_chain_engine.describe(chain)}")
+                    
+                    oi_analysis = self.oi_analyzer.analyze(chain)
+                    if oi_analysis.get("status") == "OK":
+                        print(f"  [D2] {self.oi_analyzer.describe(oi_analysis)}")
+                    
+                    ranking = self.strike_ranker.rank(chain, sentiment, atm)
+                    if ranking.get("status") == "OK":
+                        top = ranking.get("top_pick")
+                        if top:
+                            print(f"  [D3/D4] RANKED top={top['type']} {top['strike']} score={top['score']} LTP={top['ltp']} spread={top.get('spread_pct')}% vol={top['volume']}")
+                            for c in ranking.get("candidates", [])[1:4]:
+                                status = "OK " if c["passes_liquidity"] else "REJ"
+                                print(f"          [{status}] {c['type']} {c['strike']} score={c['score']} LTP={c['ltp']}")
+                            sym = top.get("symbol")
+                            tok = top.get("token")
+                            if sym and tok:
+                                return {
+                                    "type": top["type"],
+                                    "strike": top["strike"],
+                                    "signal": "BUY",
+                                    "entry": top["ltp"],
+                                    "token": tok,
+                                    "symbol": sym,
+                                    "reason": f"Ranked D4 #{top['score']}",
+                                    "rank_score": top["score"],
+                                }
+                        else:
+                            print("  [D3] NO ELIGIBLE candidate passed liquidity gate")
+            except Exception as e:
+                print(f"  [D] Chain error: {str(e)[:60]}")
+        
+        # Fallback legacy
+        valid = [o for o in options if o["ltp"] > 10]
+        if not valid:
+            return None
+        
+        prefer = "CE" if sentiment == "BULLISH" else "PE"
+        pool = [o for o in valid if o["type"] == prefer]
+        if not pool:
+            return None
+        
+        def score(o):
+            dist = abs(o["strike"] - atm)
+            base = max(0, 30 - dist / self.strike_interval * 10)
+            ltp_score = 20 if 50 <= o["ltp"] <= 200 else 10
+            return base + ltp_score
+        
+        best = max(pool, key=score)
+        return {
+            "type": best["type"],
+            "strike": best["strike"],
+            "signal": "BUY",
+            "entry": best["ltp"],
+            "token": best["token"],
+            "symbol": best["symbol"],
+            "reason": "Legacy ATM (chain unavailable)",
+            "rank_score": score(best),
+        }
+    

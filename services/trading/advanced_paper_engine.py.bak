@@ -1,0 +1,585 @@
+# services/trading/advanced_paper_engine.py
+# COMPLETE FIX - ALL METHODS INCLUDED
+
+import asyncio
+import logging
+import json
+from typing import Dict, Optional, List
+from datetime import datetime
+from services.market.websocket_bridge import WebSocketBridge
+from services.pre_market.market_context_builder import MarketContextBuilder
+from services.pre_market.pre_market_reporter import PreMarketReporter
+from services.market_selection.market_comparator import MarketComparator
+from services.market_selection.option_selector import OptionSelector
+from services.market_selection.trade_signal_generator import TradeSignalGenerator
+from services.trading.pnl_tracker import PnLTracker
+from services.trading.deployment_manager import DeploymentManager
+from services.core.system_controller import SystemController
+from services.dashboard.dashboard_manager import DashboardManager
+
+logger = logging.getLogger(__name__)
+
+class MarketRegimeDetector:
+    def detect(self, prices: List[float]) -> Dict:
+        if len(prices) < 20:
+            return {'regime': 'NEUTRAL', 'trend': 'NEUTRAL', 'volatility_percent': 0, 'trend_strength': 0}
+        
+        atr = self._calculate_atr(prices, 14)
+        avg_price = sum(prices[-20:]) / 20
+        volatility_percent = (atr / avg_price) * 100 if avg_price > 0 else 0
+        
+        sma_5 = sum(prices[-5:]) / 5
+        sma_10 = sum(prices[-10:]) / 10
+        sma_20 = sum(prices[-20:]) / 20
+        
+        if prices[-1] > sma_5 > sma_10 > sma_20:
+            trend = 'UP'
+            strength = 0.8
+        elif prices[-1] < sma_5 < sma_10 < sma_20:
+            trend = 'DOWN'
+            strength = 0.8
+        elif abs(sma_5 - sma_10) / sma_10 < 0.002:
+            trend = 'CONSOLIDATION'
+            strength = 0.6
+        else:
+            trend = 'NEUTRAL'
+            strength = 0.3
+        
+        if volatility_percent > 0.5 and trend != 'CONSOLIDATION':
+            regime = 'TRENDING'
+        elif volatility_percent < 0.3:
+            regime = 'CONSOLIDATION'
+        else:
+            regime = 'NEUTRAL'
+        
+        return {
+            'regime': regime,
+            'trend': trend,
+            'volatility_percent': volatility_percent,
+            'trend_strength': strength,
+            'atr': atr
+        }
+    
+    def _calculate_atr(self, data: List[float], period: int) -> float:
+        if len(data) < period + 1:
+            return data[-1] * 0.005 if data else 0
+        tr_values = []
+        for i in range(len(data) - period, len(data)):
+            high = data[i]
+            low = data[i-1] if i > 0 else data[i]
+            tr_values.append(abs(high - low))
+        return sum(tr_values) / len(tr_values) if tr_values else 0
+
+
+class AdvancedPaperTradingEngine:
+    def __init__(self, data_provider: WebSocketBridge):
+        self.data_provider = data_provider
+        self.is_running = False
+        self.start_time = None
+        
+        self.positions = {}
+        self.trades = []
+        self.certification_scores = {'NIFTY': 0, 'SENSEX': 0}
+        self.cycle = 0
+        self.price_history = {'NIFTY': [], 'SENSEX': []}
+        self.indicators = {}
+        
+        self.T1 = 0.15
+        self.T2 = 0.30
+        self.T3 = 0.50
+        self.stop_loss = -0.50
+        self.position_tiers = {'T1': 0.30, 'T2': 0.30, 'T3': 0.40}
+        self.max_positions_per_market = 2
+        
+        self.market_context = {}
+        self.current_signal = {'signal': 'WAIT', 'reason': 'Initializing...'}
+        self.pre_market_report = {}
+        self.regime_detector = MarketRegimeDetector()
+        self.current_regime = {}
+        
+        self.context_builder = MarketContextBuilder()
+        self.market_comparator = MarketComparator()
+        self.option_selector = OptionSelector()
+        self.signal_generator = TradeSignalGenerator()
+        self.pnl_tracker = PnLTracker()
+        self.deployment_manager = DeploymentManager()
+        self.system_controller = SystemController()
+        self.dashboard = DashboardManager()
+        
+        self.system_controller.register_component('trading_engine', self)
+        self.system_controller.register_component('websocket', data_provider)
+        
+        self.data_provider.subscribe(self.on_tick)
+        logger.info("[START] Advanced Trading Engine initialized")
+        logger.info(f"[TARGET] T1: {self.T1}%, T2: {self.T2}%, T3: {self.T3}%")
+        logger.info(f"[STOP] Stop Loss: {self.stop_loss}%")
+        logger.info("[STRATEGY] Adaptive - Regime aware")
+    
+    async def on_tick(self, tick_data: dict):
+        pass
+    
+    async def start(self):
+        self.is_running = True
+        self.start_time = datetime.now()
+        
+        self.system_controller.update_state(status='running', start_time=self.start_time.isoformat())
+        self.dashboard.update_system_status({'status': 'INITIALIZING', 'uptime': 0, 'cycle': 0})
+        
+        logger.info("[STATS] STEP 1: Running Pre-Market Analysis...")
+        self.market_context = await self.context_builder.analyze_all()
+        
+        logger.info("[STATS] STEP 2: Generating Pre-Market Report...")
+        reporter = PreMarketReporter()
+        self.pre_market_report = reporter.generate_report(self.market_context)
+        self.dashboard.update_pre_market_report(self.pre_market_report)
+        reporter.display_report(self.pre_market_report)
+        
+        logger.info("[CONNECT] STEP 3: Starting WebSocket Bridge...")
+        asyncio.create_task(self.data_provider.poll_data())
+        await asyncio.sleep(3)
+        
+        logger.info("[START] Advanced Trading Engine started")
+        logger.info(f"[UP] Market Bias: {self.market_context.get('market_bias', 'NEUTRAL')}")
+        logger.info(f"[TARGET] Recommended Market: {self.market_context.get('recommended_market', 'BOTH')}")
+        
+        self.dashboard.update_system_status({
+            'status': 'RUNNING',
+            'uptime': 0,
+            'cycle': 0,
+            'market_bias': self.market_context.get('market_bias', 'NEUTRAL'),
+            'recommended_market': self.market_context.get('recommended_market', 'BOTH')
+        })
+        
+        while self.is_running:
+            try:
+                self.cycle += 1
+                latest_data = self.data_provider.get_latest()
+                
+                if not latest_data or not any(latest_data.values()):
+                    await asyncio.sleep(1)
+                    continue
+                
+                for symbol in ['NIFTY', 'SENSEX']:
+                    tick_data = latest_data.get(symbol)
+                    if tick_data:
+                        self._update_indicators(symbol, tick_data)
+                        self.dashboard.update_market_data(symbol, tick_data)
+                        
+                        if len(self.price_history[symbol]) > 30:
+                            regime = self.regime_detector.detect(self.price_history[symbol])
+                            self.current_regime[symbol] = regime
+                            if self.cycle % 100 == 0:
+                                logger.info(f"[REGIME] {symbol}: {regime['regime']} | Trend: {regime['trend']} | Vol: {regime['volatility_percent']:.2f}%")
+                
+                await self._generate_trade_signal(latest_data)
+                
+                for symbol in ['NIFTY', 'SENSEX']:
+                    tick_data = latest_data.get(symbol)
+                    if tick_data and symbol in self.positions:
+                        await self._manage_positions(symbol, tick_data)
+                
+                if self.cycle % 50 == 0:
+                    self._log_stats()
+                
+                await asyncio.sleep(1)
+                
+            except asyncio.CancelledError:
+                logger.info("[STOP] Cycle cancelled")
+                break
+            except Exception as e:
+                logger.error(f"[ERROR] Main loop: {e}")
+                await asyncio.sleep(1)
+        
+        self.stop()
+    
+    def _update_indicators(self, symbol: str, tick_data: dict):
+        ltp = tick_data['ltp']
+        self.price_history[symbol].append(ltp)
+        if len(self.price_history[symbol]) > 100:
+            self.price_history[symbol].pop(0)
+        
+        history = self.price_history[symbol]
+        if len(history) < 20:
+            return
+        
+        for period in [5, 10, 20, 50]:
+            if len(history) >= period:
+                self.indicators[f'{symbol}_SMA_{period}'] = sum(history[-period:]) / period
+        
+        if len(history) >= 15:
+            gains, losses = [], []
+            for i in range(-14, 0):
+                change = history[i] - history[i-1]
+                if change > 0:
+                    gains.append(change)
+                    losses.append(0)
+                else:
+                    gains.append(0)
+                    losses.append(abs(change))
+            avg_gain = sum(gains) / 14 if gains else 0
+            avg_loss = sum(losses) / 14 if losses else 0
+            rsi = 50
+            if avg_loss > 0:
+                rsi = 100 - (100 / (1 + (avg_gain / avg_loss)))
+            self.indicators[f'{symbol}_RSI'] = rsi
+    
+    async def _generate_trade_signal(self, latest_data: dict):
+        for symbol in ['NIFTY', 'SENSEX']:
+            active_positions = self._get_active_positions(symbol)
+            if len(active_positions) >= self.max_positions_per_market:
+                continue
+            
+            tick_data = latest_data.get(symbol)
+            if not tick_data:
+                continue
+            
+            ltp = tick_data['ltp']
+            history = self.price_history.get(symbol, [])
+            if len(history) < 30:
+                continue
+            
+            regime = self.current_regime.get(symbol, {'regime': 'NEUTRAL', 'trend': 'NEUTRAL'})
+            rsi = self.indicators.get(f'{symbol}_RSI', 50)
+            
+            option_type = None
+            confidence = 0
+            reason = ""
+            
+            # CONSOLIDATION: ONLY trade on breakout
+            if regime['regime'] == 'CONSOLIDATION':
+                recent_high = max(history[-20:])
+                recent_low = min(history[-20:])
+                range_size = recent_high - recent_low
+                range_percent = (range_size / ltp) * 100 if ltp > 0 else 0
+                
+                if ltp > recent_high * 0.998 and range_percent > 0.2:
+                    option_type = 'CALL'
+                    confidence = 0.65
+                    reason = f"BREAKOUT above consolidation {range_percent:.2f}%"
+                elif ltp < recent_low * 1.002 and range_percent > 0.2:
+                    option_type = 'PUT'
+                    confidence = 0.65
+                    reason = f"BREAKOUT below consolidation {range_percent:.2f}%"
+                elif rsi > 70:
+                    option_type = 'PUT'
+                    confidence = 0.55
+                    reason = f"Overbought in consolidation | RSI={rsi:.1f}"
+                elif rsi < 30:
+                    option_type = 'CALL'
+                    confidence = 0.55
+                    reason = f"Oversold in consolidation | RSI={rsi:.1f}"
+                else:
+                    self.current_signal = {
+                        'signal': 'WAIT',
+                        'market': symbol,
+                        'option_type': 'NONE',
+                        'entry_price': 0,
+                        'stop_loss': 0,
+                        'targets': {'T1': 0, 'T2': 0, 'T3': 0},
+                        'confidence': 0,
+                        'reason': f'CONSOLIDATION - Waiting for breakout',
+                        'regime': regime['regime']
+                    }
+                    self.dashboard.add_trade_signal(self.current_signal)
+                    continue
+            
+            # TRENDING
+            elif regime['regime'] == 'TRENDING':
+                sma_5 = self.indicators.get(f'{symbol}_SMA_5', ltp)
+                sma_10 = self.indicators.get(f'{symbol}_SMA_10', ltp)
+                sma_20 = self.indicators.get(f'{symbol}_SMA_20', ltp)
+                
+                if ltp > sma_5 > sma_10 > sma_20 and rsi > 50:
+                    option_type = 'CALL'
+                    confidence = 0.75
+                    reason = f"Strong uptrend | RSI={rsi:.1f}"
+                elif ltp < sma_5 < sma_10 < sma_20 and rsi < 50:
+                    option_type = 'PUT'
+                    confidence = 0.75
+                    reason = f"Strong downtrend | RSI={rsi:.1f}"
+                else:
+                    self.current_signal = {
+                        'signal': 'WAIT',
+                        'market': symbol,
+                        'option_type': 'NONE',
+                        'entry_price': 0,
+                        'stop_loss': 0,
+                        'targets': {'T1': 0, 'T2': 0, 'T3': 0},
+                        'confidence': 0,
+                        'reason': f'TRENDING - No clear signal',
+                        'regime': regime['regime']
+                    }
+                    self.dashboard.add_trade_signal(self.current_signal)
+                    continue
+            
+            # NEUTRAL
+            else:
+                market_bias = self.market_context.get('market_bias', 'NEUTRAL')
+                if market_bias in ['STRONGLY_BULLISH', 'BULLISH'] and rsi > 40:
+                    option_type = 'CALL'
+                    confidence = 0.50
+                    reason = f"Neutral with bullish bias"
+                elif market_bias in ['STRONGLY_BEARISH', 'BEARISH'] and rsi < 60:
+                    option_type = 'PUT'
+                    confidence = 0.50
+                    reason = f"Neutral with bearish bias"
+                else:
+                    self.current_signal = {
+                        'signal': 'WAIT',
+                        'market': symbol,
+                        'option_type': 'NONE',
+                        'entry_price': 0,
+                        'stop_loss': 0,
+                        'targets': {'T1': 0, 'T2': 0, 'T3': 0},
+                        'confidence': 0,
+                        'reason': f'NEUTRAL - No clear signal',
+                        'regime': regime['regime']
+                    }
+                    self.dashboard.add_trade_signal(self.current_signal)
+                    continue
+            
+            if option_type and confidence >= 0.50:
+                entry_price = ltp
+                stop_loss = entry_price * (1 - 0.005) if option_type == 'CALL' else entry_price * (1 + 0.005)
+                
+                self.current_signal = {
+                    'signal': 'TRADE',
+                    'market': symbol,
+                    'option_type': option_type,
+                    'entry_price': entry_price,
+                    'stop_loss': stop_loss,
+                    'targets': {
+                        'T1': entry_price * (1 + (self.T1/100)) if option_type == 'CALL' else entry_price * (1 - (self.T1/100)),
+                        'T2': entry_price * (1 + (self.T2/100)) if option_type == 'CALL' else entry_price * (1 - (self.T2/100)),
+                        'T3': entry_price * (1 + (self.T3/100)) if option_type == 'CALL' else entry_price * (1 - (self.T3/100))
+                    },
+                    'confidence': confidence,
+                    'reason': reason,
+                    'regime': regime['regime']
+                }
+                
+                self.dashboard.add_trade_signal(self.current_signal)
+                
+                position_size = self.deployment_manager.get_position_size(symbol, entry_price, stop_loss)
+                await self._enter_option_position(tick_data, option_type, self.current_signal, position_size)
+                return
+    
+    async def _enter_option_position(self, tick_data: dict, option_type: str, signal: dict, position_size: dict):
+        """Enter an option position"""
+        symbol = tick_data.get('symbol', 'NIFTY')
+        entry_price = signal.get('entry_price', tick_data['ltp'])
+        stop_loss = signal.get('stop_loss', entry_price * (1 - 0.005))
+        targets = signal.get('targets', {})
+        
+        position = {
+            'symbol': symbol,
+            'option_type': option_type,
+            'entry_price': entry_price,
+            'entry_time': datetime.now(),
+            'entry_cycle': self.cycle,
+            'current_price': tick_data['ltp'],
+            'status': 'OPEN',
+            'quantity': position_size.get('total_quantity', 100),
+            'lots': position_size.get('lots', 1),
+            'booked': {'T1': False, 'T2': False, 'T3': False},
+            'T1_price': targets.get('T1', entry_price * 1.0015),
+            'T2_price': targets.get('T2', entry_price * 1.0030),
+            'T3_price': targets.get('T3', entry_price * 1.0050),
+            'stop_loss': stop_loss,
+            'highest_price': tick_data['ltp'],
+            'lowest_price': tick_data['ltp'],
+            'hold_count': 0,
+            'position_size': position_size,
+            'position_number': len(self._get_active_positions(symbol)) + 1,
+            'regime': signal.get('regime', 'NEUTRAL'),
+            'entry_reason': signal.get('reason', '')
+        }
+        
+        if symbol not in self.positions:
+            self.positions[symbol] = []
+        self.positions[symbol].append(position)
+        
+        self.dashboard.update_position(position)
+        
+        logger.info(f"[START] ENTERED {option_type} position #{position['position_number']} for {symbol} @ {entry_price}")
+        logger.info(f"[REASON] {position['entry_reason']}")
+        logger.info(f"[REGIME] {position['regime']}")
+        logger.info(f"[STATS] {position['lots']} lots ({position['quantity']} shares)")
+        logger.info(f"[TARGET] T1: {position['T1_price']:.2f}, T2: {position['T2_price']:.2f}, T3: {position['T3_price']:.2f}")
+        logger.info(f"[STOP] Stop Loss: {position['stop_loss']:.2f}")
+        logger.info(f"[MAX] Positions: {len(self._get_active_positions(symbol))}/{self.max_positions_per_market}")
+    
+    async def _manage_positions(self, symbol: str, tick_data: dict):
+        """Manage all positions for a symbol"""
+        active_positions = self._get_active_positions(symbol)
+        
+        for position in active_positions:
+            await self._manage_single_position(symbol, position, tick_data)
+    
+    async def _manage_single_position(self, symbol: str, position: Dict, tick_data: dict):
+        """Manage a single position"""
+        position['current_price'] = tick_data['ltp']
+        position['hold_count'] += 1
+        
+        if tick_data['ltp'] > position.get('highest_price', tick_data['ltp']):
+            position['highest_price'] = tick_data['ltp']
+        if tick_data['ltp'] < position.get('lowest_price', tick_data['ltp']):
+            position['lowest_price'] = tick_data['ltp']
+        
+        if position.get('option_type') == 'CALL':
+            pnl_percent = ((tick_data['ltp'] - position['entry_price']) / position['entry_price']) * 100
+        else:
+            pnl_percent = ((position['entry_price'] - tick_data['ltp']) / position['entry_price']) * 100
+        
+        # Check targets
+        if pnl_percent >= self.T1 and not position['booked'].get('T1', False):
+            await self._book_profit(symbol, position, tick_data['ltp'], pnl_percent, 'T1')
+            position['booked']['T1'] = True
+        
+        if pnl_percent >= self.T2 and not position['booked'].get('T2', False):
+            await self._book_profit(symbol, position, tick_data['ltp'], pnl_percent, 'T2')
+            position['booked']['T2'] = True
+        
+        if pnl_percent >= self.T3 and not position['booked'].get('T3', False):
+            await self._book_profit(symbol, position, tick_data['ltp'], pnl_percent, 'T3')
+            position['booked']['T3'] = True
+        
+        # Stop loss
+        if pnl_percent <= self.stop_loss:
+            await self._exit_position(symbol, position, tick_data['ltp'], 'STOP_LOSS', pnl_percent)
+            return
+        
+        # All targets hit
+        if all(position['booked'].values()):
+            await self._exit_position(symbol, position, tick_data['ltp'], 'ALL_TARGETS_HIT', pnl_percent)
+            return
+        
+        self.dashboard.update_position(position)
+    
+    async def _book_profit(self, symbol: str, position: Dict, price: float, pnl_percent: float, tier: str):
+        """Book partial profit"""
+        tier_size = self.position_tiers.get(tier, 0.30)
+        current_quantity = position.get('quantity', 0)
+        book_quantity = current_quantity * tier_size
+        
+        trade = {
+            'symbol': symbol,
+            'option_type': position.get('option_type'),
+            'tier': tier,
+            'entry_price': position['entry_price'],
+            'exit_price': price,
+            'pnl_percent': pnl_percent,
+            'quantity': book_quantity,
+            'entry_time': position['entry_time'],
+            'exit_time': datetime.now(),
+            'holding_cycles': self.cycle - position['entry_cycle'],
+            'reason': f'PARTIAL_{tier}',
+            'position_number': position.get('position_number', 1)
+        }
+        
+        self.trades.append(trade)
+        position['quantity'] = current_quantity - book_quantity
+        
+        self.pnl_tracker.update_pnl(trade)
+        self.dashboard.add_trade(trade)
+        
+        if pnl_percent > 0:
+            self.certification_scores[symbol] = min(self.certification_scores.get(symbol, 0) + 1, 100)
+        
+        logger.info(f"[OK] {tier} HIT for {symbol} #{position.get('position_number', 1)}: P&L {pnl_percent:.2f}%")
+    
+    async def _exit_position(self, symbol: str, position: Dict, price: float, reason: str, pnl_percent: float):
+        """Exit position"""
+        quantity = position.get('quantity', 0)
+        if quantity > 0:
+            trade = {
+                'symbol': symbol,
+                'option_type': position.get('option_type'),
+                'tier': 'FINAL',
+                'entry_price': position['entry_price'],
+                'exit_price': price,
+                'pnl_percent': pnl_percent,
+                'quantity': quantity,
+                'entry_time': position['entry_time'],
+                'exit_time': datetime.now(),
+                'holding_cycles': self.cycle - position['entry_cycle'],
+                'reason': reason,
+                'position_number': position.get('position_number', 1)
+            }
+            
+            self.trades.append(trade)
+            self.pnl_tracker.update_pnl(trade)
+            self.dashboard.add_trade(trade)
+            
+            if pnl_percent > 0:
+                self.certification_scores[symbol] = min(self.certification_scores.get(symbol, 0) + 1, 100)
+            
+            logger.info(f"[STATS] EXIT {symbol} #{position.get('position_number', 1)}: {reason} | Final P&L: {pnl_percent:.2f}%")
+        
+        if symbol in self.positions:
+            self.positions[symbol] = [p for p in self.positions[symbol] if p is not position]
+        
+        position['status'] = 'CLOSED'
+        self.dashboard.update_position(position)
+    
+    def _get_active_positions(self, symbol: str) -> List[Dict]:
+        positions = self.positions.get(symbol, [])
+        if not isinstance(positions, list):
+            positions = [positions] if positions else []
+        return [p for p in positions if p.get('status') == 'OPEN']
+    
+    def _count_open_positions(self) -> int:
+        total = 0
+        for positions in self.positions.values():
+            if isinstance(positions, list):
+                total += len([p for p in positions if p.get('status') == 'OPEN'])
+            else:
+                total += 1 if positions.get('status') == 'OPEN' else 0
+        return total
+    
+    def _log_stats(self):
+        total_trades = len(self.trades)
+        winning = sum(1 for t in self.trades if t.get('pnl_percent', 0) > 0)
+        win_rate = (winning / total_trades * 100) if total_trades > 0 else 0
+        
+        t1_hits = sum(1 for t in self.trades if t.get('tier') == 'T1')
+        t2_hits = sum(1 for t in self.trades if t.get('tier') == 'T2')
+        t3_hits = sum(1 for t in self.trades if t.get('tier') == 'T3')
+        
+        nifty_positions = len(self._get_active_positions('NIFTY'))
+        sensex_positions = len(self._get_active_positions('SENSEX'))
+        
+        logger.info(f"""
+========================================
+[STATS] STATS (Cycle {self.cycle})
+  Total Trades: {total_trades}
+  Win Rate: {win_rate:.1f}%
+  Open Positions: {self._count_open_positions()}
+  
+[POSITIONS]
+  NIFTY: {nifty_positions}/{self.max_positions_per_market}
+  SENSEX: {sensex_positions}/{self.max_positions_per_market}
+  
+[TARGET] TARGET HITS:
+  T1 (0.15%): {t1_hits}
+  T2 (0.3%): {t2_hits}
+  T3 (0.5%): {t3_hits}
+  
+[NOTE] CERTIFICATION:
+  NIFTY: {self.certification_scores.get('NIFTY', 0)}/100
+  SENSEX: {self.certification_scores.get('SENSEX', 0)}/100
+  
+[STATS] CURRENT SIGNAL:
+  {self.current_signal.get('signal', 'WAIT')}: {self.current_signal.get('reason', '')}
+========================================
+""")
+    
+    def stop(self):
+        self.is_running = False
+        self.dashboard.update_system_status({'status': 'STOPPED'})
+        logger.info("[STOP] Advanced Trading Engine stopped")
+        logger.info("\n" + self.pnl_tracker.generate_report())
+        self.dashboard.display_dashboard()
+    
+    def is_healthy(self) -> bool:
+        return self.is_running

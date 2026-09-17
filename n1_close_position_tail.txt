@@ -1,0 +1,91 @@
+1720:                 print(f'      MFE: Γé╣{trade["mfe"]:.2f} ({trade["peak_pnl_pct"]}%)')
+1721:                 print(f'      MAE: Γé╣{trade["mae"]:.2f} ({trade["trough_pnl_pct"]}%)')
+1722:                 print(f'      Gross P&L: Γé╣{trade["gross_pnl"]:.2f}')
+1723:                 print(f'      Costs: Γé╣{trade["costs_total"]:.2f}')
+1724:                 print(f'      NET P&L: Γé╣{trade["net_pnl"]:.2f} ({trade["net_pnl_pct"]}%)')
+1725:         except Exception as _e:
+1726:             print(f'  [F] reconciliation error: {str(_e)[:60]}')
+1727:         
+1728:         # ===== PHASE G2: Record outcome to ledger =====
+1729:         try:
+1730:             self.outcome_ledger.record(trade)
+1731:             print(f'  [G2] Outcome recorded to {self.market.lower()}_outcomes.jsonl')
+1732:             
+1733:             # Phase H: re-entry state tracking
+1734:             self.last_exit_time = datetime.now()
+1735:             self.last_exit_direction = trade.get('type', 'UNKNOWN')
+1736:             self.daily_trade_count += 1
+1737:             _net = trade.get('net_pnl', 0) or 0
+1738:             self.daily_realized_loss += _net
+1739:             
+1740:             if reason == 'STOP_LOSS' and trade.get('type') == self.last_exit_direction:
+1741:                 self.same_direction_stops += 1
+1742:             else:
+1743:                 self.same_direction_stops = 0
+1744:             
+1745:             print(f'  [Re-entry] Same-dir stops: {self.same_direction_stops} | Daily trades: {self.daily_trade_count} | Daily P&L: Γé╣{self.daily_realized_loss:.0f}')
+1746:         except Exception as _e:
+1747:             print(f'  [G2] outcome ledger error: {str(_e)[:60]}')
+1748:         
+1749:         self.total_pnl += pnl
+1750:         
+1751:         if pnl > 0:
+1752:             self.winning_trades += 1
+1753:             self.consecutive_wins += 1
+1754:             self.consecutive_losses = 0
+1755:         else:
+1756:             self.losing_trades += 1
+1757:             self.consecutive_losses += 1
+1758:             self.consecutive_wins = 0
+1759:         
+1760:         self.completed_trades.append(trade)
+1761:         del self.active_trades[trade_id]
+1762:         
+1763:         print(f"\n{'='*60}")
+1764:         print(f"≡ƒôè Position Closed: {reason}")
+1765:         print(f"{'='*60}")
+1766:         print(f"{self.market} {trade['signal']} {trade['type']} {trade['strike']}")
+1767:         print(f"Entry: Γé╣{trade['entry']:.2f} ΓåÆ Exit: Γé╣{exit_price:.2f}")
+1768:         print(f"P&L: Γé╣{pnl:.2f} ({pnl_pct:.2f}%)")
+1769:         print(f"Total P&L: Γé╣{self.total_pnl:.2f}")
+1770:     
+1771:     def run_daily_sessions(self):
+1772:         # Wait for market to be open (works for overnight)
+1773:         while self.is_running and not self.is_market_open():
+1774:             now = datetime.now()
+1775:             if now < self.MARKET_OPEN:
+1776:                 wait_seconds = (self.MARKET_OPEN - now).seconds
+1777:                 hours = wait_seconds // 3600
+1778:                 minutes = (wait_seconds % 3600) // 60
+1779:                 print(f"\nWaiting for market open... {hours}h {minutes}m remaining")
+1780:                 time.sleep(60)
+1781:             else:
+1782:                 next_open = self.MARKET_OPEN + timedelta(days=1)
+1783:                 wait_seconds = (next_open - now).seconds
+1784:                 hours = wait_seconds // 3600
+1785:                 minutes = (wait_seconds % 3600) // 60
+1786:                 print(f"\nMarket closed. Next open in {hours}h {minutes}m")
+1787:                 time.sleep(60)
+1788:         
+1789:         if not self.is_running:
+1790:             return
+1791:         
+1792:         print("\nMarket is open! Starting trading...")
+1793:     def show_daily_summary(self):
+1794:         print(f"\n{'='*60}")
+1795:         print(f"{self.market} DAILY SUMMARY - {datetime.now().strftime('%Y-%m-%d')}")
+1796:         print(f"{'='*60}")
+1797:         print(f"Sessions Today: {self.sessions_completed_today}")
+1798:         print(f"Total Sessions: {self.current_session}/{self.total_sessions}")
+1799:         print(f"Total P&L: Γé╣{self.total_pnl:.2f}")
+1800:         if self.total_trades > 0:
+1801:             print(f"Win Rate: {(self.winning_trades / self.total_trades * 100):.1f}%")
+1802:         
+1803:         if self.current_session >= self.total_sessions:
+1804:             print(f"\n≡ƒÄë {self.market} TESTING COMPLETE!")
+1805:             self.generate_certification()
+1806:         else:
+1807:             remaining = self.total_sessions - self.current_session
+1808:             print(f"\nRemaining sessions: {remaining}")
+1809:             print(f"Next session will run tomorrow at market open.")
+1810:     

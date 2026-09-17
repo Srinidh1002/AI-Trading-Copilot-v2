@@ -56,9 +56,15 @@ LOG_FILE = LOG_FOLDER / "application.log"
 
 ANGEL_API_KEY = os.getenv("ANGEL_API_KEY", "")
 
-ANGEL_CLIENT_ID = os.getenv("ANGEL_CLIENT_ID", "")
+ANGEL_CLIENT_ID = (
+    os.getenv("ANGEL_CLIENT_ID", "")
+    or os.getenv("ANGEL_USER_ID", "")
+)
 
-ANGEL_PIN = os.getenv("ANGEL_PIN", "")
+ANGEL_PIN = (
+    os.getenv("ANGEL_PIN", "")
+    or os.getenv("ANGEL_PASSWORD", "")
+)
 
 ANGEL_TOTP_SECRET = os.getenv("ANGEL_TOTP_SECRET", "")
 

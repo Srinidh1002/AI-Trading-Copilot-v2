@@ -1,0 +1,2 @@
+from services.contracts import IntegratedThreeTargetTradePlanInputV1
+def test_export():assert IntegratedThreeTargetTradePlanInputV1

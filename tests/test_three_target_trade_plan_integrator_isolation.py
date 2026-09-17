@@ -1,0 +1,1 @@
+def test_import():from services.trade_planning import integrate_three_target_trade_plan;assert integrate_three_target_trade_plan

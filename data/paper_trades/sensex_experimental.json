@@ -1,0 +1,21 @@
+{
+  "market": "SENSEX",
+  "timestamp": "2026-09-15T12:17:55.368161",
+  "current_session": 0,
+  "total_sessions": 100,
+  "total_trades": 0,
+  "winning_trades": 0,
+  "losing_trades": 0,
+  "total_pnl": 0,
+  "t1_hits": 0,
+  "t2_hits": 0,
+  "t3_hits": 0,
+  "stop_losses": 0,
+  "market_close_exits": 0,
+  "consecutive_wins": 0,
+  "consecutive_losses": 0,
+  "session_history": [],
+  "completed_trades": [],
+  "active_trades": [],
+  "sessions_completed_today": 0
+}

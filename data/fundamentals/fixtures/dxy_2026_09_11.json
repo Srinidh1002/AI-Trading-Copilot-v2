@@ -1,0 +1,3 @@
+{ "_fixture_note": "TEST_FIXTURE — synthetic DXY sample.",
+  "source": "yfinance", "timestamp": "2026-09-11T18:00:00+05:30",
+  "dxy": 104.32, "previous_dxy": 104.10, "change_pct": 0.21 }

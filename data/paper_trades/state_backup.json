@@ -1,0 +1,165 @@
+{
+  "timestamp": "2026-09-07T13:11:00.171846",
+  "current_session": 10,
+  "total_sessions": 10,
+  "total_trades": 10,
+  "winning_trades": 7,
+  "losing_trades": 3,
+  "total_pnl": -494.99999999999955,
+  "session_history": [
+    {
+      "direction": "BULLISH",
+      "pnl": -348.7499999999994,
+      "win": false
+    },
+    {
+      "direction": "BULLISH",
+      "pnl": -262.5,
+      "win": true
+    },
+    {
+      "direction": "BULLISH",
+      "pnl": -622.4999999999998,
+      "win": false
+    },
+    {
+      "direction": "BULLISH",
+      "pnl": -967.4999999999993,
+      "win": false
+    },
+    {
+      "direction": "BULLISH",
+      "pnl": -918.75,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 90.00000000000021,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 33.75000000000021,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 228.74999999999977,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 3.749999999999787,
+      "win": true
+    },
+    {
+      "type": "CE",
+      "pnl": 67.50000000000043,
+      "win": true
+    }
+  ],
+  "consecutive_losses": 0,
+  "consecutive_wins": 5,
+  "completed_trades": [
+    {
+      "trade_id": "SMART_125255",
+      "type": "CE",
+      "strike": 23750,
+      "signal": "BUY",
+      "entry": 100.3,
+      "token": "42629",
+      "symbol": "NIFTY08SEP2623750CE",
+      "quantity": 75,
+      "entry_time": "2026-09-07 12:52:55.446726",
+      "current_price": 101.5,
+      "pnl": 90.00000000000021,
+      "pnl_pct": 1.196410767696912,
+      "max_profit": 90.00000000000021,
+      "reason": "Bullish sentiment",
+      "exit_price": 101.5,
+      "exit_reason": "TIME_EXIT",
+      "exit_time": "2026-09-07 12:57:56.427942",
+      "status": "CLOSED"
+    },
+    {
+      "trade_id": "SMART_125832",
+      "type": "CE",
+      "strike": 23750,
+      "signal": "BUY",
+      "entry": 101.55,
+      "token": "42629",
+      "symbol": "NIFTY08SEP2623750CE",
+      "quantity": 75,
+      "entry_time": "2026-09-07 12:58:32.847008",
+      "current_price": 102.0,
+      "pnl": 33.75000000000021,
+      "pnl_pct": 0.4431314623338285,
+      "max_profit": 142.50000000000043,
+      "reason": "Bullish sentiment",
+      "exit_price": 102.0,
+      "exit_reason": "TRAILING",
+      "exit_time": "2026-09-07 13:02:49.397819",
+      "status": "CLOSED"
+    },
+    {
+      "trade_id": "SMART_130325",
+      "type": "CE",
+      "strike": 23750,
+      "signal": "BUY",
+      "entry": 101.25,
+      "token": "42629",
+      "symbol": "NIFTY08SEP2623750CE",
+      "quantity": 75,
+      "entry_time": "2026-09-07 13:03:25.847606",
+      "current_price": 104.3,
+      "pnl": 228.74999999999977,
+      "pnl_pct": 3.0123456790123426,
+      "max_profit": 412.5,
+      "reason": "Bullish sentiment",
+      "exit_price": 104.3,
+      "exit_reason": "TRAILING",
+      "exit_time": "2026-09-07 13:07:59.242964",
+      "status": "CLOSED"
+    },
+    {
+      "trade_id": "SMART_130835",
+      "type": "CE",
+      "strike": 23750,
+      "signal": "BUY",
+      "entry": 103.7,
+      "token": "42629",
+      "symbol": "NIFTY08SEP2623750CE",
+      "quantity": 75,
+      "entry_time": "2026-09-07 13:08:35.754989",
+      "current_price": 103.75,
+      "pnl": 3.749999999999787,
+      "pnl_pct": 0.048216007714558494,
+      "max_profit": 108.75000000000021,
+      "reason": "Bullish sentiment",
+      "exit_price": 103.75,
+      "exit_reason": "TRAILING",
+      "exit_time": "2026-09-07 13:08:52.618151",
+      "status": "CLOSED"
+    },
+    {
+      "trade_id": "SMART_130929",
+      "type": "CE",
+      "strike": 23750,
+      "signal": "BUY",
+      "entry": 103.8,
+      "token": "42629",
+      "symbol": "NIFTY08SEP2623750CE",
+      "quantity": 75,
+      "entry_time": "2026-09-07 13:09:29.136707",
+      "current_price": 104.7,
+      "pnl": 67.50000000000043,
+      "pnl_pct": 0.8670520231213927,
+      "max_profit": 127.50000000000021,
+      "reason": "Bullish sentiment",
+      "exit_price": 104.7,
+      "exit_reason": "TRAILING",
+      "exit_time": "2026-09-07 13:11:00.171638",
+      "status": "CLOSED"
+    }
+  ]
+}

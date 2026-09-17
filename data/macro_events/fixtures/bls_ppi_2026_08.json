@@ -1,0 +1,10 @@
+{
+  "description": "FIXTURE — schema-only, NOT real Sep-2026 PPI values.",
+  "source": "BLS",
+  "release_date": "2026-09-10",
+  "reference_period": "2026-08",
+  "actual_ppi_mom": null,
+  "actual_ppi_yoy": null,
+  "previous_ppi_mom": null,
+  "previous_ppi_yoy": null
+}

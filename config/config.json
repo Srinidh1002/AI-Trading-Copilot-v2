@@ -1,0 +1,56 @@
+{
+    "trading_config": {
+        "indices": ["NIFTY", "BANKNIFTY", "SENSEX"],
+        "strike_interval": 50,
+        "lot_size": {
+            "NIFTY": 75,
+            "BANKNIFTY": 25,
+            "SENSEX": 20
+        },
+        "risk_management": {
+            "max_trades_per_day": 5,
+            "max_loss_per_day": 5000,
+            "stop_loss_percent": 1.0,
+            "targets": {
+                "T1": 15,
+                "T2": 30,
+                "T3": 50
+            }
+        },
+        "trading_hours": {
+            "start": "09:15",
+            "end": "15:30"
+        }
+    },
+    "broker_config": {
+        "broker": "zerodha",
+        "api_key": "",
+        "api_secret": "",
+        "access_token": ""
+    },
+    "analysis_config": {
+        "technical_indicators": {
+            "rsi_period": 14,
+            "macd_fast": 12,
+            "macd_slow": 26,
+            "macd_signal": 9,
+            "sma_periods": [20, 50, 200]
+        },
+        "options_analysis": {
+            "pcr_threshold": {
+                "oversold": 0.8,
+                "overbought": 1.2
+            },
+            "max_pain_consideration": true
+        },
+        "vix_analysis": {
+            "low_volatility": 15,
+            "high_volatility": 25
+        }
+    },
+    "paper_trading": {
+        "initial_capital": 100000,
+        "slippage_percent": 0.1,
+        "brokerage_per_trade": 20
+    }
+}

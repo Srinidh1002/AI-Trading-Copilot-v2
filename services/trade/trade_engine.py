@@ -4,6 +4,9 @@ Trade Engine
 Institutional AI Trade Engine
 """
 
+import math
+from collections.abc import Mapping
+
 from services.core.market_snapshot import get_market_snapshot
 from services.decision.master_decision_engine import make_decision
 from services.risk.risk_engine import calculate_risk
@@ -24,6 +27,145 @@ from services.trade.trade_response_builder import (
 )
 
 trade_score_engine = TradeScoreEngine()
+
+
+def _paper_execution_rejection(reason):
+    return {
+        "status": "REJECTED",
+        "executed": False,
+        "reason": reason,
+        "paper_trade": None,
+    }
+
+
+def _positive_finite_number(value):
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) and number > 0 else None
+
+
+def execute_paper_trade(analysis_result):
+    """Explicitly submit an already-produced analysis result to paper trading.
+
+    Analysis callers, including the dashboard, must call ``analyze_trade``
+    only. Paper-trading mutation is intentionally opt-in through this boundary.
+    An execution request must carry an approved, directional analysis response.
+    """
+
+    if not isinstance(analysis_result, Mapping):
+        return _paper_execution_rejection(
+            "Analysis result must be a mapping."
+        )
+
+    action = str(analysis_result.get("decision", "")).upper()
+    direction = {
+        "BUY CE": "BUY",
+        "BUY": "BUY",
+        "BUY PE": "SELL",
+        "SELL": "SELL",
+    }.get(action)
+    if direction is None:
+        return _paper_execution_rejection(
+            "A directional BUY or SELL decision is required."
+        )
+
+    if analysis_result.get("trade_action") != "EXECUTE":
+        return _paper_execution_rejection(
+            "Execution status is not approved."
+        )
+
+    if (
+        analysis_result.get("approval_status") != "APPROVED"
+        or analysis_result.get("entry_allowed") is not True
+        or analysis_result.get("master_decision") != direction
+    ):
+        return _paper_execution_rejection(
+            "Explicit directional authorization is required."
+        )
+
+    if analysis_result.get("error"):
+        return _paper_execution_rejection(
+            "Analysis result contains an internal error."
+        )
+
+    risk_level = str(analysis_result.get("risk_level", "")).upper()
+    if risk_level in {"HIGH", "REJECTED", "BLOCKED", "ERROR"}:
+        return _paper_execution_rejection(
+            "Risk validation did not approve paper execution."
+        )
+
+    snapshot = analysis_result.get("snapshot")
+    if not isinstance(snapshot, Mapping):
+        return _paper_execution_rejection(
+            "A valid market snapshot is required."
+        )
+
+    timestamp = snapshot.get("timestamp")
+    if not isinstance(timestamp, str) or not timestamp.strip():
+        return _paper_execution_rejection(
+            "Snapshot timestamp is required."
+        )
+
+    fields = {
+        "entry": analysis_result.get("entry"),
+        "stop_loss": analysis_result.get("stop_loss"),
+        "target1": analysis_result.get("target1"),
+        "target2": analysis_result.get("target2"),
+        "confidence": analysis_result.get("confidence"),
+        "current_price": snapshot.get("ltp"),
+    }
+    numeric_fields = {
+        name: _positive_finite_number(value)
+        for name, value in fields.items()
+    }
+    if any(value is None for value in numeric_fields.values()):
+        return _paper_execution_rejection(
+            "Trade plan contains missing or invalid numeric values."
+        )
+
+    if "quantity" in analysis_result and _positive_finite_number(
+        analysis_result["quantity"]
+    ) is None:
+        return _paper_execution_rejection(
+            "Quantity must be a positive finite number."
+        )
+
+    reason = analysis_result.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        return _paper_execution_rejection(
+            "Execution reason is required."
+        )
+
+    paper_trade = {
+        "timestamp": timestamp,
+        "decision": direction,
+        "trade_action": "EXECUTE",
+        "entry": numeric_fields["entry"],
+        "stop_loss": numeric_fields["stop_loss"],
+        "target1": numeric_fields["target1"],
+        "target2": numeric_fields["target2"],
+        "confidence": numeric_fields["confidence"],
+        "reason": reason,
+        "current_price": numeric_fields["current_price"],
+    }
+
+    try:
+        process_trade(paper_trade)
+    except Exception:
+        return _paper_execution_rejection(
+            "Paper trade execution failed."
+        )
+
+    return {
+        "status": "SUBMITTED",
+        "executed": True,
+        "reason": "Paper trade submitted.",
+        "paper_trade": paper_trade,
+    }
 
 
 def generate_trade():
@@ -364,20 +506,6 @@ def analyze_trade(snapshot=None):
         ),
     )
 
-    paper_trade = {
-        "timestamp": snapshot["timestamp"],
-        "decision": signal,
-        "trade_action": trade_score["Action"],
-        "entry": entry,
-        "stop_loss": stop_loss,
-        "target1": target1,
-        "target2": target2,
-        "confidence": confidence,
-        "reason": reason,
-        "current_price": snapshot["ltp"],
-    }
-
-    process_trade(paper_trade)
     performance_monitor.stop("decision_engine")
     return build_trade_response(
         display_signal=display_signal,

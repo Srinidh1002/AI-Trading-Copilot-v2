@@ -1,0 +1,33 @@
+2026-09-02 10:36:51,906 - INFO - ======================================================================
+2026-09-02 10:36:51,906 - INFO - [START] AI Trading Copilot - Scheduled Trading Mode
+2026-09-02 10:36:51,906 - INFO - ======================================================================
+2026-09-02 10:36:51,906 - INFO - [NOTE] Log file: logs\trading_20260902_103651.log
+2026-09-02 10:36:51,957 - INFO - [NOTE] Current IST: 2026-09-02 10:36:51
+2026-09-02 10:36:51,957 - INFO - [START] Initializing trading session...
+2026-09-02 10:36:51,958 - INFO - WebSocket Bridge monitoring: C:\Users\sreen\OneDrive\Documents\GitHub\AI-Trading-Copilot-v2\data\task9\live_stream
+2026-09-02 10:36:51,958 - INFO - WebSocket Bridge initialized
+2026-09-02 10:36:51,958 - INFO - Subscriber added (total: 1)
+2026-09-02 10:36:51,958 - INFO - [OK] Paper trading engine initialized (connected to WebSocket)
+2026-09-02 10:36:51,958 - INFO - [START] Starting paper trading engine...
+2026-09-02 10:36:51,959 - INFO - [CONNECT] Starting WebSocket Bridge...
+2026-09-02 10:36:51,959 - INFO - [MONITOR] Session monitor started
+2026-09-02 10:36:51,959 - INFO - WebSocket Bridge polling started
+2026-09-02 10:36:52,437 - INFO - Initial data for NIFTY: LTP=24080.4
+2026-09-02 10:36:52,437 - INFO - Initial data for SENSEX: LTP=76957.27
+2026-09-02 10:36:52,438 - INFO - WebSocket Bridge stopped
+2026-09-02 10:36:52,438 - INFO - 🛑 Paper trading engine stopped
+2026-09-02 10:36:52,438 - INFO - [OK] Trading session completed peacefully!
+2026-09-02 10:36:52,438 - INFO - [START] Initializing trading session...
+2026-09-02 10:36:52,438 - INFO - WebSocket Bridge monitoring: C:\Users\sreen\OneDrive\Documents\GitHub\AI-Trading-Copilot-v2\data\task9\live_stream
+2026-09-02 10:36:52,439 - INFO - WebSocket Bridge initialized
+2026-09-02 10:36:52,439 - INFO - Subscriber added (total: 1)
+2026-09-02 10:36:52,439 - INFO - [OK] Paper trading engine initialized (connected to WebSocket)
+2026-09-02 10:36:52,439 - INFO - [START] Starting paper trading engine...
+2026-09-02 10:36:52,439 - INFO - [CONNECT] Starting WebSocket Bridge...
+2026-09-02 10:36:52,439 - INFO - [MONITOR] Session monitor started
+2026-09-02 10:36:52,439 - INFO - WebSocket Bridge polling started
+2026-09-02 10:36:52,925 - INFO - Initial data for NIFTY: LTP=24080.4
+2026-09-02 10:36:52,926 - INFO - Initial data for SENSEX: LTP=76957.27
+2026-09-02 10:36:52,926 - INFO - WebSocket Bridge stopped
+2026-09-02 10:36:52,927 - INFO - 🛑 Paper trading engine stopped
+2026-09-02 10:36:52,927 - INFO - [OK] Trading session completed peacefully!

@@ -1,0 +1,8 @@
+[18:24:21.090] === VARIANT B ===
+[I 260914 18:24:21 smartConnect:124] in pool
+[18:24:22.995] login OK
+[18:24:23.799] REST fetched 1 rows for 565900
+[18:24:24.476] ON_OPEN
+[18:24:24.477] SUBSCRIBE SENT
+[18:24:24.528] DATA first ltp=998200 seq=6089600
+[18:24:26.179] EXIT variant=B msgs=3

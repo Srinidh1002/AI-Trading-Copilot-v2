@@ -75,7 +75,7 @@ class ScenarioRunner:
 
             side="BUY" if move >= 0 else "SELL",
 
-            quantity=50,
+            quantity=65,
 
             price=entry,
 
@@ -107,7 +107,7 @@ class ScenarioRunner:
 
         pnl = round(
 
-            abs(move) * 50,
+            abs(move) * 65,
 
             2,
 

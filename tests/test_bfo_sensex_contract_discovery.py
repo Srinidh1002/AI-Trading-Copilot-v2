@@ -2,7 +2,7 @@ from datetime import (
     datetime,
     timedelta,
 )
-
+from datetime import datetime, timezone
 from services.angel_instrument_master import (
     AngelInstrumentMaster,
 )
@@ -718,11 +718,14 @@ class ValidBfoMarketClient:
         volume,
         open_interest,
     ):
-        return {
+                return {
             "symbolToken": token,
             "ltp": premium,
             "tradeVolume": volume,
             "opnInterest": open_interest,
+            "exchFeedTime": datetime.now(
+                timezone.utc
+            ).isoformat(),
             "depth": {
                 "buy": [
                     {

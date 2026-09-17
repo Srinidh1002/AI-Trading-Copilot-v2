@@ -1,0 +1,17 @@
+==========================================================================================
+N1B - 14-FIX RE-VERIFICATION
+==========================================================================================
+  F01 batched marketData FULL                  VERIFIED_CURRENT     hits=1
+  F02 depth parsing present                    VERIFIED_CURRENT     hits=4
+  F03 strike_ranker -> select_trade            VERIFIED_CURRENT     hits=6
+  F04 WebSocket list-payload handling          VERIFIED_CURRENT     hits=1
+  F05 quote freshness                          VERIFIED_CURRENT     hits=7
+  F06 health string handling                   VERIFIED_CURRENT     hits=7
+  F07 ZERO_OI handling                         VERIFIED_CURRENT     hits=3
+  F08 continuous runtime / max_attempts        VERIFIED_CURRENT     hits=8
+  F09 candle cache                             hits=3  where=bot
+  F10 failure TTL                              hits=9  where=market_phase.py(1),option_chain_engine.py(4)
+  F11 RULE9 error handling                     hits=0  where=bot
+  F12 P&L fallback                             VERIFIED_CURRENT     hits=1
+  F13 RULE14 / doraise                         hits=0  where=bot
+  F14 tick-aware fills (new D6)                VERIFIED_CURRENT     hits=4

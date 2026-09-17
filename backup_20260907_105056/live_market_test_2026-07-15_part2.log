@@ -1,0 +1,7756 @@
+
+================================
+AI TRADING COPILOT
+CONTINUOUS PAPER TRADING RUNTIME
+================================
+
+Mode: PAPER TRADING ONLY
+Startup Recovery: ENABLED
+Runtime Health Reporting: ENABLED
+Runtime Heartbeat Persistence: ENABLED
+Cycle Interval: 60.0 seconds
+Script Timeout: 300.0 seconds
+Real Order Execution: DISABLED
+
+Press Ctrl+C to stop safely.
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:10:25.189602+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:40:26.976596+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:10:25 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:10:35.715354+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:40:37.495456+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:10:35 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:11:36.393504+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:41:38.518868+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:11:36 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:12:35.971615+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:42:38.315791+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:12:36 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:14:42.212128+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:44:43.946954+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:14:42 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:15:18.953514+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:45:21.231938+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:15:19 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:15:52.762614+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:45:54.510387+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:15:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:16:52.276290+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:46:54.338373+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:16:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:17:52.149697+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:47:54.197992+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:17:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:18:52.445083+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:48:54.564649+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:18:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:20:19.234401+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:50:21.098435+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:20:19 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:20:58.535679+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:51:00.703104+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:20:58 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:21:52.705867+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:51:54.757733+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:21:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:22:54.811993+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:52:56.836936+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:22:54 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:23:52.682468+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:53:54.800938+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:23:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:24:57.858581+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:54:59.946588+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:24:57 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:25:52.747470+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:55:54.800548+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:25:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:26:52.822240+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:56:55.046646+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:26:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:27:52.737115+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:57:54.680508+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:27:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:28:53.347449+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:58:55.446130+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:28:53 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:29:57.747471+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T06:59:59.754015+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:29:57 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:30:52.340283+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:00:54.361962+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:30:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:31:57.799739+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:02:00.011398+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:31:57 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:32:52.781059+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:02:54.683868+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:32:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:33:53.105811+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:03:55.028403+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:33:53 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:35:30.313060+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:05:32.318526+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:35:30 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:37:56.461751+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:07:58.399971+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:37:56 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:38:32.407818+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:08:34.357150+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:38:32 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:39:43.212155+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:09:44.999525+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:39:43 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:40:31.400057+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:10:33.244497+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:40:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:42:37.423481+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:12:39.203616+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:42:37 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:43:38.371745+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:13:40.290739+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:43:38 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:44:53.395849+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:14:55.384225+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:44:53 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:46:39.022841+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:16:41.099903+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:46:39 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:47:34.440964+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:17:36.327596+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:47:34 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:50:25.854110+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:20:27.588970+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:50:25 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:52:40.941538+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:22:42.884846+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:52:40 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:54:47.561238+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:24:49.344621+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:54:47 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T12:57:37.331349+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:27:38.968819+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 12:57:37 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:00:03.669349+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:30:05.316318+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:00:03 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:02:10.070869+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:32:12.032748+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:02:10 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:03:17.415598+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:33:19.287953+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:03:17 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:04:19.139041+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:34:20.826271+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:04:19 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:05:01.221621+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:35:02.997362+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:05:01 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:06:05.792163+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:36:07.463898+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:06:05 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:08:06.777917+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:38:08.779698+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:08:06 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:08:44.077107+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:38:45.866427+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:08:44 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:09:50.271678+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:39:51.956953+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:09:50 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:11:01.954654+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:41:03.901121+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:11:02 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:13:10.038727+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:43:11.981788+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:13:10 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:14:28.150829+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:44:29.995683+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:14:28 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:15:30.853349+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:45:32.546232+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:15:30 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:18:00.073485+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:48:01.837449+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:18:00 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:21:15.935821+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:51:17.628056+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:21:15 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:21:51.848479+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:51:53.733180+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:21:51 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:22:26.167026+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:52:27.975455+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:22:26 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:23:25.665369+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:53:27.487856+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:23:25 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:24:25.782216+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:54:27.595793+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:24:25 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:25:26.416379+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:55:28.291805+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:25:26 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:27:46.444266+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:57:48.091923+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:27:46 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:28:36.704151+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:58:38.630098+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:28:36 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:29:55.433937+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T07:59:57.360088+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:29:55 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:31:42.795848+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:01:44.592529+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:31:42 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:34:08.342352+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:04:10.071487+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:34:08 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:35:44.090988+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:05:46.775302+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:35:44 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:37:05.986980+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:07:07.703081+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:37:06 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:38:44.461189+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:08:46.181543+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:38:44 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:41:03.224337+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:11:04.907837+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:41:03 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:42:52.610814+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:12:54.627438+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:42:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:44:00.403013+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:14:02.336073+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:44:00 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:44:37.249076+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:14:38.959664+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:44:37 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:46:12.303092+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:16:14.113845+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:46:12 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:47:15.493447+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:17:17.191679+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:47:15 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:48:33.347525+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:18:35.068025+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:48:33 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:49:34.424701+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:19:36.520388+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:49:34 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:50:33.895335+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:20:35.929072+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:50:33 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:51:31.142275+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:21:33.127193+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:51:31 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:54:28.990043+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:24:30.794011+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:54:29 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:55:44.352445+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Read timed out. (read timeout=7)
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 13:55:44 smartConnect:124] in pool
+[E 260714 13:55:52 smartConnect:221] Error occurred while making a GET request to https://apiconnect.angelone.in/rest/secure/angelbroking/user/v1/getProfile. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB', 'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJ1c2VybmFtZSI6IlA1OTAwNDM5OCIsInJvbGVzIjowLCJ1c2VydHlwZSI6IlVTRVIiLCJ0b2tlbiI6ImV5SmhiR2NpT2lKU1V6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUoxYzJWeVgzUjVjR1VpT2lKamJHbGxiblFpTENKMGIydGxibDkwZVhCbElqb2lkSEpoWkdWZllXTmpaWE56WDNSdmEyVnVJaXdpWjIxZmFXUWlPallzSW5OdmRYSmpaU0k2SWpNaUxDSmtaWFpwWTJWZmFXUWlPaUkzTVRVME1URTRPUzFsWVdNNExUTTROalV0T0RBeE55MDBOV0l3TWpjMk1tVXdNR1lpTENKcmFXUWlPaUowY21Ga1pWOXJaWGxmZGpJaUxDSnZiVzVsYldGdVlXZGxjbWxrSWpvMkxDSndjbTlrZFdOMGN5STZleUprWlcxaGRDSTZleUp6ZEdGMGRYTWlPaUpoWTNScGRtVWlmU3dpYldZaU9uc2ljM1JoZEhWeklqb2lZV04wYVhabEluMTlMQ0pwYzNNaU9pSjBjbUZrWlY5c2IyZHBibDl6WlhKMmFXTmxJaXdpYzNWaUlqb2lVRFU1TURBME16azRJaXdpWlhod0lqb3hOemcwTVRBek9UUTBMQ0p1WW1ZaU9qRTNPRFF3TVRjek5qUXNJbWxoZENJNk1UYzROREF4TnpNMk5Dd2lhblJwSWpvaVpESm1NV1E0TW1JdFlUVmhOaTAwWlRSbUxXSTFOamN0TXprd05UazJZVE5qTkdKaklpd2lWRzlyWlc0aU9pSWlmUS5FdFBWTDZOV0dZT2JvZTY1OFhhV0RNLU1KLXNPZHhyQ0NiQ3NKOEFCZzdWaFlJWExib0pKUUpEZG9GS29mdDZwbHA3MW91dG93cEJSVXV5R0Q0dnU5VC1Qc0tnQ0dJYjF5QlRROHlZcXY3SlN4amhsVlFMVTNYdUwyWnpRQlVrYU1xNjdPZG1KSzdLcjFlUHUwemhyZVJVZ2ZoS1EwV3I2LTczbXhvX1B3UU0iLCJBUEktS0VZIjoiMllrWDlaS3UiLCJpYXQiOjE3ODQwMTc1NDQsImV4cCI6MTc4NDA1MzgwMH0.lK0EnTXVTm8yGbfmbJa7LeHZP4YL-oryHPfUTTmfQePY-h8hLA3DtBIh46agRFS2bAO8mTFntoV-xfHG4iH0SA'}, Request: {'refreshToken': 'eyJhbGciOiJIUzUxMiJ9.eyJ0b2tlbiI6IlJFRlJFU0gtVE9LRU4iLCJSRUZSRVNILVRPS0VOIjoiZXlKaGJHY2lPaUpTVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SjFjMlZ5WDNSNWNHVWlPaUpqYkdsbGJuUWlMQ0owYjJ0bGJsOTBlWEJsSWpvaWRISmhaR1ZmY21WbWNtVnphRjkwYjJ0bGJpSXNJbWR0WDJsa0lqb3dMQ0p6YjNWeVkyVWlPaUl6SWl3aVpHVjJhV05sWDJsa0lqb2lOekUxTkRFeE9Ea3RaV0ZqT0Mwek9EWTFMVGd3TVRjdE5EVmlNREkzTmpKbE1EQm1JaXdpYTJsa0lqb2lkSEpoWkdWZmEyVjVYM1l5SWl3aWIyMXVaVzFoYm1GblpYSnBaQ0k2TUN3aWFYTnpJam9pYkc5bmFXNWZjMlZ5ZG1salpTSXNJbk4xWWlJNklsQTFPVEF3TkRNNU9DSXNJbVY0Y0NJNk1UYzROREV3TXprME5Dd2libUptSWpveE56ZzBNREUzTXpZMExDSnBZWFFpT2pFM09EUXdNVGN6TmpRc0ltcDBhU0k2SWpVek1UTXdNbU01TFRNd05EVXRORFkwWXkwNU5tSXdMV0l5TVRZMU5qUXdZMlk0TVNJc0lsUnZhMlZ1SWpvaUluMC5aX0M5eWlXajVsT3lOX3BMbmpuSVIwS2dmRFUzWU1HM2ZjRGt3SW9VREZFZnpuX29KbGN0LXB3Um1Jd2ppa3h2WFBSNkI3ZDFEaE1wSXFWTEU3Mm12ajNXYU9mTUJQbGNaWDh5Q2R5WmY2bVNURXl4RUlmUjBLOWxDWmFyclNiVWhaMjFyVTBLSE9sUWh2T3VHYUdnOWkyeGt5djRGYnFXY3FwVkZndkl5aTQiLCJpYXQiOjE3ODQwMTc1NDR9.G4m9c5GpOZQrpBdCN0_1NB3-ea0y7LVLG1T2Y1rnK5pp_Ar74vHigyoHhmUuTK_iC0HJ7WYjyeHt5FXM8tLNvg'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Read timed out. (read timeout=7)
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:55:58.935892+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 13:55:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 13:55:58 smartConnect:124] in pool
+[E 260714 13:55:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '157545'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:56:58.729495+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 13:56:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 13:56:58 smartConnect:124] in pool
+[E 260714 13:56:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '069401'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:57:58.623700+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 13:57:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 13:57:58 smartConnect:124] in pool
+[E 260714 13:57:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '680260'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:58:58.622930+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 13:58:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 13:58:58 smartConnect:124] in pool
+[E 260714 13:58:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '817714'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T13:59:58.646157+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 13:59:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 13:59:58 smartConnect:124] in pool
+[E 260714 13:59:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '868509'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:00:58.627463+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 14:00:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 14:00:58 smartConnect:124] in pool
+[E 260714 14:00:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '614840'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:01:58.628178+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 14:01:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 14:01:58 smartConnect:124] in pool
+[E 260714 14:01:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '789424'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:02:58.866942+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 14:02:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 14:02:58 smartConnect:124] in pool
+[E 260714 14:02:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '599516'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:03:58.626607+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 14:03:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 14:03:58 smartConnect:124] in pool
+[E 260714 14:03:58 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '657009'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:04:59.037253+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[E 260714 14:04:58 smartConnect:78] Exception while retriving IP Address,using local host IP address: HTTPSConnectionPool(host='api.ipify.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("HTTPSConnection(host='api.ipify.org', port=443): Failed to resolve 'api.ipify.org' ([Errno 11001] getaddrinfo failed)"))
+[I 260714 14:04:59 smartConnect:124] in pool
+[E 260714 14:04:59 smartConnect:221] Error occurred while making a POST request to https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB'}, Request: {'clientcode': 'P59004398', 'password': '1002', 'totp': '618711'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/auth/angelbroking/user/v1/loginByPassword (Caused by NameResolutionError("HTTPSConnection(host='apiconnect.angelone.in', port=443): Failed to resolve 'apiconnect.angelone.in' ([Errno 11001] getaddrinfo failed)"))
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:08:26.618311+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:38:28.493753+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:08:26 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:08:54.237709+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:38:56.023913+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:08:54 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:09:47.135467+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:39:48.865514+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:09:47 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:11:01.140083+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:41:03.068328+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:11:01 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:12:20.081786+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:42:21.883079+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:12:20 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:13:52.242365+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:43:53.922512+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:13:52 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:14:12.255397+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:44:14.178343+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:14:12 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:16:50.828372+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:46:52.842530+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:16:50 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:17:58.291458+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:48:00.170884+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:17:58 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:18:33.130806+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:48:35.733946+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:18:33 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:19:26.131117+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:49:28.269217+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:19:26 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: FAILED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:20:46.095647+05:30
+
+================================
+BROKER LOGIN ERROR
+================================
+Unable to authenticate the Angel One market-data client.
+Error: Angel One login request failed: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/secure/angelbroking/user/v1/getProfile?%7B%22refreshToken%22:%20%22eyJhbGciOiJIUzUxMiJ9.eyJ0b2tlbiI6IlJFRlJFU0gtVE9LRU4iLCJSRUZSRVNILVRPS0VOIjoiZXlKaGJHY2lPaUpTVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SjFjMlZ5WDNSNWNHVWlPaUpqYkdsbGJuUWlMQ0owYjJ0bGJsOTBlWEJsSWpvaWRISmhaR1ZmY21WbWNtVnphRjkwYjJ0bGJpSXNJbWR0WDJsa0lqb3dMQ0p6YjNWeVkyVWlPaUl6SWl3aVpHVjJhV05sWDJsa0lqb2lOekUxTkRFeE9Ea3RaV0ZqT0Mwek9EWTFMVGd3TVRjdE5EVmlNREkzTmpKbE1EQm1JaXdpYTJsa0lqb2lkSEpoWkdWZmEyVjVYM1l5SWl3aWIyMXVaVzFoYm1GblpYSnBaQ0k2TUN3aWFYTnpJam9pYkc5bmFXNWZjMlZ5ZG1salpTSXNJbk4xWWlJNklsQTFPVEF3TkRNNU9DSXNJbVY0Y0NJNk1UYzROREV3TlRRME55d2libUptSWpveE56ZzBNREU0T0RZM0xDSnBZWFFpT2pFM09EUXdNVGc0Tmpjc0ltcDBhU0k2SWpJeE5ESmlOV1l5TFRKaU9URXROR0ZrWXkwNE0yWm1MV00yWkRGaFpXTXhOalZqTWlJc0lsUnZhMlZ1SWpvaUluMC5rQklrdno5VDRqUmt5LW5JTEtsM2VQdG0zbnJ4MC1CZGtVY2JGNEk5SGR2R1otdG5weGpGTkdIai0wcmlKYi1odnYyMlpTSFlWRC1PN01kV29EZERHZmI4eDZSZm91TGtheklCZFhfWFh5b0tYT2lSeDdjSUoxWjNQWGZaOTdCbWxZVzNLMUgzUzZhYmdMY2NaZFplRlV3VUhiU0pVWXR4dFhnbGhiaDJXcDAiLCJpYXQiOjE3ODQwMTkwNDd9.MhMq4iZ4I0z4RznFLEhz6j7rG_PJszSFwMPGvw_1qEv-Yh4AC2cO2UvSz3OH1RViCkZgGCbcjVUnZwtfMvdNeQ%22%7D (Caused by ConnectTimeoutError(<HTTPSConnection(host='apiconnect.angelone.in', port=443) at 0x1cc12b8fc50>, 'Connection to apiconnect.angelone.in timed out. (connect timeout=7)'))
+No live option prices were requested.
+No paper positions were updated.
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:20:46 smartConnect:124] in pool
+[E 260714 14:20:55 smartConnect:221] Error occurred while making a GET request to https://apiconnect.angelone.in/rest/secure/angelbroking/user/v1/getProfile. Headers: {'Content-type': 'application/json', 'X-ClientLocalIP': '127.0.0.1', 'X-ClientPublicIP': '106.193.147.98', 'X-MACAddress': '52:5a:65:1a:a9:21', 'Accept': 'application/json', 'X-PrivateKey': '2YkX9ZKu', 'X-UserType': 'USER', 'X-SourceID': 'WEB', 'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJ1c2VybmFtZSI6IlA1OTAwNDM5OCIsInJvbGVzIjowLCJ1c2VydHlwZSI6IlVTRVIiLCJ0b2tlbiI6ImV5SmhiR2NpT2lKU1V6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUoxYzJWeVgzUjVjR1VpT2lKamJHbGxiblFpTENKMGIydGxibDkwZVhCbElqb2lkSEpoWkdWZllXTmpaWE56WDNSdmEyVnVJaXdpWjIxZmFXUWlPallzSW5OdmRYSmpaU0k2SWpNaUxDSmtaWFpwWTJWZmFXUWlPaUkzTVRVME1URTRPUzFsWVdNNExUTTROalV0T0RBeE55MDBOV0l3TWpjMk1tVXdNR1lpTENKcmFXUWlPaUowY21Ga1pWOXJaWGxmZGpJaUxDSnZiVzVsYldGdVlXZGxjbWxrSWpvMkxDSndjbTlrZFdOMGN5STZleUprWlcxaGRDSTZleUp6ZEdGMGRYTWlPaUpoWTNScGRtVWlmU3dpYldZaU9uc2ljM1JoZEhWeklqb2lZV04wYVhabEluMTlMQ0pwYzNNaU9pSjBjbUZrWlY5c2IyZHBibDl6WlhKMmFXTmxJaXdpYzNWaUlqb2lVRFU1TURBME16azRJaXdpWlhod0lqb3hOemcwTVRBMU5EUTNMQ0p1WW1ZaU9qRTNPRFF3TVRnNE5qY3NJbWxoZENJNk1UYzROREF4T0RnMk55d2lhblJwSWpvaU1URTNPRGMzWmpJdE5UQXpaaTAwTmpnMkxUazJPRGN0WkRsa1pUazRaREJsTWpRNUlpd2lWRzlyWlc0aU9pSWlmUS5nRDVuS2UxUnA5ekpfbXQteE9sekNoaloxZzdCbk0zeGJYckdldFhCXy00QlVYMU5oTVc4SFFremVNb1Rral9OdU9vNWdaZ1ZUUHgxcjRqOEM5ZnlwMVpXRHdsMTZEMVI3R2ZPNjVKR0U4VGlUMUNCZmg5OEsxckRJOEZPMTlyeUk2eENpNFUtQTJaRFZHR3VGWkJtbV9IZHR5aFNLNHBrYnJHcEVEdERYVFkiLCJBUEktS0VZIjoiMllrWDlaS3UiLCJpYXQiOjE3ODQwMTkwNDcsImV4cCI6MTc4NDA1MzgwMH0.2J4kXRCjL_bkrH2cHbBKeWb5Z6GtujrhU0G-rZy7dh-vc-o-yNGHKh33uXrqLAcCR5sw8iiEPoj4n1R7psz_oQ'}, Request: {'refreshToken': 'eyJhbGciOiJIUzUxMiJ9.eyJ0b2tlbiI6IlJFRlJFU0gtVE9LRU4iLCJSRUZSRVNILVRPS0VOIjoiZXlKaGJHY2lPaUpTVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SjFjMlZ5WDNSNWNHVWlPaUpqYkdsbGJuUWlMQ0owYjJ0bGJsOTBlWEJsSWpvaWRISmhaR1ZmY21WbWNtVnphRjkwYjJ0bGJpSXNJbWR0WDJsa0lqb3dMQ0p6YjNWeVkyVWlPaUl6SWl3aVpHVjJhV05sWDJsa0lqb2lOekUxTkRFeE9Ea3RaV0ZqT0Mwek9EWTFMVGd3TVRjdE5EVmlNREkzTmpKbE1EQm1JaXdpYTJsa0lqb2lkSEpoWkdWZmEyVjVYM1l5SWl3aWIyMXVaVzFoYm1GblpYSnBaQ0k2TUN3aWFYTnpJam9pYkc5bmFXNWZjMlZ5ZG1salpTSXNJbk4xWWlJNklsQTFPVEF3TkRNNU9DSXNJbVY0Y0NJNk1UYzROREV3TlRRME55d2libUptSWpveE56ZzBNREU0T0RZM0xDSnBZWFFpT2pFM09EUXdNVGc0Tmpjc0ltcDBhU0k2SWpJeE5ESmlOV1l5TFRKaU9URXROR0ZrWXkwNE0yWm1MV00yWkRGaFpXTXhOalZqTWlJc0lsUnZhMlZ1SWpvaUluMC5rQklrdno5VDRqUmt5LW5JTEtsM2VQdG0zbnJ4MC1CZGtVY2JGNEk5SGR2R1otdG5weGpGTkdIai0wcmlKYi1odnYyMlpTSFlWRC1PN01kV29EZERHZmI4eDZSZm91TGtheklCZFhfWFh5b0tYT2lSeDdjSUoxWjNQWGZaOTdCbWxZVzNLMUgzUzZhYmdMY2NaZFplRlV3VUhiU0pVWXR4dFhnbGhiaDJXcDAiLCJpYXQiOjE3ODQwMTkwNDd9.MhMq4iZ4I0z4RznFLEhz6j7rG_PJszSFwMPGvw_1qEv-Yh4AC2cO2UvSz3OH1RViCkZgGCbcjVUnZwtfMvdNeQ'}, Response: HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Max retries exceeded with url: /rest/secure/angelbroking/user/v1/getProfile?%7B%22refreshToken%22:%20%22eyJhbGciOiJIUzUxMiJ9.eyJ0b2tlbiI6IlJFRlJFU0gtVE9LRU4iLCJSRUZSRVNILVRPS0VOIjoiZXlKaGJHY2lPaUpTVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SjFjMlZ5WDNSNWNHVWlPaUpqYkdsbGJuUWlMQ0owYjJ0bGJsOTBlWEJsSWpvaWRISmhaR1ZmY21WbWNtVnphRjkwYjJ0bGJpSXNJbWR0WDJsa0lqb3dMQ0p6YjNWeVkyVWlPaUl6SWl3aVpHVjJhV05sWDJsa0lqb2lOekUxTkRFeE9Ea3RaV0ZqT0Mwek9EWTFMVGd3TVRjdE5EVmlNREkzTmpKbE1EQm1JaXdpYTJsa0lqb2lkSEpoWkdWZmEyVjVYM1l5SWl3aWIyMXVaVzFoYm1GblpYSnBaQ0k2TUN3aWFYTnpJam9pYkc5bmFXNWZjMlZ5ZG1salpTSXNJbk4xWWlJNklsQTFPVEF3TkRNNU9DSXNJbVY0Y0NJNk1UYzROREV3TlRRME55d2libUptSWpveE56ZzBNREU0T0RZM0xDSnBZWFFpT2pFM09EUXdNVGc0Tmpjc0ltcDBhU0k2SWpJeE5ESmlOV1l5TFRKaU9URXROR0ZrWXkwNE0yWm1MV00yWkRGaFpXTXhOalZqTWlJc0lsUnZhMlZ1SWpvaUluMC5rQklrdno5VDRqUmt5LW5JTEtsM2VQdG0zbnJ4MC1CZGtVY2JGNEk5SGR2R1otdG5weGpGTkdIai0wcmlKYi1odnYyMlpTSFlWRC1PN01kV29EZERHZmI4eDZSZm91TGtheklCZFhfWFh5b0tYT2lSeDdjSUoxWjNQWGZaOTdCbWxZVzNLMUgzUzZhYmdMY2NaZFplRlV3VUhiU0pVWXR4dFhnbGhiaDJXcDAiLCJpYXQiOjE3ODQwMTkwNDd9.MhMq4iZ4I0z4RznFLEhz6j7rG_PJszSFwMPGvw_1qEv-Yh4AC2cO2UvSz3OH1RViCkZgGCbcjVUnZwtfMvdNeQ%22%7D (Caused by ConnectTimeoutError(<HTTPSConnection(host='apiconnect.angelone.in', port=443) at 0x1cc12b8fc50>, 'Connection to apiconnect.angelone.in timed out. (connect timeout=7)'))
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:21:53.299112+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:51:55.084255+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:21:53 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:22:32.795296+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:52:34.462208+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:22:32 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:23:39.728258+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:53:41.776830+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:23:39 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:24:50.850275+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:54:52.770648+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:24:50 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:25:27.713329+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:55:29.683357+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:25:27 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:26:47.881846+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:56:49.851840+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:26:47 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:27:33.245600+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:57:38.316772+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:27:33 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:28:26.862837+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T08:58:28.918169+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:28:26 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:30:26.510582+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:00:28.271049+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:30:26 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:31:10.626240+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:01:12.744436+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:31:10 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:32:15.600832+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:02:17.583028+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:32:15 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:32:50.904684+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:02:52.922955+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:32:50 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:34:18.640554+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:04:20.574485+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:34:18 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:35:03.174295+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:05:05.131774+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:35:03 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:35:43.352521+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:05:45.239569+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:35:43 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:37:02.103843+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:07:03.894992+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:37:02 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:37:58.332667+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:08:00.380648+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:37:58 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:40:05.644777+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:10:07.632649+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:40:05 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:41:01.782756+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:11:03.631152+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:41:01 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:41:48.456241+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:11:50.341328+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:41:48 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:42:59.176124+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:13:00.875124+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:42:59 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:44:03.003643+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:14:04.807193+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:44:03 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:44:24.679819+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:14:26.568723+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:44:24 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:46:29.948630+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:16:31.771223+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:46:29 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:47:15.069021+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:17:16.925164+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:47:15 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:48:54.475435+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:18:56.182837+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:48:54 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:51:00.113585+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:21:01.858209+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:51:00 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:52:12.848523+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:22:14.954025+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:52:12 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:53:14.698324+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:23:16.457044+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:53:14 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:53:51.901139+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:23:53.748332+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:53:51 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:56:26.224596+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:26:27.960150+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:56:26 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:57:34.009317+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:27:35.662100+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:57:34 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:58:50.506727+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:28:52.178429+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:58:50 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T14:59:42.060501+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:29:43.939153+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 14:59:42 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:01:35.536136+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:31:37.543162+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:01:35 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:03:17.289832+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:33:18.946989+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:03:17 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:05:22.011239+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:35:23.747278+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:05:22 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:07:50.780141+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:37:52.947921+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:07:50 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:08:23.476007+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:38:25.109684+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:08:23 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:09:01.159826+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:39:03.042328+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:09:01 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:10:02.779287+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:40:04.542197+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:10:02 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:11:20.422042+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:41:21.963959+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:11:20 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:12:06.852482+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:42:08.721879+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:12:06 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:15:05.956621+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:45:09.161445+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:15:06 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: FAILED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:17:58.833694+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:48:00.455846+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:17:58 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:18:18.564530+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:48:20.246285+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:18:18 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:19:08.249582+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:49:10.128556+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:19:08 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:20:08.502358+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:50:10.415514+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:20:08 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:21:09.397502+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:51:11.283222+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:21:09 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:22:13.678594+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:52:18.794406+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:22:13 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:23:13.632882+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:53:15.449274+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:23:13 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:24:08.241142+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:54:09.987938+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:24:08 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:25:09.797511+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:55:11.458451+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:25:09 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:26:08.294067+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:56:10.150130+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:26:08 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:27:08.294979+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:57:10.068207+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:27:08 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: SESSION_VALID
+Allowed: True
+Market Open: True
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: True
+Current Time: 2026-07-14T15:28:13.590410+05:30
+
+PAPER POSITION MONITORING REPORT
+================================
+Status: COMPLETED
+Recovery Performed: True
+Recovered Trades: 0
+Open Trades Found: 0
+Successfully Processed: 0
+Failed: 0
+Open Trades After: 0
+Closed Trades After: 0
+Updated At: 2026-07-14T09:58:15.483888+00:00
+
+No open paper positions required updating.
+
+================================
+MONITORING COMPLETE
+================================
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+----- MONITORING STDERR -----
+[I 260714 15:28:13 smartConnect:124] in pool
+
+OPPORTUNITY STATUS: TIMEOUT
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T15:34:01.345625+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T15:34:03.335396+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T15:35:03.736115+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED
+
+OPPORTUNITY STATUS: COMPLETED
+
+----- OPPORTUNITY OUTPUT -----
+
+MONITORING STATUS: COMPLETED
+
+----- MONITORING OUTPUT -----
+================================
+AI TRADING COPILOT
+LIVE PAPER POSITION MONITOR
+================================
+
+Mode: PAPER TRADING ONLY
+Option Exchange: NFO
+Market Session Enforcement: True
+
+MARKET SESSION
+==============
+Status: MARKET_CLOSED
+Allowed: False
+Market Open: False
+Trading Weekday: True
+Market Holiday: False
+Within Market Hours: False
+Current Time: 2026-07-14T15:36:03.711843+05:30
+
+SESSION REASONS
+- Current time is outside regular market hours.
+
+================================
+MONITORING SKIPPED
+================================
+The market is currently closed.
+No Angel One login was attempted.
+No live option prices were requested.
+No paper positions were updated.
+
+PAPER TRADING ONLY
+NO REAL ORDER WAS PLACED

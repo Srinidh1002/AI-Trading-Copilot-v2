@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+"""
+AI Trading Copilot - Main Entry Point
+Single unified paper trading and certification system.
+
+Usage:
+    python main.py --mode replay --days 30
+    python main.py --mode paper --market NIFTY
+    python main.py --mode certify --market BOTH
+"""
+
+import sys
+import argparse
+import logging
+from pathlib import Path
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from config import config
+from services.trading.paper_engine import PaperTradingEngine
+from services.certification.runner import CertificationRunner
+
+
+def setup_logging():
+    "Setup basic logging."
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+
+def main():
+    "Main entry point."
+    parser = argparse.ArgumentParser(
+        description="AI Trading Copilot - Paper Trading & Certification"
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["paper", "replay", "certify"],
+        default="replay",
+        help="Run mode: paper (live), replay (historical), certify (100 trades)"
+    )
+    parser.add_argument(
+        "--market",
+        choices=["NIFTY", "SENSEX", "BOTH"],
+        default="BOTH",
+        help="Market to trade"
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=30,
+        help="Number of days for replay mode"
+    )
+    parser.add_argument(
+        "--target",
+        type=int,
+        default=100,
+        help="Target trades for certification (default: 100)"
+    )
+    
+    args = parser.parse_args()
+    
+    setup_logging()
+    logger = logging.getLogger(__name__)
+    
+    logger.info("=" * 60)
+    logger.info("AI TRADING COPILOT - PAPER TRADING SYSTEM")
+    logger.info(f"Mode: {args.mode}")
+    logger.info(f"Market: {args.market}")
+    logger.info(f"Days: {args.days}")
+    logger.info("=" * 60)
+    
+    if args.mode == "certify":
+        runner = CertificationRunner({
+            "target_trades": args.target,
+            "markets": ["NIFTY", "SENSEX"] if args.market == "BOTH" else [args.market]
+        })
+        result = runner.run()
+        print(result)
+    else:
+        engine = PaperTradingEngine({
+            "mode": args.mode,
+            "markets": ["NIFTY", "SENSEX"] if args.market == "BOTH" else [args.market],
+            "days": args.days
+        })
+        result = engine.run()
+        
+        print("\n" + "=" * 60)
+        print("PAPER TRADING SUMMARY")
+        print("=" * 60)
+        for market, stats in result.items():
+            print(f"\n{market}:")
+            print(f"  Trades: {stats.get('total_trades', 0)}")
+            print(f"  Wins: {stats.get('wins', 0)}")
+            print(f"  Losses: {stats.get('losses', 0)}")
+            print(f"  Win Rate: {stats.get('win_rate', 0):.2f}%")
+            print(f"  Profit Factor: {stats.get('profit_factor', 0):.2f}")
+            print(f"  Max Drawdown: {stats.get('max_drawdown', 0):.2f}%")
+            print(f"  P&L: ₹{stats.get('total_pnl', 0):,.2f}")
+
+
+if __name__ == "__main__":
+    main()

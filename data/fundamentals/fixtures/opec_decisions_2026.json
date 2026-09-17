@@ -1,0 +1,13 @@
+{
+  "_fixture_note": "TEST_FIXTURE — schema only. Not real OPEC data.",
+  "source": "OPEC", "events": [
+    {"event_type": "SCHEDULED_MEETING", "date": "2026-11-30", "publication_time_utc": null,
+     "decision": null, "source_url": "https://www.opec.org/"},
+    {"event_type": "OFFICIAL_DECISION", "date": "2026-09-05",
+     "publication_time_utc": "2026-09-05T12:00:00+00:00",
+     "decision": {"action": "extension", "cut_bpd": 2200000, "effective_date": "2026-10-01",
+                  "duration_months": 3, "participating_countries": ["SAU","RUS","IRQ","UAE"],
+                  "source_url": "https://www.opec.org/"}
+    }
+  ]
+}

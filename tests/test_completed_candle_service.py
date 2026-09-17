@@ -8,6 +8,26 @@ from services.completed_candle_service import (
 )
 
 
+class _Gate:
+    def __init__(self):
+        self.calls = 0
+
+    def acquire(self):
+        self.calls += 1
+
+
+class _Cooldown:
+    def __init__(self, active=None):
+        self.value = active
+        self.recorded = []
+
+    def active(self):
+        return self.value
+
+    def record_rate_limit(self, **kwargs):
+        self.recorded.append(kwargs)
+
+
 def test_returns_latest_completed_candle():
 
     client = MagicMock()
@@ -70,6 +90,41 @@ def test_returns_latest_completed_candle():
     )
 
     assert result["close"] == 107.0
+
+
+def test_completed_candle_request_uses_gate_and_cooldown_before_provider():
+    client = MagicMock()
+    client.get_historical_data.return_value = {"status": True, "data": []}
+    gate = _Gate()
+    cooldown = _Cooldown()
+    service = CompletedCandleService(
+        market_client=client,
+        historical_request_gate=gate,
+        provider_cooldown=cooldown,
+    )
+
+    assert service._fetch_candles(
+        "NSE", "99926000", "FIVE_MINUTE", datetime(2026, 8, 10, 9, 15), datetime(2026, 8, 10, 9, 20)
+    ) == []
+    assert gate.calls == 1
+    client.get_historical_data.assert_called_once()
+
+
+def test_completed_candle_cooldown_blocks_before_gate_and_provider():
+    client = MagicMock()
+    gate = _Gate()
+    service = CompletedCandleService(
+        market_client=client,
+        historical_request_gate=gate,
+        provider_cooldown=_Cooldown(active={"reason": "HISTORICAL-DATA_RATE_LIMITED"}),
+    )
+
+    with pytest.raises(Exception):
+        service._fetch_candles(
+            "NSE", "99926000", "FIVE_MINUTE", datetime(2026, 8, 10, 9, 15), datetime(2026, 8, 10, 9, 20)
+        )
+    assert gate.calls == 0
+    client.get_historical_data.assert_not_called()
 
 
 def test_returns_new_candle_after_completion():
@@ -221,4 +276,4 @@ def test_reuses_dataframe_without_broker_request():
 
     assert result["close"] == 104.0
 
-    client.get_historical_data.assert_not_called()        
+    client.get_historical_data.assert_not_called()

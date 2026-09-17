@@ -1,12 +1,19 @@
+"""Strict Angel One instrument-master service.
+
+Downloads, validates, filters, and deterministically orders Angel option
+contracts.
+
+Read-only.
+No broker order submission.
 """
-Angel One instrument-master service.
 
-Downloads and filters the Angel One instrument master to discover
-currently listed option contracts and expiries.
+from __future__ import annotations
 
-Read-only. No orders are placed.
-"""
-
+import json
+import math
+import time
+from collections.abc import Mapping
+from copy import deepcopy
 from datetime import datetime
 
 import requests
@@ -19,96 +26,841 @@ INSTRUMENT_MASTER_URL = (
 
 
 class AngelInstrumentMaster:
+    """Read-only validated Angel instrument-master repository."""
 
-    def __init__(self, session=None):
+    SOURCE_NAME = "ANGEL_ONE_OPENAPI_SCRIP_MASTER"
+    DEFAULT_MAXIMUM_MASTER_AGE_SECONDS = 24 * 60 * 60
+
+    def __init__(
+        self,
+        session=None,
+        *,
+        time_function=time.time,
+        maximum_master_age_seconds=(
+            DEFAULT_MAXIMUM_MASTER_AGE_SECONDS
+        ),
+    ):
         self.session = (
             session
             if session is not None
             else requests.Session()
         )
 
+        if not callable(time_function):
+            raise TypeError(
+                "time_function must be callable."
+            )
+
+        if (
+            isinstance(
+                maximum_master_age_seconds,
+                bool,
+            )
+            or not isinstance(
+                maximum_master_age_seconds,
+                (int, float),
+            )
+            or not math.isfinite(
+                float(
+                    maximum_master_age_seconds
+                )
+            )
+            or float(
+                maximum_master_age_seconds
+            )
+            <= 0
+        ):
+            raise ValueError(
+                "maximum_master_age_seconds must "
+                "be finite and greater than zero."
+            )
+
+        self.time_function = time_function
+        self.maximum_master_age_seconds = float(
+            maximum_master_age_seconds
+        )
         self.instruments = None
+        self._metadata = None
 
-    def fetch_instruments(self):
-        """
-        Download the Angel One instrument master.
-        """
+    @staticmethod
+    def _required_text(
+        value,
+        *,
+        field,
+        record_index,
+    ):
+        if not isinstance(value, str):
+            value = str(
+                value
+                if value is not None
+                else ""
+            )
 
-        response = self.session.get(
-            INSTRUMENT_MASTER_URL,
-            timeout=30,
+        result = value.strip()
+
+        if not result:
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has blank {field}."
+            )
+
+        return result
+
+    @staticmethod
+    def _positive_float(
+        value,
+        *,
+        field,
+        record_index,
+    ):
+        if isinstance(value, bool):
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has invalid {field}."
+            )
+
+        try:
+            result = float(value)
+        except (
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has invalid {field}."
+            ) from exc
+
+        if (
+            not math.isfinite(result)
+            or result <= 0
+        ):
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has invalid {field}."
+            )
+
+        return result
+
+    @classmethod
+    def _positive_integer(
+        cls,
+        value,
+        *,
+        field,
+        record_index,
+    ):
+        numeric = cls._positive_float(
+            value,
+            field=field,
+            record_index=record_index,
         )
 
-        response.raise_for_status()
+        integer = int(numeric)
 
-        data = response.json()
+        if numeric != integer:
+            raise RuntimeError(
+                "Angel instrument-master record "
+                f"{record_index} has non-integral {field}."
+            )
+
+        return integer
+
+    @classmethod
+    def _validated_option_contract(
+        cls,
+        instrument,
+        *,
+        record_index,
+        underlying,
+        exchange,
+    ):
+        if not isinstance(instrument, Mapping):
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} is not a mapping."
+            )
+
+        token = cls._required_text(
+            instrument.get("token"),
+            field="token",
+            record_index=record_index,
+        )
+
+        symbol = cls._required_text(
+            instrument.get("symbol"),
+            field="symbol",
+            record_index=record_index,
+        ).upper()
+
+        name = cls._required_text(
+            instrument.get("name"),
+            field="name",
+            record_index=record_index,
+        ).upper()
+
+        expiry = cls._required_text(
+            instrument.get("expiry"),
+            field="expiry",
+            record_index=record_index,
+        )
+
+        instrument_type = cls._required_text(
+            instrument.get(
+                "instrumenttype"
+            ),
+            field="instrumenttype",
+            record_index=record_index,
+        ).upper()
+
+        exchange_segment = cls._required_text(
+            instrument.get("exch_seg"),
+            field="exch_seg",
+            record_index=record_index,
+        ).upper()
+
+        if name != underlying:
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} underlying mismatch."
+            )
+
+        if exchange_segment != exchange:
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} exchange mismatch."
+            )
+
+        if instrument_type != "OPTIDX":
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} type mismatch."
+            )
+
+        if symbol.endswith("CE"):
+            option_type = "CE"
+        elif symbol.endswith("PE"):
+            option_type = "PE"
+        else:
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} has invalid option suffix."
+            )
+
+        parsed_expiry = cls._parse_expiry(
+            expiry
+        )
+
+        if parsed_expiry is None:
+            raise RuntimeError(
+                "Angel instrument-master option "
+                f"record {record_index} has invalid expiry."
+            )
+
+        strike = cls._positive_float(
+            instrument.get("strike"),
+            field="strike",
+            record_index=record_index,
+        )
+
+        lot_size = cls._positive_integer(
+            instrument.get("lotsize"),
+            field="lotsize",
+            record_index=record_index,
+        )
+
+        validated = deepcopy(
+            dict(instrument)
+        )
+
+        return {
+            "record": validated,
+            "token": token,
+            "symbol": symbol,
+            "expiry_date": parsed_expiry,
+            "strike": strike,
+            "lot_size": lot_size,
+            "option_type": option_type,
+        }
+
+    @staticmethod
+    def _parse_range_response(
+        response,
+        *,
+        requested_start,
+        requested_end,
+        expected_total_size,
+    ):
+        """Strictly validate one HTTP byte-range response."""
+
+        if response.status_code != 206:
+            raise RuntimeError(
+                "Angel instrument-master range request "
+                "did not return HTTP 206."
+            )
+
+        content_range = response.headers.get(
+            "Content-Range"
+        )
+
+        if (
+            not isinstance(content_range, str)
+            or not content_range.strip()
+        ):
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "is missing Content-Range."
+            )
+
+        value = content_range.strip()
+
+        try:
+            unit, range_spec = value.split(
+                " ",
+                1,
+            )
+
+            span, total_text = range_spec.split(
+                "/",
+                1,
+            )
+
+            start_text, end_text = span.split(
+                "-",
+                1,
+            )
+
+            observed_start = int(
+                start_text
+            )
+            observed_end = int(
+                end_text
+            )
+            observed_total = int(
+                total_text
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "has invalid Content-Range."
+            ) from exc
+
+        if unit.lower() != "bytes":
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "has invalid range unit."
+            )
+
+        if observed_total <= 0:
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "has invalid total size."
+            )
+
+        if (
+            expected_total_size is not None
+            and observed_total
+            != expected_total_size
+        ):
+            raise RuntimeError(
+                "Angel instrument-master total size "
+                "changed during range acquisition."
+            )
+
+        expected_end = min(
+            requested_end,
+            observed_total - 1,
+        )
+
+        if (
+            observed_start
+            != requested_start
+            or observed_end
+            != expected_end
+        ):
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "does not match the requested byte range."
+            )
+
+        body = response.content
+
+        if not isinstance(
+            body,
+            (
+                bytes,
+                bytearray,
+            ),
+        ):
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "body is not bytes."
+            )
+
+        body = bytes(
+            body
+        )
+
+        expected_length = (
+            observed_end
+            - observed_start
+            + 1
+        )
+
+        if len(body) != expected_length:
+            raise RuntimeError(
+                "Angel instrument-master range response "
+                "body length mismatch."
+            )
+
+        content_length = response.headers.get(
+            "Content-Length"
+        )
+
+        if (
+            content_length is not None
+            and str(content_length).strip()
+        ):
+            try:
+                declared_length = int(
+                    str(
+                        content_length
+                    ).strip()
+                )
+            except ValueError as exc:
+                raise RuntimeError(
+                    "Angel instrument-master range response "
+                    "has invalid Content-Length."
+                ) from exc
+
+            if declared_length != expected_length:
+                raise RuntimeError(
+                    "Angel instrument-master range response "
+                    "Content-Length mismatch."
+                )
+
+        return (
+            body,
+            observed_total,
+        )
+
+    def _fetch_instruments_by_range(self):
+        """Acquire one complete master through validated HTTP byte ranges."""
+
+        chunk_size = 1024 * 1024
+        maximum_total_size = (
+            128 * 1024 * 1024
+        )
+
+        maximum_attempts_per_range = 3
+
+        payload = bytearray()
+
+        total_size = None
+        requested_start = 0
+
+        while (
+            total_size is None
+            or requested_start
+            < total_size
+        ):
+            requested_end = (
+                requested_start
+                + chunk_size
+                - 1
+            )
+
+            if total_size is not None:
+                requested_end = min(
+                    requested_end,
+                    total_size - 1,
+                )
+
+            last_exception = None
+
+            for attempt in range(
+                1,
+                maximum_attempts_per_range
+                + 1,
+            ):
+                try:
+                    response = self.session.get(
+                        INSTRUMENT_MASTER_URL,
+                        headers={
+                            "Range": (
+                                f"bytes="
+                                f"{requested_start}-"
+                                f"{requested_end}"
+                            ),
+                            # Range offsets must refer to the
+                            # uncompressed representation.
+                            "Accept-Encoding": "identity",
+                        },
+                        timeout=30,
+                    )
+
+                    response.raise_for_status()
+
+                    (
+                        body,
+                        observed_total,
+                    ) = self._parse_range_response(
+                        response,
+                        requested_start=(
+                            requested_start
+                        ),
+                        requested_end=(
+                            requested_end
+                        ),
+                        expected_total_size=(
+                            total_size
+                        ),
+                    )
+
+                    break
+
+                except requests.RequestException as exc:
+                    last_exception = exc
+
+                    if (
+                        attempt
+                        >= maximum_attempts_per_range
+                    ):
+                        raise RuntimeError(
+                            "Angel instrument-master range "
+                            "request failed after "
+                            f"{maximum_attempts_per_range} "
+                            "attempts: "
+                            f"{type(exc).__name__}"
+                        ) from exc
+
+                    time.sleep(
+                        float(
+                            2 ** (
+                                attempt - 1
+                            )
+                        )
+                    )
+
+            else:
+                raise RuntimeError(
+                    "Angel instrument-master range "
+                    "request failed: "
+                    f"{type(last_exception).__name__}"
+                ) from last_exception
+
+            if total_size is None:
+                total_size = observed_total
+
+                if (
+                    total_size <= 0
+                    or total_size
+                    > maximum_total_size
+                ):
+                    raise RuntimeError(
+                        "Angel instrument-master declared "
+                        "size is outside the permitted range."
+                    )
+
+            payload.extend(
+                body
+            )
+
+            requested_start += len(
+                body
+            )
+
+        if (
+            total_size is None
+            or len(payload)
+            != total_size
+        ):
+            raise RuntimeError(
+                "Angel instrument-master final "
+                "byte count mismatch."
+            )
+
+        try:
+            decoded = bytes(
+                payload
+            ).decode(
+                "utf-8"
+            )
+
+            return json.loads(
+                decoded
+            )
+
+        except (
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+        ) as exc:
+            raise RuntimeError(
+                "Angel instrument-master ranged response "
+                "contains invalid JSON."
+            ) from exc
+
+    def fetch_instruments(self):
+        """Download and minimally validate the Angel instrument master."""
+
+        # Try the normal provider representation once.  A transport-level
+        # failure switches to strict HTTP byte-range acquisition instead of
+        # restarting a large response repeatedly from byte zero.
+        try:
+            response = self.session.get(
+                INSTRUMENT_MASTER_URL,
+                timeout=30,
+            )
+
+            response.raise_for_status()
+
+            try:
+                data = response.json()
+
+            except Exception:
+                data = (
+                    self._fetch_instruments_by_range()
+                )
+
+        except requests.RequestException:
+            data = (
+                self._fetch_instruments_by_range()
+            )
 
         if not isinstance(data, list):
             raise RuntimeError(
-                "Unexpected Angel One instrument-master format."
+                "Unexpected Angel One "
+                "instrument-master format."
             )
 
-        self.instruments = data
+        if not data:
+            raise RuntimeError(
+                "Angel One instrument master is empty."
+            )
 
-        return data
+        copied = []
+
+        for index, instrument in enumerate(
+            data
+        ):
+            if not isinstance(
+                instrument,
+                Mapping,
+            ):
+                raise RuntimeError(
+                    "Angel instrument-master record "
+                    f"{index} is not a mapping."
+                )
+
+            copied.append(
+                deepcopy(
+                    dict(
+                        instrument
+                    )
+                )
+            )
+
+        fetched_at = float(
+            self.time_function()
+        )
+
+        if not math.isfinite(
+            fetched_at
+        ):
+            raise RuntimeError(
+                "Instrument-master fetch timestamp "
+                "must be finite."
+            )
+
+        self.instruments = copied
+
+        self._metadata = {
+            "source": self.SOURCE_NAME,
+            "source_url": (
+                INSTRUMENT_MASTER_URL
+            ),
+            "fetched_at_epoch_seconds": (
+                fetched_at
+            ),
+            "record_count": len(
+                copied
+            ),
+            "validated": True,
+        }
+
+        return deepcopy(
+            copied
+        )
 
     def _ensure_loaded(self):
-        """
-        Load instruments if they have not already been fetched.
-        """
-
         if self.instruments is None:
             self.fetch_instruments()
+
+        if not isinstance(
+            self.instruments,
+            list,
+        ):
+            raise RuntimeError(
+                "Angel instrument master must "
+                "be a list."
+            )
+
+    def _assert_fresh(self):
+        """Reject stale or future provider-fetched instrument masters.
+
+        Explicitly injected fixtures have no provider metadata and are
+        preserved for deterministic tests.
+        """
+
+        if self._metadata is None:
+            return
+
+        if (
+            self._metadata.get("validated")
+            is not True
+        ):
+            raise RuntimeError(
+                "Angel instrument master is not validated."
+            )
+
+        fetched_at = self._metadata.get(
+            "fetched_at_epoch_seconds"
+        )
+
+        if (
+            isinstance(fetched_at, bool)
+            or not isinstance(
+                fetched_at,
+                (int, float),
+            )
+            or not math.isfinite(
+                float(fetched_at)
+            )
+        ):
+            raise RuntimeError(
+                "Angel instrument-master fetch "
+                "timestamp is invalid."
+            )
+
+        now = float(
+            self.time_function()
+        )
+
+        if not math.isfinite(now):
+            raise RuntimeError(
+                "Instrument-master current timestamp "
+                "must be finite."
+            )
+
+        age_seconds = (
+            now
+            - float(fetched_at)
+        )
+
+        if age_seconds < 0:
+            raise RuntimeError(
+                "Angel instrument-master fetch "
+                "timestamp is in the future."
+            )
+
+        if (
+            age_seconds
+            > self.maximum_master_age_seconds
+        ):
+            raise RuntimeError(
+                "Angel instrument master is stale."
+            )
+
+    def get_metadata(self):
+        """Return defensive instrument-master provenance metadata."""
+
+        self._ensure_loaded()
+
+        if self._metadata is None:
+            return {
+                "source": self.SOURCE_NAME,
+                "source_url": (
+                    INSTRUMENT_MASTER_URL
+                ),
+                "fetched_at_epoch_seconds": None,
+                "record_count": len(
+                    self.instruments
+                ),
+                "validated": False,
+                "injected_fixture": True,
+            }
+
+        return deepcopy(
+            self._metadata
+        )
 
     def get_option_contracts(
         self,
         underlying,
         exchange="NFO",
     ):
-        """
-        Return listed option contracts for an underlying.
-
-        Example:
-            underlying="NIFTY"
-        """
+        """Return strictly validated and deterministically ordered contracts."""
 
         self._ensure_loaded()
+        self._assert_fresh()
 
-        underlying = underlying.upper()
+        underlying = str(
+            underlying
+        ).strip().upper()
 
-        contracts = []
+        exchange = str(
+            exchange
+        ).strip().upper()
 
-        for instrument in self.instruments:
+        if not underlying:
+            raise ValueError(
+                "underlying is required."
+            )
+
+        if not exchange:
+            raise ValueError(
+                "exchange is required."
+            )
+
+        candidates = []
+
+        for index, instrument in enumerate(
+            self.instruments
+        ):
+            if not isinstance(
+                instrument,
+                Mapping,
+            ):
+                raise RuntimeError(
+                    "Angel instrument-master record "
+                    f"{index} is not a mapping."
+                )
 
             exch_seg = str(
                 instrument.get(
                     "exch_seg",
-                    ""
+                    "",
                 )
-            ).upper()
+            ).strip().upper()
 
             instrument_type = str(
                 instrument.get(
                     "instrumenttype",
-                    ""
+                    "",
                 )
-            ).upper()
-
-            symbol = str(
-                instrument.get(
-                    "symbol",
-                    ""
-                )
-            ).upper()
+            ).strip().upper()
 
             name = str(
                 instrument.get(
                     "name",
-                    ""
+                    "",
                 )
-            ).upper()
+            ).strip().upper()
 
-            if exch_seg != exchange.upper():
+            if exch_seg != exchange:
                 continue
 
             if instrument_type != "OPTIDX":
@@ -117,17 +869,67 @@ class AngelInstrumentMaster:
             if name != underlying:
                 continue
 
-            if not (
-                symbol.endswith("CE")
-                or symbol.endswith("PE")
-            ):
-                continue
-
-            contracts.append(
-                instrument
+            candidates.append(
+                self._validated_option_contract(
+                    instrument,
+                    record_index=index,
+                    underlying=underlying,
+                    exchange=exchange,
+                )
             )
 
-        return contracts
+        seen_tokens = set()
+        seen_symbols = set()
+
+        for candidate in candidates:
+            token_identity = (
+                exchange,
+                candidate["token"],
+            )
+
+            symbol_identity = (
+                exchange,
+                candidate["symbol"],
+            )
+
+            if token_identity in seen_tokens:
+                raise RuntimeError(
+                    "Duplicate Angel option token "
+                    f"for {exchange}: "
+                    f"{candidate['token']}."
+                )
+
+            if symbol_identity in seen_symbols:
+                raise RuntimeError(
+                    "Duplicate Angel option symbol "
+                    f"for {exchange}: "
+                    f"{candidate['symbol']}."
+                )
+
+            seen_tokens.add(
+                token_identity
+            )
+
+            seen_symbols.add(
+                symbol_identity
+            )
+
+        candidates.sort(
+            key=lambda item: (
+                item["expiry_date"],
+                item["strike"],
+                item["option_type"],
+                item["symbol"],
+                item["token"],
+            )
+        )
+
+        return [
+            deepcopy(
+                candidate["record"]
+            )
+            for candidate in candidates
+        ]
 
     def get_available_expiries(
         self,
@@ -135,18 +937,7 @@ class AngelInstrumentMaster:
         exchange="NFO",
         include_expired=False,
     ):
-        """
-        Return sorted unique expiry dates.
-
-        Output format:
-            [
-                {
-                    "date": date_object,
-                    "display": "14JUL2026",
-                    "raw": "14JUL2026"
-                }
-            ]
-        """
+        """Return deterministic unique listed expiries."""
 
         contracts = self.get_option_contracts(
             underlying=underlying,
@@ -158,29 +949,39 @@ class AngelInstrumentMaster:
         expiries = {}
 
         for contract in contracts:
-
             raw_expiry = str(
-                contract.get(
-                    "expiry",
-                    ""
-                )
+                contract["expiry"]
             ).strip()
-
-            if not raw_expiry:
-                continue
 
             parsed_date = self._parse_expiry(
                 raw_expiry
             )
 
             if parsed_date is None:
-                continue
+                raise RuntimeError(
+                    "Validated option contract has "
+                    "an invalid expiry."
+                )
 
             if (
                 not include_expired
                 and parsed_date < today
             ):
                 continue
+
+            existing = expiries.get(
+                parsed_date
+            )
+
+            if (
+                existing is not None
+                and existing["raw"]
+                != raw_expiry
+            ):
+                raise RuntimeError(
+                    "One expiry date has conflicting "
+                    "Angel raw expiry values."
+                )
 
             expiries[parsed_date] = {
                 "date": parsed_date,
@@ -193,7 +994,7 @@ class AngelInstrumentMaster:
             }
 
         return [
-            expiries[expiry]
+            deepcopy(expiries[expiry])
             for expiry in sorted(expiries)
         ]
 
@@ -202,9 +1003,7 @@ class AngelInstrumentMaster:
         underlying,
         exchange="NFO",
     ):
-        """
-        Return the nearest currently listed expiry.
-        """
+        """Return the nearest currently listed expiry."""
 
         expiries = self.get_available_expiries(
             underlying=underlying,
@@ -213,16 +1012,17 @@ class AngelInstrumentMaster:
 
         if not expiries:
             raise ValueError(
-                f"No active option expiries found for {underlying}."
+                "No active option expiries found "
+                f"for {underlying}."
             )
 
-        return expiries[0]
+        return deepcopy(
+            expiries[0]
+        )
 
     @staticmethod
     def _parse_expiry(value):
-        """
-        Parse common Angel One expiry formats.
-        """
+        """Parse supported Angel expiry formats."""
 
         formats = (
             "%d%b%Y",
@@ -232,11 +1032,12 @@ class AngelInstrumentMaster:
             "%d-%b-%y",
         )
 
-        cleaned = (
-            str(value)
-            .strip()
-            .upper()
-        )
+        cleaned = str(
+            value
+        ).strip().upper()
+
+        if not cleaned:
+            return None
 
         for date_format in formats:
             try:
@@ -244,7 +1045,6 @@ class AngelInstrumentMaster:
                     cleaned,
                     date_format,
                 ).date()
-
             except ValueError:
                 continue
 

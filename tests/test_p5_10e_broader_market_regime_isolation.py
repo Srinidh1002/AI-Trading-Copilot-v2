@@ -1,0 +1,1 @@
+def test_export():from services.market_regime import evaluate_broader_market_regime_component;assert callable(evaluate_broader_market_regime_component)

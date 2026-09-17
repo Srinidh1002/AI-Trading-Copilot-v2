@@ -1,0 +1,421 @@
+"""MCX PAPER BOT V2 — precision-first.
+Uses mcx_decision (hard gates + score decomposition) + mcx_regime.
+Signal persistence: 2 of last 3 cycles must agree.
+Every cycle logged to decisions audit.
+NO broker submission. PAPER only.
+"""
+import json
+import os
+import sys
+import time
+from datetime import datetime, time as dtime
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_SRC = os.path.dirname(_HERE)
+if _SRC not in sys.path:
+    sys.path.insert(0, _SRC)
+
+from dotenv import load_dotenv
+import pyotp
+from SmartApi import SmartConnect
+
+from mcx.mcx_contracts import PRODUCTS
+from mcx.mcx_identity import MCXIdentityResolver
+from mcx.mcx_chain import build_chain
+from mcx.mcx_external_context import fetch_context
+from mcx.mcx_mtf import compute_mtf
+from mcx.mcx_regime import classify as classify_regime, describe as describe_regime
+from mcx.mcx_decision import compose as compose_decision, print_decision
+from mcx.mcx_strike import select_strike
+from mcx.mcx_capital import compute_paper_fill, compute_lots, compute_net_pnl
+from mcx.mcx_pcr import StablePCR
+from mcx.mcx_event_risk import get_state as event_get_state, describe as event_describe
+from mcx.mcx_position_manager import evaluate_exit as pm_evaluate_exit
+
+load_dotenv()
+
+PRODUCT = "CRUDEOILM"
+STATE_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_experimental.json"
+PREDICTIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_predictions.jsonl"
+OUTCOMES_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_outcomes.jsonl"
+DECISIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_decisions.jsonl"
+
+# Risk parameters — provisional; calibrate after 30+ trades (spec §18, §20)
+STOP_LOSS_PCT = -8.0
+T1_PCT = 15.0
+T2_PCT = 30.0
+T3_PCT = 50.0
+MAX_ATTEMPTS = 1000
+CYCLE_SECONDS = 60
+DEPLOYABLE_CAPITAL = 100_000
+
+# Signal persistence (spec §10)
+HISTORY_SIZE = 3
+MIN_AGREE = 2
+
+
+def login():
+    api_key = os.getenv("ANGEL_API_KEY")
+    user_id = os.getenv("ANGEL_USER_ID")
+    password = os.getenv("ANGEL_PASSWORD")
+    totp_secret = os.getenv("ANGEL_TOTP_SECRET")
+    if not all([api_key, user_id, password, totp_secret]):
+        print("MISSING_ENV")
+        return None
+    obj = SmartConnect(api_key=api_key)
+    resp = obj.generateSession(clientCode=user_id, password=password,
+                               totp=pyotp.TOTP(totp_secret).now())
+    return obj if resp and resp.get("status") else None
+
+
+def load_state():
+    if not os.path.exists(STATE_PATH):
+        return {
+            "product": PRODUCT, "epoch": "POST_PRECISION_V1",
+            "total_trades": 0, "winning_trades": 0, "losing_trades": 0,
+            "total_pnl": 0.0, "active_position": None, "completed_trades": [],
+            "created_at": datetime.now().isoformat(),
+        }
+    with open(STATE_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_state(st):
+    os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
+    with open(STATE_PATH, "w", encoding="utf-8") as f:
+        json.dump(st, f, indent=2, default=str)
+
+
+def append_jsonl(path, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(obj, default=str) + "\n")
+
+
+def market_status():
+    now = datetime.now(); wd = now.weekday(); t = now.time()
+    if wd >= 5: return "WEEKEND", False
+    if t < dtime(9, 0): return "PRE_OPEN", False
+    if t >= dtime(23, 15): return "CLOSE_BUFFER", False
+    return "OPEN", True
+
+
+def fetch_ltp(obj, token):
+    try:
+        r = obj.getMarketData("FULL", {"MCX": [str(token)]})
+        if r and r.get("data"):
+            for row in r["data"].get("fetched", []):
+                if str(row.get("symbolToken")) == str(token):
+                    return float(row.get("ltp", 0) or 0)
+    except Exception:
+        pass
+    return 0.0
+
+
+def signals_agree(history, target_action):
+    """True if at least MIN_AGREE of last HISTORY_SIZE cycles used target_action."""
+    if len(history) < MIN_AGREE:
+        return False
+    recent = history[-HISTORY_SIZE:]
+    return sum(1 for h in recent if h.get("action") == target_action) >= MIN_AGREE
+
+
+def try_open_position(obj, chain, mtf, ctx, decision, regime_dict, state):
+    if decision["action"] not in ("BUY_CALL", "BUY_PUT"):
+        return None
+    bias_dir = "BULLISH" if decision["action"] == "BUY_CALL" else "BEARISH"
+    sel = select_strike(chain, bias_dir)
+    if not sel:
+        return None
+
+    bid, ask = 0, 0
+    fill, status = compute_paper_fill(bid, ask, sel["ltp"], direction="BUY")
+    if fill is None:
+        return None
+
+    lots, one_lot_cash, _ = compute_lots(fill, PRODUCT, DEPLOYABLE_CAPITAL)
+    if lots < 1:
+        print(f"  [open] CAPITAL_INSUFFICIENT (one_lot=₹{one_lot_cash:.2f})")
+        return None
+
+    pos = {
+        "trade_id": f"MCX_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+        "epoch": "POST_PRECISION_V1",
+        "product": PRODUCT,
+        "type": sel["type"], "strike": sel["strike"],
+        "token": sel["token"], "symbol": sel["symbol"],
+        "entry": fill, "entry_ltp": sel["ltp"],
+        "lots": lots, "lot_size": PRODUCTS[PRODUCT]["trading_unit"],
+        "cash_multiplier": PRODUCTS[PRODUCT]["cash_multiplier"],
+        "entry_time": datetime.now().isoformat(timespec="seconds"),
+        "stop_loss": round(fill * (1 + STOP_LOSS_PCT / 100), 2),
+        "t1": round(fill * (1 + T1_PCT / 100), 2),
+        "t2": round(fill * (1 + T2_PCT / 100), 2),
+        "t3": round(fill * (1 + T3_PCT / 100), 2),
+        "long_confidence_at_entry": decision["LONG_CONFIDENCE"],
+        "short_confidence_at_entry": decision["SHORT_CONFIDENCE"],
+        "tech_score_at_entry": decision["TECHNICAL_DIRECTION_SCORE"],
+        "chain_score_at_entry": decision["OPTION_CHAIN_SCORE"],
+        "external_score_at_entry": decision["EXTERNAL_CONTEXT_SCORE"],
+        "entry_quality_at_entry": decision["ENTRY_QUALITY_SCORE"],
+        "regime_at_entry": regime_dict.get("regime"),
+        "rank_score": sel["score"], "reasons": sel["reasons"],
+        "max_profit_pct": 0.0, "min_profit_pct": 0.0,
+    }
+
+    print(f"\n{'=' * 80}")
+    print(f"📊 MCX PAPER — {pos['trade_id']}")
+    print(f"  {pos['type']} {pos['strike']:.0f}  ({pos['symbol']})")
+    print(f"  entry=₹{fill:.2f}  lots={lots}  mult={pos['cash_multiplier']}")
+    print(f"  SL=₹{pos['stop_loss']:.2f}  T1=₹{pos['t1']:.2f}  T2=₹{pos['t2']:.2f}  T3=₹{pos['t3']:.2f}")
+    print(f"  LONG_CONF={decision['LONG_CONFIDENCE']}  SHORT_CONF={decision['SHORT_CONFIDENCE']}  regime={regime_dict.get('regime')}")
+    print(f"{'=' * 80}")
+
+    append_jsonl(PREDICTIONS_PATH, {
+        "timestamp": pos["entry_time"], "trade_id": pos["trade_id"],
+        "market": "MCX", "product": PRODUCT,
+        "epoch": "POST_PRECISION_V1",
+        "epoch_id": "POST_PRECISION_V1",
+        "strategy_version": "POST_PRECISION_V1",
+        "certification_eligible": True,
+        "decision": decision,
+        "regime": regime_dict,
+        "selected": {k: pos[k] for k in ("type", "strike", "token", "symbol", "entry", "lots")},
+    })
+
+    return pos
+
+
+def monitor_position(obj, pos):
+    ltp = fetch_ltp(obj, pos["token"])
+    if ltp <= 0:
+        return None
+    entry = pos["entry"]
+    pnl_pct = ((ltp - entry) / entry) * 100
+
+    if pnl_pct > pos.get("max_profit_pct", 0):
+        pos["max_profit_pct"] = round(pnl_pct, 2)
+    if pnl_pct < pos.get("min_profit_pct", 0):
+        pos["min_profit_pct"] = round(pnl_pct, 2)
+
+    pos["last_price"] = ltp
+    pos["last_pnl_pct"] = round(pnl_pct, 2)
+    pos["last_check"] = datetime.now().isoformat(timespec="seconds")
+
+    if pnl_pct <= STOP_LOSS_PCT: return "STOP_LOSS", ltp, pnl_pct
+    if pnl_pct >= T3_PCT: return "T3_50%", ltp, pnl_pct
+    if pnl_pct >= T2_PCT: return "T2_30%", ltp, pnl_pct
+    if pnl_pct >= T1_PCT: return "T1_15%", ltp, pnl_pct
+    if datetime.now().time() >= dtime(23, 10):
+        return "MCX_CLOSE_2310", ltp, pnl_pct
+    return None
+
+
+def close_position(obj, pos, exit_reason, exit_ltp, exit_pnl_pct, state):
+    bid, ask = 0, 0
+    fill, _ = compute_paper_fill(bid, ask, exit_ltp, direction="SELL")
+    if fill is None:
+        fill = exit_ltp
+
+    net = compute_net_pnl(pos["entry"], fill, pos["lots"], PRODUCT, direction="BUY")
+    pos["exit"] = fill
+    pos["exit_time"] = datetime.now().isoformat(timespec="seconds")
+    pos["exit_reason"] = exit_reason
+    pos["exit_pnl_pct_pre_costs"] = round(exit_pnl_pct, 2)
+    pos["mfe_pct"] = pos.get("max_profit_pct", 0.0)
+    pos["mae_pct"] = pos.get("min_profit_pct", 0.0)
+    pos.update(net)
+
+    state["total_trades"] += 1
+    if net["net_pnl"] > 0:
+        state["winning_trades"] += 1
+    elif net["net_pnl"] < 0:
+        state["losing_trades"] += 1
+    state["total_pnl"] = round(state["total_pnl"] + net["net_pnl"], 2)
+    state["completed_trades"].append(pos)
+    state["active_position"] = None
+
+    pos["epoch_id"] = "POST_PRECISION_V1"
+    pos["strategy_version"] = "POST_PRECISION_V1"
+    pos["certification_eligible"] = True
+    append_jsonl(OUTCOMES_PATH, pos)
+
+    print(f"\n{'=' * 80}")
+    print(f"📊 Position Closed: {exit_reason}")
+    print(f"  {pos['type']} {pos['strike']:.0f}  entry=₹{pos['entry']:.2f} → exit=₹{fill:.2f}")
+    print(f"  MFE={pos['mfe_pct']:.2f}%  MAE={pos['mae_pct']:.2f}%")
+    print(f"  Gross=₹{net['gross_pnl']:.2f}  Costs=₹{net['costs_total']:.2f}  NET=₹{net['net_pnl']:.2f} ({net['net_pnl_pct']}%)")
+    print(f"  Total P&L: ₹{state['total_pnl']:.2f}  Progress: {state['total_trades']}/100  W={state['winning_trades']} L={state['losing_trades']}")
+    print(f"{'=' * 80}")
+
+
+def main():
+    print("=" * 90)
+    print(f"MCX PAPER BOT V2 (POST_PRECISION_V1) — {PRODUCT}")
+    print("=" * 90)
+
+    state = load_state()
+    print(f"State: {state.get('epoch')}  {state['total_trades']}/100  P&L=₹{state['total_pnl']:.2f}")
+
+    obj = login()
+    if not obj:
+        print("LOGIN_FAILED")
+        return
+    print("✅ Session established")
+
+    resolver = MCXIdentityResolver()
+    stable_pcr = StablePCR(strike_step=PRODUCTS[PRODUCT]["strike_interval"])
+    history = []  # rolling decision history (spec §10)
+
+    attempts = 0
+    while attempts < MAX_ATTEMPTS:
+        attempts += 1
+        status, tradable = market_status()
+        print(f"\n{'=' * 90}")
+        print(f"Attempt {attempts} | Trades: {state['total_trades']}/100 | MCX: {status}")
+        print(f"{'=' * 90}")
+
+        if not tradable:
+            if status in ("WEEKEND",):
+                print(f"  {status}. Stop.")
+                break
+            print(f"  {status}. Sleeping {CYCLE_SECONDS}s.")
+            time.sleep(CYCLE_SECONDS)
+            continue
+
+        res = resolver.resolve_active(PRODUCT)
+        if res["status"] != "OK":
+            print(f"  Identity: {res['status']}"); time.sleep(CYCLE_SECONDS); continue
+
+        fut_token = str(res["futures"]["token"])
+        chain = build_chain(obj, PRODUCT, window_steps=20)  # 41 strikes; PCR universe ±10 always covered
+        if chain.get("status") != "OK":
+            print(f"  Chain: {chain['status']}"); time.sleep(CYCLE_SECONDS); continue
+
+        mtf = compute_mtf(obj, fut_token, "MCX")
+        ctx = fetch_context(PRODUCT)
+        regime = classify_regime(mtf.get("timeframes", {}), chain=chain)
+        spcr = stable_pcr.compute(chain)
+        ev_state = event_get_state()
+
+        print(f"  future=₹{chain['future_ltp']:.2f}  atm={chain['atm']:.0f}  "
+              f"pcr_raw={chain['pcr_oi']}  pcr_stable={spcr.get('PCR_EMA_3') if spcr.get('status')=='OK' else 'N/A'}  "
+              f"maxpain={chain['max_pain']}")
+        print(f"  {describe_regime(regime)}")
+        print(f"  MTF aggregate: {mtf.get('aggregate_trend')}  (score={mtf.get('aggregate_score')})")
+        for tf in ["1m", "5m", "15m", "30m", "1h"]:
+            tv = mtf.get("timeframes", {}).get(tf, {})
+            if tv.get("status") == "OK":
+                print(f"    {tf:>3}  {tv.get('trend','?'):<6}  RSI={tv.get('rsi')}  ADX={tv.get('adx')}  ATR={tv.get('atr')}")
+            else:
+                print(f"    {tf:>3}  {tv.get('status','MISSING')}")
+        print(f"  Event risk: {event_describe(ev_state)}")
+        if spcr.get("status") != "OK":
+            print(f"  PCR: {spcr.get('status')} — {spcr.get('reason', '')}")
+
+        decision = compose_decision(chain, ctx, mtf, regime, vwap_ctx=None,
+                                    event_state=ev_state, stable_pcr=spcr)
+        print_decision(decision)
+
+        # Signal persistence: record and check
+        history.append({
+            "action": decision["action"],
+            "bias": decision["bias"],
+            "long_conf": decision["LONG_CONFIDENCE"],
+            "short_conf": decision["SHORT_CONFIDENCE"],
+        })
+        history = history[-HISTORY_SIZE:]
+
+        # Log decision every cycle
+        append_jsonl(DECISIONS_PATH, {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "attempt": attempts,
+            "epoch_id": "POST_PRECISION_V1",
+            "strategy_version": "POST_PRECISION_V1",
+            "certification_eligible": True,
+            "future_ltp": chain.get("future_ltp"),
+            "pcr": chain.get("pcr_oi"),
+            "regime": regime.get("regime"),
+            "mtf_aggregate": mtf.get("aggregate_trend"),
+            "decision": decision,
+            "history_len": len(history),
+        })
+
+        # Manage open position first (spec §16-§21)
+        active = state.get("active_position")
+        if active:
+            ltp = fetch_ltp(obj, active["token"])
+            if ltp > 0:
+                entry = active["entry"]
+                pnl_pct = ((ltp - entry) / entry) * 100
+                active["last_price"] = ltp
+                active["last_pnl_pct"] = round(pnl_pct, 2)
+                if pnl_pct > active.get("max_profit_pct", 0):
+                    active["max_profit_pct"] = round(pnl_pct, 2)
+                if pnl_pct < active.get("min_profit_pct", 0):
+                    active["min_profit_pct"] = round(pnl_pct, 2)
+
+                entry_dt = datetime.fromisoformat(active["entry_time"])
+                mins_in_trade = int((datetime.now() - entry_dt).total_seconds() / 60)
+
+                # Fixed SL / T targets first
+                if pnl_pct <= STOP_LOSS_PCT:
+                    close_position(obj, active, "STOP_LOSS", ltp, pnl_pct, state)
+                elif pnl_pct >= T3_PCT:
+                    close_position(obj, active, "T3_50%", ltp, pnl_pct, state)
+                elif pnl_pct >= T2_PCT:
+                    close_position(obj, active, "T2_30%", ltp, pnl_pct, state)
+                elif pnl_pct >= T1_PCT:
+                    close_position(obj, active, "T1_15%", ltp, pnl_pct, state)
+                elif datetime.now().time() >= dtime(23, 10):
+                    close_position(obj, active, "MCX_CLOSE_2310", ltp, pnl_pct, state)
+                else:
+                    # Position manager check
+                    should_exit, reason, new_stop = pm_evaluate_exit(
+                        active, ltp, decision, regime, mins_in_trade)
+                    if should_exit:
+                        close_position(obj, active, reason, ltp, pnl_pct, state)
+                    else:
+                        if new_stop is not None and new_stop > active.get("stop_loss", 0):
+                            active["stop_loss"] = new_stop
+                            active["profit_lock_label"] = active.get("profit_lock_label", "TRAIL")
+                        print(f"  holding {active['type']} {active['strike']:.0f}  "
+                              f"ltp=₹{ltp:.2f}  pnl={pnl_pct:.2f}%  MFE={active.get('max_profit_pct')}%  "
+                              f"stop=₹{active.get('stop_loss')}  mins={mins_in_trade}")
+            save_state(state)
+        else:
+            # Entry check
+            if decision["action"] == "BUY_CALL" and signals_agree(history, "BUY_CALL"):
+                pos = try_open_position(obj, chain, mtf, ctx, decision, regime, state)
+                if pos:
+                    state["active_position"] = pos; save_state(state)
+                else:
+                    print("  signals agreed CALL but no eligible strike")
+            elif decision["action"] == "BUY_PUT" and signals_agree(history, "BUY_PUT"):
+                pos = try_open_position(obj, chain, mtf, ctx, decision, regime, state)
+                if pos:
+                    state["active_position"] = pos; save_state(state)
+                else:
+                    print("  signals agreed PUT but no eligible strike")
+            else:
+                call_count = sum(1 for h in history if h["action"] == "BUY_CALL")
+                put_count = sum(1 for h in history if h["action"] == "BUY_PUT")
+                print(f"  No entry. persistence: CALL={call_count}/3 PUT={put_count}/3")
+
+        save_state(state)
+        time.sleep(CYCLE_SECONDS)
+
+    save_state(state)
+    print(f"\n{'=' * 90}")
+    print(f"MCX PAPER BOT V2 stopped.")
+    print(f"  Attempts: {attempts}")
+    print(f"  Trades: {state['total_trades']}/100")
+    print(f"  Total P&L: ₹{state['total_pnl']:.2f}")
+    print(f"{'=' * 90}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nInterrupted by user.")

@@ -1,0 +1,13 @@
+{
+  "epoch": "POST_PRECISION_V1",
+  "declared_at": "2026-09-11T19:47:47",
+  "counter_start": 0,
+  "counter_target": 100,
+  "rules": [
+    "Only CLOSED + RECONCILED trades count",
+    "No PRE_PRECISION_DIAGNOSTIC trades carry over",
+    "No threshold lowering to manufacture trades",
+    "No manipulation of /100",
+    "PAPER only, broker_submission=false"
+  ]
+}

@@ -1,0 +1,80 @@
+ 126:     def get_multi_timeframe_technicals(self):
+ 127:         if self._fresh("technicals"):
+ 128:             return self._cache["technicals"]
+ 129:         
+ 130:         if not TA_AVAILABLE:
+ 131:             return {"error": "ta not available", "consensus": "UNKNOWN"}
+ 132:         
+ 133:         result = {}
+ 134:         # 3 timeframes only (dropped 1m - too volatile + rate limited)
+ 135:         timeframes = [
+ 136:             ("1h", "ONE_HOUR", 10),
+ 137:             ("15m", "FIFTEEN_MINUTE", 5),
+ 138:             ("5m", "FIVE_MINUTE", 3),
+ 139:         ]
+ 140:         
+ 141:         for tf_name, tf_interval, lookback in timeframes:
+ 142:             try:
+ 143:                 df = self.get_candles(tf_interval, days_back=lookback)
+ 144:                 if df.empty or len(df) < 20:
+ 145:                     result[tf_name] = {"trend": "UNKNOWN"}
+ 146:                     continue
+ 147:                 
+ 148:                 close = df["close"]
+ 149:                 high = df["high"]
+ 150:                 low = df["low"]
+ 151:                 
+ 152:                 ema20 = ta.trend.EMAIndicator(close, window=20).ema_indicator().iloc[-1]
+ 153:                 ema50 = ta.trend.EMAIndicator(close, window=50).ema_indicator().iloc[-1] if len(df) >= 50 else None
+ 154:                 rsi = ta.momentum.RSIIndicator(close, window=14).rsi().iloc[-1]
+ 155:                 
+ 156:                 current = close.iloc[-1]
+ 157:                 
+ 158:                 if ema50 and current > ema20 > ema50:
+ 159:                     trend = "UP"
+ 160:                 elif ema50 and current < ema20 < ema50:
+ 161:                     trend = "DOWN"
+ 162:                 else:
+ 163:                     trend = "FLAT"
+ 164:                 
+ 165:                 result[tf_name] = {
+ 166:                     "current": float(current),
+ 167:                     "ema20": float(ema20),
+ 168:                     "ema50": float(ema50) if ema50 else None,
+ 169:                     "rsi": float(rsi),
+ 170:                     "trend": trend,
+ 171:                 }
+ 172:             except Exception as e:
+ 173:                 result[tf_name] = {"trend": "UNKNOWN", "error": str(e)[:40]}
+ 174:         
+ 175:         # Consensus with 3 timeframes
+ 176:         real = [r.get("trend") for r in result.values() 
+ 177:                 if isinstance(r, dict) and r.get("trend") in ("UP", "DOWN", "FLAT")]
+ 178:         
+ 179:         if len(real) < 2:
+ 180:             result["consensus"] = "INSUFFICIENT_DATA"
+ 181:         else:
+ 182:             up = real.count("UP")
+ 183:             down = real.count("DOWN")
+ 184:             if up >= 2 and down == 0:
+ 185:                 result["consensus"] = "BULLISH"
+ 186:             elif down >= 2 and up == 0:
+ 187:                 result["consensus"] = "BEARISH"
+ 188:             elif up > down:
+ 189:                 result["consensus"] = "WEAK_BULLISH"
+ 190:             elif down > up:
+ 191:                 result["consensus"] = "WEAK_BEARISH"
+ 192:             else:
+ 193:                 result["consensus"] = "MIXED"
+ 194:         
+ 195:         self._store("technicals", result)
+ 196:         return result
+ 197:     
+ 198:     def get_global_markets(self):
+ 199:         if self._fresh("global"):
+ 200:             return self._cache["global"]
+ 201:         
+ 202:         if not YF_AVAILABLE:
+ 203:             return {"sentiment": "UNKNOWN"}
+ 204:         
+ 205:         result = {}

@@ -1,0 +1,45 @@
+================================================================================
+N4B EXTENDED ACCEPTANCE ΓÇö 15 cycles per market
+Started: 2026-09-15T12:07:59.884961
+Logs: n4b_ext_logs/nifty_20260915_120759.log  |  n4b_ext_logs/sensex_20260915_120759.log
+================================================================================
+NIFTY  pid=8952  SENSEX pid=11212
+Both processes finished. Parsing logs...
+
+===== NIFTY =====
+  cycles                 : 15
+  errors                 : 0
+  rate_limited_events    : 3
+  evidence_unavailable   : 0
+  full_coverage_cycles   : 14
+  partial_coverage_cycles: 1
+  trades                 : 0
+  counter                : 0 -> 0
+  identity_violations    : 0
+  BROKER_SUBMISSION      : False
+  LIVE_EXECUTION         : False
+  EXECUTION_MODE         : PAPER
+  elapsed_s              : 573.1
+
+===== SENSEX =====
+  cycles                 : 15
+  errors                 : 0
+  rate_limited_events    : 0
+  evidence_unavailable   : 30
+  full_coverage_cycles   : 15
+  partial_coverage_cycles: 0
+  trades                 : 0
+  counter                : 0 -> 0
+  identity_violations    : 0
+  BROKER_SUBMISSION      : False
+  LIVE_EXECUTION         : False
+  EXECUTION_MODE         : PAPER
+  elapsed_s              : 588.7
+
+================================================================================
+CROSS_MARKET_ISOLATION = PASS
+REST_STABILITY         = PASS (nifty_rl=3 sensex_rl=0)
+COVERAGE_ADEQUATE      = PASS (n_any=15 s_any=15 min=9)
+LONG_CAMPAIGN_READY    = true
+================================================================================
+STOP - campaign NOT started automatically.

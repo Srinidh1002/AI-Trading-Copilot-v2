@@ -1,0 +1,1 @@
+broker_request_failed request_type=Option Greeks error_type=ReadTimeout retry=1 reason=HTTPSConnectionPool(host='apiconnect.angelone.in', port=443): Read timed out. (read timeout=7)

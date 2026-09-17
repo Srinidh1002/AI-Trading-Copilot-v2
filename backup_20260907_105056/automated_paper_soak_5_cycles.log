@@ -1,0 +1,4 @@
+[I 260731 12:31:48 smartConnect:124] in pool
+broker_request request_type=historical-data monotonic=149481.864145 rate_limited=true retry_number=1 cooldown_seconds=20.000000
+broker_request request_type=historical-data monotonic=149502.267294 rate_limited=true retry_number=2 cooldown_seconds=40.000000
+broker_request request_type=historical-data monotonic=149549.902399 rate_limited=true retry_number=1 cooldown_seconds=20.000000

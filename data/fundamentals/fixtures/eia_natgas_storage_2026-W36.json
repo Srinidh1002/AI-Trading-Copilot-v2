@@ -1,0 +1,9 @@
+{
+  "_fixture_note": "TEST_FIXTURE — schema only. Not real EIA data.",
+  "source": "EIA", "report": "Weekly Natural Gas Storage Report",
+  "reference_week": "2026-W36", "release_date": "2026-09-11",
+  "release_time_utc": "2026-09-11T14:30:00+00:00",
+  "storage_current_bcf": 3300, "weekly_change_bcf": 60,
+  "previous_week_bcf": 3240, "five_year_average_bcf": 3200,
+  "consensus_change_bcf": 80
+}

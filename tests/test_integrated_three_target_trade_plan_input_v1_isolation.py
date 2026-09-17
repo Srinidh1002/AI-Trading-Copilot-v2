@@ -1,0 +1,1 @@
+def test_import():from services.contracts import IntegratedThreeTargetTradePlanInputV1;assert IntegratedThreeTargetTradePlanInputV1

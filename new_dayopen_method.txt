@@ -1,0 +1,30 @@
+    def get_day_open(self, spot):
+        """Get actual day open. Returns (value, status). None if unavailable."""
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        attempts = [
+            ("FIVE_MINUTE", f"{today} 09:15", f"{today} 09:45"),
+            ("FIFTEEN_MINUTE", f"{today} 09:15", f"{today} 10:00"),
+            ("ONE_HOUR", f"{today} 09:15", f"{today} 11:00"),
+        ]
+        
+        for interval, from_date, to_date in attempts:
+            try:
+                candles = self.obj.getCandleData({
+                    "exchange": self.index_exchange,
+                    "symboltoken": self.index_token,
+                    "interval": interval,
+                    "fromdate": from_date,
+                    "todate": to_date,
+                })
+                if candles and candles.get("data") and len(candles["data"]) > 0:
+                    day_open = float(candles["data"][0][1])
+                    if day_open > 0:
+                        print(f"    [day_open] {interval}: {day_open:.2f}")
+                        return day_open, "OK"
+            except Exception as e:
+                print(f"    [day_open] {interval} failed: {str(e)[:40]}")
+                continue
+        
+        return None, "EVIDENCE_UNAVAILABLE"
+    

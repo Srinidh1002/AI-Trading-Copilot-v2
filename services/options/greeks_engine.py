@@ -1,48 +1,90 @@
 """
-Production Greeks Engine
+Production Greeks Engine.
 
-Uses Angel One live Option Greeks API.
+Uses Angel One live Option Greeks API where the
+provider capability is available.
+
+Read-only.
+No broker order submission.
 """
 
 from services.options.angel_option_client import (
     AngelOptionClient,
 )
+from services.options.angel_option_provider_capabilities import (
+    angel_option_provider_capabilities,
+)
+
+
+def _unavailable_result(
+    *,
+    reason,
+    capability_state,
+):
+    return {
+        "Status": "Unavailable",
+        "CapabilityState": capability_state,
+        "Reason": reason,
+        "Contracts": [],
+        "ATM": {},
+        "Summary": {
+            "AverageDelta": 0,
+            "AverageGamma": 0,
+            "AverageTheta": 0,
+            "AverageVega": 0,
+            "AverageIV": 0,
+            "Bias": "Neutral",
+            "Confidence": 0,
+        },
+    }
 
 
 class GreeksEngine:
 
-    def __init__(self):
-
-        self.client = AngelOptionClient()
-
-    # -----------------------------------------------------
+    def __init__(
+        self,
+        client=None,
+    ):
+        self.client = (
+            client
+            if client is not None
+            else AngelOptionClient()
+        )
 
     def analyze(
         self,
         underlying,
         expiry,
+        option_exchange=None,
     ):
+        capabilities = (
+            angel_option_provider_capabilities(
+                underlying,
+                option_exchange,
+            )
+        )
+
+        if not capabilities.option_greeks_supported:
+            return _unavailable_result(
+                reason=(
+                    "OPTION_GREEKS_PROVIDER_CAPABILITY_UNAVAILABLE"
+                ),
+                capability_state="UNSUPPORTED_BY_PROVIDER",
+            )
 
         try:
             response = self.client.get_option_greeks(
-                underlying,
+                capabilities.underlying_symbol,
                 expiry,
             )
-        except Exception:
-            return {
-                "Status": "Unavailable",
-                "Contracts": [],
-                "ATM": {},
-                "Summary": {
-                    "AverageDelta": 0,
-                    "AverageGamma": 0,
-                    "AverageTheta": 0,
-                    "AverageVega": 0,
-                    "AverageIV": 0,
-                    "Bias": "Neutral",
-                    "Confidence": 0,
-                },
-            }
+        except Exception as exc:
+            return _unavailable_result(
+                reason=(
+                    "OPTION_GREEKS_PROVIDER_FAILURE:"
+                    f"{type(exc).__name__}"
+                ),
+                capability_state="PROVIDER_FAILURE",
+            )
 
         contracts = response.get(
             "data",
@@ -50,23 +92,13 @@ class GreeksEngine:
         )
 
         if not contracts:
-
-            return {
-
-                "Status": "Unavailable",
-
-                "Contracts": [],
-
-                "ATM": {},
-
-                "Summary": {},
-
-            }
+            return _unavailable_result(
+                reason="OPTION_GREEKS_DATA_UNAVAILABLE",
+                capability_state="SUPPORTED",
+            )
 
         atm = min(
-
             contracts,
-
             key=lambda x: abs(
                 float(
                     x.get(
@@ -76,7 +108,6 @@ class GreeksEngine:
                 )
                 - 0.5
             ),
-
         )
 
         total_delta = 0.0
@@ -84,13 +115,10 @@ class GreeksEngine:
         total_theta = 0.0
         total_vega = 0.0
         total_iv = 0.0
-
         valid = 0
-
         normalized = []
 
         for contract in contracts:
-
             delta = float(
                 contract.get(
                     "delta",
@@ -141,36 +169,27 @@ class GreeksEngine:
             total_theta += theta
             total_vega += vega
             total_iv += iv
-
             valid += 1
 
-            normalized.append({
-
-                "TradingSymbol": contract.get(
-                    "tradingSymbol",
-                ),
-
-                "Strike": contract.get(
-                    "strikePrice",
-                ),
-
-                "OptionType": contract.get(
-                    "optionType",
-                ),
-
-                "Delta": delta,
-
-                "Gamma": gamma,
-
-                "Theta": theta,
-
-                "Vega": vega,
-
-                "IV": iv,
-
-                "Rho": rho,
-
-            })
+            normalized.append(
+                {
+                    "TradingSymbol": contract.get(
+                        "tradingSymbol",
+                    ),
+                    "Strike": contract.get(
+                        "strikePrice",
+                    ),
+                    "OptionType": contract.get(
+                        "optionType",
+                    ),
+                    "Delta": delta,
+                    "Gamma": gamma,
+                    "Theta": theta,
+                    "Vega": vega,
+                    "IV": iv,
+                    "Rho": rho,
+                }
+            )
 
         avg_delta = round(
             total_delta / valid,
@@ -198,67 +217,53 @@ class GreeksEngine:
         )
 
         if avg_delta > 0.20:
-
             bias = "Bullish"
-
             confidence = 80
 
         elif avg_delta < -0.20:
-
             bias = "Bearish"
-
             confidence = 80
 
         else:
-
             bias = "Neutral"
-
             confidence = 55
 
         return {
-
             "Status": "Success",
-
+            "CapabilityState": "SUPPORTED",
+            "Reason": None,
             "Contracts": normalized,
-
             "ATM": {
-
                 "TradingSymbol": atm.get(
                     "tradingSymbol",
                 ),
-
                 "Strike": atm.get(
                     "strikePrice",
                 ),
-
                 "Delta": float(
                     atm.get(
                         "delta",
                         0,
                     )
                 ),
-
                 "Gamma": float(
                     atm.get(
                         "gamma",
                         0,
                     )
                 ),
-
                 "Theta": float(
                     atm.get(
                         "theta",
                         0,
                     )
                 ),
-
                 "Vega": float(
                     atm.get(
                         "vega",
                         0,
                     )
                 ),
-
                 "IV": float(
                     atm.get(
                         "impliedVolatility",
@@ -268,32 +273,25 @@ class GreeksEngine:
                         ),
                     )
                 ),
-
                 "Rho": float(
                     atm.get(
                         "rho",
                         0,
                     )
                 ),
-
             },
-
             "Summary": {
-
                 "AverageDelta": avg_delta,
-
                 "AverageGamma": avg_gamma,
-
                 "AverageTheta": avg_theta,
-
                 "AverageVega": avg_vega,
-
                 "AverageIV": avg_iv,
-
                 "Bias": bias,
-
                 "Confidence": confidence,
-
             },
-
         }
+
+
+__all__ = [
+    "GreeksEngine",
+]

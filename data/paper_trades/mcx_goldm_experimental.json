@@ -1,0 +1,16 @@
+{
+  "product": "GOLDM",
+  "epoch": "GOLDM_PRECERT_V1",
+  "strategy_version": "MCX_GOLDM_PRECERT_V1",
+  "certification_eligible": false,
+  "starting_capital": 100000,
+  "total_trades": 0,
+  "winning_trades": 0,
+  "losing_trades": 0,
+  "t1_hit_wins": 0,
+  "sl_losses": 0,
+  "total_pnl": 0.0,
+  "active_position": null,
+  "completed_trades": [],
+  "created_at": "2026-09-12T13:09:34.474000"
+}

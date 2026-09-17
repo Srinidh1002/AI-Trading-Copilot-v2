@@ -1,0 +1,42 @@
+[init] Contract index loaded: 6174 entries
+Connection attempt 1/5...
+Γ£à Connected successfully!
+Γ£à Market intelligence initialized
+[init] VIX engine ready
+[init] Calendar engine ready
+[init] Option chain engine ready
+[init] News engine ready
+[init] FII/DII engine ready
+[init] External intel engine ready
+[init] Previous day engine ready
+[WS] Connected
+[WS] Subscribed 1 groups
+[WS] Subscribed to NIFTY spot
+Γ£à Loaded 3700 NIFTY options
+  Expiry: 15SEP2026
+  CALENDAR_DTE: 0
+  TRADING_DAYS_TO_EXPIRY: 0
+Spot: 23321.05
+ATM: 23300
+Expiry: 15SEP2026
+  CE 23200.0: Γé╣150.35
+  CE 23400.0: Γé╣31.25
+  CE 23450.0: Γé╣19.00
+  PE 23200.0: Γé╣14.20
+  CE 23300.0: Γé╣76.50
+  PE 23150.0: Γé╣8.00
+  PE 23350.0: Γé╣64.80
+  CE 23350.0: Γé╣49.25
+  PE 23300.0: Γé╣41.60
+  PE 23400.0: Γé╣96.40
+  CE 23150.0: Γé╣192.40
+  CE 23250.0: Γé╣109.35
+  PE 23250.0: Γé╣24.90
+  PE 23450.0: Γé╣134.50
+Total options found: 14
+spot=23321.05 atm=23300 expiry=15SEP2026 options=14
+Target: CE 23300.0 token=47289 symbol=NIFTY15SEP2623300CE
+Live FULL quote: {'ltp': 75.55, 'bid': 75.7, 'ask': 75.8}
+compute_paper_fill: fill=75.9 status=OK
+
+D11 verification PASSED

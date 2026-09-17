@@ -1,0 +1,43 @@
+====================================================================================================
+SECTION 7 PHASE A - MCX DEPTH PROBE (READ ONLY)
+Run at: 2026-09-14T17:31:32.486092+05:30
+====================================================================================================
+[I 260914 17:31:32 smartConnect:124] in pool
+Session established
+
+==========================================================================================
+PRODUCT: CRUDEOILM  lot=10  tick=0.05  step=50
+==========================================================================================
+  future: CRUDEOILM21SEP26FUT token=565900 exp=21SEP2026
+  FUTURE      status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=9903.0
+  ATM strike ~ 9900
+  CE CRUDEOILM17SEP269900CE         status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=283.8
+     best_bid=283.75 best_ask=284.5
+  PE CRUDEOILM17SEP269900PE         status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=276.0
+     best_bid=275.65 best_ask=276.0
+
+==========================================================================================
+PRODUCT: GOLDM  lot=100  tick=1.0  step=100
+==========================================================================================
+  future: GOLDM05OCT26FUT token=569003 exp=05OCT2026
+  FUTURE      status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=150955.0
+  ATM strike ~ 151000
+  CE GOLDM25SEP26151000CE           status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=2813.5
+     best_bid=2802.5 best_ask=2814.5
+  PE GOLDM25SEP26151000PE           status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=2829.5
+     best_bid=2821.5 best_ask=2833.5
+
+==========================================================================================
+PRODUCT: NATGASMINI  lot=250  tick=0.1  step=5
+==========================================================================================
+  future: NATGASMINI25SEP26FUT token=568246 exp=25SEP2026
+  FUTURE      status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=276.8
+  ATM strike ~ 275
+  CE NATGASMINI23SEP26275CE         status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=9.3
+     best_bid=9.3 best_ask=9.35
+  PE NATGASMINI23SEP26275PE         status=OK depth=True buy_lvls=5 sell_lvls=5 ltp=7.4
+     best_bid=7.35 best_ask=7.4
+
+====================================================================================================
+PHASE A PROBE COMPLETE - no entries, no state writes
+====================================================================================================

@@ -1,4 +1,9 @@
-"""Market-data access backed by yfinance."""
+"""Legacy/research yfinance access; never certification market evidence.
+
+This compatibility module is intentionally outside Task 8/Task 9 composition,
+certification dashboard publication/read models, PAPER lifecycle, and replay.
+Angel/certified data failures must never fall back here.
+"""
 
 import pandas as pd
 import yfinance as yf

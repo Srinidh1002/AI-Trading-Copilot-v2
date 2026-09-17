@@ -1,0 +1,2 @@
+from tests.test_external_market_context_aggregate import test_empty_aggregate_is_unavailable
+def test_component_precedence_fixture_exists():test_empty_aggregate_is_unavailable()

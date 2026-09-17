@@ -1,0 +1,2 @@
+from services.contracts import FourMarketOpportunityRankingResultV1
+def test_result_lazy_export():assert FourMarketOpportunityRankingResultV1.__name__=="FourMarketOpportunityRankingResultV1"

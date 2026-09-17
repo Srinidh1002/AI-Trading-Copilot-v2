@@ -1,0 +1,17 @@
+{
+  "description": "FIXTURE — schema-only, NOT real Sep-2026 CPI values. Used only for parser tests.",
+  "source": "BLS",
+  "source_url": "https://www.bls.gov/cpi/",
+  "release_date": "2026-09-11",
+  "release_time": "08:30 America/New_York",
+  "reference_period": "2026-08",
+  "actual_headline_mom": null,
+  "actual_headline_yoy": null,
+  "actual_core_mom": null,
+  "actual_core_yoy": null,
+  "previous_headline_mom": null,
+  "previous_headline_yoy": null,
+  "previous_core_mom": null,
+  "previous_core_yoy": null,
+  "_fixture_note": "Placeholder schema. Real values must be ingested from BLS at runtime."
+}
