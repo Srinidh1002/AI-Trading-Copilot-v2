@@ -13,6 +13,7 @@ if str(SRC) not in sys.path:
 from services.observation.two_market_canary_v2 import (  # noqa: E402
     CanaryMarketResultV2,
     CanaryObservationError,
+    has_complete_canary_market_evidence,
     observe_market_v2,
     select_market_v2,
 )
@@ -234,6 +235,32 @@ def test_chain_rollover_mismatch_is_observed_without_candidate(monkeypatch):
     assert result.paper_fill is None
     assert result.targets is None
     assert result.counters_unchanged is True
+    assert has_complete_canary_market_evidence(result) is False
+
+
+def test_two_market_gate_requires_each_market_to_prove_execution(monkeypatch):
+    import contract_metadata
+
+    monkeypatch.setattr(contract_metadata, "resolve_lot_size", lambda *a, **k: (75, "TEST"))
+    nifty = observe_market_v2(FakeBot("NIFTY"))
+    sensex = observe_market_v2(FakeBot("SENSEX", quote_complete=False))
+
+    assert has_complete_canary_market_evidence(nifty) is True
+    assert has_complete_canary_market_evidence(sensex) is False
+    assert all(map(has_complete_canary_market_evidence, (nifty, sensex))) is False
+
+
+def test_two_market_gate_requires_oi_and_valid_spread(monkeypatch):
+    from dataclasses import replace
+    import contract_metadata
+
+    monkeypatch.setattr(contract_metadata, "resolve_lot_size", lambda *a, **k: (75, "TEST"))
+    result = observe_market_v2(FakeBot("NIFTY"))
+
+    assert has_complete_canary_market_evidence(replace(result, pcr_oi=None)) is False
+    assert has_complete_canary_market_evidence(
+        replace(result, executable_quote={"bid": 101.0, "ask": 99.0})
+    ) is False
 
 
 def test_neutral_prediction_can_rank_both_sides_for_diagnostics(monkeypatch):

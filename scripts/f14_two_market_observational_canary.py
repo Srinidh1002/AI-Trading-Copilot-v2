@@ -41,6 +41,7 @@ from services.broker.provider_shadow_parity_v2 import (  # noqa: E402
 )
 from services.core.provider_routing_policy_v2 import automatic_fallback_provider  # noqa: E402
 from services.observation.two_market_canary_v2 import (  # noqa: E402
+    has_complete_canary_market_evidence,
     observe_market_v2,
     select_market_v2,
 )
@@ -336,24 +337,8 @@ def main() -> int:
                 "shadow_complete=", report.evidence_complete,
             )
 
-            safe_chain = (
-                result.chain_status == "OK"
-                or (
-                    result.chain_status == "EVIDENCE_UNAVAILABLE"
-                    and result.chain_reason == "NATIVE_EXPIRY_IDENTITY_MISMATCH"
-                    and result.option_count == 0
-                )
-            )
             market_gates.append(
-                result.connected
-                and result.spot > 0
-                and result.chain_request_count == 1
-                and result.chain_depth_fanout == 0
-                and safe_chain
-                and result.websocket_healthy
-                and result.counters_unchanged
-                and result.prediction.get("persisted_to_disk") is False
-                and result.premarket_available
+                has_complete_canary_market_evidence(result)
                 and report.evidence_complete
                 and report.status == "MATCH"
             )
@@ -368,22 +353,9 @@ def main() -> int:
             "reason=", selection.get("reason"),
         )
 
-        candidate_results = [
-            result for result in observations.values()
-            if result.diagnostic_candidate is not None
-        ]
-        execution_proven = any(
-            result.executable_quote is not None
-            and result.paper_fill is not None
-            and result.lot_size is not None
-            and result.targets is not None
-            for result in candidate_results
-        )
-
         success = (
             len(market_gates) == 2
             and all(market_gates)
-            and execution_proven
             and selection.get("selection")
             in {"SELECT_NIFTY", "SELECT_SENSEX", "DUAL_WATCH"}
             and get_provider_registration("ANGEL_SMARTAPI").adapter_status

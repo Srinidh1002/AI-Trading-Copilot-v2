@@ -1,4 +1,4 @@
-\"\"\"Replay services package.\"\"\"
+"""Replay services package."""
 
 from .runner import run_replay_file, run_replay_fixture, evaluate_replay_expectations, run_replay_directory
 from .loader import load_replay_fixture

@@ -63,6 +63,45 @@ class CanaryMarketResultV2:
         }
 
 
+def has_complete_canary_market_evidence(result: CanaryMarketResultV2) -> bool:
+    """Require a complete read-only chain and execution probe for one market.
+
+    A safe abstention on an unavailable chain remains safe, but cannot prove
+    the two-market F14 exit gate.
+    """
+    quote = result.executable_quote
+    targets = result.targets
+    try:
+        bid = float(quote.get("bid")) if isinstance(quote, Mapping) else 0.0
+        ask = float(quote.get("ask")) if isinstance(quote, Mapping) else 0.0
+    except (TypeError, ValueError):
+        return False
+    return bool(
+        result.connected
+        and result.spot > 0
+        and result.chain_status == "OK"
+        and result.option_count > 0
+        and result.chain_request_count == 1
+        and result.chain_depth_fanout == 0
+        and result.pcr_oi is not None
+        and result.diagnostic_candidate is not None
+        and bid > 0
+        and ask > bid
+        and result.paper_fill is not None
+        and result.paper_fill > 0
+        and result.lot_size is not None
+        and result.lot_size > 0
+        and result.lots_affordable is not None
+        and result.lots_affordable > 0
+        and isinstance(targets, Mapping)
+        and all(targets.get(name) is not None for name in ("sl", "t1", "t2", "t3"))
+        and result.websocket_healthy
+        and result.counters_unchanged
+        and result.prediction.get("persisted_to_disk") is False
+        and result.premarket_available
+    )
+
+
 def _counter_snapshot(bot) -> tuple[int, int, int, int, int]:
     return (
         int(getattr(bot, "current_session", 0) or 0),
