@@ -105,18 +105,26 @@ accounting and calendar contracts, not a five-market FYERS lifecycle.
 
 ## Operator steps for the next valid market session
 
-From the repository root in PowerShell, with the operator's existing local
-`.env` and current `data/instruments.json`, run the read-only canary during
-the actual NSE/BSE derivatives session. Confirm the exchange calendar first.
-The command also obtains an Angel **shadow quote**; it does not submit orders.
+From the existing repository root in PowerShell, with the operator's local
+`.env`, current `data/instruments.json` and existing virtual environment,
+create a separate worktree for the reviewed branch. Run the read-only canary
+during the actual NSE/BSE derivatives session. Confirm the exchange calendar
+first. The command also obtains an Angel **shadow quote**; it does not submit
+orders.
 
 ```powershell
-git fetch origin p10-two-market-weekend-readiness
-git rev-parse origin/p10-two-market-weekend-readiness
+$sourceRepo = (Get-Location).Path
+$sourcePython = Join-Path $sourceRepo 'venv\Scripts\python.exe'
+git fetch origin audit/five-market-fyers-readiness
+if ($LASTEXITCODE -ne 0) { throw 'Git fetch failed' }
+git worktree add ..\AI-Trading-Copilot-f14-proof origin/audit/five-market-fyers-readiness
+if ($LASTEXITCODE -ne 0) { throw 'Worktree creation failed' }
+Set-Location ..\AI-Trading-Copilot-f14-proof
+git rev-parse HEAD
 git status --short
-venv\Scripts\python.exe -m pytest -q tests/test_f14_two_market_observational_canary_v2.py tests/test_f14_provider_evidence_repairs_v2.py
+& $sourcePython -m pytest -q tests/test_f14_two_market_observational_canary_v2.py tests/test_f14_provider_evidence_repairs_v2.py
 if ($LASTEXITCODE -ne 0) { throw 'F14 static regression failed' }
-venv\Scripts\python.exe scripts/f14_two_market_observational_canary.py --env-file .env --instruments data/instruments.json --ipv4-only
+& $sourcePython scripts/f14_two_market_observational_canary.py --env-file (Join-Path $sourceRepo '.env') --instruments (Join-Path $sourceRepo 'data\instruments.json') --ipv4-only
 if ($LASTEXITCODE -ne 0) { throw 'F14 market-hours canary HOLD/FAIL; do not freeze or schedule' }
 ```
 
