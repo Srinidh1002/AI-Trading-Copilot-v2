@@ -195,7 +195,7 @@ PROVIDER_REGISTRY_V2 = (
             _REQUIRED_CAPABILITIES
         ),
         adapter_status=(
-            "PENDING_V2_ADAPTER"
+            "READY"
         ),
     ),
     ProviderRegistrationV2(

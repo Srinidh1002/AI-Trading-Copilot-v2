@@ -278,7 +278,7 @@ def test_primary_and_shadow_own_separate_shared_runtime_bundles():
     )
 
 
-def test_operational_primary_remains_blocked_while_registry_is_pending():
+def test_operational_primary_returns_ready_installed_fyers_runtime():
     orchestrator = (
         SharedProviderOrchestratorV2(
             market_data_hub=(
@@ -287,23 +287,27 @@ def test_operational_primary_remains_blocked_while_registry_is_pending():
         )
     )
 
+    fyers = runtime(
+        "FYERS"
+    )
+
     orchestrator.install_runtime(
-        runtime("FYERS")
+        fyers
     )
 
     orchestrator.install_runtime(
         runtime("ANGEL_SMARTAPI")
     )
 
-    with pytest.raises(
-        RuntimeError,
-        match="PROVIDER_V2_ADAPTER_NOT_READY",
-    ):
+    acquired = (
         orchestrator.get_operational_primary_runtime(
             market_symbol="NIFTY",
             data_kind="QUOTE",
             consumer_id="TEST",
         )
+    )
+
+    assert acquired is fyers
 
 
 def test_shared_streaming_adapter_is_not_duplicated_per_consumer():

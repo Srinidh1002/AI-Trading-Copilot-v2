@@ -157,7 +157,7 @@ def test_unavailable_contract_metadata_cannot_smuggle_lot_or_tick_values():
         )
 
 
-def test_provider_registry_is_exact_data_only_and_not_ready_yet():
+def test_provider_registry_is_exact_data_only_and_fyers_ready():
     assert tuple(
         item.provider
         for item in PROVIDER_REGISTRY_V2
@@ -202,7 +202,7 @@ def test_provider_registry_is_exact_data_only_and_not_ready_yet():
 
     assert (
         fyers.adapter_status
-        == "PENDING_V2_ADAPTER"
+        == "READY"
     )
 
     assert (
@@ -210,7 +210,7 @@ def test_provider_registry_is_exact_data_only_and_not_ready_yet():
         == "PENDING_V2_ADAPTER"
     )
 
-    assert not provider_adapter_ready(
+    assert provider_adapter_ready(
         "FYERS"
     )
 
@@ -273,15 +273,21 @@ def test_planned_route_is_fyers_primary_and_angel_shadow_for_all_five_markets():
             )
 
 
-def test_operational_route_fails_until_v2_adapter_is_ready():
-    with pytest.raises(
-        RuntimeError,
-        match="PROVIDER_V2_ADAPTER_NOT_READY",
-    ):
+def test_operational_route_uses_ready_fyers_primary():
+    assert (
         resolve_operational_primary(
             "NIFTY",
             "QUOTE",
         )
+        == "FYERS"
+    )
+
+    assert (
+        assert_provider_adapter_ready(
+            "FYERS"
+        ).provider
+        == "FYERS"
+    )
 
     with pytest.raises(
         RuntimeError,
