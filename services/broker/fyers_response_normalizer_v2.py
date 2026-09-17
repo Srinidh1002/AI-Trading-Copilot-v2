@@ -155,6 +155,40 @@ def normalize_ltp_data(
     if isinstance(volume, (int, float)):
         data["volume"] = float(volume)
 
+    # Weighted-constituent analysis compares LTP with the previous trading
+    # session close. FYERS quote payloads expose that evidence as
+    # prev_close_price. Preserve the provider value directly when present.
+    previous_close = None
+    previous_close_source = None
+    for field in (
+        "prev_close_price",
+        "prev_close",
+        "close_price",
+        "c",
+    ):
+        value = payload.get(field)
+        if isinstance(value, (int, float)) and float(value) > 0:
+            previous_close = float(value)
+            previous_close_source = field
+            break
+
+    # Quotes also expose absolute change (`ch`). FYERS defines that value as
+    # LTP - previous close, so it is a deterministic fallback when the direct
+    # previous-close field is omitted. Never invent a close without either
+    # provider-supplied previous-close or provider-supplied change evidence.
+    if previous_close is None:
+        change = payload.get("ch")
+        if isinstance(change, (int, float)):
+            derived = ltp - float(change)
+            if derived > 0:
+                previous_close = derived
+                previous_close_source = "DERIVED_FROM_PROVIDER_CHANGE"
+
+    if previous_close is not None:
+        data["close"] = previous_close
+        data["previous_close"] = previous_close
+        data["previous_close_source"] = previous_close_source
+
     return {
         "status": True,
         "data": data,

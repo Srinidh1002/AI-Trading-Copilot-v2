@@ -29,6 +29,7 @@ def test_quote_normalizes_to_ltp_data_shape() -> None:
                     "volume": 12345,
                     "tt": 1790000000,
                     "fyToken": "101",
+                    "prev_close_price": 23380.0,
                 },
             }
         ],
@@ -48,6 +49,39 @@ def test_quote_normalizes_to_ltp_data_shape() -> None:
     assert result["data"]["ask"] == 23398.5
     assert result["data"]["volume"] == 12345.0
     assert result["data"]["exchange_timestamp"] == 1790000000
+    assert result["data"]["close"] == 23380.0
+    assert result["data"]["previous_close"] == 23380.0
+    assert result["data"]["previous_close_source"] == "prev_close_price"
+
+
+def test_quote_derives_previous_close_only_from_provider_change() -> None:
+    response = {
+        "s": "ok",
+        "code": 200,
+        "d": [
+            {
+                "n": "NSE:TCS-EQ",
+                "v": {
+                    "symbol": "NSE:TCS-EQ",
+                    "lp": 3050.0,
+                    "ch": 25.0,
+                    "volume": 1000,
+                },
+            }
+        ],
+    }
+
+    result = normalize_ltp_data(
+        response,
+        provider_symbol="NSE:TCS-EQ",
+        exchange="NSE",
+        tradingsymbol="TCS-EQ",
+        symboltoken="11536",
+    )
+
+    assert result["data"]["close"] == 3025.0
+    assert result["data"]["previous_close"] == 3025.0
+    assert result["data"]["previous_close_source"] == "DERIVED_FROM_PROVIDER_CHANGE"
 
 
 def test_quote_fails_closed_on_provider_error() -> None:
@@ -231,6 +265,7 @@ def test_option_chain_normalizes_ce_and_pe_rows() -> None:
                     "ltp": 95.55,
                     "oi": 10868260,
                     "oich": 7669610,
+                    "prev_oi": 4390300,
                     "volume": 110302985,
                     "bid": 95.0,
                     "ask": 95.05,

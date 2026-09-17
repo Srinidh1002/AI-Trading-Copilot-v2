@@ -10,6 +10,7 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 
+from services.core.premarket_state_builder_v2 import build_premarket_state_v2
 from target_focused_bot import (
     EconomicCalendarEngine,
     EnhancedVIX,
@@ -219,6 +220,77 @@ class ProviderInjectedUnifiedTradingBotV2(UnifiedTradingBot):
             self._provider_runtime.streaming,
             subscription_id,
         )
+
+    def _build_premarket_backfill(self):
+        """Build canonical premarket evidence after an inherited early WAIT.
+
+        The base analysis historically returns before its existing canonical
+        premarket block when weighted-stock evidence is incomplete. This helper
+        is observation/data plumbing only: it does not change that WAIT decision
+        or any scoring threshold.
+        """
+
+        def _safe_fetch(engine):
+            if engine is None or not hasattr(engine, "fetch"):
+                return {}
+            try:
+                value = engine.fetch()
+                return value if isinstance(value, dict) else {}
+            except Exception:
+                return {}
+
+        previous_day = _safe_fetch(getattr(self, "prev_day_engine", None))
+        external = _safe_fetch(getattr(self, "external_intel", None))
+        vix = _safe_fetch(getattr(self, "vix_engine", None))
+        fii_dii = _safe_fetch(getattr(self, "fii_dii_engine", None))
+
+        event = {}
+        calendar = getattr(self, "calendar_engine", None)
+        if calendar is not None and hasattr(calendar, "minutes_to_next_high_impact"):
+            try:
+                value = calendar.minutes_to_next_high_impact(10)
+                if isinstance(value, dict):
+                    event = value
+            except Exception:
+                event = {}
+
+        session_open = (
+            getattr(self, "_day_open_value", None)
+            if getattr(self, "_day_open_status", None) == "OK"
+            else None
+        )
+
+        try:
+            state = build_premarket_state_v2(
+                market_symbol=self.market,
+                generated_at=datetime.now().astimezone(),
+                previous_day_payload=previous_day,
+                session_open=session_open,
+                external_payload=external,
+                vix_payload=vix,
+                fii_dii_payload=fii_dii,
+                event_payload=event,
+                event_source_authoritative=False,
+            )
+        except Exception:
+            return None
+
+        print(
+            "[P8B.2] PremarketV2 backfill "
+            f"prev={state.previous_session_status} "
+            f"global={state.global_risk.evidence_status} "
+            f"vix={state.volatility.evidence_status} "
+            f"flow={state.institutional_flow.evidence_status} "
+            f"event={state.event_risk.evidence_status}"
+        )
+        return state
+
+    def get_enhanced_sentiment(self, spot, options):
+        """Preserve inherited decisions while guaranteeing premarket observability."""
+        result = super().get_enhanced_sentiment(spot, options)
+        if getattr(self, "_last_premarket_state", None) is None:
+            self._last_premarket_state = self._build_premarket_backfill()
+        return result
 
     def get_expiry(self):
         """Use the production FYERS resolver as expiry tradability authority."""
