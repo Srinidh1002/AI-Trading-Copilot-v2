@@ -1,12 +1,9 @@
 """Provider-injected UnifiedTradingBot path for FYERS data-only operation.
 
-F12 deliberately leaves target_focused_bot.py unchanged. This subclass replaces
-only provider startup/reconnect/stream ownership. Strategy, risk, PAPER lifecycle,
-certification and decision code remain inherited byte-for-byte.
-
-The legacy OptionChainEngine is intentionally NOT initialized here. F13 must wire
-the native FYERS option-chain service so a chain batch cannot fan out into dozens
-of per-contract depth calls.
+The base target_focused_bot.py remains unchanged. This subclass replaces only
+provider startup/reconnect/stream ownership and, when supplied, the option-chain
+reader. Strategy, risk, PAPER lifecycle, certification and decision code remain
+inherited.
 """
 from __future__ import annotations
 
@@ -70,16 +67,26 @@ class ProviderInjectedUnifiedTradingBotV2(UnifiedTradingBot):
         *,
         provider_runtime,
         legacy_data_api,
+        native_option_chain_engine=None,
     ) -> None:
         super().__init__(market)
-        self._validate_provider_boundary(provider_runtime, legacy_data_api)
+        self._validate_provider_boundary(
+            provider_runtime,
+            legacy_data_api,
+            native_option_chain_engine,
+        )
         self._provider_runtime = provider_runtime
+        self._native_option_chain_engine = native_option_chain_engine
         self.obj = legacy_data_api
         self._provider_subscription_id = None
-        self.provider_option_chain_status = "F13_NATIVE_OPTION_CHAIN_REQUIRED"
+        self.provider_option_chain_status = (
+            "READY_NATIVE_FYERS"
+            if native_option_chain_engine is not None
+            else "F13_NATIVE_OPTION_CHAIN_REQUIRED"
+        )
 
     @staticmethod
-    def _validate_provider_boundary(runtime, data_api) -> None:
+    def _validate_provider_boundary(runtime, data_api, option_chain_engine=None) -> None:
         if getattr(runtime, "provider", None) != "FYERS":
             raise ProviderInjectedBotError("FYERS_RUNTIME_REQUIRED")
         if getattr(runtime, "data_only", None) is not True:
@@ -94,6 +101,13 @@ class ProviderInjectedUnifiedTradingBotV2(UnifiedTradingBot):
             raise ProviderInjectedBotError("DATA_API_ORDER_CAPABILITY_PROHIBITED")
         if getattr(data_api, "automatic_fallback_allowed", None) is not False:
             raise ProviderInjectedBotError("DATA_API_FALLBACK_PROHIBITED")
+        if option_chain_engine is not None:
+            if getattr(option_chain_engine, "data_only", None) is not True:
+                raise ProviderInjectedBotError("OPTION_CHAIN_NOT_DATA_ONLY")
+            if getattr(option_chain_engine, "order_capability_allowed", None) is not False:
+                raise ProviderInjectedBotError("OPTION_CHAIN_ORDER_CAPABILITY_PROHIBITED")
+            if getattr(option_chain_engine, "automatic_fallback_allowed", None) is not False:
+                raise ProviderInjectedBotError("OPTION_CHAIN_FALLBACK_PROHIBITED")
 
     def _initialize_provider_engines(self) -> None:
         """Initialize existing readers against the injected FYERS data API."""
@@ -132,9 +146,13 @@ class ProviderInjectedUnifiedTradingBotV2(UnifiedTradingBot):
                 rate_limiter=self.rate_limiter,
             )
 
-        # Deliberately fail closed until F13 native option-chain integration.
-        self.option_chain_engine = None
-        self.provider_option_chain_status = "F13_NATIVE_OPTION_CHAIN_REQUIRED"
+        native_chain = getattr(self, "_native_option_chain_engine", None)
+        if native_chain is not None:
+            self.option_chain_engine = native_chain
+            self.provider_option_chain_status = "READY_NATIVE_FYERS"
+        else:
+            self.option_chain_engine = None
+            self.provider_option_chain_status = "F13_NATIVE_OPTION_CHAIN_REQUIRED"
 
     def connect_with_retry(self, max_retries=5, retry_delay=30):
         """Provider-safe startup; never enters the inherited Angel auth path."""
@@ -163,7 +181,6 @@ class ProviderInjectedUnifiedTradingBotV2(UnifiedTradingBot):
         if self.check_connection():
             return True
         self.is_connected = False
-        # Safe because this override never constructs SmartConnect.
         return self.connect_with_retry(max_retries=3, retry_delay=10)
 
     def _start_websocket(self):
@@ -202,6 +219,95 @@ class ProviderInjectedUnifiedTradingBotV2(UnifiedTradingBot):
             self._provider_runtime.streaming,
             subscription_id,
         )
+
+    def get_expiry(self):
+        """Use the production FYERS resolver as expiry tradability authority."""
+        if getattr(self, "_native_option_chain_engine", None) is None:
+            return super().get_expiry()
+
+        candidates: list[tuple[datetime, str, dict]] = []
+        for inst in self.instruments:
+            if not isinstance(inst, dict):
+                continue
+            if inst.get("type") not in {"CE", "PE"}:
+                continue
+            expiry_text = str(inst.get("expiry") or "").strip().upper()
+            try:
+                expiry_dt = datetime.strptime(expiry_text, "%d%b%Y")
+                strike = float(inst.get("strike"))
+            except (TypeError, ValueError):
+                continue
+            if strike <= 0:
+                continue
+            candidates.append((expiry_dt, expiry_text, inst))
+
+        candidates.sort(key=lambda item: item[0])
+        seen = set()
+        now = datetime.now(timezone.utc)
+        for expiry_dt, expiry_text, representative in candidates:
+            if expiry_text in seen:
+                continue
+            seen.add(expiry_text)
+            try:
+                self._provider_runtime.resolver.resolve(
+                    market_symbol=self.market,
+                    instrument_type="OPTION",
+                    as_of=now,
+                    expiry=expiry_dt.date(),
+                    strike=float(representative["strike"]),
+                    option_type=str(representative["type"]),
+                )
+            except Exception:
+                continue
+            print(f"  Expiry: {expiry_text}")
+            print("  EXPIRY_SELECTION_SOURCE: FYERS_PRODUCTION_RESOLVER")
+            return expiry_text
+
+        print("  EXPIRY_SELECTION: EVIDENCE_UNAVAILABLE")
+        return None
+
+    def get_options(self, spot, expiry):
+        """Read the initial option snapshot from the native FYERS chain cache."""
+        native_chain = getattr(self, "_native_option_chain_engine", None)
+        if native_chain is None:
+            return super().get_options(spot, expiry)
+
+        atm = round(spot / self.strike_interval) * self.strike_interval
+        print(f"Spot: {spot}")
+        print(f"ATM: {atm}")
+        print(f"Expiry: {expiry}")
+        if not expiry:
+            self._last_chain = None
+            return [], atm
+
+        chain = native_chain.fetch(
+            expiry,
+            atm,
+            self.instruments,
+            strike_range=self.strike_interval * 3,
+        )
+        self._last_chain = chain
+        if not chain or chain.get("status") != "OK":
+            reason = chain.get("reason") if isinstance(chain, dict) else "UNKNOWN"
+            print(f"  Native chain unavailable: {reason}")
+            return [], atm
+
+        options = []
+        for opt_type, key in (("CE", "ce_data"), ("PE", "pe_data")):
+            pool = chain.get(key) or {}
+            for strike in sorted(pool):
+                item = dict(pool[strike])
+                ltp = float(item.get("ltp") or 0)
+                if ltp <= 0:
+                    continue
+                options.append(item)
+                print(f"  {opt_type} {strike}: ₹{ltp:.2f}")
+
+        options.sort(key=lambda item: (float(item.get("strike") or 0), item.get("type")))
+        print(f"Total options found: {len(options)}")
+        print("OPTION_CHAIN_SOURCE: FYERS_NATIVE")
+        print("OPTION_CHAIN_DEPTH_FANOUT: 0")
+        return options, atm
 
     def close_provider_subscription(self) -> None:
         if self.ws_feed is not None and hasattr(self.ws_feed, "close"):
