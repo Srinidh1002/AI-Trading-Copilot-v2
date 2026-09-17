@@ -5,8 +5,9 @@ Offline. Deterministic. No auth, no network, no order APIs.
 Run:  pytest -q tests/test_f8_fyers_five_market_resolver_v2.py
 """
 from __future__ import annotations
+import unittest
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -89,6 +90,15 @@ NSE_FO_ROWS = [
      "instrument_type": "OPT", "underlying_symbol": "NIFTY",
      "expiry": "2026-09-30", "strike": "25000", "option_type": "PE",
      "fyToken": "NP1", "lot_size": "50", "tick_size": "0.05"},
+    # F8R4 same-day expiry (2026-09-17)
+    {"symbol": "NSE:NIFTY26SEP1725000CE", "exch": "NSE", "segment": "NSE_FO",
+     "instrument_type": "OPT", "underlying_symbol": "NIFTY",
+     "expiry": "2026-09-17", "strike": "25000", "option_type": "CE",
+     "fyToken": "NS17C", "lot_size": "50", "tick_size": "0.05"},
+    {"symbol": "NSE:NIFTY26SEP1725000PE", "exch": "NSE", "segment": "NSE_FO",
+     "instrument_type": "OPT", "underlying_symbol": "NIFTY",
+     "expiry": "2026-09-17", "strike": "25000", "option_type": "PE",
+     "fyToken": "NS17P", "lot_size": "50", "tick_size": "0.05"},
 ]
 
 # BSE SENSEX futures deliberately have blank optType - must still resolve.
@@ -105,6 +115,15 @@ BSE_FO_ROWS = [
      "instrument_type": "OPT", "underlying_symbol": "SENSEX",
      "expiry": "2026-09-30", "strike": "74000", "option_type": "PE",
      "fyToken": "SP1", "lot_size": "20", "tick_size": "0.05"},
+    # F8R4 same-day expiry (2026-09-17)
+    {"symbol": "BSE:SENSEX26SEP1774000CE", "exch": "BSE", "segment": "BSE_FO",
+     "instrument_type": "OPT", "underlying_symbol": "SENSEX",
+     "expiry": "2026-09-17", "strike": "74000", "option_type": "CE",
+     "fyToken": "SS17C", "lot_size": "20", "tick_size": "0.05"},
+    {"symbol": "BSE:SENSEX26SEP1774000PE", "exch": "BSE", "segment": "BSE_FO",
+     "instrument_type": "OPT", "underlying_symbol": "SENSEX",
+     "expiry": "2026-09-17", "strike": "74000", "option_type": "PE",
+     "fyToken": "SS17P", "lot_size": "20", "tick_size": "0.05"},
 ]
 
 # MCX master rows: futures without optType at all. Must still classify.
@@ -524,3 +543,175 @@ class TestContractAndSafety:
             as_of=_fixed_as_of(),
         )
         assert r["provider_token"] == "C1"
+
+
+class TestSameDayExpiryValidity(unittest.TestCase):
+    """F8R4 - same-day expiry eligibility must be timestamp-aware."""
+
+    IST = timezone(timedelta(hours=5, minutes=30))
+
+    def _resolve(self, market_symbol, instrument_type, as_of, **kwargs):
+        return _resolver().resolve(
+            market_symbol=market_symbol,
+            instrument_type=instrument_type,
+            as_of=as_of,
+            **kwargs,
+        )
+
+    def test_01_sensex_same_day_option_pre_close_eligible(self):
+        as_of = datetime(2026, 9, 17, 10, 0, tzinfo=self.IST)
+        r = self._resolve(
+            "SENSEX", "OPTION", as_of,
+            expiry=date(2026, 9, 17), strike=74000.0, option_type="CE",
+        )
+        self.assertEqual(r["provider_symbol"], "BSE:SENSEX26SEP1774000CE")
+        self.assertEqual(r["expiry"], "2026-09-17")
+        self.assertIs(r["data_only"], True)
+        self.assertEqual(r["execution_mode"], "PAPER")
+        self.assertIs(r["live_execution_eligible"], False)
+
+    def test_02a_sensex_same_day_option_post_close_rejected(self):
+        as_of = datetime(2026, 9, 17, 16, 0, tzinfo=self.IST)
+        with self.assertRaises(FyersResolutionError):
+            self._resolve(
+                "SENSEX", "OPTION", as_of,
+                expiry=date(2026, 9, 17), strike=74000.0, option_type="CE",
+            )
+
+    def test_02b_sensex_next_expiry_option_post_close_resolvable(self):
+        as_of = datetime(2026, 9, 17, 16, 0, tzinfo=self.IST)
+        r = self._resolve(
+            "SENSEX", "OPTION", as_of,
+            expiry=date(2026, 9, 30), strike=74000.0, option_type="CE",
+        )
+        self.assertEqual(r["provider_symbol"], "BSE:SENSEX26SEP74000CE")
+
+    def test_03_nifty_same_day_option_pre_close_eligible(self):
+        as_of = datetime(2026, 9, 17, 10, 0, tzinfo=self.IST)
+        r = self._resolve(
+            "NIFTY", "OPTION", as_of,
+            expiry=date(2026, 9, 17), strike=25000.0, option_type="CE",
+        )
+        self.assertEqual(r["provider_symbol"], "NSE:NIFTY26SEP1725000CE")
+        self.assertEqual(r["expiry"], "2026-09-17")
+
+    def test_04_nifty_same_day_option_post_close_rejected(self):
+        as_of = datetime(2026, 9, 17, 16, 0, tzinfo=self.IST)
+        with self.assertRaises(FyersResolutionError):
+            self._resolve(
+                "NIFTY", "OPTION", as_of,
+                expiry=date(2026, 9, 17), strike=25000.0, option_type="CE",
+            )
+
+    def test_05_same_day_future_pre_close_valid(self):
+        ist = self.IST
+        fc = {"NSE:NIFTY50-INDEX": {"s": "ok", "data": [
+            {"symbol": "NSE:NIFTY26SEP17FUT",
+             "expiry": int(datetime(2026, 9, 17, 0, 0, tzinfo=ist).timestamp()),
+             "fyToken": "NF1", "lp": 25000},
+            {"symbol": "NSE:NIFTY26SEP29FUT",
+             "expiry": int(datetime(2026, 9, 29, 0, 0, tzinfo=ist).timestamp()),
+             "fyToken": "NF2", "lp": 25100},
+        ]}}
+        as_of = datetime(2026, 9, 17, 10, 0, tzinfo=ist)
+        r = _resolver(fc).resolve(
+            market_symbol="NIFTY", instrument_type="FUTURE", as_of=as_of,
+        )
+        self.assertEqual(r["provider_symbol"], "NSE:NIFTY26SEP17FUT")
+        self.assertEqual(r["expiry"], "2026-09-17")
+
+    def test_06_same_day_future_post_close_falls_through(self):
+        ist = self.IST
+        fc = {"NSE:NIFTY50-INDEX": {"s": "ok", "data": [
+            {"symbol": "NSE:NIFTY26SEP17FUT",
+             "expiry": int(datetime(2026, 9, 17, 0, 0, tzinfo=ist).timestamp()),
+             "fyToken": "NF1", "lp": 25000},
+            {"symbol": "NSE:NIFTY26SEP29FUT",
+             "expiry": int(datetime(2026, 9, 29, 0, 0, tzinfo=ist).timestamp()),
+             "fyToken": "NF2", "lp": 25100},
+        ]}}
+        as_of = datetime(2026, 9, 17, 16, 0, tzinfo=ist)
+        r = _resolver(fc).resolve(
+            market_symbol="NIFTY", instrument_type="FUTURE", as_of=as_of,
+        )
+        self.assertEqual(r["provider_symbol"], "NSE:NIFTY26SEP29FUT")
+        self.assertEqual(r["expiry"], "2026-09-29")
+
+    def test_07_previous_date_expiry_rejected(self):
+        as_of = datetime(2026, 9, 17, 10, 0, tzinfo=self.IST)
+        with self.assertRaises(FyersResolutionError):
+            self._resolve(
+                "SENSEX", "OPTION", as_of,
+                expiry=date(2026, 9, 16), strike=74000.0, option_type="CE",
+            )
+
+    def test_08_future_expiry_unchanged(self):
+        as_of = datetime(2026, 9, 17, 10, 0, tzinfo=self.IST)
+        r = self._resolve(
+            "SENSEX", "OPTION", as_of,
+            expiry=date(2026, 9, 30), strike=74000.0, option_type="CE",
+        )
+        self.assertEqual(r["provider_symbol"], "BSE:SENSEX26SEP74000CE")
+
+    def test_09_utc_pre_close_matches_ist_pre_close(self):
+        ist_dt = datetime(2026, 9, 17, 10, 0, tzinfo=self.IST)
+        utc_dt = ist_dt.astimezone(timezone.utc)
+        r = self._resolve(
+            "SENSEX", "OPTION", utc_dt,
+            expiry=date(2026, 9, 17), strike=74000.0, option_type="CE",
+        )
+        self.assertEqual(r["expiry"], "2026-09-17")
+
+    def test_10_utc_post_close_matches_ist_post_close(self):
+        ist_dt = datetime(2026, 9, 17, 16, 0, tzinfo=self.IST)
+        utc_dt = ist_dt.astimezone(timezone.utc)
+        with self.assertRaises(FyersResolutionError):
+            self._resolve(
+                "SENSEX", "OPTION", utc_dt,
+                expiry=date(2026, 9, 17), strike=74000.0, option_type="CE",
+            )
+
+    def test_11_naive_datetime_fails_closed(self):
+        with self.assertRaises(FyersResolutionError):
+            self._resolve(
+                "SENSEX", "OPTION", datetime(2026, 9, 17, 10, 0),
+                expiry=date(2026, 9, 17), strike=74000.0, option_type="CE",
+            )
+
+    def test_13a_mcx_same_day_future_fails_closed_at_resolver(self):
+        store = _FakeMasterStore({
+            "NSE_CM": NSE_CM_ROWS, "NSE_FO": NSE_FO_ROWS,
+            "BSE_CM": BSE_CM_ROWS, "BSE_FO": BSE_FO_ROWS,
+            "MCX_COM": MCX_COM_ROWS + [{
+                "symbol": "MCX:CRUDEOILM26SEP17FUT",
+                "exch": "MCX", "segment": "MCX_COM",
+                "instrument_type": "FUT", "underlying_symbol": "CRUDEOILM",
+                "expiry": "2026-09-17", "fyToken": "CX17",
+                "lot_size": "10", "tick_size": "0.10",
+            }],
+        })
+        r = FyersFiveMarketInstrumentResolverV2(
+            data_client=_FakeFyersClient(),
+            master_store=store,
+            clock=_clock_fixed(datetime(2026, 9, 17, 5, 0, tzinfo=timezone.utc)),
+        )
+        result = r.resolve(
+            market_symbol="CRUDEOILM", instrument_type="FUTURE",
+            as_of=datetime(2026, 9, 17, 5, 0, tzinfo=timezone.utc),
+        )
+        self.assertNotEqual(result["provider_symbol"],
+                            "MCX:CRUDEOILM26SEP17FUT")
+        self.assertEqual(result["provider_symbol"],
+                         "MCX:CRUDEOILM26SEPFUT")
+        self.assertEqual(result["expiry"], "2026-09-30")
+
+    def test_13b_mcx_helper_fails_closed_for_same_day(self):
+        from services.broker.fyers_five_market_resolver_v2 import (
+            _is_expiry_tradable,
+        )
+        as_of = datetime(2026, 9, 17, 10, 0, tzinfo=timezone.utc)
+        for mk in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
+            self.assertFalse(
+                _is_expiry_tradable(date(2026, 9, 17), as_of, mk),
+                "MCX same-day must fail closed for " + mk,
+            )

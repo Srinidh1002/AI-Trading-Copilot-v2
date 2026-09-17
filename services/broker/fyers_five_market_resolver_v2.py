@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Mapping
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from services.broker.fyers_symbol_master_v2 import (
     FyersMasterRecordV2,
@@ -75,6 +75,49 @@ def _unix_to_date(ts):
         return datetime.fromtimestamp(n, tz=ist).date()
     except (OSError, ValueError, OverflowError):
         return None
+
+
+_IST_TZ = timezone(timedelta(hours=5, minutes=30))
+_NSE_BSE_DERIVATIVE_CLOSE_IST = time(15, 30)
+
+
+def _is_expiry_tradable(expiry, as_of_dt, market_symbol):
+    """F8R4 - timestamp-aware expiry validity.
+
+    Same-day expiry rules:
+      - NIFTY / SENSEX: tradable until NSE/BSE derivative session close
+        (15:30 IST) on the expiry date.
+      - MCX: FAIL CLOSED for same-day expiry. No authoritative
+        expiry-specific session timing exists in repository evidence, so
+        a same-day MCX contract is conservatively treated as expired.
+      - Unknown market: FAIL CLOSED for same-day.
+
+    Future-dated expiries remain tradable regardless of market.
+    Past-dated expiries are always expired.
+    Naive as_of_dt is rejected (defensive; resolve() already validates).
+    """
+    if not isinstance(expiry, date):
+        return False
+    if not isinstance(as_of_dt, datetime):
+        return False
+    if as_of_dt.tzinfo is None or as_of_dt.utcoffset() is None:
+        return False
+
+    ist_dt = as_of_dt.astimezone(_IST_TZ)
+    as_of_date = ist_dt.date()
+
+    if expiry > as_of_date:
+        return True
+    if expiry < as_of_date:
+        return False
+
+    mk = (market_symbol or "").upper()
+    if mk in ("NIFTY", "SENSEX"):
+        close_dt = datetime.combine(
+            expiry, _NSE_BSE_DERIVATIVE_CLOSE_IST, tzinfo=_IST_TZ
+        )
+        return ist_dt < close_dt
+    return False
 
 
 def _coerce_date(v) -> date | None:
@@ -268,7 +311,7 @@ class FyersFiveMarketInstrumentResolverV2:
             expiry = _coerce_date(row.get("expiry") or row.get("expiry_date"))
             if not symbol or not expiry:
                 continue
-            if expiry <= as_of_dt.date():
+            if not _is_expiry_tradable(expiry, as_of_dt, market.symbol):
                 continue
             if requested_expiry is not None and expiry != requested_expiry:
                 continue
@@ -320,7 +363,7 @@ class FyersFiveMarketInstrumentResolverV2:
                 if not r.symbol.upper().endswith(market.symbol + "FUT") and \
                    not r.symbol.upper().startswith(market.symbol):
                     continue
-            if r.expiry is None or r.expiry <= as_of_dt.date():
+            if r.expiry is None or not _is_expiry_tradable(r.expiry, as_of_dt, market.symbol):
                 continue
             if requested_expiry is not None and r.expiry != requested_expiry:
                 continue
@@ -359,9 +402,9 @@ class FyersFiveMarketInstrumentResolverV2:
     def _resolve_option(self, market, as_of_dt, expiry, strike, option_type):
         if not isinstance(expiry, date):
             raise FyersResolutionError("OPTION expiry must be a date")
-        if expiry <= as_of_dt.date():
+        if not _is_expiry_tradable(expiry, as_of_dt, market.symbol):
             raise FyersResolutionError(
-                f"OPTION expiry {expiry} is not in the future"
+                f"OPTION expiry {expiry} is not tradable at as_of"
             )
         ot = option_type.upper().strip()
         if ot not in _VALID_OPTION_TYPES:
