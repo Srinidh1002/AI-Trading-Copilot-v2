@@ -258,6 +258,12 @@ def test_two_market_gate_requires_oi_and_valid_spread(monkeypatch):
     result = observe_market_v2(FakeBot("NIFTY"))
 
     assert has_complete_canary_market_evidence(replace(result, pcr_oi=None)) is False
+    assert has_complete_canary_market_evidence(replace(result, expiry=None)) is False
+    assert has_complete_canary_market_evidence(replace(result, expiry=" ")) is False
+    assert has_complete_canary_market_evidence(replace(result, atm=0)) is False
+    assert has_complete_canary_market_evidence(
+        replace(result, provider_mode="ANGEL_SMARTAPI")
+    ) is False
     assert has_complete_canary_market_evidence(
         replace(result, executable_quote={"bid": 101.0, "ask": 99.0})
     ) is False
