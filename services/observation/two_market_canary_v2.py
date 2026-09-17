@@ -78,7 +78,11 @@ def has_complete_canary_market_evidence(result: CanaryMarketResultV2) -> bool:
         return False
     return bool(
         result.connected
+        and result.provider_mode == "FYERS_V2_INJECTED"
         and result.spot > 0
+        and isinstance(result.expiry, str)
+        and bool(result.expiry.strip())
+        and result.atm > 0
         and result.chain_status == "OK"
         and result.option_count > 0
         and result.chain_request_count == 1
