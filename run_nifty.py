@@ -12,6 +12,17 @@ from datetime import datetime
 from pathlib import Path
 
 
+# Windows redirected stdout/stderr may otherwise inherit cp1252.
+# Configure UTF-8 before importing modules that initialize Colorama.
+for _stream in (sys.stdout, sys.stderr):
+    _reconfigure = getattr(_stream, "reconfigure", None)
+    if callable(_reconfigure):
+        _reconfigure(
+            encoding="utf-8",
+            errors="replace",
+        )
+
+
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
 
