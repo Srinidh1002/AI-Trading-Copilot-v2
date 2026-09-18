@@ -12,14 +12,13 @@ Design:
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from mcx.mcx_contracts import PRODUCTS
 from services.options.fyers_option_chain_provider_v2 import (
     FyersOptionChainProviderV2,
 )
-
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -48,30 +47,6 @@ def _integer(value, default=0):
         return default
 
 
-def _expiry_timestamp(value):
-    if not isinstance(value, str) or not value.strip():
-        raise MCXFyersNativeChainError(
-            "option expiry is required"
-        )
-
-    try:
-        expiry = date.fromisoformat(
-            value.strip()[:10]
-        )
-    except ValueError as exc:
-        raise MCXFyersNativeChainError(
-            "option expiry must be ISO date"
-        ) from exc
-
-    dt = datetime.combine(
-        expiry,
-        time(0, 0),
-        tzinfo=IST,
-    )
-
-    return int(dt.timestamp())
-
-
 class MCXFyersNativeChainV2:
     """Rate-safe native FYERS MCX chain builder."""
 
@@ -91,33 +66,20 @@ class MCXFyersNativeChainV2:
         clock=None,
     ):
         if data_client is None:
-            raise ValueError(
-                "data_client is required"
-            )
+            raise ValueError("data_client is required")
 
         if identity is None:
-            raise ValueError(
-                "identity is required"
-            )
+            raise ValueError("identity is required")
 
         if data_api is None:
-            raise ValueError(
-                "data_api is required"
-            )
+            raise ValueError("data_api is required")
 
-        self._provider = (
-            FyersOptionChainProviderV2(
-                data_client
-            )
-        )
+        self._provider = FyersOptionChainProviderV2(data_client)
 
         self._identity = identity
         self._data = data_api
 
-        self._clock = (
-            clock
-            or (lambda: datetime.now(IST))
-        )
+        self._clock = clock or (lambda: datetime.now(IST))
 
     def build(
         self,
@@ -126,40 +88,25 @@ class MCXFyersNativeChainV2:
         window_steps=20,
         as_of=None,
     ):
-        product = (
-            str(product or "")
-            .upper()
-            .strip()
-        )
+        product = str(product or "").upper().strip()
 
         if product not in SUPPORTED_PRODUCTS:
-            raise MCXFyersNativeChainError(
-                f"unsupported product: {product!r}"
-            )
+            raise MCXFyersNativeChainError(f"unsupported product: {product!r}")
 
         if product not in PRODUCTS:
-            raise MCXFyersNativeChainError(
-                f"product authority missing: {product}"
-            )
+            raise MCXFyersNativeChainError(f"product authority missing: {product}")
 
-        if (
-            not isinstance(window_steps, int)
-            or window_steps <= 0
-        ):
-            raise MCXFyersNativeChainError(
-                "window_steps must be positive"
-            )
+        if not isinstance(window_steps, int) or window_steps <= 0:
+            raise MCXFyersNativeChainError("window_steps must be positive")
 
         kwargs = {}
 
         if as_of is not None:
             kwargs["as_of"] = as_of
 
-        identity = (
-            self._identity.resolve_active(
-                product,
-                **kwargs,
-            )
+        identity = self._identity.resolve_active(
+            product,
+            **kwargs,
         )
 
         if identity.get("status") != "OK":
@@ -176,13 +123,9 @@ class MCXFyersNativeChainV2:
 
         future = identity.get("futures") or {}
 
-        future_symbol = str(
-            future.get("symbol") or ""
-        ).strip()
+        future_symbol = str(future.get("symbol") or "").strip()
 
-        future_token = str(
-            future.get("token") or ""
-        ).strip()
+        future_token = str(future.get("token") or "").strip()
 
         if not future_symbol or not future_token:
             return {
@@ -202,24 +145,16 @@ class MCXFyersNativeChainV2:
         except Exception as exc:
             return {
                 "status": "FUTURE_QUOTE_UNAVAILABLE",
-                "reason": (
-                    f"{type(exc).__name__}: {exc}"
-                ),
+                "reason": (f"{type(exc).__name__}: {exc}"),
                 "provider": "FYERS",
                 "product": product,
                 "request_count": 0,
                 "per_contract_depth_requests": 0,
             }
 
-        quote_data = (
-            quote.get("data", {})
-            if isinstance(quote, dict)
-            else {}
-        )
+        quote_data = quote.get("data", {}) if isinstance(quote, dict) else {}
 
-        future_ltp = _number(
-            quote_data.get("ltp")
-        )
+        future_ltp = _number(quote_data.get("ltp"))
 
         if future_ltp <= 0:
             return {
@@ -230,50 +165,27 @@ class MCXFyersNativeChainV2:
                 "per_contract_depth_requests": 0,
             }
 
-        step = float(
-            PRODUCTS[product][
-                "strike_interval"
-            ]
-        )
+        step = float(PRODUCTS[product]["strike_interval"])
 
-        atm = round(
-            future_ltp / step
-        ) * step
+        atm = round(future_ltp / step) * step
 
-        expiry = identity.get(
-            "option_expiry"
-        )
+        expiry = identity.get("option_expiry")
 
-        expiry_ts = _expiry_timestamp(
-            expiry
-        )
-
-        # F8's canonical MCX underlying shape.
-        underlying_symbol = (
-            f"MCX:{product}"
-        )
+        # MCX commodity options are bound to a dated futures contract.
+        # The bridge resolves that futures contract from the selected
+        # option expiry; do not reconstruct an undated MCX root here.
+        underlying_symbol = future_symbol
 
         try:
-            native = (
-                self._provider
-                .get_option_chain(
-                    underlying_symbol=(
-                        underlying_symbol
-                    ),
-                    strike_count=(
-                        window_steps
-                    ),
-                    expiry_timestamp=(
-                        expiry_ts
-                    ),
-                )
+            native = self._provider.get_option_chain(
+                underlying_symbol=(underlying_symbol),
+                strike_count=(window_steps),
+                expected_expiry=(expiry),
             )
         except Exception as exc:
             return {
                 "status": "OPTION_CHAIN_UNAVAILABLE",
-                "reason": (
-                    f"{type(exc).__name__}: {exc}"
-                ),
+                "reason": (f"{type(exc).__name__}: {exc}"),
                 "provider": "FYERS",
                 "product": product,
                 "request_count": 0,
@@ -282,22 +194,34 @@ class MCXFyersNativeChainV2:
 
         if (
             native.get("request_count") != 1
-            or native.get(
-                "per_contract_depth_requests"
-            ) != 0
+            or native.get("per_contract_depth_requests") != 0
         ):
             return {
                 "status": "PROVIDER_REQUEST_CONTRACT_INVALID",
                 "provider": "FYERS",
                 "product": product,
-                "request_count": native.get(
-                    "request_count"
-                ),
+                "request_count": native.get("request_count"),
                 "per_contract_depth_requests": (
-                    native.get(
-                        "per_contract_depth_requests"
-                    )
+                    native.get("per_contract_depth_requests")
                 ),
+            }
+
+        provider_expiry_date = str(native.get("provider_expiry_date") or "").strip()
+
+        provider_expiry_timestamp = native.get("provider_expiry_timestamp")
+
+        if provider_expiry_date != str(
+            expiry or ""
+        ).strip() or provider_expiry_timestamp in (
+            None,
+            "",
+        ):
+            return {
+                "status": ("PROVIDER_EXPIRY_AUTHORITY_UNAVAILABLE"),
+                "provider": "FYERS",
+                "product": product,
+                "request_count": 1,
+                "per_contract_depth_requests": 0,
             }
 
         calls = identity.get(
@@ -319,13 +243,9 @@ class MCXFyersNativeChainV2:
                 "per_contract_depth_requests": 0,
             }
 
-        low = atm - (
-            window_steps * step
-        )
+        low = atm - (window_steps * step)
 
-        high = atm + (
-            window_steps * step
-        )
+        high = atm + (window_steps * step)
 
         ce_data = {}
         pe_data = {}
@@ -349,19 +269,13 @@ class MCXFyersNativeChainV2:
             if strike < low or strike > high:
                 continue
 
-            option_type = str(
-                row.get("type") or ""
-            ).upper()
+            option_type = str(row.get("type") or "").upper()
 
             if option_type == "CE":
-                expected = calls.get(
-                    strike
-                )
+                expected = calls.get(strike)
                 target = ce_data
             elif option_type == "PE":
-                expected = puts.get(
-                    strike
-                )
+                expected = puts.get(strike)
                 target = pe_data
             else:
                 continue
@@ -371,53 +285,25 @@ class MCXFyersNativeChainV2:
                 continue
 
             expected_symbol = str(
-                expected.get(
-                    "provider_symbol"
-                )
-                or expected.get("symbol")
-                or ""
+                expected.get("provider_symbol") or expected.get("symbol") or ""
             ).strip()
 
-            provider_symbol = str(
-                row.get("symbol") or ""
-            ).strip()
+            provider_symbol = str(row.get("symbol") or "").strip()
 
-            if (
-                not expected_symbol
-                or provider_symbol
-                != expected_symbol
-            ):
+            if not expected_symbol or provider_symbol != expected_symbol:
                 identity_mismatch_count += 1
                 continue
 
             target[strike] = {
-                "symbol": expected[
-                    "symbol"
-                ],
-                "token": expected[
-                    "token"
-                ],
-                "provider_symbol": (
-                    provider_symbol
-                ),
-                "provider_token": (
-                    row.get("token")
-                ),
-                "ltp": _number(
-                    row.get("ltp")
-                ),
-                "oi": _integer(
-                    row.get("oi")
-                ),
-                "vol": _integer(
-                    row.get("volume")
-                ),
-                "bid": _number(
-                    row.get("bid")
-                ),
-                "ask": _number(
-                    row.get("ask")
-                ),
+                "symbol": expected["symbol"],
+                "token": expected["token"],
+                "provider_symbol": (provider_symbol),
+                "provider_token": (row.get("token")),
+                "ltp": _number(row.get("ltp")),
+                "oi": _integer(row.get("oi")),
+                "vol": _integer(row.get("volume")),
+                "bid": _number(row.get("bid")),
+                "ask": _number(row.get("ask")),
             }
 
         if not ce_data or not pe_data:
@@ -427,37 +313,23 @@ class MCXFyersNativeChainV2:
                 "product": product,
                 "request_count": 1,
                 "per_contract_depth_requests": 0,
-                "identity_mismatch_count": (
-                    identity_mismatch_count
-                ),
+                "identity_mismatch_count": (identity_mismatch_count),
             }
 
-        total_ce_oi = sum(
-            item["oi"]
-            for item
-            in ce_data.values()
-        )
+        total_ce_oi = sum(item["oi"] for item in ce_data.values())
 
-        total_pe_oi = sum(
-            item["oi"]
-            for item
-            in pe_data.values()
-        )
+        total_pe_oi = sum(item["oi"] for item in pe_data.values())
 
         pcr_oi = (
             round(
-                total_pe_oi
-                / total_ce_oi,
+                total_pe_oi / total_ce_oi,
                 4,
             )
             if total_ce_oi > 0
             else None
         )
 
-        all_strikes = sorted(
-            set(ce_data)
-            | set(pe_data)
-        )
+        all_strikes = sorted(set(ce_data) | set(pe_data))
 
         max_pain = None
 
@@ -467,27 +339,15 @@ class MCXFyersNativeChainV2:
             for test in all_strikes:
                 total = 0.0
 
-                for strike, item in (
-                    ce_data.items()
-                ):
+                for strike, item in ce_data.items():
                     if test > strike:
-                        total += (
-                            (test - strike)
-                            * item["oi"]
-                        )
+                        total += (test - strike) * item["oi"]
 
-                for strike, item in (
-                    pe_data.items()
-                ):
+                for strike, item in pe_data.items():
                     if test < strike:
-                        total += (
-                            (strike - test)
-                            * item["oi"]
-                        )
+                        total += (strike - test) * item["oi"]
 
-                pain.append(
-                    (test, total)
-                )
+                pain.append((test, total))
 
             if pain:
                 max_pain = min(
@@ -497,17 +357,13 @@ class MCXFyersNativeChainV2:
 
         top_ce = sorted(
             ce_data.items(),
-            key=lambda pair: (
-                pair[1]["oi"]
-            ),
+            key=lambda pair: pair[1]["oi"],
             reverse=True,
         )[:3]
 
         top_pe = sorted(
             pe_data.items(),
-            key=lambda pair: (
-                pair[1]["oi"]
-            ),
+            key=lambda pair: pair[1]["oi"],
             reverse=True,
         )[:3]
 
@@ -516,35 +372,23 @@ class MCXFyersNativeChainV2:
             "provider": "FYERS",
             "product": product,
             "expiry": expiry,
+            "provider_expiry_date": (provider_expiry_date),
+            "provider_expiry_timestamp": (provider_expiry_timestamp),
+            "option_chain_underlying": (underlying_symbol),
             "future": future_symbol,
-            "future_token": (
-                future_token
-            ),
+            "future_token": (future_token),
             "future_ltp": future_ltp,
             "atm": atm,
             "ce_data": ce_data,
             "pe_data": pe_data,
             "pcr_oi": pcr_oi,
             "max_pain": max_pain,
-            "resistance": [
-                strike
-                for strike, _
-                in top_ce
-            ],
-            "support": [
-                strike
-                for strike, _
-                in top_pe
-            ],
+            "resistance": [strike for strike, _ in top_ce],
+            "support": [strike for strike, _ in top_pe],
             "option_chain_request_count": 1,
             "future_quote_request_count": 1,
             "request_count": 1,
             "per_contract_depth_requests": 0,
-            "identity_mismatch_count": (
-                identity_mismatch_count
-            ),
-            "fetched_at": (
-                self._clock()
-                .isoformat()
-            ),
+            "identity_mismatch_count": (identity_mismatch_count),
+            "fetched_at": (self._clock().isoformat()),
         }

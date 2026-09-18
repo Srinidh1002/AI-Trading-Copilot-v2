@@ -180,6 +180,12 @@ class FakeClient:
         return {
             "s": "ok",
             "data": {
+                "expiryData": [
+                    {
+                        "date": "25-09-2026",
+                        "expiry": 1790274600,
+                    }
+                ],
                 "optionsChain": rows
             },
         }

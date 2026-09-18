@@ -16,18 +16,17 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
 
+from mcx.mcx_contracts import PRODUCTS
 from services.broker.fyers_data_compatibility_v2 import (
     FyersDataOnlyCompatibilityV2,
 )
 from services.broker.fyers_five_market_resolver_v2 import (
     FyersFiveMarketInstrumentResolverV2,
+    FyersResolutionError,
 )
 from services.broker.fyers_symbol_master_v2 import (
     FyersSymbolMasterStoreV2,
 )
-
-from mcx.mcx_contracts import PRODUCTS
-
 
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -63,22 +62,16 @@ def _aware_datetime(value, clock):
         )
 
     if not isinstance(value, datetime):
-        raise MCXFyersBridgeError(
-            "as_of must be date or datetime"
-        )
+        raise MCXFyersBridgeError("as_of must be date or datetime")
 
     if value.tzinfo is None or value.utcoffset() is None:
-        raise MCXFyersBridgeError(
-            "as_of datetime must be timezone-aware"
-        )
+        raise MCXFyersBridgeError("as_of datetime must be timezone-aware")
 
     return value
 
 
 def _belongs_to_product(record, product):
-    underlying = (
-        record.underlying_symbol or ""
-    ).upper()
+    underlying = (record.underlying_symbol or "").upper()
 
     symbol = record.symbol.upper()
 
@@ -98,16 +91,9 @@ def _legacy_option_record(record):
         "provider": "FYERS",
         "provider_symbol": record.symbol,
         "provider_token": record.provider_token,
-        "expiry": (
-            record.expiry.isoformat()
-            if record.expiry
-            else None
-        ),
+        "expiry": (record.expiry.isoformat() if record.expiry else None),
         # Existing mcx_chain divides its master strike by 100.
-        "strike": (
-            float(record.strike)
-            * LEGACY_CHAIN_STRIKE_SCALE
-        ),
+        "strike": (float(record.strike) * LEGACY_CHAIN_STRIKE_SCALE),
         "option_type": record.option_type,
         "lot_size": record.lot_size,
         "tick_size": record.tick_size,
@@ -132,17 +118,12 @@ class MCXFyersIdentityResolverV2:
             raise ValueError("data_client is required")
 
         self._clock = clock or _utc_now
-        self._store = (
-            master_store
-            or FyersSymbolMasterStoreV2()
-        )
+        self._store = master_store or FyersSymbolMasterStoreV2()
 
-        self._resolver = (
-            FyersFiveMarketInstrumentResolverV2(
-                data_client=data_client,
-                master_store=self._store,
-                clock=self._clock,
-            )
+        self._resolver = FyersFiveMarketInstrumentResolverV2(
+            data_client=data_client,
+            master_store=self._store,
+            clock=self._clock,
         )
 
     def resolve_active(
@@ -153,14 +134,10 @@ class MCXFyersIdentityResolverV2:
         product = str(product or "").upper().strip()
 
         if product not in SUPPORTED_MCX_FYERS_PRODUCTS:
-            raise MCXFyersBridgeError(
-                f"unsupported MCX FYERS product: {product!r}"
-            )
+            raise MCXFyersBridgeError(f"unsupported MCX FYERS product: {product!r}")
 
         if product not in PRODUCTS:
-            raise MCXFyersBridgeError(
-                f"product missing from MCX authority: {product}"
-            )
+            raise MCXFyersBridgeError(f"product missing from MCX authority: {product}")
 
         as_of_dt = _aware_datetime(
             as_of,
@@ -168,32 +145,20 @@ class MCXFyersIdentityResolverV2:
         )
 
         try:
-            future = self._resolver.resolve(
-                market_symbol=product,
-                instrument_type="FUTURE",
-                as_of=as_of_dt,
-            )
-
-            index = self._store.get_index(
-                "MCX_COM"
-            )
+            index = self._store.get_index("MCX_COM")
 
         except Exception as exc:
             return {
                 "product": product,
                 "status": "EVIDENCE_UNAVAILABLE_IDENTITY",
-                "reason": (
-                    f"{type(exc).__name__}: {exc}"
-                ),
+                "reason": (f"{type(exc).__name__}: {exc}"),
                 "futures": None,
                 "option_expiry": None,
                 "calls": {},
                 "puts": {},
             }
 
-        as_of_ist_date = (
-            as_of_dt.astimezone(IST).date()
-        )
+        as_of_ist_date = as_of_dt.astimezone(IST).date()
 
         # MCX same-day derivative expiry intentionally fails closed.
         options = [
@@ -221,35 +186,111 @@ class MCXFyersIdentityResolverV2:
                 "puts": {},
             }
 
-        nearest_expiry = min(
-            record.expiry
-            for record in options
+        nearest_expiry = min(record.expiry for record in options)
+
+        option_underlying_futures = [
+            record
+            for record in index.records
+            if record.instrument_kind == "FUTURE"
+            and _belongs_to_product(
+                record,
+                product,
+            )
+            and record.expiry is not None
+            and record.expiry > nearest_expiry
+        ]
+
+        if not option_underlying_futures:
+            return {
+                "product": product,
+                "status": "EVIDENCE_UNAVAILABLE_IDENTITY",
+                "reason": (
+                    f"NO_FUTURE_AFTER_OPTION_EXPIRY:{nearest_expiry.isoformat()}"
+                ),
+                "futures": None,
+                "option_expiry": None,
+                "calls": {},
+                "puts": {},
+            }
+
+        option_future_expiry = min(
+            record.expiry for record in option_underlying_futures
         )
 
-        nearest = [
+        option_future_records = [
             record
-            for record in options
-            if record.expiry == nearest_expiry
+            for record in option_underlying_futures
+            if record.expiry == option_future_expiry
         ]
+
+        option_future_symbols = {record.symbol for record in option_future_records}
+
+        if len(option_future_symbols) != 1:
+            return {
+                "product": product,
+                "status": "EVIDENCE_UNAVAILABLE_IDENTITY",
+                "reason": (
+                    "AMBIGUOUS_OPTION_UNDERLYING_FUTURE:"
+                    f"{option_future_expiry.isoformat()}"
+                ),
+                "futures": None,
+                "option_expiry": None,
+                "calls": {},
+                "puts": {},
+            }
+
+        try:
+            future = self._resolver.resolve(
+                market_symbol=product,
+                instrument_type="FUTURE",
+                as_of=as_of_dt,
+                expiry=option_future_expiry,
+            )
+
+        except FyersResolutionError as exc:
+            return {
+                "product": product,
+                "status": "EVIDENCE_UNAVAILABLE_IDENTITY",
+                "reason": (
+                    f"OPTION_UNDERLYING_FUTURE_RESOLUTION:{type(exc).__name__}: {exc}"
+                ),
+                "futures": None,
+                "option_expiry": None,
+                "calls": {},
+                "puts": {},
+            }
+
+        resolved_future_symbol = str(future.get("provider_symbol") or "").strip()
+
+        if (
+            not resolved_future_symbol
+            or resolved_future_symbol not in option_future_symbols
+        ):
+            return {
+                "product": product,
+                "status": "EVIDENCE_UNAVAILABLE_IDENTITY",
+                "reason": ("OPTION_UNDERLYING_FUTURE_MISMATCH"),
+                "futures": None,
+                "option_expiry": None,
+                "calls": {},
+                "puts": {},
+            }
+
+        nearest = [record for record in options if record.expiry == nearest_expiry]
 
         calls = {}
         puts = {}
 
         for record in nearest:
             strike = float(record.strike)
-            side = (
-                calls
-                if record.option_type == "CE"
-                else puts
-            )
+            side = calls if record.option_type == "CE" else puts
 
             if strike in side:
                 return {
                     "product": product,
                     "status": "EVIDENCE_UNAVAILABLE_IDENTITY",
                     "reason": (
-                        "AMBIGUOUS_OPTION_IDENTITY:"
-                        f"{record.option_type}:{strike}"
+                        f"AMBIGUOUS_OPTION_IDENTITY:{record.option_type}:{strike}"
                     ),
                     "futures": None,
                     "option_expiry": None,
@@ -257,9 +298,7 @@ class MCXFyersIdentityResolverV2:
                     "puts": {},
                 }
 
-            side[strike] = (
-                _legacy_option_record(record)
-            )
+            side[strike] = _legacy_option_record(record)
 
         if not calls or not puts:
             return {
@@ -277,17 +316,11 @@ class MCXFyersIdentityResolverV2:
             # Same opaque FYERS-symbol handle used by compatibility data calls.
             "token": future["provider_symbol"],
             "provider": "FYERS",
-            "provider_symbol": future[
-                "provider_symbol"
-            ],
-            "provider_token": future.get(
-                "provider_token"
-            ),
+            "provider_symbol": future["provider_symbol"],
+            "provider_token": future.get("provider_token"),
             "expiry": future.get("expiry"),
             "lot_size": future.get("lot_size"),
-            "tick_size": future.get(
-                "tick_size"
-            ),
+            "tick_size": future.get("tick_size"),
         }
 
         return {
@@ -295,9 +328,7 @@ class MCXFyersIdentityResolverV2:
             "as_of": as_of_dt.isoformat(),
             "provider": "FYERS",
             "futures": future_record,
-            "option_expiry": (
-                nearest_expiry.isoformat()
-            ),
+            "option_expiry": (nearest_expiry.isoformat()),
             "calls": calls,
             "puts": puts,
             "status": "OK",
@@ -310,9 +341,7 @@ class MCXFyersIdentityResolverV2:
         symboltoken,
     ):
         if str(exchange or "").upper() != "MCX":
-            raise MCXFyersBridgeError(
-                "MCX bridge rejects non-MCX exchange"
-            )
+            raise MCXFyersBridgeError("MCX bridge rejects non-MCX exchange")
 
         values = []
 
@@ -329,47 +358,31 @@ class MCXFyersIdentityResolverV2:
                 values.append(text)
 
         if not values:
-            raise MCXFyersBridgeError(
-                "provider-symbol handle is required"
-            )
+            raise MCXFyersBridgeError("provider-symbol handle is required")
 
         try:
-            index = self._store.get_index(
-                "MCX_COM"
-            )
+            index = self._store.get_index("MCX_COM")
         except Exception as exc:
-            raise MCXFyersBridgeError(
-                f"MCX_COM master unavailable: {exc}"
-            ) from exc
+            raise MCXFyersBridgeError(f"MCX_COM master unavailable: {exc}") from exc
 
         matches = set()
 
         for record in index.records:
             if not any(
                 _belongs_to_product(record, product)
-                for product
-                in SUPPORTED_MCX_FYERS_PRODUCTS
+                for product in SUPPORTED_MCX_FYERS_PRODUCTS
             ):
                 continue
 
             for value in values:
-                if (
-                    record.symbol == value
-                    or (
-                        record.provider_token
-                        is not None
-                        and record.provider_token
-                        == value
-                    )
+                if record.symbol == value or (
+                    record.provider_token is not None and record.provider_token == value
                 ):
-                    matches.add(
-                        record.symbol
-                    )
+                    matches.add(record.symbol)
 
         if len(matches) != 1:
             raise MCXFyersBridgeError(
-                "FYERS provider-symbol identity "
-                "missing or ambiguous"
+                "FYERS provider-symbol identity missing or ambiguous"
             )
 
         return next(iter(matches))
@@ -390,13 +403,9 @@ class MCXFyersDataCompatibilityV2:
         client,
         identity,
     ):
-        self._compat = (
-            FyersDataOnlyCompatibilityV2(
-                client=client,
-                symbol_resolver=(
-                    identity.resolve_provider_symbol
-                ),
-            )
+        self._compat = FyersDataOnlyCompatibilityV2(
+            client=client,
+            symbol_resolver=(identity.resolve_provider_symbol),
         )
 
     def ltpData(
@@ -427,22 +436,14 @@ class MCXFyersDataCompatibilityV2:
             exchange_tokens,
         )
 
-        rows = (
-            result
-            .get("data", {})
-            .get("fetched", [])
-        )
+        rows = result.get("data", {}).get("fetched", [])
 
         if not isinstance(rows, list):
-            raise MCXFyersBridgeError(
-                "normalized FULL rows missing"
-            )
+            raise MCXFyersBridgeError("normalized FULL rows missing")
 
         for row in rows:
             if not isinstance(row, dict):
-                raise MCXFyersBridgeError(
-                    "normalized FULL row invalid"
-                )
+                raise MCXFyersBridgeError("normalized FULL row invalid")
 
             row["provider"] = "FYERS"
             row["data_only"] = True
@@ -451,35 +452,24 @@ class MCXFyersDataCompatibilityV2:
         return result
 
     def getCandleData(self, params):
-        result = self._compat.getCandleData(
-            params
-        )
+        result = self._compat.getCandleData(params)
 
         rows = result.get("data")
 
         if not isinstance(rows, list):
-            raise MCXFyersBridgeError(
-                "normalized candle rows missing"
-            )
+            raise MCXFyersBridgeError("normalized candle rows missing")
 
         normalized = []
 
         for index, row in enumerate(rows):
-            if (
-                not isinstance(row, list)
-                or len(row) < 6
-            ):
-                raise MCXFyersBridgeError(
-                    f"invalid candle row {index}"
-                )
+            if not isinstance(row, list) or len(row) < 6:
+                raise MCXFyersBridgeError(f"invalid candle row {index}")
 
             # Existing MCX pandas readers expect exactly:
             # [timestamp, open, high, low, close, volume].
             # FYERS OI may be a seventh field and is deliberately not
             # smuggled into this legacy candle shape.
-            normalized.append(
-                list(row[:6])
-            )
+            normalized.append(list(row[:6]))
 
         result = dict(result)
         result["data"] = normalized
