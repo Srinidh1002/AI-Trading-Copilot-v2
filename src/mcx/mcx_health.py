@@ -337,47 +337,157 @@ def execution_health():
         checks["evidence_recorder"] = "PASS"
     except Exception:
         checks["evidence_recorder"] = "FAILED"
-    # M6_live_depth_from_config - report per-product execution depth status
+    # M6_live_depth_from_config - report per-product execution depth status.
+    #
+    # Schema 2 is provider-scoped. Historical top-level product evidence must
+    # never authorize or report FYERS execution readiness once schema 2 is
+    # active. Schema 1 retains the legacy reporting path for compatibility.
     try:
-        import json as _json, os as _os
-        _cfg_path = "data/execution_evidence/mcx/exec_config.json"
-        _cfg = {}
-        if _os.path.exists(_cfg_path):
-            with open(_cfg_path, encoding="utf-8") as _f:
-                _cfg = _json.load(_f)
+        from mcx.mcx_exec_config import (
+            is_entry_execution_calibrated,
+            load_config,
+        )
+
+        _cfg = load_config()
+        _schema2 = (
+            _cfg.get("schema_version")
+            == 2
+        )
 
         try:
-            from mcx.mcx_version import is_certification_eligible as _cert_elig
+            from mcx.mcx_version import (
+                is_certification_eligible
+                as _cert_elig,
+            )
         except Exception:
-            _cert_elig = lambda p: False
+            def _cert_elig(_product):
+                return False
 
-        for _p in ("CRUDEOILM", "GOLDM", "SILVERM"):
-            _pc = _cfg.get(_p, {}) or {}
-            _depth_ok = bool(_pc.get("rest_depth_supported"))
-            _qty_ok = bool(_pc.get("depth_quantity_semantics_verified"))
-            _fresh_ok = bool(_pc.get("execution_freshness_calibrated"))
-            _full_exec = _depth_ok and _qty_ok and _fresh_ok
+        for _p in (
+            "CRUDEOILM",
+            "GOLDM",
+            "SILVERM",
+        ):
+            if _schema2:
+                _full_exec = bool(
+                    is_entry_execution_calibrated(
+                        _p,
+                        provider="FYERS",
+                    )
+                )
 
-            if _full_exec and _cert_elig(_p):
-                _status = "PASS"
-            elif _full_exec and not _cert_elig(_p):
-                _status = "PASS_EXECUTION_PRECERT"
-            elif not _cfg:
-                _status = "PENDING_LIVE_PROBE"
+                if (
+                    _full_exec
+                    and _cert_elig(_p)
+                ):
+                    _status = "PASS"
+                elif _full_exec:
+                    _status = (
+                        "PASS_EXECUTION_PRECERT"
+                    )
+                else:
+                    _status = (
+                        "PENDING_LIVE_PROBE"
+                    )
+
             else:
-                _status = "FAILED"
-            checks[f"live_depth_verified_{_p}"] = _status
+                _pc = (
+                    _cfg.get(
+                        _p,
+                        {},
+                    )
+                    or {}
+                )
 
-        # Aggregate: for backward compatibility, one combined key
-        _all = [checks.get(f"live_depth_verified_{_p}") for _p in ("CRUDEOILM", "GOLDM", "SILVERM")]
-        if all(_s == "PASS" for _s in _all):
-            checks["live_depth_verified"] = "PASS"
-        elif all(_s in ("PASS", "PASS_EXECUTION_PRECERT") for _s in _all):
-            checks["live_depth_verified"] = "PASS_EXECUTION_PRECERT"
+                _depth_ok = bool(
+                    _pc.get(
+                        "rest_depth_supported"
+                    )
+                )
+
+                _qty_ok = bool(
+                    _pc.get(
+                        "depth_quantity_semantics_verified"
+                    )
+                )
+
+                _fresh_ok = bool(
+                    _pc.get(
+                        "execution_freshness_calibrated"
+                    )
+                )
+
+                _full_exec = (
+                    _depth_ok
+                    and _qty_ok
+                    and _fresh_ok
+                )
+
+                if (
+                    _full_exec
+                    and _cert_elig(_p)
+                ):
+                    _status = "PASS"
+                elif _full_exec:
+                    _status = (
+                        "PASS_EXECUTION_PRECERT"
+                    )
+                elif not _cfg:
+                    _status = (
+                        "PENDING_LIVE_PROBE"
+                    )
+                else:
+                    _status = "FAILED"
+
+            checks[
+                f"live_depth_verified_{_p}"
+            ] = _status
+
+        _all = [
+            checks.get(
+                f"live_depth_verified_{_p}"
+            )
+            for _p in (
+                "CRUDEOILM",
+                "GOLDM",
+                "SILVERM",
+            )
+        ]
+
+        if all(
+            _status == "PASS"
+            for _status in _all
+        ):
+            checks[
+                "live_depth_verified"
+            ] = "PASS"
+
+        elif all(
+            _status
+            in (
+                "PASS",
+                "PASS_EXECUTION_PRECERT",
+            )
+            for _status in _all
+        ):
+            checks[
+                "live_depth_verified"
+            ] = (
+                "PASS_EXECUTION_PRECERT"
+            )
+
         else:
-            checks["live_depth_verified"] = "PENDING_LIVE_PROBE"
+            checks[
+                "live_depth_verified"
+            ] = "PENDING_LIVE_PROBE"
+
     except Exception as _e:
-        checks["live_depth_verified"] = f"ERROR: {str(_e)[:40]}"
+        checks[
+            "live_depth_verified"
+        ] = (
+            "ERROR: "
+            + str(_e)[:40]
+        )
 
     return checks
 
