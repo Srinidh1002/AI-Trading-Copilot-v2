@@ -1,6 +1,9 @@
 {
-  "strategy_version": "MCX_POST_PRECISION_V2",
-  "epoch": "POST_PRECISION_V2",
+  "strategy_version": "MCX_POST_PRECISION_V4",
+  "epoch": "POST_PRECISION_V4",
   "frozen_at": "2026-09-11T21:00:40",
-  "note": "Version frozen for the duration of this certification epoch."
+  "note": "Version frozen for the duration of this certification epoch.",
+  "_migrated_from_version": "MCX_POST_PRECISION_V2",
+  "_migrated_from_epoch": "POST_PRECISION_V2",
+  "_migrated_at": "2026-09-23T01:20:08"
 }

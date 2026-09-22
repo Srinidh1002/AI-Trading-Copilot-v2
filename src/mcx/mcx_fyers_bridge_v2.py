@@ -33,7 +33,7 @@ IST = ZoneInfo("Asia/Kolkata")
 SUPPORTED_MCX_FYERS_PRODUCTS = (
     "CRUDEOILM",
     "GOLDM",
-    "SILVERM",
+    "NATGASMINI",
 )
 
 # Existing mcx_chain.py consumes legacy master records where strike is x100.

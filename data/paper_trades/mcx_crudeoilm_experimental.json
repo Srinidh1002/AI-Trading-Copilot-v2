@@ -1,6 +1,6 @@
 {
   "product": "CRUDEOILM",
-  "epoch": "POST_PRECISION_V2",
+  "epoch": "POST_PRECISION_V4",
   "epoch_declared_at": "2026-09-11T19:49:18",
   "total_trades": 0,
   "winning_trades": 0,
@@ -14,5 +14,9 @@
   "epoch_migrated_at": "2026-09-11T21:20:08",
   "t1_hit_wins": 0,
   "sl_losses": 0,
-  "_counted_trade_ids": []
+  "_counted_trade_ids": [],
+  "strategy_version": "MCX_POST_PRECISION_V4",
+  "certification_eligible": true,
+  "_epoch_migrated_from_v2": "POST_PRECISION_V2",
+  "_epoch_migrated_at_v2": "2026-09-23T01:20:08"
 }

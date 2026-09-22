@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 
 # Per-product registry. CRUDEOILM keeps its existing names for backward compat.
-# GOLDM / SILVERM use PRECERT epochs until their FYERS PAPER paths are proven.
+# GOLDM / NATGASMINI use PRECERT epochs until their FYERS PAPER paths are proven.
 PRODUCT_EPOCHS = {
     "CRUDEOILM": {
         "strategy_version": "MCX_POST_PRECISION_V4",
@@ -21,10 +21,10 @@ PRODUCT_EPOCHS = {
         "version_path": "data/paper_trades/mcx_goldm_strategy_version.json",
         "certification_eligible": False,
     },
-    "SILVERM": {
-        "strategy_version": "MCX_SILVERM_PRECERT_V1",
-        "epoch": "SILVERM_PRECERT_V1",
-        "version_path": "data/paper_trades/mcx_silverm_strategy_version.json",
+    "NATGASMINI": {
+        "strategy_version": "MCX_NATGASMINI_PRECERT_V1",
+        "epoch": "NATGASMINI_PRECERT_V1",
+        "version_path": "data/paper_trades/mcx_natgasmini_strategy_version.json",
         "certification_eligible": False,
     },
 }

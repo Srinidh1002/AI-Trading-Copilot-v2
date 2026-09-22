@@ -50,6 +50,16 @@ DRIVERS = {
             ("Copper", "HG=F", "Industrial-metals demand proxy"),
         ],
     },
+    "NATGASMINI": {
+        "primary": [
+            ("HenryHub", "NG=F", "NYMEX Henry Hub ? global gas benchmark"),
+        ],
+        "cross_asset": [
+            ("USDINR", "USDINR=X", "INR translation of USD gas"),
+            ("DXY", "DX-Y.NYB", "Dollar strength (inverse to commodities)"),
+            ("Crude", "CL=F", "Energy-complex substitution signal"),
+        ],
+    },
 }
 
 
@@ -162,6 +172,6 @@ if __name__ == "__main__":
     print("=" * 100)
     print("MCX EXTERNAL CONTEXT — read only")
     print("=" * 100)
-    for prod in ["CRUDEOILM", "GOLDM", "SILVERM"]:
+    for prod in ["CRUDEOILM", "GOLDM", "NATGASMINI"]:
         ctx = fetch_context(prod)
         print_context(ctx)

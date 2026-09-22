@@ -150,11 +150,21 @@ def _install_ipv4_fyers_filter():
     return original
 
 
+from services.broker.fyers_auth_v2 import (
+    FyersAuthError,
+    assert_fyers_token_current_v2,
+    load_fyers_credentials_v2,
+)
+from services.broker.fyers_provider_runtime_v2 import (
+    check_fyers_provider_health_v2,
+)
+
+
 def _build_fyers_bot():
 
     load_dotenv(
         ROOT / ".env",
-        override=True,
+        override=False,
     )
 
     _apply_safety_boundary()
@@ -164,29 +174,21 @@ def _build_fyers_bot():
             "FYERS_DATA_ONLY must be true"
         )
 
-    app_id = str(
-        os.getenv(
-            "FYERS_APP_ID",
-            "",
-        )
-    ).strip()
+    _creds = load_fyers_credentials_v2(
+        env_file=str(ROOT / ".env")
+    )
 
-    access_token = str(
-        os.getenv(
-            "FYERS_ACCESS_TOKEN",
-            "",
-        )
-    ).strip()
-
-    if not app_id:
-        raise RuntimeError(
-            "FYERS_APP_ID missing"
+    try:
+        assert_fyers_token_current_v2(_creds.access_token)
+    except FyersAuthError as _auth_exc:
+        raise SystemExit(
+            "STARTUP_BLOCKED: PROVIDER_AUTH: "
+            + _auth_exc.reason_code
+            + "|provider_code=" + str(_auth_exc.provider_code)
         )
 
-    if not access_token:
-        raise RuntimeError(
-            "FYERS_ACCESS_TOKEN missing"
-        )
+    app_id = _creds.app_id
+    access_token = _creds.access_token
 
     rows = json.loads(
         (
@@ -262,6 +264,19 @@ def _build_fyers_bot():
             "Automatic fallback exists: "
             + str(fallback)
         )
+
+    _health = check_fyers_provider_health_v2(client)
+    if not _health.ok:
+        raise SystemExit(
+            "STARTUP_BLOCKED: PROVIDER_HEALTH: "
+            + _health.reason_code
+            + "|provider_code=" + str(_health.provider_code)
+        )
+    print(
+        "PROVIDER_HEALTH=OK"
+        + "|SYMBOL=" + _health.symbol
+        + "|HAD_QUOTE=" + str(_health.had_quote)
+    )
 
     streaming = FyersStreamingDataProviderV2(
         client_id=app_id,

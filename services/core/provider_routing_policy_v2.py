@@ -185,7 +185,7 @@ _PLANNED_ROUTES = tuple(
         "SENSEX",
         "CRUDEOILM",
         "GOLDM",
-        "SILVERM",
+        "NATGASMINI",
     )
     for data_kind in (
         "INSTRUMENT",

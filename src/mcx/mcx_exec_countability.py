@@ -147,6 +147,11 @@ def is_countable(trade, product=None, known_trade_ids=None, *,
                  _allow_evidence_bypass=False):  # 7W_keyword_bypass
     """Return (countable, reasons). Section P0-C: verifies execution evidence."""
     reasons = []
+
+    if trade.get("operational_recovery_used"):
+        reasons.append(
+            "OPERATIONAL_RECOVERY_EVIDENCE_USED"
+        )
     if trade.get("execution_mode") != "PAPER":
         reasons.append("NON_PAPER_MODE")
     if trade.get("market_origin") != "REAL_MARKET":

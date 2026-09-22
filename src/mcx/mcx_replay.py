@@ -31,7 +31,7 @@ from mcx.mcx_replay_evidence import (
 load_dotenv()
 IST = ZoneInfo("Asia/Kolkata")
 
-SUPPORTED = ("CRUDEOILM", "GOLDM", "SILVERM")
+SUPPORTED = ("CRUDEOILM", "GOLDM", "NATGASMINI")
 REPLAY_ROOT = "data/replay/mcx"
 
 # Per-timeframe interval in seconds (for close-time computation)

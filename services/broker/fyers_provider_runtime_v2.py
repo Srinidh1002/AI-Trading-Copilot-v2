@@ -8,6 +8,10 @@ here.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Optional
+
 from services.broker.fyers_five_market_resolver_v2 import (
     FyersFiveMarketInstrumentResolverV2,
 )
@@ -24,6 +28,13 @@ from services.contracts.provider_runtime_bundle_v2 import (
     ProviderRuntimeBundleV2,
 )
 
+
+from services.broker.fyers_auth_v2 import (
+    REASON_OK,
+    REASON_PROVIDER_ERROR,
+    classify_fyers_exception_v2,
+    classify_fyers_response_v2,
+)
 
 class FyersRuntimeCompositionError(RuntimeError):
     """FYERS runtime composition failed closed."""
@@ -91,3 +102,67 @@ def build_fyers_provider_runtime_v2(
         streaming=streaming,
         request_controller=controller,
     )
+
+@dataclass(frozen=True)
+class FyersProviderHealthV2:
+    ok: bool
+    reason_code: str
+    message: str
+    provider_code: Optional[int] = None
+    symbol: str = ""
+    had_quote: bool = False
+
+
+def check_fyers_provider_health_v2(
+    client,
+    *,
+    symbol: str = "NSE:NIFTY50-INDEX",
+) -> FyersProviderHealthV2:
+    """
+    One-call FYERS data-provider health check.
+
+    Classifies all failure modes into safe reason codes. Never raises on
+    provider errors - returns FyersProviderHealthV2 with ok=False instead.
+
+    s=error never returns ok=True.
+    """
+    if client is None:
+        return FyersProviderHealthV2(
+            False, REASON_PROVIDER_ERROR, "client is None", symbol=symbol,
+        )
+
+    try:
+        raw = client.quotes({"symbols": symbol})
+    except Exception as exc:
+        err = classify_fyers_exception_v2(exc)
+        return FyersProviderHealthV2(
+            False, err.reason_code, str(err), err.provider_code, symbol,
+        )
+
+    if not isinstance(raw, Mapping):
+        return FyersProviderHealthV2(
+            False, REASON_PROVIDER_ERROR, "response is not a mapping",
+            None, symbol,
+        )
+
+    err = classify_fyers_response_v2(raw)
+    if err is not None:
+        return FyersProviderHealthV2(
+            False, err.reason_code, str(err), err.provider_code, symbol,
+        )
+
+    try:
+        had_quote = bool(raw.get("d") or [])
+    except Exception:
+        had_quote = False
+
+    if not had_quote:
+        return FyersProviderHealthV2(
+            False, REASON_PROVIDER_ERROR, "s=ok but no quote payload",
+            None, symbol,
+        )
+
+    return FyersProviderHealthV2(
+        True, REASON_OK, "ok", None, symbol, had_quote=True,
+    )
+

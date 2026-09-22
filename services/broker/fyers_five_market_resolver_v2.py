@@ -1,7 +1,7 @@
 """F8 - production FYERS five-market instrument resolver.
 
 Implements the frozen F7 InstrumentResolverV2 protocol for NIFTY, SENSEX,
-CRUDEOILM, GOLDM and SILVERM. Composes:
+CRUDEOILM, GOLDM and NATGASMINI. Composes:
   - FYERS public symbol master (offline-testable)
   - native FYERS futures_chain (authoritative for NIFTY/SENSEX futures)
 
@@ -38,7 +38,7 @@ _MARKET_SEGMENTS = {
     "SENSEX": {"underlying": "BSE_CM", "derivative": "BSE_FO"},
     "CRUDEOILM": {"underlying": "MCX_COM", "derivative": "MCX_COM"},
     "GOLDM": {"underlying": "MCX_COM", "derivative": "MCX_COM"},
-    "SILVERM": {"underlying": "MCX_COM", "derivative": "MCX_COM"},
+    "NATGASMINI": {"underlying": "MCX_COM", "derivative": "MCX_COM"},
 }
 
 _VALID_INSTRUMENT_TYPES = ("UNDERLYING", "FUTURE", "OPTION")

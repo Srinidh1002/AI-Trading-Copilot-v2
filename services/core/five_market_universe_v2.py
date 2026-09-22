@@ -57,13 +57,13 @@ TARGET_FIVE_MARKETS = (
         ),
     ),
     TradingMarketV2(
-        symbol="SILVERM",
-        display_name="Silver Mini",
+        symbol="NATGASMINI",
+        display_name="Natural Gas Mini",
         market_type="COMMODITY",
         underlying_exchange="MCX",
         derivative_exchange="MCX",
         aliases=(
-            "SILVER MINI",
+            "NATURAL GAS MINI",
         ),
     ),
 )

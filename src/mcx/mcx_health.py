@@ -69,7 +69,7 @@ def product_readiness():
     """Report per-product readiness: contract, state, ledgers, runner, status."""
     import os
     out = {}
-    for product in ("CRUDEOILM", "GOLDM", "SILVERM"):
+    for product in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
         try:
             from mcx.mcx_version import get_product_epochs
             cfg = get_product_epochs(product) or {}
@@ -292,7 +292,7 @@ def execution_health():
             from mcx.mcx_exec_config import (is_freshness_calibrated,
                                              get_execution_quote_max_age_seconds,
                                              is_quantity_semantics_verified)
-            for p in ("CRUDEOILM", "GOLDM", "SILVERM"):
+            for p in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
                 checks[f"freshness_{p}"] = (
                     "PASS" if is_freshness_calibrated(p) else "UNCALIBRATED")
                 checks[f"max_age_{p}_s"] = get_execution_quote_max_age_seconds(p)
@@ -366,7 +366,7 @@ def execution_health():
         for _p in (
             "CRUDEOILM",
             "GOLDM",
-            "SILVERM",
+            "NATGASMINI",
         ):
             if _schema2:
                 _full_exec = bool(
@@ -450,7 +450,7 @@ def execution_health():
             for _p in (
                 "CRUDEOILM",
                 "GOLDM",
-                "SILVERM",
+                "NATGASMINI",
             )
         ]
 

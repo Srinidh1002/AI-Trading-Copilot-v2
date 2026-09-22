@@ -22,6 +22,13 @@ from target_focused_bot import (
     UnifiedTradingBot,
 )
 
+from services.broker.fyers_auth_v2 import (
+    classify_fyers_exception_v2,
+)
+from services.broker.fyers_provider_runtime_v2 import (
+    check_fyers_provider_health_v2,
+)
+
 
 class ProviderInjectedBotError(RuntimeError):
     """Provider injection failed closed."""
@@ -85,6 +92,40 @@ class ProviderInjectedUnifiedTradingBotV2(UnifiedTradingBot):
             if native_option_chain_engine is not None
             else "F13_NATIVE_OPTION_CHAIN_REQUIRED"
         )
+
+    def check_connection(self):
+        """
+        FYERS provider-aware connectivity check.
+
+        Overrides the inherited Angel-shaped check_connection() which
+        would otherwise return from a bare except: with no reason code.
+
+        Preserves the truthy/falsy contract for connect_with_retry and
+        reconnect_if_needed. Stores the last reason_code on the instance
+        so callers and journals can distinguish AUTH_INVALID /
+        AUTH_EXPIRED / NETWORK_ERROR / RATE_LIMIT / PROVIDER_ERROR /
+        MALFORMED_RESPONSE.
+        """
+        self._last_health_reason_code = None
+        self._last_health_provider_code = None
+
+        client = getattr(self.obj, "_client", None)
+        if client is None:
+            self._last_health_reason_code = "PROVIDER_ERROR"
+            return False
+
+        try:
+            health = check_fyers_provider_health_v2(client)
+        except Exception as exc:
+            err = classify_fyers_exception_v2(exc)
+            self._last_health_reason_code = err.reason_code
+            self._last_health_provider_code = err.provider_code
+            return False
+
+        self._last_health_reason_code = health.reason_code
+        self._last_health_provider_code = health.provider_code
+        return bool(health.ok)
+
 
     @staticmethod
     def _validate_provider_boundary(runtime, data_api, option_chain_engine=None) -> None:

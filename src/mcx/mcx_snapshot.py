@@ -32,7 +32,7 @@ from mcx.mcx_chain import print_chain
 SUPPORTED = (
     "CRUDEOILM",
     "GOLDM",
-    "SILVERM",
+    "NATGASMINI",
 )
 
 

@@ -25,7 +25,7 @@ IST = ZoneInfo("Asia/Kolkata")
 SUPPORTED_PRODUCTS = (
     "CRUDEOILM",
     "GOLDM",
-    "SILVERM",
+    "NATGASMINI",
 )
 
 

@@ -60,7 +60,7 @@ import argparse
 # MCX_IST_fix - module-level timezone constant
 IST = ZoneInfo("Asia/Kolkata")
 
-_SUPPORTED_PRODUCTS = ("CRUDEOILM", "GOLDM", "SILVERM")
+_SUPPORTED_PRODUCTS = ("CRUDEOILM", "GOLDM", "NATGASMINI")
 
 
 def _parse_args():
@@ -324,28 +324,200 @@ def fetch_execution_quote_or_none(obj, product, token, option_meta=None, tick=0.
     return q if ok else q  # return even if invalid — caller inspects status
 
 
-def get_bid_mark_for_position(obj, position, tick=0.05):
-    """Section 7.18 — bid-side VWAP mark for a long CE/PE position.
-    Returns (mark_price, quote_dict) or (None, quote_with_status).
+
+def _operational_recovery_best_bid(q):
+    """Return a price-only FYERS best bid for non-certification recovery.
+
+    This deliberately ignores provider depth quantity because FYERS MCX depth
+    quantity semantics are not yet verified. Provider receipt time proves only
+    that this process just received the response; it is not exchange freshness.
     """
+    if not isinstance(q, dict):
+        return None, q
+
+    if q.get("provider") != "FYERS":
+        return None, q
+
+    if q.get("source_mode") != "REST_FULL":
+        return None, q
+
+    # Operational recovery may waive only the missing exchange-feed timestamp
+    # claim. All structural book/provider-receipt failures remain fail-closed.
+    rejection_reasons = {
+        str(reason)
+        for reason in (
+            q.get("rejection_reasons")
+            or []
+        )
+        if reason
+    }
+
+    tolerated_reasons = {
+        "MISSING_FEED_TIME",
+    }
+
+    blocking_reasons = (
+        rejection_reasons
+        - tolerated_reasons
+    )
+
+    if blocking_reasons:
+        return None, q
+
+    if not q.get("provider_received_at"):
+        return None, q
+
+    best_bid = q.get("best_bid")
+
+    if best_bid in (None, 0, 0.0):
+        bids = q.get("bids") or []
+
+        if (
+            bids
+            and isinstance(bids[0], dict)
+        ):
+            best_bid = bids[0].get("price")
+
+    try:
+        best_bid = float(best_bid)
+    except (TypeError, ValueError):
+        return None, q
+
+    if best_bid <= 0:
+        return None, q
+
+    recovery_q = dict(q)
+
+    recovery_q[
+        "operational_recovery_only"
+    ] = True
+
+    recovery_q[
+        "operational_recovery_status"
+    ] = "VALID"
+
+    recovery_q[
+        "operational_recovery_mark_method"
+    ] = "BEST_BID_OPERATIONAL_RECOVERY"
+
+    recovery_q[
+        "certification_freshness_calibrated"
+    ] = False
+
+    recovery_q[
+        "depth_quantity_semantics_verified"
+    ] = False
+
+    recovery_q[
+        "certification_eligible"
+    ] = False
+
+    return best_bid, recovery_q
+
+
+
+def get_bid_mark_for_position(obj, position, tick=0.05):
+    """Return an executable mark while keeping certification and recovery separate."""
+    product = position.get(
+        "product",
+        PRODUCT,
+    )
+
     q = fetch_execution_quote_or_none(
-        obj, position.get("product", PRODUCT),
+        obj,
+        product,
         position["token"],
-        option_meta={"symbol": position.get("symbol"),
-                     "type": position.get("type"),
-                     "strike": position.get("strike"),
-                     "expiry": position.get("expiry")},
+        option_meta={
+            "symbol": position.get("symbol"),
+            "type": position.get("type"),
+            "strike": position.get("strike"),
+            "expiry": position.get("expiry"),
+        },
         tick=tick,
     )
-    if not q or q.get("validation_status") != "VALID":
-        return None, q
-    trading_unit = PRODUCTS.get(position.get("product", PRODUCT), {}).get("trading_unit", 1)
-    requested_qty = max(1, position.get("lots", 1) * trading_unit)
-    r = depth_vwap_for_sell(q["bids"], requested_qty, tick=tick)
-    fill, filled, levels, worst, status = r
-    if status != "OK":
-        return None, q
-    return fill, q
+
+    if (
+        is_entry_execution_calibrated(
+            product,
+            provider="FYERS",
+        )
+        and q
+        and q.get("validation_status") == "VALID"
+    ):
+        trading_unit = PRODUCTS.get(
+            product,
+            {},
+        ).get(
+            "trading_unit",
+            1,
+        )
+
+        requested_qty = max(
+            1,
+            position.get("lots", 1)
+            * trading_unit,
+        )
+
+        result = depth_vwap_for_sell(
+            q["bids"],
+            requested_qty,
+            tick=tick,
+        )
+
+        fill, _filled, _levels, _worst, status = result
+
+        if status == "OK":
+            position[
+                "last_mark_mode"
+            ] = "CERTIFIED_DEPTH_VWAP"
+
+            return fill, q
+
+    mark, recovery_q = (
+        _operational_recovery_best_bid(
+            q
+        )
+    )
+
+    if mark is None:
+        return None, recovery_q
+
+    position[
+        "operational_recovery_used"
+    ] = True
+
+    position[
+        "certification_eligible"
+    ] = False
+
+    position[
+        "last_mark_mode"
+    ] = "OPERATIONAL_RECOVERY_BEST_BID"
+
+    position[
+        "operational_recovery_reason"
+    ] = (
+        "FYERS_DEPTH_TIMESTAMP_OR_QUANTITY_"
+        "SEMANTICS_UNVERIFIED"
+    )
+
+    position[
+        "operational_recovery_last_quote_id"
+    ] = (
+        recovery_q or {}
+    ).get(
+        "raw_payload_hash"
+    )
+
+    position[
+        "operational_recovery_last_received_at"
+    ] = (
+        recovery_q or {}
+    ).get(
+        "provider_received_at"
+    )
+
+    return mark, recovery_q
 
 
 def fetch_full_quote(obj, token):
@@ -539,28 +711,132 @@ def try_open(obj, chain, mtf, ctx, decision, regime, structure, setup, state):
 
 
 def close_and_reconcile(obj, pos, exit_reason, exit_ltp, pnl_pct, state):
-    # Section 7.11 — exit must use real bid-side VWAP. Refuse if unavailable.
-    eq = fetch_execution_quote_or_none(
-        obj, pos.get("product", PRODUCT), pos["token"],
-        option_meta={"symbol": pos.get("symbol"), "type": pos.get("type"),
-                     "strike": pos.get("strike"), "expiry": pos.get("expiry")},
-        tick=0.05,
+    # Certification-grade exits remain depth-VWAP only.
+    # Operational recovery is separate and may use the real FYERS best-bid
+    # PRICE only; provider depth quantity is never consumed unless calibrated.
+    _prod_name = pos.get(
+        "product",
+        PRODUCT,
     )
-    if not eq or eq.get("validation_status") != "VALID":
-        print(f"  EXIT_EVIDENCE_PENDING: {(eq or {}).get('rejection_reasons')}")
-        pos["lifecycle_state"] = "EXIT_PENDING"
-        pos["exit_evidence_unavailable_at"] = datetime.now(IST).isoformat(timespec="seconds")
-        return  # position remains OPEN; retry next cycle
-    _prod_name = pos.get("product", PRODUCT)
-    trading_unit = PRODUCTS.get(_prod_name, {}).get("trading_unit", 1)
-    requested_qty = max(1, pos.get("lots", 1) * trading_unit)
-    _tick_opt = PRODUCTS.get(_prod_name, {}).get("option_tick_size", 0.05)  # M5_option_tick_authority
-    fill_result = compute_paper_fill_v2(eq, "SELL", requested_qty, tick=_tick_opt)
-    if fill_result["status"] != "OK":
-        print(f"  EXIT_FILL_FAILED: {fill_result['status']}")
-        pos["lifecycle_state"] = "EXIT_PENDING"
-        return
-    fill = fill_result["fill_price"]
+
+    _tick_opt = PRODUCTS.get(
+        _prod_name,
+        {},
+    ).get(
+        "option_tick_size",
+        0.05,
+    )
+
+    eq = fetch_execution_quote_or_none(
+        obj,
+        _prod_name,
+        pos["token"],
+        option_meta={
+            "symbol": pos.get("symbol"),
+            "type": pos.get("type"),
+            "strike": pos.get("strike"),
+            "expiry": pos.get("expiry"),
+        },
+        tick=_tick_opt,
+    )
+
+    fill = None
+    fill_method = None
+    levels_consumed = None
+    operational_recovery_exit = False
+
+    if (
+        is_entry_execution_calibrated(
+            _prod_name,
+            provider="FYERS",
+        )
+        and eq
+        and eq.get("validation_status") == "VALID"
+    ):
+        trading_unit = PRODUCTS.get(
+            _prod_name,
+            {},
+        ).get(
+            "trading_unit",
+            1,
+        )
+
+        requested_qty = max(
+            1,
+            pos.get("lots", 1)
+            * trading_unit,
+        )
+
+        fill_result = compute_paper_fill_v2(
+            eq,
+            "SELL",
+            requested_qty,
+            tick=_tick_opt,
+        )
+
+        if fill_result["status"] == "OK":
+            fill = fill_result[
+                "fill_price"
+            ]
+
+            fill_method = "DEPTH_VWAP"
+
+            levels_consumed = fill_result.get(
+                "levels_consumed"
+            )
+
+    if fill is None:
+        recovery_fill, recovery_eq = (
+            _operational_recovery_best_bid(
+                eq
+            )
+        )
+
+        if recovery_fill is None:
+            print(
+                "  EXIT_EVIDENCE_PENDING: "
+                f"{(eq or {}).get('rejection_reasons')}"
+            )
+
+            pos[
+                "lifecycle_state"
+            ] = "EXIT_PENDING"
+
+            pos[
+                "exit_evidence_unavailable_at"
+            ] = datetime.now(
+                IST
+            ).isoformat(
+                timespec="seconds"
+            )
+
+            return
+
+        eq = recovery_eq
+        fill = recovery_fill
+
+        fill_method = (
+            "BEST_BID_OPERATIONAL_RECOVERY"
+        )
+
+        levels_consumed = None
+
+        operational_recovery_exit = True
+
+        pos[
+            "operational_recovery_used"
+        ] = True
+
+        pos[
+            "certification_eligible"
+        ] = False
+
+        pos[
+            "operational_recovery_reason"
+        ] = (
+            "FYERS_DEPTH_TIMESTAMP_OR_QUANTITY_"
+            "SEMANTICS_UNVERIFIED"
+        )
     # Section P0-C — persist exit quote evidence
     try:
         _exit_date_iso = datetime.now(IST).strftime("%Y-%m-%d")
@@ -569,9 +845,15 @@ def close_and_reconcile(obj, pos, exit_reason, exit_ltp, pnl_pct, state):
         print(f"  EXIT_QUOTE_RECORD_FAILED: {_rec_err}")
     pos["exit"] = fill
     pos["exit_quote_id"] = eq.get("raw_payload_hash")
-    pos["exit_quote_stale"] = False
-    pos["exit_fill_method"] = "DEPTH_VWAP"
-    pos["exit_levels_consumed"] = fill_result.get("levels_consumed")
+    pos["exit_quote_stale"] = (
+        None
+        if operational_recovery_exit
+        else False
+    )
+    pos["exit_fill_method"] = fill_method
+    pos["exit_levels_consumed"] = levels_consumed
+    pos["exit_operational_recovery"] = operational_recovery_exit
+    pos["exit_source_mode"] = eq.get("source_mode")
     pos["terminal"] = True
     pos["exit_time"] = datetime.now(IST).isoformat(timespec="seconds")
     pos["exit_reason"] = exit_reason
@@ -641,11 +923,18 @@ def main():
     assert LIVE_EXECUTION is False, "LIVE_EXECUTION must be False"
 
     global PRODUCT, STATE_PATH, PREDICTIONS_PATH, OUTCOMES_PATH, DECISIONS_PATH
+    global STOP_LOSS_PCT, T1_PCT, T2_PCT, T3_PCT
     PRODUCT = _parse_args()
     STATE_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_experimental.json"
     PREDICTIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_predictions.jsonl"
     OUTCOMES_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_outcomes.jsonl"
     DECISIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_decisions.jsonl"
+    # Phase 6.2 - exit policy from mcx_contracts.PRODUCTS[PRODUCT]
+    _prod_cfg = PRODUCTS[PRODUCT]
+    STOP_LOSS_PCT = _prod_cfg["stop_loss_pct"]
+    T1_PCT = _prod_cfg["t1_pct"]
+    T2_PCT = _prod_cfg["t2_pct"]
+    T3_PCT = _prod_cfg["t3_pct"]
 
     cfg = get_product_epochs(PRODUCT)
     print("=" * 100)

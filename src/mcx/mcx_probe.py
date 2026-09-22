@@ -30,7 +30,7 @@ from mcx.mcx_fyers_runtime_v2 import (
 SUPPORTED = (
     "CRUDEOILM",
     "GOLDM",
-    "SILVERM",
+    "NATGASMINI",
 )
 
 

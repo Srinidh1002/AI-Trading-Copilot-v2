@@ -119,9 +119,19 @@ from smartapi_log_redaction import install_smartapi_log_redaction
 
 install_smartapi_log_redaction()
 
+from services.core.market_trading_config_v2 import (
+    get_market_trading_config,
+)
+
+
 class UnifiedTradingBot:
     def __init__(self, market='NIFTY'):
         self.market = market.upper()
+        try:
+            self._market_config = get_market_trading_config(self.market)
+        except ValueError:
+            print(f"Invalid market: {self.market}")
+            sys.exit(1)
         self.api_key = os.getenv('ANGEL_API_KEY')
         self.user_id = os.getenv('ANGEL_USER_ID')
         self.password = os.getenv('ANGEL_PASSWORD')
@@ -163,10 +173,10 @@ class UnifiedTradingBot:
         # R15_diversity_authority - per-market diversity state
         self.certification_diversity = EquityCertificationDiversityTracker()
         
-        self.T1_PERCENT = 15
-        self.T2_PERCENT = 30
-        self.T3_PERCENT = 50
-        self.STOP_LOSS_PERCENT = 5
+        self.T1_PERCENT = self._market_config.t1_pct
+        self.T2_PERCENT = self._market_config.t2_pct
+        self.T3_PERCENT = self._market_config.t3_pct
+        self.STOP_LOSS_PERCENT = self._market_config.stop_loss_pct
         
         # D2_safety_flags — explicit PAPER-only contract
         self.EXECUTION_MODE = "PAPER"
@@ -183,36 +193,26 @@ class UnifiedTradingBot:
         self.consecutive_wins = 0
         self.consecutive_losses = 0
         
-        self.MARKET_OPEN = datetime.now().replace(hour=9, minute=15, second=0, microsecond=0)
-        self.MARKET_CLOSE = datetime.now().replace(hour=15, minute=30, second=0, microsecond=0)
-        self.FINAL_EXIT = datetime.now().replace(hour=15, minute=28, second=0, microsecond=0)
+        _oh, _om = self._market_config.market_open_hhmm
+        _ch, _cm = self._market_config.market_close_hhmm
+        _fh, _fm = self._market_config.final_exit_hhmm
+        self.MARKET_OPEN = datetime.now().replace(hour=_oh, minute=_om, second=0, microsecond=0)
+        self.MARKET_CLOSE = datetime.now().replace(hour=_ch, minute=_cm, second=0, microsecond=0)
+        self.FINAL_EXIT = datetime.now().replace(hour=_fh, minute=_fm, second=0, microsecond=0)
         
         # Market analysis data
         self.global_market_data = {}
         self.fii_dii_data = {}
         self.top_stocks_data = {}
         
-        if self.market == 'NIFTY':
-            self.index_token = '99926000'
-            self.index_exchange = 'NSE'
-            self.index_symbol = 'NIFTY'
-            self.lot_size = 75
-            self.strike_interval = 50
-            self.option_exchange = 'NFO'
-            self.strike_divisor = 100
-            self.top_stocks = ['RELIANCE', 'HDFCBANK', 'ICICIBANK', 'INFY', 'TCS', 'ITC', 'KOTAKBANK', 'LT', 'SBIN', 'BHARTIARTL']
-        elif self.market == 'SENSEX':
-            self.index_token = '1'
-            self.index_exchange = 'BSE'
-            self.index_symbol = 'SENSEX'
-            self.lot_size = 20
-            self.strike_interval = 100
-            self.option_exchange = 'BFO'
-            self.strike_divisor = 100
-            self.top_stocks = ['RELIANCE', 'HDFCBANK', 'ICICIBANK', 'INFY', 'TCS', 'ITC', 'KOTAKBANK', 'LT', 'SBIN', 'BHARTIARTL']
-        else:
-            print(f"Invalid market: {self.market}")
-            sys.exit(1)
+        self.index_token = self._market_config.index_token
+        self.index_exchange = self._market_config.underlying_exchange
+        self.index_symbol = self._market_config.index_symbol
+        self.lot_size = self._market_config.lot_size
+        self.strike_interval = self._market_config.strike_interval
+        self.option_exchange = self._market_config.derivative_exchange
+        self.strike_divisor = self._market_config.strike_divisor
+        self.top_stocks = list(self._market_config.top_stocks)
         
         self.state_file = f"data/paper_trades/{self.market.lower()}_experimental.json"
         self.market_intel = None  # Initialized after connection
@@ -649,12 +649,10 @@ class UnifiedTradingBot:
             for inst in raw:
                 symbol = inst.get('symbol', '')
                 
-                if self.market == 'NIFTY':
-                    if not ('NIFTY' in symbol and 'BANKNIFTY' not in symbol and 'FINNIFTY' not in symbol):
-                        continue
-                elif self.market == 'SENSEX':
-                    if 'SENSEX' not in symbol or 'SENSEX50' in symbol:
-                        continue
+                if self._market_config.symbol_must_contain not in symbol:
+                    continue
+                if any(_bad in symbol for _bad in self._market_config.symbol_must_not_contain):
+                    continue
                 
                 if inst.get('instrumenttype') == 'OPTIDX':
                     strike = float(inst.get('strike', 0)) / self.strike_divisor
@@ -708,10 +706,11 @@ class UnifiedTradingBot:
             import time as _t
             _t.sleep(2)  # Give WS time to connect
             
-            if self.market == "NIFTY":
-                subs = {"NSE_CM": ["99926000"]}
-            else:
-                subs = {"BSE_CM": ["1"]}
+            subs = {
+                self._market_config.ws_exchange_segment: [
+                    self._market_config.ws_spot_token
+                ]
+            }
             
             self.ws_feed.subscribe(subs, mode=2)
             print(f"[WS] Subscribed to {self.market} spot")
@@ -807,7 +806,7 @@ class UnifiedTradingBot:
                 current += timedelta(days=1)
             return count
         
-        if self.market == 'SENSEX' and nearest_dte == 0 and len(valid) > 1:
+        if self._market_config.exclude_same_day_expiry and nearest_dte == 0 and len(valid) > 1:
             selected_expiry, selected_dte, selected_date = valid[1]
             trading_days = trading_days_between(today, selected_date)
             print(f'  NEAREST_EXPIRY: {nearest_expiry}')
@@ -883,10 +882,7 @@ class UnifiedTradingBot:
         """Analyze FIXED weighted stock universe - NIFTY/SENSEX constituents"""
         print(' 📊 Analyzing Weighted Constituents (FIXED UNIVERSE)...')
         
-        if self.market == 'NIFTY':
-            universe = self.index_weights
-        else:
-            universe = self.index_weights
+        universe = self.index_weights
         
         if not hasattr(self, '_token_cache'):
             self._token_cache = {}

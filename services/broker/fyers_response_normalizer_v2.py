@@ -3,9 +3,30 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from services.broker.fyers_auth_v2 import (
+    REASON_MALFORMED,
+    classify_fyers_response_v2,
+)
+
 
 class FyersResponseNormalizationError(ValueError):
-    """Raised when a FYERS market-data response cannot be normalized safely."""
+    """Raised when a FYERS market-data response cannot be normalized safely.
+
+    Carries a safe reason_code when the failure originates from an FYERS
+    provider error response. Structural/schema failures default to
+    REASON_MALFORMED. Never contains token material.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason_code: str = REASON_MALFORMED,
+        provider_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
+        self.provider_code = provider_code
 
 
 def _mapping(value: object, *, field: str) -> Mapping[str, Any]:
@@ -17,9 +38,18 @@ def _mapping(value: object, *, field: str) -> Mapping[str, Any]:
 
 
 def _require_ok(response: Mapping[str, Any]) -> None:
-    if response.get("s") != "ok":
+    if not isinstance(response, Mapping):
         raise FyersResponseNormalizationError(
-            "FYERS response status is not ok"
+            "FYERS response is not a mapping",
+            reason_code=REASON_MALFORMED,
+        )
+
+    err = classify_fyers_response_v2(response)
+    if err is not None:
+        raise FyersResponseNormalizationError(
+            err.args[0] if err.args else str(err),
+            reason_code=err.reason_code,
+            provider_code=err.provider_code,
         )
 
 
