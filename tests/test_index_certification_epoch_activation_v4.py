@@ -188,3 +188,27 @@ def test_root_launcher_activates_or_verifies_epoch_before_session(
     assert load_index < activation_index < run_index
 
     assert '("CURRENT", "ACTIVATED")' in text
+
+
+@pytest.mark.parametrize(
+    "runner_name",
+    [
+        "run_nifty.py",
+        "run_sensex.py",
+    ],
+)
+def test_primary_provider_connect_failure_is_fail_closed(runner_name):
+    repo = Path(__file__).resolve().parents[1]
+    text = (repo / runner_name).read_text(encoding="utf-8")
+
+    guard = "if not bot.connect_with_retry():"
+    stop = 'raise SystemExit("STARTUP_BLOCKED: PRIMARY_PROVIDER_CONNECTION_FAILED")'
+    load_instruments = "bot.load_instruments()"
+    run_session = "bot.run_single_session()"
+
+    guard_index = text.index(guard)
+    stop_index = text.index(stop)
+    load_index = text.index(load_instruments)
+    run_index = text.index(run_session)
+
+    assert guard_index < stop_index < load_index < run_index

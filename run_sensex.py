@@ -448,7 +448,8 @@ def main() -> int:
         if _cert_start.get("status") not in ("CURRENT", "ACTIVATED"):
             raise RuntimeError("CERTIFICATION_START_BLOCKED: " + repr(_cert_start))
 
-        bot.connect_with_retry()
+        if not bot.connect_with_retry():
+            raise SystemExit("STARTUP_BLOCKED: PRIMARY_PROVIDER_CONNECTION_FAILED")
 
         bot.load_instruments()
 
