@@ -354,7 +354,8 @@ def test_normalizer_module_has_no_network_or_broker_imports() -> None:
     )
 
 
-def test_depth_ltt_is_preserved_as_execution_timestamp() -> None:
+def test_depth_ltt_is_not_promoted_to_execution_timestamp() -> None:
+
     response = {
         "s": "ok",
         "d": {
@@ -387,12 +388,10 @@ def test_depth_ltt_is_preserved_as_execution_timestamp() -> None:
 
     row = result["data"]["fetched"][0]
 
-    assert row["exchange_timestamp"] == 1790087132
+    assert "exchange_timestamp" not in row
 
-    assert row["timestamp"] == 1790087132
+    assert "timestamp" not in row
 
-    # Generic FYERS normalization must continue to preserve provider
-    # quantity as-is. MCX product conversion belongs to the MCX boundary.
     assert row["bestFiveBuyData"][0]["quantity"] == 1
 
     assert row["bestFiveSellData"][0]["quantity"] == 4

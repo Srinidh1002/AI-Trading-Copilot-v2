@@ -525,7 +525,7 @@ def test_bridge_has_no_order_or_fallback_capability():
     ]
 
 
-def test_crudeoilm_full_depth_converts_fyers_lots_to_contract_units_once():
+def test_crudeoilm_full_depth_preserves_provider_quantity_until_semantics_proven():
     bridge = _bridge()
 
     identity = bridge.identity.resolve_active(
@@ -546,28 +546,26 @@ def test_crudeoilm_full_depth_converts_fyers_lots_to_contract_units_once():
 
     row = result["data"]["fetched"][0]
 
-    # Fake FYERS fixture supplies 20 bid lots / 25 ask lots.
-    # CRUDEOILM application contract is 10 barrels per lot.
-    assert row["bestFiveBuyData"][0]["provider_quantity_lots"] == 20
+    # Preserve provider depth exactly as received.
+    assert row["bestFiveBuyData"][0]["quantity"] == 20
 
-    assert row["bestFiveBuyData"][0]["quantity"] == 200
+    assert row["bestFiveSellData"][0]["quantity"] == 25
 
-    assert row["bestFiveSellData"][0]["provider_quantity_lots"] == 25
+    assert row["depth"]["buy"][0]["quantity"] == 20
 
-    assert row["bestFiveSellData"][0]["quantity"] == 250
+    assert row["depth"]["sell"][0]["quantity"] == 25
 
-    # depth and best-five aliases must not cause double scaling.
-    assert row["depth"]["buy"][0]["quantity"] == 200
+    assert row["provider_depth_quantity_unit"] == "UNVERIFIED"
 
-    assert row["depth"]["sell"][0]["quantity"] == 250
+    assert row["depth_quantity_semantics_verified"] is False
 
-    assert row["provider_depth_quantity_unit"] == "FYERS_LOTS"
+    assert "provider_quantity_lots" not in row["bestFiveBuyData"][0]
 
-    assert row["depth_quantity_unit"] == "CONTRACT_UNITS"
+    assert "provider_quantity_lots" not in row["bestFiveSellData"][0]
 
-    assert row["depth_quantity_scale"] == 10
+    assert "depth_quantity_scale" not in row
 
-    # Non-depth market volume remains untouched.
+    # Non-depth traded volume remains untouched.
     assert row["tradeVolume"] == 4567
 
 

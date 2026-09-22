@@ -391,15 +391,20 @@ class MCXFyersIdentityResolverV2:
 def _normalize_crudeoilm_fyers_execution_depth(
     row,
 ):
-    """Convert live FYERS CRUDEOILM depth lots to application contract units.
+    """Preserve FYERS CRUDEOILM depth quantity without unit conversion.
 
-    Live FYERS evidence showed CRUDEOILM depth quantities as provider lot
-    counts while the application execution contract uses 10 barrels per lot.
-    Keep this conversion CRUDEOILM-specific until GOLDM/SILVERM are each
-    separately proven against live provider depth.
+    FYERS identifies market-depth values as quantities but the currently
+    available provider evidence does not establish that those quantities are
+    lot counts or contract-unit counts for MCX commodity options.
+
+    Therefore the bridge must preserve the provider value exactly and keep
+    certification quantity semantics explicitly unverified.
     """
 
-    if not isinstance(row, dict):
+    if not isinstance(
+        row,
+        dict,
+    ):
         raise MCXFyersBridgeError("normalized FULL row invalid")
 
     token = str(row.get("symbolToken") or "").strip().upper()
@@ -407,100 +412,9 @@ def _normalize_crudeoilm_fyers_execution_depth(
     if not token.startswith("MCX:CRUDEOILM"):
         return
 
-    trading_unit = PRODUCTS.get(
-        "CRUDEOILM",
-        {},
-    ).get("trading_unit")
+    row["provider_depth_quantity_unit"] = "UNVERIFIED"
 
-    if (
-        not isinstance(
-            trading_unit,
-            (int, float),
-        )
-        or trading_unit <= 0
-    ):
-        raise MCXFyersBridgeError("CRUDEOILM trading unit unavailable")
-
-    scale = int(trading_unit)
-
-    containers = []
-
-    depth = row.get("depth")
-
-    if isinstance(
-        depth,
-        dict,
-    ):
-        containers.extend(
-            (
-                depth.get("buy"),
-                depth.get("sell"),
-            )
-        )
-
-    containers.extend(
-        (
-            row.get("bestFiveBuyData"),
-            row.get("bestFiveSellData"),
-        )
-    )
-
-    # normalize_full_market_data currently exposes depth and best-five aliases
-    # over the same level dictionaries. Track object identity so an alias can
-    # never cause quantity to be multiplied twice.
-    seen_levels = set()
-
-    for levels in containers:
-        if not isinstance(
-            levels,
-            list,
-        ):
-            continue
-
-        for level in levels:
-            if not isinstance(
-                level,
-                dict,
-            ):
-                continue
-
-            identity = id(level)
-
-            if identity in seen_levels:
-                continue
-
-            seen_levels.add(identity)
-
-            quantity = level.get("quantity")
-
-            if not isinstance(
-                quantity,
-                (int, float),
-            ) or isinstance(
-                quantity,
-                bool,
-            ):
-                continue
-
-            provider_lots = float(quantity)
-
-            execution_quantity = provider_lots * scale
-
-            if provider_lots.is_integer():
-                provider_lots = int(provider_lots)
-
-            if execution_quantity.is_integer():
-                execution_quantity = int(execution_quantity)
-
-            level["provider_quantity_lots"] = provider_lots
-
-            level["quantity"] = execution_quantity
-
-    row["provider_depth_quantity_unit"] = "FYERS_LOTS"
-
-    row["depth_quantity_unit"] = "CONTRACT_UNITS"
-
-    row["depth_quantity_scale"] = scale
+    row["depth_quantity_semantics_verified"] = False
 
 
 class MCXFyersDataCompatibilityV2:
