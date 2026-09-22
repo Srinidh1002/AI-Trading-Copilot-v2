@@ -1,11 +1,40 @@
 from __future__ import annotations
 
+from datetime import datetime, time as dtime
+from zoneinfo import ZoneInfo
+
+
+IST = ZoneInfo("Asia/Kolkata")
+MCX_IST_CLOSE = dtime(hour=23, minute=30, second=0)
+
 from collections.abc import Mapping
 
 from services.broker.fyers_response_normalizer_v2 import (
     FyersResponseNormalizationError,
     normalize_option_chain,
 )
+
+
+def _expiry_timestamp_for(expiry_date: str):
+    """
+    Return the FYERS-compatible epoch (int) for an MCX option expiry.
+
+    Convention verified against live data: the timestamp is MCX close
+    (23:30 IST) on the expiry date. Returns None for invalid input.
+    """
+    text = str(expiry_date or "").strip()
+    if not text:
+        return None
+    try:
+        dt = datetime.strptime(text, "%Y-%m-%d").replace(
+            hour=MCX_IST_CLOSE.hour,
+            minute=MCX_IST_CLOSE.minute,
+            second=MCX_IST_CLOSE.second,
+            tzinfo=IST,
+        )
+    except ValueError:
+        return None
+    return int(dt.timestamp())
 
 
 def _canonical_expiry_date(value) -> str:
@@ -86,6 +115,16 @@ class FyersOptionChainProviderV2:
 
         if expiry_timestamp is not None and str(expiry_timestamp).strip():
             request["timestamp"] = expiry_timestamp
+        elif expected_expiry is not None:
+            # Phase 7.3f - FYERS defaults to the NEAREST expiry when no
+            # timestamp is supplied, which may not match the target
+            # contract month of the underlying future. Force the
+            # requested expiry so the response is scoped correctly.
+            _target_ts = _expiry_timestamp_for(
+                _canonical_expiry_date(expected_expiry)
+            )
+            if _target_ts is not None:
+                request["timestamp"] = _target_ts
 
         response = self._client.optionchain(data=request)
 
