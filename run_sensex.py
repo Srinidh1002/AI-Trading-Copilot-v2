@@ -436,6 +436,18 @@ def main() -> int:
 
         bot.load_state()
 
+        _cert_start = bot.activate_current_certification_epoch_if_safe()
+        print(
+            "CERTIFICATION_START_STATUS="
+            + str(_cert_start.get("status"))
+            + "|STRATEGY_VERSION="
+            + str(_cert_start.get("strategy_version"))
+            + "|CERTIFICATION_EPOCH="
+            + str(_cert_start.get("certification_epoch"))
+        )
+        if _cert_start.get("status") not in ("CURRENT", "ACTIVATED"):
+            raise RuntimeError("CERTIFICATION_START_BLOCKED: " + repr(_cert_start))
+
         bot.connect_with_retry()
 
         bot.load_instruments()

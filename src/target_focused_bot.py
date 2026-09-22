@@ -392,7 +392,89 @@ class UnifiedTradingBot:
             print(f"Could not load state: {e}")
         
         return False
-    
+
+    def activate_current_certification_epoch_if_safe(self):
+        """Start the current /100 epoch prospectively from safe pre-cert state.
+
+        This is intentionally separate from load_state(): loading old state must
+        never silently relabel historical trades. Activation is permitted only
+        while flat and before any certification result has been counted.
+        Historical completed trades are preserved exactly as loaded.
+        """
+        if (
+            self.strategy_version == STRATEGY_VERSION
+            and self.certification_epoch == CERTIFICATION_EPOCH
+            and not self.is_legacy_precert
+        ):
+            return {
+                "status": "CURRENT",
+                "changed": False,
+                "strategy_version": self.strategy_version,
+                "certification_epoch": self.certification_epoch,
+            }
+
+        if not self.is_legacy_precert:
+            return {
+                "status": "BLOCKED",
+                "changed": False,
+                "reason": "NONLEGACY_AUTHORITY_MISMATCH",
+                "strategy_version": self.strategy_version,
+                "certification_epoch": self.certification_epoch,
+            }
+
+        blockers = []
+
+        if self.active_trades:
+            blockers.append("ACTIVE_TRADES_PRESENT")
+
+        if int(self.certification_counter or 0) != 0:
+            blockers.append("CERTIFICATION_COUNTER_NONZERO")
+
+        if int(self.certification_wins or 0) != 0:
+            blockers.append("CERTIFICATION_WINS_NONZERO")
+
+        if int(self.certification_losses or 0) != 0:
+            blockers.append("CERTIFICATION_LOSSES_NONZERO")
+
+        if self.counted_trade_ids:
+            blockers.append("COUNTED_TRADE_IDS_PRESENT")
+
+        if blockers:
+            return {
+                "status": "BLOCKED",
+                "changed": False,
+                "reason": "UNSAFE_PRECERT_STATE",
+                "blockers": blockers,
+                "strategy_version": self.strategy_version,
+                "certification_epoch": self.certification_epoch,
+            }
+
+        # New epoch begins now. Historical completed trades are deliberately
+        # not rewritten and therefore cannot be retroactively counted.
+        self.strategy_version = STRATEGY_VERSION
+        self.certification_epoch = CERTIFICATION_EPOCH
+        self.is_legacy_precert = False
+
+        self.certification_counter = 0
+        self.certification_wins = 0
+        self.certification_losses = 0
+        self.counted_trade_ids = set()
+
+        # Diversity accounting belongs to this new certification epoch only.
+        self.certification_diversity = EquityCertificationDiversityTracker.from_state(
+            None
+        )
+
+        # Persist authority before any new trading cycle can begin.
+        self.save_state()
+
+        return {
+            "status": "ACTIVATED",
+            "changed": True,
+            "strategy_version": self.strategy_version,
+            "certification_epoch": self.certification_epoch,
+        }
+
     def connect_with_retry(self, max_retries=5, retry_delay=30):
         for attempt in range(max_retries):
             try:
