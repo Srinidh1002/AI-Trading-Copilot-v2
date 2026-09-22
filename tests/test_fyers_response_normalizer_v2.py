@@ -352,3 +352,47 @@ def test_normalizer_module_has_no_network_or_broker_imports() -> None:
         )
         for module in imports
     )
+
+
+def test_depth_ltt_is_preserved_as_execution_timestamp() -> None:
+    response = {
+        "s": "ok",
+        "d": {
+            "MCX:CRUDEOILM26OCT8600CE": {
+                "ltp": 512.6,
+                "ltt": 1790087132,
+                "bids": [
+                    {
+                        "price": 510.75,
+                        "volume": 1,
+                        "ord": 1,
+                    }
+                ],
+                "ask": [
+                    {
+                        "price": 512.4,
+                        "volume": 4,
+                        "ord": 2,
+                    }
+                ],
+            }
+        },
+    }
+
+    result = normalize_full_market_data(
+        response,
+        provider_symbol=("MCX:CRUDEOILM26OCT8600CE"),
+        symboltoken=("MCX:CRUDEOILM26OCT8600CE"),
+    )
+
+    row = result["data"]["fetched"][0]
+
+    assert row["exchange_timestamp"] == 1790087132
+
+    assert row["timestamp"] == 1790087132
+
+    # Generic FYERS normalization must continue to preserve provider
+    # quantity as-is. MCX product conversion belongs to the MCX boundary.
+    assert row["bestFiveBuyData"][0]["quantity"] == 1
+
+    assert row["bestFiveSellData"][0]["quantity"] == 4

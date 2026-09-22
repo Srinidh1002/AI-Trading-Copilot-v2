@@ -350,6 +350,16 @@ def normalize_full_market_data(
     if sell:
         fetched["ask"] = sell[0]["price"]
 
+    # FYERS depth `ltt` is the provider-side live market-depth update time.
+    # Preserve it directly for execution freshness. Do not substitute quote
+    # `tt`: live MCX evidence proved that quotes `tt` is only a trading-date
+    # anchor and is not suitable as execution freshness evidence.
+    depth_timestamp = payload.get("ltt")
+
+    if isinstance(depth_timestamp, (int, float)):
+        fetched["exchange_timestamp"] = depth_timestamp
+        fetched["timestamp"] = depth_timestamp
+
     mappings = (
         ("oi", "opnInterest"),
         ("volume", "tradeVolume"),

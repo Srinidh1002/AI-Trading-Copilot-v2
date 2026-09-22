@@ -523,3 +523,74 @@ def test_bridge_has_no_order_or_fallback_capability():
         for name in forbidden
         if hasattr(bridge.data, name)
     ]
+
+
+def test_crudeoilm_full_depth_converts_fyers_lots_to_contract_units_once():
+    bridge = _bridge()
+
+    identity = bridge.identity.resolve_active(
+        "CRUDEOILM",
+        as_of=NOW,
+    )
+
+    calls = identity["calls"]
+
+    assert calls
+
+    option = next(iter(calls.values()))
+
+    result = bridge.data.getMarketData(
+        "FULL",
+        {"MCX": [option["token"]]},
+    )
+
+    row = result["data"]["fetched"][0]
+
+    # Fake FYERS fixture supplies 20 bid lots / 25 ask lots.
+    # CRUDEOILM application contract is 10 barrels per lot.
+    assert row["bestFiveBuyData"][0]["provider_quantity_lots"] == 20
+
+    assert row["bestFiveBuyData"][0]["quantity"] == 200
+
+    assert row["bestFiveSellData"][0]["provider_quantity_lots"] == 25
+
+    assert row["bestFiveSellData"][0]["quantity"] == 250
+
+    # depth and best-five aliases must not cause double scaling.
+    assert row["depth"]["buy"][0]["quantity"] == 200
+
+    assert row["depth"]["sell"][0]["quantity"] == 250
+
+    assert row["provider_depth_quantity_unit"] == "FYERS_LOTS"
+
+    assert row["depth_quantity_unit"] == "CONTRACT_UNITS"
+
+    assert row["depth_quantity_scale"] == 10
+
+    # Non-depth market volume remains untouched.
+    assert row["tradeVolume"] == 4567
+
+
+def test_silverm_full_depth_is_not_scaled_before_live_quantity_proof():
+    bridge = _bridge()
+
+    identity = bridge.identity.resolve_active(
+        "SILVERM",
+        as_of=NOW,
+    )
+
+    option = next(iter(identity["calls"].values()))
+
+    result = bridge.data.getMarketData(
+        "FULL",
+        {"MCX": [option["token"]]},
+    )
+
+    row = result["data"]["fetched"][0]
+
+    # SILVERM has not yet completed its live FYERS quantity calibration.
+    assert row["bestFiveBuyData"][0]["quantity"] == 20
+
+    assert "provider_quantity_lots" not in row["bestFiveBuyData"][0]
+
+    assert "depth_quantity_scale" not in row

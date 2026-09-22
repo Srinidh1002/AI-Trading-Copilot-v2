@@ -388,6 +388,121 @@ class MCXFyersIdentityResolverV2:
         return next(iter(matches))
 
 
+def _normalize_crudeoilm_fyers_execution_depth(
+    row,
+):
+    """Convert live FYERS CRUDEOILM depth lots to application contract units.
+
+    Live FYERS evidence showed CRUDEOILM depth quantities as provider lot
+    counts while the application execution contract uses 10 barrels per lot.
+    Keep this conversion CRUDEOILM-specific until GOLDM/SILVERM are each
+    separately proven against live provider depth.
+    """
+
+    if not isinstance(row, dict):
+        raise MCXFyersBridgeError("normalized FULL row invalid")
+
+    token = str(row.get("symbolToken") or "").strip().upper()
+
+    if not token.startswith("MCX:CRUDEOILM"):
+        return
+
+    trading_unit = PRODUCTS.get(
+        "CRUDEOILM",
+        {},
+    ).get("trading_unit")
+
+    if (
+        not isinstance(
+            trading_unit,
+            (int, float),
+        )
+        or trading_unit <= 0
+    ):
+        raise MCXFyersBridgeError("CRUDEOILM trading unit unavailable")
+
+    scale = int(trading_unit)
+
+    containers = []
+
+    depth = row.get("depth")
+
+    if isinstance(
+        depth,
+        dict,
+    ):
+        containers.extend(
+            (
+                depth.get("buy"),
+                depth.get("sell"),
+            )
+        )
+
+    containers.extend(
+        (
+            row.get("bestFiveBuyData"),
+            row.get("bestFiveSellData"),
+        )
+    )
+
+    # normalize_full_market_data currently exposes depth and best-five aliases
+    # over the same level dictionaries. Track object identity so an alias can
+    # never cause quantity to be multiplied twice.
+    seen_levels = set()
+
+    for levels in containers:
+        if not isinstance(
+            levels,
+            list,
+        ):
+            continue
+
+        for level in levels:
+            if not isinstance(
+                level,
+                dict,
+            ):
+                continue
+
+            identity = id(level)
+
+            if identity in seen_levels:
+                continue
+
+            seen_levels.add(identity)
+
+            quantity = level.get("quantity")
+
+            if not isinstance(
+                quantity,
+                (int, float),
+            ) or isinstance(
+                quantity,
+                bool,
+            ):
+                continue
+
+            provider_lots = float(quantity)
+
+            execution_quantity = provider_lots * scale
+
+            if provider_lots.is_integer():
+                provider_lots = int(provider_lots)
+
+            if execution_quantity.is_integer():
+                execution_quantity = int(execution_quantity)
+
+            level["provider_quantity_lots"] = provider_lots
+
+            level["quantity"] = execution_quantity
+
+    row["provider_depth_quantity_unit"] = "FYERS_LOTS"
+
+    row["depth_quantity_unit"] = "CONTRACT_UNITS"
+
+    row["depth_quantity_scale"] = scale
+
+
 class MCXFyersDataCompatibilityV2:
     """MCX-specific guard around the existing FYERS compatibility layer."""
 
@@ -448,6 +563,10 @@ class MCXFyersDataCompatibilityV2:
             row["provider"] = "FYERS"
             row["data_only"] = True
             row["live_execution_eligible"] = False
+
+            # MCX execution quantity normalization is provider/product
+            # scoped. Only CRUDEOILM is live-proven at this checkpoint.
+            _normalize_crudeoilm_fyers_execution_depth(row)
 
         return result
 
