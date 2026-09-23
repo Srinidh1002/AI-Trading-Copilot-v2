@@ -3,7 +3,7 @@ Blocks analysis when evidence is stale/incomplete. Never substitutes NEUTRAL for
 """
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # Thresholds (seconds) — validated against observed data cadence, not tuned to outcomes
@@ -24,7 +24,13 @@ def _age_seconds(ts, as_of=None):
         except Exception:
             return None
     if isinstance(ts, datetime):
-        ref = as_of if as_of is not None else datetime.now()
+        ref = as_of if as_of is not None else datetime.now(timezone.utc)
+        # Phase 9.1 - normalise both sides to UTC-aware. Chain timestamps
+        # arrive from FYERS as aware ISO strings; datetime.now() is naive.
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        if ref.tzinfo is None:
+            ref = ref.replace(tzinfo=timezone.utc)
         return (ref - ts).total_seconds()
     if isinstance(ts, (int, float)):
         ref = as_of.timestamp() if as_of is not None else time.time()

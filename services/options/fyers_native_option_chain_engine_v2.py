@@ -63,6 +63,7 @@ class FyersNativeOptionChainEngineV2:
         self.native_strike_count = native_strike_count
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._raw_cache: dict[str, object] | None = None
+        self._raw_cache_expiry: str | None = None
         self._raw_cache_at = 0.0
 
     @property
@@ -82,18 +83,23 @@ class FyersNativeOptionChainEngineV2:
             raise FyersNativeOptionChainError("UNDERLYING_SYMBOL_MISSING")
         return symbol.strip()
 
-    def _native_rows(self, *, force: bool) -> tuple[Mapping[str, Any], ...]:
+    def _native_rows(self, *, force: bool, expiry: str) -> tuple[Mapping[str, Any], ...]:
         now = time.monotonic()
         if (
             not force
             and self._raw_cache is not None
+            and self._raw_cache_expiry == expiry
             and now - self._raw_cache_at < self.cache_ttl
         ):
             return self._raw_cache["rows"]  # type: ignore[return-value]
 
+        # Phase 9.2 - without expected_expiry, FYERS returns the NEAREST
+        # expiry's option rows, not the resolved one, causing identity
+        # mismatch. Pass the target expiry through.
         result = self._provider.get_option_chain(
             underlying_symbol=self._underlying_symbol(),
             strike_count=self.native_strike_count,
+            expected_expiry=expiry,
         )
         if not isinstance(result, Mapping):
             raise FyersNativeOptionChainError("NATIVE_CHAIN_INVALID")
@@ -109,6 +115,7 @@ class FyersNativeOptionChainEngineV2:
         if not normalized:
             raise FyersNativeOptionChainError("NATIVE_CHAIN_EMPTY")
         self._raw_cache = {"rows": normalized}
+        self._raw_cache_expiry = expiry
         self._raw_cache_at = now
         return normalized
 
@@ -215,7 +222,7 @@ class FyersNativeOptionChainEngineV2:
             }
 
         try:
-            native_rows = self._native_rows(force=bool(force))
+            native_rows = self._native_rows(force=bool(force), expiry=expiry)
         except Exception as exc:
             return {
                 "status": "EVIDENCE_UNAVAILABLE",

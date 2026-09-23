@@ -166,6 +166,10 @@ class AutomatedPaperSupervisorV2:
             self._log(f"[{spec.name}] START_FAILED: {type(exc).__name__}: {exc}")
             return None
         self._log(f"[{spec.name}] started pid={proc.pid}")
+        # Phase 9.8 - stagger worker starts so the first expiryData
+        # probe of each market does not collide with FYERS per-second
+        # rate limits. 2s between starts, ~10s to launch all five.
+        time.sleep(2.0)
         return proc
 
     def _stop_worker(self, spec, grace_seconds=30.0):

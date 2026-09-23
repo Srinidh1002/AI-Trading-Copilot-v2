@@ -1,11 +1,30 @@
 from __future__ import annotations
 
+import time
+
 from datetime import datetime, time as dtime
 from zoneinfo import ZoneInfo
 
 
 IST = ZoneInfo("Asia/Kolkata")
 MCX_IST_CLOSE = dtime(hour=23, minute=30, second=0)
+NSE_BSE_IST_CLOSE = dtime(hour=15, minute=30, second=0)
+
+
+def _infer_market_close_hhmm(underlying_symbol: str):
+    """Return the market close time appropriate for the underlying.
+
+    Rule:
+      * "MCX:" prefix  -> MCX commodity close 23:30 IST
+      * "NSE:" or "BSE:" prefix -> equity derivatives close 15:30 IST
+      * no recognisable prefix  -> 15:30 IST (safe index default)
+    """
+    sym = str(underlying_symbol or "").strip().upper()
+    if sym.startswith("MCX:"):
+        return MCX_IST_CLOSE
+    return NSE_BSE_IST_CLOSE
+
+
 
 from collections.abc import Mapping
 
@@ -15,7 +34,7 @@ from services.broker.fyers_response_normalizer_v2 import (
 )
 
 
-def _expiry_timestamp_for(expiry_date: str):
+def _expiry_timestamp_for(expiry_date: str, market_close=None):
     """
     Return the FYERS-compatible epoch (int) for an MCX option expiry.
 
@@ -25,16 +44,25 @@ def _expiry_timestamp_for(expiry_date: str):
     text = str(expiry_date or "").strip()
     if not text:
         return None
+    if market_close is None:
+        market_close = MCX_IST_CLOSE
     try:
         dt = datetime.strptime(text, "%Y-%m-%d").replace(
-            hour=MCX_IST_CLOSE.hour,
-            minute=MCX_IST_CLOSE.minute,
-            second=MCX_IST_CLOSE.second,
+            hour=market_close.hour,
+            minute=market_close.minute,
+            second=market_close.second,
             tzinfo=IST,
         )
     except ValueError:
         return None
     return int(dt.timestamp())
+
+
+_MONTH_ABBR = {
+    "JAN": "01", "FEB": "02", "MAR": "03", "APR": "04",
+    "MAY": "05", "JUN": "06", "JUL": "07", "AUG": "08",
+    "SEP": "09", "OCT": "10", "NOV": "11", "DEC": "12",
+}
 
 
 def _canonical_expiry_date(value) -> str:
@@ -58,6 +86,14 @@ def _canonical_expiry_date(value) -> str:
     ):
         return parts[2] + "-" + parts[1] + "-" + parts[0]
 
+    # Phase 9.3 - DDMMMYYYY (e.g. 06OCT2026, 25SEP2026)
+    if len(prefix) >= 9:
+        _d = prefix[:2]
+        _m = prefix[2:5].upper()
+        _y = prefix[5:9]
+        if _d.isdigit() and _m in _MONTH_ABBR and _y.isdigit():
+            return _y + "-" + _MONTH_ABBR[_m] + "-" + _d
+
     return text
 
 
@@ -78,6 +114,57 @@ class FyersOptionChainProviderV2:
         client,
     ) -> None:
         self._client = client
+        self._expiry_data_cache: dict[str, tuple[float, tuple]] = {}
+        self._expiry_cache_ttl = 300.0  # 5 minutes
+
+    def _fetch_expiry_data(self, symbol: str, strike_count: int) -> tuple:
+        """Probe FYERS for the expiryData list. Cached per symbol."""
+        cached = self._expiry_data_cache.get(symbol)
+        now = time.monotonic()
+        if cached is not None:
+            cached_at, entries = cached
+            if now - cached_at < self._expiry_cache_ttl:
+                return entries
+        try:
+            resp = self._client.optionchain(
+                data={"symbol": symbol, "strikecount": strike_count}
+            )
+        except Exception:
+            return cached[1] if cached is not None else ()
+        if not isinstance(resp, Mapping):
+            return cached[1] if cached is not None else ()
+        data = resp.get("data")
+        if not isinstance(data, Mapping):
+            return cached[1] if cached is not None else ()
+        raw = data.get("expiryData")
+        if not isinstance(raw, (list, tuple)):
+            return cached[1] if cached is not None else ()
+        entries = tuple(dict(x) for x in raw if isinstance(x, Mapping))
+        self._expiry_data_cache[symbol] = (now, entries)
+        return entries
+
+    def _resolve_expiry_timestamp(
+        self,
+        *,
+        underlying_symbol: str,
+        strike_count: int,
+        expected_expiry: str,
+    ):
+        """Return FYERS's own timestamp for the requested expiry, or None."""
+        target = _canonical_expiry_date(expected_expiry)
+        if not target:
+            return None
+        for item in self._fetch_expiry_data(underlying_symbol.strip(), strike_count):
+            if _canonical_expiry_date(item.get("date")) != target:
+                continue
+            raw_ts = item.get("expiry")
+            if raw_ts is None:
+                return None
+            try:
+                return int(raw_ts)
+            except (TypeError, ValueError):
+                return None
+        return None
 
     def get_option_chain(
         self,
@@ -116,15 +203,17 @@ class FyersOptionChainProviderV2:
         if expiry_timestamp is not None and str(expiry_timestamp).strip():
             request["timestamp"] = expiry_timestamp
         elif expected_expiry is not None:
-            # Phase 7.3f - FYERS defaults to the NEAREST expiry when no
-            # timestamp is supplied, which may not match the target
-            # contract month of the underlying future. Force the
-            # requested expiry so the response is scoped correctly.
-            _target_ts = _expiry_timestamp_for(
-                _canonical_expiry_date(expected_expiry)
+            # Phase 9.7 - FYERS is the source of truth for its own
+            # expiry timestamps. Probe (cached 5 min) to get expiryData,
+            # find the entry matching our target date, and use FYERS's
+            # own epoch. Avoids fragile per-market offset constants.
+            _resolved_ts = self._resolve_expiry_timestamp(
+                underlying_symbol=underlying_symbol,
+                strike_count=strike_count,
+                expected_expiry=expected_expiry,
             )
-            if _target_ts is not None:
-                request["timestamp"] = _target_ts
+            if _resolved_ts is not None:
+                request["timestamp"] = _resolved_ts
 
         response = self._client.optionchain(data=request)
 
