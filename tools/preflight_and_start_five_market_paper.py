@@ -81,12 +81,16 @@ def check_env_file(env_file):
         from services.broker.fyers_auth_v2 import (
             FyersAuthError,
             assert_fyers_token_current_v2,
-            load_fyers_credentials_v2,
+            load_canonical_credentials_v2,
         )
     except Exception as exc:
         return False, f"auth import failed: {type(exc).__name__}", None
+    # Canonical read: only the named .env file, never parent process env.
+    # A stale inherited FYERS_ACCESS_TOKEN or FYERS_APP_ID cannot win.
     try:
-        creds = load_fyers_credentials_v2(env_file=str(p))
+        creds = load_canonical_credentials_v2(str(p))
+    except FyersAuthError as exc:
+        return False, f"credential load failed: {getattr(exc, 'reason_code', 'AUTH_MISSING')}", None
     except Exception as exc:
         return False, f"credential load failed: {type(exc).__name__}", None
     try:

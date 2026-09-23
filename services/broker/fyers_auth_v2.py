@@ -110,6 +110,57 @@ def build_fyers_child_env_v2(env_file: str, parent_env=None) -> dict[str, str]:
     return child
 
 
+def load_canonical_credentials_v2(env_file: str) -> FyersCredentialsV2:
+    """Read-only canonical credential reader.
+
+    Reads ONLY from the named env file. Does not mutate os.environ. Does not
+    honor parent-process FYERS_* values. Use this in any process that must
+    prove credentials come from a specific file, e.g. the preflight launcher.
+
+    Raises FyersAuthError(REASON_AUTH_MISSING) if the file is unreadable or
+    if FYERS_APP_ID or FYERS_ACCESS_TOKEN are missing from the file itself.
+    Never prints token values.
+    """
+    if _dotenv_values is None:
+        raise FyersAuthError(REASON_AUTH_MISSING, "python-dotenv unavailable")
+    try:
+        values = _dotenv_values(env_file)
+    except Exception as exc:
+        raise FyersAuthError(REASON_AUTH_MISSING, "canonical env unreadable") from exc
+    if not values:
+        raise FyersAuthError(REASON_AUTH_MISSING, "canonical env file empty")
+
+    def _val(key):
+        raw = values.get(key)
+        return str(raw).strip() if raw is not None else ""
+
+    app_id = _val("FYERS_APP_ID")
+    access_token = _val("FYERS_ACCESS_TOKEN")
+    secret_id = _val("FYERS_SECRET_ID") or None
+    refresh_token = _val("FYERS_REFRESH_TOKEN") or None
+    redirect_uri = _val("FYERS_REDIRECT_URI") or None
+    pin = _val("FYERS_PIN") or None
+
+    if not app_id:
+        raise FyersAuthError(
+            REASON_AUTH_MISSING, "FYERS_APP_ID missing in canonical env file"
+        )
+    if not access_token:
+        raise FyersAuthError(
+            REASON_AUTH_MISSING, "FYERS_ACCESS_TOKEN missing in canonical env file"
+        )
+
+    return FyersCredentialsV2(
+        app_id=app_id,
+        secret_id=secret_id,
+        access_token=access_token,
+        refresh_token=refresh_token,
+        redirect_uri=redirect_uri,
+        pin=pin,
+        source=f"canonical:{env_file}",
+    )
+
+
 def load_fyers_credentials_v2(
     env_file: Optional[str] = None,
 ) -> FyersCredentialsV2:
