@@ -15,6 +15,11 @@ _SRC = os.path.dirname(_HERE)
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
+# Phase 9.18 - add repo root so `services` package is importable
+_REPO_ROOT_MCX = os.path.dirname(_SRC)
+if _REPO_ROOT_MCX not in sys.path:
+    sys.path.insert(0, _REPO_ROOT_MCX)
+
 from dotenv import load_dotenv
 
 from mcx.mcx_contracts import PRODUCTS

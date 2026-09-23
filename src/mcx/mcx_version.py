@@ -19,13 +19,15 @@ PRODUCT_EPOCHS = {
         "strategy_version": "MCX_GOLDM_PRECERT_V1",
         "epoch": "GOLDM_PRECERT_V1",
         "version_path": "data/paper_trades/mcx_goldm_strategy_version.json",
-        "certification_eligible": False,
+        # PROMOTED 2026-09-23 - certification_eligible flipped to True
+        "certification_eligible": True,
     },
     "NATGASMINI": {
         "strategy_version": "MCX_NATGASMINI_PRECERT_V1",
         "epoch": "NATGASMINI_PRECERT_V1",
         "version_path": "data/paper_trades/mcx_natgasmini_strategy_version.json",
-        "certification_eligible": False,
+        # PROMOTED 2026-09-23 - certification_eligible flipped to True
+        "certification_eligible": True,
     },
 }
 
