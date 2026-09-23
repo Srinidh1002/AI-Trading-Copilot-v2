@@ -13,15 +13,32 @@ _TARGET = 100
 
 
 def _counter(path: str) -> int:
+    """Read countable trade count from either schema.
+
+    INDEX: has certification_counter (int).
+    MCX:   has _counted_trade_ids (list); no explicit counter key.
+    """
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, ValueError):
         return 0
-    for key in ("certification_counter", "countable_trades", "trades"):
-        v = data.get(key)
-        if v is not None:
-            return int(v)
+
+    v = data.get("certification_counter")
+    if v is not None:
+        return int(v)
+
+    ids = data.get("_counted_trade_ids")
+    if isinstance(ids, list):
+        return len(ids)
+
+    for k in ("counted_trade_ids", "countable_trades"):
+        v = data.get(k)
+        if isinstance(v, list):
+            return len(v)
+        if isinstance(v, int):
+            return v
+
     return 0
 
 

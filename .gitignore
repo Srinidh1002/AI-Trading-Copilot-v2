@@ -83,3 +83,7 @@ data/rate_limit/
 # Rate limiter runtime state
 data/rate_limit/
 
+
+# Daily evidence archive
+_evidence/
+
