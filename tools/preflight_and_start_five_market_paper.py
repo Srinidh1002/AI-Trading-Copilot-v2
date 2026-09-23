@@ -295,45 +295,105 @@ def check_calibration(markets):
 
 
 def check_provider_health(creds, markets):
-    """One read-only health call per surviving market. Skipped on any failure."""
-    try:
-        from services.broker.fyers_provider_runtime_v2 import (
-            check_fyers_provider_health_v2,
-        )
-        from services.broker.fyers_sdk_data_client_v2 import (
-            build_fyers_data_client_v2,
-        )
-    except Exception as exc:
-        return {m: (False, f"health import: {type(exc).__name__}") for m in markets}
-    try:
-        import tempfile
-        client = build_fyers_data_client_v2(
-            client_id=creds.app_id,
-            access_token=creds.access_token,
-            log_path=tempfile.mkdtemp(prefix="preflight_health_"),
-        )
-    except Exception as exc:
-        return {m: (False, f"health client: {type(exc).__name__}") for m in markets}
-    symbol_map = {
+    """Read-only provider health probe, one call per surviving market.
+
+    INDEX markets use the single-symbol health helper.
+    MCX markets use a data-only FYERS runtime: resolve the product
+    identity and fetch one FULL market-data row for the resolved
+    futures token. No order capability, no fallback.
+    """
+    out = {}
+    index_syms = {
         "NIFTY": "NSE:NIFTY50-INDEX",
         "SENSEX": "BSE:SENSEX-INDEX",
     }
-    out = {}
-    for m in markets:
-        sym = symbol_map.get(m)
-        if sym is None:
-            # MCX has no single canonical index symbol; treat as pass with note
-            out[m] = (True, "health: mcx deferred")
-            continue
-        h = check_fyers_provider_health_v2(client, symbol=sym)
-        if h.ok:
-            out[m] = (True, f"health: OK symbol={h.symbol}")
-        else:
-            out[m] = (False, f"PROVIDER_HEALTH:{h.reason_code}")
+    index_markets = [m for m in markets if m in index_syms]
+    mcx_markets = [m for m in markets if m in _MCX_MARKETS]
+
+    if index_markets:
+        try:
+            from services.broker.fyers_provider_runtime_v2 import (
+                check_fyers_provider_health_v2,
+            )
+            from services.broker.fyers_sdk_data_client_v2 import (
+                build_fyers_data_client_v2,
+            )
+            import tempfile
+            client = build_fyers_data_client_v2(
+                client_id=creds.app_id,
+                access_token=creds.access_token,
+                log_path=tempfile.mkdtemp(prefix="preflight_health_"),
+            )
+        except Exception as exc:
+            for m in index_markets:
+                out[m] = (
+                    False,
+                    f"health: INDEX_PROVIDER_SETUP_FAILED:{type(exc).__name__}",
+                )
+            client = None
+        if client is not None:
+            for m in index_markets:
+                try:
+                    h = check_fyers_provider_health_v2(client, symbol=index_syms[m])
+                except Exception as exc:
+                    out[m] = (False, f"health: INDEX_HEALTH_RAISED:{type(exc).__name__}")
+                    continue
+                if h.ok:
+                    out[m] = (True, f"health: OK symbol={h.symbol}")
+                else:
+                    out[m] = (False, f"health: PROVIDER_HEALTH:{h.reason_code}")
+
+    if mcx_markets:
+        try:
+            from mcx.mcx_fyers_runtime_v2 import (
+                build_mcx_fyers_runtime_from_env_v2,
+            )
+            import tempfile
+            log_dir = tempfile.mkdtemp(prefix="preflight_mcx_health_")
+            runtime = build_mcx_fyers_runtime_from_env_v2(
+                log_path=log_dir,
+                env={
+                    "FYERS_APP_ID": creds.app_id,
+                    "FYERS_ACCESS_TOKEN": creds.access_token,
+                },
+            )
+        except Exception as exc:
+            for m in mcx_markets:
+                out[m] = (
+                    False,
+                    f"health: MCX_PROVIDER_SETUP_FAILED:{type(exc).__name__}",
+                )
+            runtime = None
+
+        if runtime is not None:
+            for m in mcx_markets:
+                try:
+                    ident = runtime.identity.resolve_active(m)
+                except Exception as exc:
+                    out[m] = (False, f"health: MCX_IDENTITY_RAISED:{type(exc).__name__}")
+                    continue
+                if not isinstance(ident, dict) or ident.get("status") != "OK":
+                    status = (ident or {}).get("status") if isinstance(ident, dict) else None
+                    reason = (ident or {}).get("reason") if isinstance(ident, dict) else None
+                    out[m] = (False, f"health: MCX_IDENTITY:{status}:{reason}")
+                    continue
+                fut_token = str((ident.get("futures") or {}).get("token") or "").strip()
+                if not fut_token:
+                    out[m] = (False, "health: MCX_FUTURE_TOKEN_MISSING")
+                    continue
+                try:
+                    r = runtime.data.getMarketData("FULL", {"MCX": [fut_token]})
+                except Exception as exc:
+                    out[m] = (False, f"health: MCX_QUOTE_RAISED:{type(exc).__name__}")
+                    continue
+                rows = (r.get("data") or {}).get("fetched") if isinstance(r, dict) else None
+                if not isinstance(rows, list) or not rows:
+                    out[m] = (False, "health: MCX_NO_QUOTE_ROWS")
+                    continue
+                out[m] = (True, f"health: OK mcx product={m} rows={len(rows)}")
+
     return out
 
-
-# ---------------------------------------------------------------- summary
 
 def _summarize(cert, state, cal, calibration, health, locks):
     ready, held = [], {}
