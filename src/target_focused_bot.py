@@ -129,7 +129,9 @@ def _route_rate_limited(bot, endpoint="default"):
     try:
         bot.rate_limiter.wait_if_needed(endpoint)
     except Exception as _e:
-        print(f"  [RL] limiter error: {str(_e)[:60]}")
+        # A missing/corrupt limiter authority must never permit a FYERS call.
+        print(f"  RATE_LIMIT_HOLD: {type(_e).__name__}")
+        raise RuntimeError("RATE_LIMIT_HOLD") from _e
 
 
 class UnifiedTradingBot:
@@ -372,11 +374,27 @@ class UnifiedTradingBot:
         print(f"✅ State saved")
     
     def load_state(self):
+        self.state_load_classification = 'MISSING_UNEXPECTED'
         try:
-            if os.path.exists(self.state_file):
-                with open(self.state_file, 'r') as f:
-                    state = json.load(f)
-                
+            if not os.path.exists(self.state_file):
+                print('STATE_LOAD_HOLD: MISSING_UNEXPECTED')
+                return False
+            with open(self.state_file, 'r') as f:
+                state = json.load(f)
+            if not isinstance(state, dict) or state.get('market') != self.market:
+                self.state_load_classification = 'SCHEMA_INVALID'
+                print('STATE_LOAD_HOLD: SCHEMA_INVALID')
+                return False
+            _counter = state.get('certification_counter')
+            _ids = state.get('counted_trade_ids')
+            if (not isinstance(_counter, int) or _counter < 0
+                    or not isinstance(_ids, list)
+                    or len(_ids) != len(set(_ids))
+                    or len(_ids) != _counter):
+                self.state_load_classification = 'COUNTER_INCOHERENT'
+                print('STATE_LOAD_HOLD: COUNTER_INCOHERENT')
+                return False
+            else:
                 self.current_session = state.get('current_session', 0)
                 self.total_sessions = state.get('total_sessions', 100)
                 self.total_trades = state.get('total_trades', 0)
@@ -400,6 +418,10 @@ class UnifiedTradingBot:
                 for _t in _active_list:
                     if isinstance(_t, dict) and _t.get('trade_id'):
                         self.active_trades[_t['trade_id']] = _t
+                    else:
+                        self.state_load_classification = 'SCHEMA_INVALID'
+                        print('STATE_LOAD_HOLD: MALFORMED_ACTIVE_TRADE')
+                        return False
 
                 # Phase 9.21b — orphan purge after restore.
                 # Runs once, after all active_trades are reconstructed.
@@ -412,6 +434,10 @@ class UnifiedTradingBot:
                         _et_date = datetime.fromisoformat(_et).date() if _et else None
                     except ValueError:
                         _et_date = None
+                    if _et_date is None:
+                        self.state_load_classification = 'SCHEMA_INVALID'
+                        print('STATE_LOAD_HOLD: MALFORMED_ACTIVE_ENTRY_TIME')
+                        return False
                     if _et_date is not None and _et_date < _today:
                         _rec = dict(_t)
                         _rec["status"] = "ORPHANED_PRIOR_SESSION"
@@ -423,6 +449,8 @@ class UnifiedTradingBot:
                     self.orphaned_trades.extend(_new_orphans)
                     print(f"  ORPHAN_PURGE: {len(_new_orphans)} prior-session active trade(s) archived "
                           f"(total archive: {len(self.orphaned_trades)})")
+                    # The removed active records must never be reloaded after a crash.
+                    self.save_state()
                 
                 # R9_epoch_metadata - legacy-safe resolution.
                 # No default: if either key is missing, treat as legacy/pre-cert.
@@ -452,9 +480,11 @@ class UnifiedTradingBot:
                 print(f"✅ Loaded {self.market} state:")
                 print(f"   Sessions: {self.current_session}/{self.total_sessions}")
                 print(f"   P&L: ₹{self.total_pnl:.2f}")
+                self.state_load_classification = 'VALID_EXISTING'
                 return True
         except Exception as e:
-            print(f"Could not load state: {e}")
+            self.state_load_classification = 'CORRUPT'
+            print(f"STATE_LOAD_HOLD: CORRUPT ({type(e).__name__})")
         
         return False
 
