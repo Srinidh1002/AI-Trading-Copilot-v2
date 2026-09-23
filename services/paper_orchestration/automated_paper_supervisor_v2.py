@@ -109,6 +109,15 @@ WORKERS_V2: tuple = (
 )
 
 
+from typing import NamedTuple
+
+
+class StartOutcome(NamedTuple):
+    status: str  # STARTED | DRY_RUN | START_OWNERSHIP_HOLD | START_ENV_FAILURE | START_SPAWN_FAILURE
+    process: object = None
+    note: str = ""
+
+
 @dataclass
 class WorkerRuntimeV2:
     spec: WorkerSpecV2
@@ -131,6 +140,7 @@ class AutomatedPaperSupervisorV2:
     MAX_RESTART_BACKOFF_SECONDS = 300
     HEALTHY_PERIOD = timedelta(seconds=180)
     STOP_ACK_TIMEOUT_SECONDS = 5.0
+    OWNERSHIP_HOLD_BACKOFF_SECONDS = 300
     def __init__(
         self,
         *,
@@ -175,15 +185,18 @@ class AutomatedPaperSupervisorV2:
         return day.weekday() >= 5
 
     def _start_worker(self, spec):
+        """Start one worker process.
+
+        Returns StartOutcome. Callers route status into the per-market
+        restart authority; None is never returned for a real start.
+        """
         if self.dry_run:
             self._log(f"[DRY_RUN] would start {spec.name}: {spec.script} {spec.args}")
-            return None
+            return StartOutcome("DRY_RUN")
         if not market_worker_available(spec.name):
             self._log(f"[{spec.name}] WORKER_OWNERSHIP_HOLD")
-            return None
-        stdout_path = self.log_dir / f"{spec.name}_stdout.log"
-        stderr_path = self.log_dir / f"{spec.name}_stderr.log"
-        args = [self.python_exe, "-u", spec.script, *spec.args]
+            return StartOutcome("START_OWNERSHIP_HOLD", note="lock held by another process")
+
         try:
             from services.broker.fyers_auth_v2 import (
                 FyersAuthError as _FyersAuthError,
@@ -194,7 +207,8 @@ class AutomatedPaperSupervisorV2:
                 f"[{spec.name}] START_FAILED: FYERS_ENV_IMPORT: "
                 f"{type(exc).__name__}"
             )
-            return None
+            return StartOutcome("START_ENV_FAILURE", note=f"import:{type(exc).__name__}")
+
         try:
             env = _build_env(str(self.repo_root / ".env"))
         except _FyersAuthError as exc:
@@ -202,19 +216,24 @@ class AutomatedPaperSupervisorV2:
                 f"[{spec.name}] START_FAILED: FYERS_ENV: "
                 f"{getattr(exc, 'reason_code', 'AUTH_MISSING')}"
             )
-            return None
+            return StartOutcome("START_ENV_FAILURE", note=getattr(exc, "reason_code", "AUTH_MISSING"))
         except Exception as exc:
             self._log(
                 f"[{spec.name}] START_FAILED: FYERS_ENV: "
                 f"{type(exc).__name__}"
             )
-            return None
+            return StartOutcome("START_ENV_FAILURE", note=type(exc).__name__)
+
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONUTF8"] = "1"
         env["PAPER_STOP_REQUEST_FILE"] = str(
             self.log_dir / "stops" / f"{spec.name}.request"
         )
         env["PAPER_STOP_ACK_FILE"] = str(self.log_dir / "stops" / f"{spec.name}.ack")
+
+        stdout_path = self.log_dir / f"{spec.name}_stdout.log"
+        stderr_path = self.log_dir / f"{spec.name}_stderr.log"
+        args = [self.python_exe, "-u", spec.script, *spec.args]
         out_f = open(stdout_path, "a", encoding="utf-8", errors="replace")
         err_f = open(stderr_path, "a", encoding="utf-8", errors="replace")
         try:
@@ -223,13 +242,13 @@ class AutomatedPaperSupervisorV2:
         except Exception as exc:
             out_f.close(); err_f.close()
             self._log(f"[{spec.name}] START_FAILED: {type(exc).__name__}: {exc}")
-            return None
+            return StartOutcome("START_SPAWN_FAILURE", note=type(exc).__name__)
         self._log(f"[{spec.name}] started pid={proc.pid}")
         # Phase 9.8 - stagger worker starts so the first expiryData
         # probe of each market does not collide with FYERS per-second
         # rate limits. 2s between starts, ~10s to launch all five.
         time.sleep(2.0)
-        return proc
+        return StartOutcome("STARTED", process=proc)
 
     def _stop_worker(self, spec, grace_seconds=30.0):
         rt = self.workers[spec.name]
@@ -287,6 +306,16 @@ class AutomatedPaperSupervisorV2:
         if rc in (1, 2):
             return "STARTUP_FAILURE"
         return "RUNTIME_FAILURE"
+
+    def _record_ownership_hold(self, rt, now):
+        """Another process owns this market's worker lock. Push the
+        next retry forward without incrementing restart_failures; contention
+        is not a crash and must not open the circuit.
+        """
+        rt.next_restart_ist = now + timedelta(seconds=self.OWNERSHIP_HOLD_BACKOFF_SECONDS)
+        self._log(
+            f"[{rt.spec.name}] WORKER_OWNERSHIP_BACKOFF seconds={self.OWNERSHIP_HOLD_BACKOFF_SECONDS}"
+        )
 
     def _record_healthy(self, rt, now):
         rt.last_healthy_ist = now
@@ -389,11 +418,16 @@ class AutomatedPaperSupervisorV2:
                             self._record_failure(rt, now, rc)
                     if not self._may_start(rt, now):
                         continue
-                    proc = self._start_worker(spec)
-                    if proc is not None:
-                        rt.process = proc
+                    outcome = self._start_worker(spec)
+                    if outcome.status == "STARTED":
+                        rt.process = outcome.process
                         rt.last_start_ist = now
                         rt.consecutive_healthy_ticks = 0
+                    elif outcome.status == "START_OWNERSHIP_HOLD":
+                        self._record_ownership_hold(rt, now)
+                    elif outcome.status in ("START_ENV_FAILURE", "START_SPAWN_FAILURE"):
+                        self._record_failure(rt, now, -1)
+                    # DRY_RUN: no-op
                 else:
                     self._record_healthy(rt, now)
 

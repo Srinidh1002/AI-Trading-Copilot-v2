@@ -91,8 +91,10 @@ def test_start_worker_fails_closed_when_env_file_missing(tmp_path, monkeypatch):
 
     sup = _make_supervisor(tmp_path, markets=("NIFTY",))
     spec = next(s for s in WORKERS_V2 if s.name == "NIFTY")
-    proc = sup._start_worker(spec)
-    assert proc is None
+    outcome = sup._start_worker(spec)
+    # Part 7: _start_worker returns StartOutcome, not None
+    assert outcome.status == "START_ENV_FAILURE"
+    assert outcome.process is None
     assert called["popen"] == 0
 
 
