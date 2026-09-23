@@ -402,6 +402,13 @@ def _build_fyers_bot():
 
 def main() -> int:
 
+    from services.paper_orchestration.cooperative_stop_v2 import (
+        acknowledge as _coop_ack,
+        stop_requested as _coop_stop_requested,
+    )
+    from services.paper_orchestration.worker_lock_v2 import acquire_market_worker_lock
+    acquire_market_worker_lock(MARKET)
+
     original_getaddrinfo = (
         _install_ipv4_fyers_filter()
     )
@@ -449,7 +456,11 @@ def main() -> int:
             "AUTOMATIC_FALLBACK_ALLOWED=False"
         )
 
-        bot.load_state()
+        if not bot.load_state():
+            raise SystemExit(
+                'STARTUP_BLOCKED: STATE_AUTHORITY:'
+                + str(getattr(bot, 'state_load_classification', 'UNKNOWN'))
+            )
 
         _cert_start = bot.activate_current_certification_epoch_if_safe()
         print(
@@ -506,6 +517,17 @@ def main() -> int:
             and bot.certification_counter < 100
             and attempts < max_attempts
         ):
+
+            if _coop_stop_requested():
+                if not bot.active_trades:
+                    bot.save_state()
+                    _coop_ack(reason="FLAT_ACK_EXIT")
+                    print("COOPERATIVE_STOP_FLAT — saved and ACKed")
+                    return 0
+                print("COOPERATIVE_STOP_POSITION_OPEN — managing to terminal")
+                _coop_stop_active = True
+            else:
+                _coop_stop_active = False
 
             attempts += 1
 
