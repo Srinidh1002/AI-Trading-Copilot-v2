@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
+from services.paper_orchestration.supervisor_lock_v2 import acquire as _acquire_lock
+from services.paper_orchestration.certification_halt_v2 import all_complete as _cert_all_complete
 IST = ZoneInfo("Asia/Kolkata")
 
 
@@ -223,6 +225,9 @@ class AutomatedPaperSupervisorV2:
             self._log(f"[{spec.name}] analysis failed: {type(exc).__name__}: {exc}")
 
     def tick(self):
+        if _cert_all_complete():
+            print("CERTIFICATION_COMPLETE: all markets at 100; supervisor idle")
+            return
         now = self._now_ist()
         day = now.date()
         self._log(f"tick at {now.isoformat()}")
@@ -290,6 +295,7 @@ class AutomatedPaperSupervisorV2:
 
 
 def _main():
+    _acquire_lock()
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true")
@@ -313,3 +319,4 @@ def _main():
 
 if __name__ == "__main__":
     raise SystemExit(_main())
+
