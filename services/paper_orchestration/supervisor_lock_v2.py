@@ -1,67 +1,25 @@
-"""PID-based supervisor lock. Windows- and POSIX-safe.
+"""Exclusive supervisor ownership lock; stale metadata cannot retain an OS lock."""
 
-Refuses to start if another live supervisor holds the lock.
-Cleans up stale locks from dead PIDs automatically.
-"""
 from __future__ import annotations
 
-import atexit
-import os
-import sys
+from pathlib import Path
 
-_LOCK_DIR = os.path.join("logs", "supervisor")
-LOCK_PATH = os.path.join(_LOCK_DIR, ".lock")
+from services.paper_orchestration.process_lock_v2 import ProcessLockV2
 
-
-def _pid_alive(pid: int) -> bool:
-    if sys.platform == "win32":
-        import ctypes
-        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-        STILL_ACTIVE = 259
-        kernel32 = ctypes.windll.kernel32
-        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
-        if not handle:
-            return False
-        try:
-            code = ctypes.c_ulong()
-            ok = kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
-            return bool(ok) and code.value == STILL_ACTIVE
-        finally:
-            kernel32.CloseHandle(handle)
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+LOCK_PATH = _REPO_ROOT / "logs" / "supervisor" / ".lock"
+_lock: ProcessLockV2 | None = None
 
 
-def _read_lock():
-    try:
-        with open(LOCK_PATH, "r", encoding="utf-8") as f:
-            return int(f.read().strip())
-    except (OSError, ValueError):
-        return None
-
-
-def acquire() -> None:
-    os.makedirs(_LOCK_DIR, exist_ok=True)
-    existing = _read_lock()
-    if existing is not None and existing != os.getpid() and _pid_alive(existing):
-        raise RuntimeError(
-            f"supervisor already running (pid={existing}). "
-            f"If you are certain it is dead, delete {LOCK_PATH}."
-        )
-    with open(LOCK_PATH, "w", encoding="utf-8") as f:
-        f.write(str(os.getpid()))
-    atexit.register(release)
+def acquire() -> ProcessLockV2:
+    global _lock
+    if _lock is None:
+        _lock = ProcessLockV2(LOCK_PATH, role="SUPERVISOR").acquire()
+    return _lock
 
 
 def release() -> None:
-    try:
-        if os.path.exists(LOCK_PATH):
-            with open(LOCK_PATH, "r", encoding="utf-8") as f:
-                contents = f.read().strip()
-            if contents == str(os.getpid()):
-                os.unlink(LOCK_PATH)
-    except OSError:
-        pass
+    global _lock
+    if _lock is not None:
+        _lock.release()
+        _lock = None
