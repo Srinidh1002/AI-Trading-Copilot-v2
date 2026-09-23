@@ -5,5 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ai-trading-copilot-v2"
 version = "0.1.0"
-description = "AI Trading Copilot"
-dependencies = []
+description = "AI Trading Copilot - five-market PAPER runtime"
+requires-python = ">=3.11"
+dependencies = [
+    "fyers-apiv3>=3.1.17",
+    "smartapi-python>=1.5.5",
+    "PyOTP>=2.10.0",
+    "python-dotenv>=1.2.3",
+    "pandas>=3.0.5",
+    "numpy>=2.5.3",
+    "requests>=2.31.0",
+    "yfinance>=1.7.0",
+    "websocket-client>=1.6.1",
+    "websockets>=17.1",
+]

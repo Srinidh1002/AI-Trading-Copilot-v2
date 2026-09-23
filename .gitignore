@@ -29,3 +29,27 @@ artifacts/certification/task2/
 data/task9/live-decision-audit.json
 data/task9/live_stream/
 data/provider_cache/
+
+# Runtime state (never commit)
+data/paper_trades/*_experimental.json
+data/paper_trades/*_predictions.jsonl
+data/paper_trades/*_outcomes.jsonl
+data/paper_trades/*_decisions.jsonl
+
+# Diagnostics archive
+_diagnostics/
+
+# Backups and session artifacts
+*.bak
+*.bak_*
+f8x_*
+!f8x_dashboard.ps1
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local env and logs
+.env
+logs/

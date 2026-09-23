@@ -1,7 +1,21 @@
+# AI Trading Copilot v2 - runtime dependencies
+#
+# Installed in the working venv on 2026-09-23. Version pins reflect the
+# versions that were actually used in the first supervised five-market
+# PAPER day.
+
+# Broker / auth
+fyers-apiv3>=3.1.17
 smartapi-python>=1.5.5
-pyotp>=2.8.0
-python-dotenv>=0.19.0
-pandas>=1.5.0
-numpy>=1.23.0
-websocket-client>=1.5.0
-requests>=2.28.0
+PyOTP>=2.10.0
+python-dotenv>=1.2.3
+
+# Data
+pandas>=3.0.5
+numpy>=2.5.3
+requests>=2.31.0
+yfinance>=1.7.0
+
+# Networking / streaming
+websocket-client>=1.6.1
+websockets>=17.1

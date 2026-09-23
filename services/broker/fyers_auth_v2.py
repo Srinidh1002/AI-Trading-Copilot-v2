@@ -266,3 +266,92 @@ def classify_fyers_exception_v2(
         return FyersAuthError(REASON_RATE_LIMIT, msg or name)
 
     return FyersAuthError(REASON_PROVIDER_ERROR, msg or name)
+@dataclass(frozen=True)
+class FyersOAuthInputsV2:
+    """Static OAuth inputs plus an optional current access token."""
+
+    app_id: str
+    secret_id: str
+    redirect_uri: str
+    access_token: str | None
+    source: str
+
+
+def load_fyers_oauth_inputs_v2(
+    *,
+    env_file: str | None = None,
+) -> FyersOAuthInputsV2:
+    """Load the canonical inputs required to perform FYERS daily OAuth.
+
+    Unlike load_fyers_credentials_v2(), access_token is deliberately optional.
+    This allows the official interactive OAuth flow to recover when yesterday's
+    access token is expired or has been removed.
+
+    This remains inside fyers_auth_v2.py so credential environment reads retain
+    one canonical repository authority.
+    """
+    if _load_dotenv is not None:
+        _load_dotenv(
+            env_file,
+            override=False,
+        )
+
+    app_id = (
+        os.getenv(
+            "FYERS_APP_ID"
+        )
+        or ""
+    ).strip()
+
+    secret_id = (
+        os.getenv(
+            "FYERS_SECRET_ID"
+        )
+        or ""
+    ).strip()
+
+    redirect_uri = (
+        os.getenv(
+            "FYERS_REDIRECT_URI"
+        )
+        or ""
+    ).strip()
+
+    access_token = (
+        os.getenv(
+            "FYERS_ACCESS_TOKEN"
+        )
+        or ""
+    ).strip() or None
+
+    source = (
+        f"env_file:{env_file}"
+        if env_file
+        else "process_env_or_default_env"
+    )
+
+    if not app_id:
+        raise FyersAuthError(
+            REASON_AUTH_MISSING,
+            "FYERS_APP_ID not set",
+        )
+
+    if not secret_id:
+        raise FyersAuthError(
+            REASON_AUTH_MISSING,
+            "FYERS_SECRET_ID not set",
+        )
+
+    if not redirect_uri:
+        raise FyersAuthError(
+            REASON_AUTH_MISSING,
+            "FYERS_REDIRECT_URI not set",
+        )
+
+    return FyersOAuthInputsV2(
+        app_id=app_id,
+        secret_id=secret_id,
+        redirect_uri=redirect_uri,
+        access_token=access_token,
+        source=source,
+    )
