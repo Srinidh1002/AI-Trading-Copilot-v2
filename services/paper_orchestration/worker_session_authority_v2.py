@@ -90,11 +90,23 @@ def _index_authority(now, spec_name):
         )
 
     market_open = bool(r.get("market_open"))
-    reasons = r.get("reasons") or []
+    reasons = list(r.get("reasons") or [])
+
+    # market_session_guard treats MARKET_CLOSE_TIME inclusively (<=), so 15:30
+    # is reported SESSION_VALID. The supervisor needs close exclusive: at 15:30
+    # the cooperative stop path must run. Clamp here, independent of the guard.
+    try:
+        _now_t = now.timetz().replace(tzinfo=None)
+    except Exception:
+        _now_t = None
+    if _now_t is not None and _now_t >= _INDEX_CLOSE:
+        market_open = False
+        reasons = reasons + ["INDEX_CLOSE_EXCLUSIVE_1530"]
+
     return SessionAuthority(
         session_open=market_open,
         new_entries_allowed=market_open,
-        position_management_allowed=True,
+        position_management_allowed=market_open,
         close_time=_INDEX_CLOSE,
         calendar_authoritative=True,
         status=str(r.get("status", "UNKNOWN")),

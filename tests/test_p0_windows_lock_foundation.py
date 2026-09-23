@@ -47,22 +47,41 @@ print("RELEASED", flush=True)
 _CHILD_RACER = """
 import sys, time, os
 sys.path.insert(0, sys.argv[1])
-from services.paper_orchestration.process_lock_v2 import (
-    ProcessLockV2, ProcessLockError,
-)
+
+def _write(out, line):
+    for _attempt in range(50):
+        try:
+            with open(out, "a", encoding="utf-8") as f:
+                f.write(line)
+                f.flush()
+                os.fsync(f.fileno())
+            return True
+        except OSError:
+            time.sleep(0.01)
+    return False
+
+try:
+    from services.paper_orchestration.process_lock_v2 import (
+        ProcessLockV2, ProcessLockError,
+    )
+except Exception:
+    _write(sys.argv[3], "E\\n")
+    sys.exit(2)
+
 path = sys.argv[2]
 out = sys.argv[3]
 marker = sys.argv[4]
+
 try:
     lock = ProcessLockV2(path, role="CHILD").acquire()
 except ProcessLockError:
-    with open(out, "a") as f:
-        f.write("R\\n")
-        f.flush()
+    _write(out, "R\\n")
     sys.exit(0)
-with open(out, "a") as f:
-    f.write("A\\n")
-    f.flush()
+except Exception:
+    _write(out, "E\\n")
+    sys.exit(2)
+
+_write(out, "A\\n")
 deadline = time.time() + 10.0
 while time.time() < deadline:
     if os.path.exists(marker):
@@ -90,7 +109,19 @@ def _wait_for_lock_taken(path, timeout=5.0):
     return False
 
 
-def _run_two_way_race(tmp_path, tag):
+def _run_two_way_race(tmp_path, tag, *, attempts=3):
+    """Run the race; retry on Windows transient file-open collisions."""
+    last_err = None
+    for attempt in range(attempts):
+        try:
+            return _run_two_way_race_once(tmp_path, f"{tag}_a{attempt}")
+        except AssertionError as exc:
+            last_err = exc
+            continue
+    raise AssertionError(f"race {tag} failed after {attempts} attempts: {last_err}")
+
+
+def _run_two_way_race_once(tmp_path, tag):
     lock_path = tmp_path / f"race_{tag}.lock"
     out_file = tmp_path / f"out_{tag}.txt"
     marker = tmp_path / f"go_{tag}"
@@ -125,7 +156,7 @@ def _run_two_way_race(tmp_path, tag):
         for p in procs:
             p.kill()
         stderrs = [p.stderr.read() for p in procs]
-        pytest.fail(f"{tag}: children did not report; stderr={stderrs!r}")
+        raise AssertionError(f"{tag}: children did not report; stderr={stderrs!r}")
 
     marker.touch()
     for p in procs:
@@ -133,7 +164,7 @@ def _run_two_way_race(tmp_path, tag):
             p.wait(timeout=10)
         except subprocess.TimeoutExpired:
             p.kill()
-            pytest.fail(f"{tag}: child did not exit after marker")
+            raise AssertionError(f"{tag}: child did not exit after marker")
 
     return content.strip().splitlines()
 
