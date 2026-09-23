@@ -113,7 +113,7 @@ def _patch_all_ok(monkeypatch):
     )
     monkeypatch.setattr(
         pf, "check_state_authority",
-        lambda markets: {m: (True, "state ok") for m in markets},
+        lambda markets, repo_root: {m: (True, "STATE_OK") for m in markets},
     )
     monkeypatch.setattr(
         pf, "check_calendar",

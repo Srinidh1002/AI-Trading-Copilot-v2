@@ -170,31 +170,20 @@ def check_cert_authority(markets):
     return out
 
 
-def check_state_authority(markets):
-    """Read-only structural check of each state file against its loader schema."""
+def check_state_authority(markets, repo_root):
+    """Strict read-only state authority check via the shared validator.
+
+    Never mutates state. Uses the caller-supplied repo_root so
+    --repo-root cannot be silently ignored in favor of the module default.
+    """
+    from services.paper_orchestration.state_authority_readonly_v2 import (
+        validate_markets,
+    )
+    verdicts = validate_markets(Path(repo_root).resolve(), markets)
     out = {}
-    for m in markets:
-        key = m.lower()
-        if m == "CRUDEOILM":
-            key = "mcx_crudeoilm"
-        elif m == "GOLDM":
-            key = "mcx_goldm"
-        elif m == "NATGASMINI":
-            key = "mcx_natgasmini"
-        p = REPO_DEFAULT / "data" / "paper_trades" / f"{key}_experimental.json"
-        if not p.is_file():
-            out[m] = (False, "STATE_MISSING")
-            continue
-        try:
-            import json
-            data = json.loads(p.read_text(encoding="utf-8"))
-        except Exception as exc:
-            out[m] = (False, f"STATE_UNREADABLE:{type(exc).__name__}")
-            continue
-        if not isinstance(data, dict):
-            out[m] = (False, "STATE_SCHEMA_INVALID")
-            continue
-        out[m] = (True, "state ok")
+    for m, v in verdicts.items():
+        label = v.reason + (f"|{v.note}" if v.note else "")
+        out[m] = (v.ok, label)
     return out
 
 
@@ -400,7 +389,7 @@ def main(argv=None):
     # per-market checks
     _section("PREFLIGHT — PER-MARKET AUTHORITY")
     cert = check_cert_authority(requested)
-    state = check_state_authority(requested)
+    state = check_state_authority(requested, args.repo_root)
     cal = check_calendar(requested, now)
     calibration = check_calibration(requested)
 
