@@ -1312,6 +1312,10 @@ def main():
                         regime=regime.get("regime") if isinstance(regime, dict) else str(regime),
                         blocking_reasons=list(decision.get("blockers") or []),
                         signal_price=chain.get("future_ltp") if isinstance(chain, dict) else None,
+                        underlying_future_symbol=(res.get("futures") or {}).get("symbol") if isinstance(res, dict) else None,
+                        expiry=chain.get("expiry") if isinstance(chain, dict) else None,
+                        option_side="CE" if _lcf >= _scf else "PE",
+                        attempt=attempts,
                     )
                 except Exception as _cf_e:
                     print(f"  [counterfactual log skipped: {_cf_e}]")
