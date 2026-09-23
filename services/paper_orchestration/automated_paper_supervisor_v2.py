@@ -20,15 +20,19 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
 from services.paper_orchestration.supervisor_lock_v2 import acquire as _acquire_lock
+from services.paper_orchestration.worker_lock_v2 import market_worker_available
 from services.paper_orchestration.certification_halt_v2 import (
     all_complete as _cert_all_complete,
-    market_complete as _cert_market_complete,
+    market_state as _cert_market_state,
+)
+from services.paper_orchestration.worker_session_authority_v2 import (
+    authority_for as _session_authority_for,
 )
 IST = ZoneInfo("Asia/Kolkata")
 
@@ -113,9 +117,20 @@ class WorkerRuntimeV2:
     last_stop_ist: Optional[datetime] = None
     last_analysis_date: Optional[date] = None
     exit_history: list = field(default_factory=list)
+    restart_failures: list = field(default_factory=list)
+    next_restart_ist: Optional[datetime] = None
+    circuit_open: bool = False
+    last_healthy_ist: Optional[datetime] = None
+    last_expected_stop_ist: Optional[datetime] = None
+    consecutive_healthy_ticks: int = 0
 
 
 class AutomatedPaperSupervisorV2:
+    MAX_RESTART_FAILURES = 3
+    RESTART_WINDOW = timedelta(minutes=15)
+    MAX_RESTART_BACKOFF_SECONDS = 300
+    HEALTHY_PERIOD = timedelta(seconds=180)
+    STOP_ACK_TIMEOUT_SECONDS = 5.0
     def __init__(
         self,
         *,
@@ -163,12 +178,43 @@ class AutomatedPaperSupervisorV2:
         if self.dry_run:
             self._log(f"[DRY_RUN] would start {spec.name}: {spec.script} {spec.args}")
             return None
+        if not market_worker_available(spec.name):
+            self._log(f"[{spec.name}] WORKER_OWNERSHIP_HOLD")
+            return None
         stdout_path = self.log_dir / f"{spec.name}_stdout.log"
         stderr_path = self.log_dir / f"{spec.name}_stderr.log"
         args = [self.python_exe, "-u", spec.script, *spec.args]
-        env = os.environ.copy()
+        try:
+            from services.broker.fyers_auth_v2 import (
+                FyersAuthError as _FyersAuthError,
+                build_fyers_child_env_v2 as _build_env,
+            )
+        except Exception as exc:
+            self._log(
+                f"[{spec.name}] START_FAILED: FYERS_ENV_IMPORT: "
+                f"{type(exc).__name__}"
+            )
+            return None
+        try:
+            env = _build_env(str(self.repo_root / ".env"))
+        except _FyersAuthError as exc:
+            self._log(
+                f"[{spec.name}] START_FAILED: FYERS_ENV: "
+                f"{getattr(exc, 'reason_code', 'AUTH_MISSING')}"
+            )
+            return None
+        except Exception as exc:
+            self._log(
+                f"[{spec.name}] START_FAILED: FYERS_ENV: "
+                f"{type(exc).__name__}"
+            )
+            return None
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONUTF8"] = "1"
+        env["PAPER_STOP_REQUEST_FILE"] = str(
+            self.log_dir / "stops" / f"{spec.name}.request"
+        )
+        env["PAPER_STOP_ACK_FILE"] = str(self.log_dir / "stops" / f"{spec.name}.ack")
         out_f = open(stdout_path, "a", encoding="utf-8", errors="replace")
         err_f = open(stderr_path, "a", encoding="utf-8", errors="replace")
         try:
@@ -193,32 +239,86 @@ class AutomatedPaperSupervisorV2:
         if self.dry_run:
             self._log(f"[DRY_RUN] would stop {spec.name} pid={proc.pid}")
             return
-        self._log(f"[{spec.name}] sending terminate pid={proc.pid}")
-        try:
-            proc.terminate()
-        except Exception as exc:
-            self._log(f"[{spec.name}] terminate failed: {exc}")
+        stop_dir = self.log_dir / "stops"
+        stop_dir.mkdir(parents=True, exist_ok=True)
+        request = stop_dir / f"{spec.name}.request"
+        acknowledgement = stop_dir / f"{spec.name}.ack"
+        acknowledgement.unlink(missing_ok=True)
+        request.write_text("STOP_NEW_ENTRIES", encoding="utf-8")
+        self._log(f"[{spec.name}] cooperative stop requested pid={proc.pid}")
+
+        # Step 1 — wait briefly for explicit ACK
+        ack_observed = False
+        ack_deadline = time.monotonic() + self.STOP_ACK_TIMEOUT_SECONDS
+        while time.monotonic() < ack_deadline:
+            if proc.poll() is not None:
+                break
+            if acknowledgement.exists():
+                ack_observed = True
+                self._log(f"[{spec.name}] STOP_ACK received")
+                break
+            time.sleep(0.2)
+
+        # Step 2 — wait for exit up to grace_seconds total
         deadline = time.monotonic() + grace_seconds
         while time.monotonic() < deadline:
             if proc.poll() is not None:
                 break
             time.sleep(0.5)
         if proc.poll() is None:
-            self._log(f"[{spec.name}] did not stop; killing pid={proc.pid}")
+            self._log(f"[{spec.name}] ABNORMAL_SHUTDOWN_TIMEOUT pid={proc.pid} ack={ack_observed}")
+            try:
+                proc.terminate()
+            except Exception as exc:
+                self._log(f"[{spec.name}] forced terminate failed: {exc}")
+        if proc.poll() is None:
             try:
                 proc.kill()
             except Exception as exc:
-                self._log(f"[{spec.name}] kill failed: {exc}")
+                self._log(f"[{spec.name}] forced kill failed: {exc}")
+        request.unlink(missing_ok=True)
         self._log(f"[{spec.name}] stopped rc={proc.poll()}")
 
-    def _classify_exit(self, spec, rc):
+    def _classify_exit(self, spec, rc, *, expected_alive=True):
         if rc is None:
             return "STILL_RUNNING"
         if rc == 0:
-            return "NORMAL_EXIT"
+            return "UNEXPECTED_EXIT_ZERO" if expected_alive else "CLEAN_SESSION_END"
         if rc in (1, 2):
-            return "FAILED_STARTUP"
-        return f"NONZERO_{rc}"
+            return "STARTUP_FAILURE"
+        return "RUNTIME_FAILURE"
+
+    def _record_healthy(self, rt, now):
+        rt.last_healthy_ist = now
+        rt.consecutive_healthy_ticks += 1
+        if (
+            rt.last_start_ist is not None
+            and now - rt.last_start_ist >= self.HEALTHY_PERIOD
+            and rt.restart_failures
+        ):
+            rt.restart_failures.clear()
+            rt.next_restart_ist = None
+            self._log(f"[{rt.spec.name}] WORKER_HEALTHY_PERIOD_CLEARED")
+
+    def _record_failure(self, rt, now, rc):
+        rt.restart_failures = [
+            stamp for stamp in rt.restart_failures if stamp >= now - self.RESTART_WINDOW
+        ]
+        rt.restart_failures.append(now)
+        if len(rt.restart_failures) >= self.MAX_RESTART_FAILURES:
+            rt.circuit_open = True
+            self._log(f"[{rt.spec.name}] WORKER_CIRCUIT_OPEN rc={rc}")
+            return
+        delay = min(2 ** (len(rt.restart_failures) - 1) * 30, self.MAX_RESTART_BACKOFF_SECONDS)
+        rt.next_restart_ist = now + timedelta(seconds=delay)
+        self._log(f"[{rt.spec.name}] WORKER_RESTART_BACKOFF seconds={delay} rc={rc}")
+
+    def _may_start(self, rt, now):
+        if rt.circuit_open:
+            return False
+        if rt.next_restart_ist is not None and now < rt.next_restart_ist:
+            return False
+        return True
 
     def _run_analysis_once(self, spec, day):
         if self.dry_run:
@@ -244,49 +344,83 @@ class AutomatedPaperSupervisorV2:
         self._log(f"tick at {now.isoformat()}")
         for spec in self._enabled_specs():
             rt = self.workers[spec.name]
-            if _cert_market_complete(spec.name):
-                if rt.process is not None and rt.process.poll() is None:
-                    self._stop_worker(spec)
-                    rt.last_stop_ist = now
-                    self._log(f"[{spec.name}] certification complete at 100; worker stopped")
-                continue
-            if self._is_weekend(day):
-                if rt.process is not None and rt.process.poll() is None:
-                    self._stop_worker(spec)
-                continue
-            session_active = self._is_session_active(spec, now)
-            session_done = self._is_session_done_today(spec, now)
 
-            if session_active:
+            # Wave 0 — certification authority gate
+            ms = _cert_market_state(spec.name)
+            if ms.status == "HOLD":
+                self._log(f"[{spec.name}] CERT_AUTHORITY_HOLD reason={ms.reason}")
+                if rt.process is not None and rt.process.poll() is None:
+                    self._stop_worker(spec)
+                    rt.last_expected_stop_ist = now
+                continue
+            if ms.status == "COMPLETE":
+                if rt.process is not None and rt.process.poll() is None:
+                    self._stop_worker(spec)
+                    rt.last_expected_stop_ist = now
+                    self._log(f"[{spec.name}] CERT_COMPLETE counter={ms.counter}; worker stopped")
+                if rt.last_analysis_date != day:
+                    self._run_analysis_once(spec, day)
+                    rt.last_analysis_date = day
+                    self._log(f"[{spec.name}] FINAL_ANALYSIS_DONE counter={ms.counter}")
+                continue
+
+            # Wave 1 — calendar authority
+            auth = _session_authority_for(spec, now)
+            if not auth.calendar_authoritative:
+                self._log(
+                    f"[{spec.name}] CALENDAR_HOLD status={auth.status} note={auth.note}"
+                )
+                # Do not start. Do not stop a running worker: it must be able to close positions.
+                continue
+
+            if auth.session_open:
                 if rt.process is None or rt.process.poll() is not None:
                     if rt.process is not None:
                         rc = rt.process.poll()
-                        status = self._classify_exit(spec, rc)
+                        expected_alive = not (
+                            rt.last_expected_stop_ist is not None
+                            and rt.last_start_ist is not None
+                            and rt.last_expected_stop_ist >= rt.last_start_ist
+                        )
+                        status = self._classify_exit(spec, rc, expected_alive=expected_alive)
                         rt.exit_history.append((day, rc, status))
-                        self._log(f"[{spec.name}] prior exit rc={rc} classified={status}")
+                        self._log(f"[{spec.name}] WORKER_EXIT rc={rc} classified={status}")
+                        if status in ("STARTUP_FAILURE", "RUNTIME_FAILURE", "UNEXPECTED_EXIT_ZERO"):
+                            self._record_failure(rt, now, rc)
+                    if not self._may_start(rt, now):
+                        continue
                     proc = self._start_worker(spec)
                     if proc is not None:
                         rt.process = proc
                         rt.last_start_ist = now
+                        rt.consecutive_healthy_ticks = 0
+                else:
+                    self._record_healthy(rt, now)
 
-            elif session_done and rt.process is not None and rt.process.poll() is None:
-                self._stop_worker(spec)
-                rt.last_stop_ist = now
-                if rt.last_analysis_date != day:
-                    self._run_analysis_once(spec, day)
-                    rt.last_analysis_date = day
+            elif (
+                auth.position_management_allowed
+                and rt.process is not None
+                and rt.process.poll() is None
+            ):
+                # CLOSE_BUFFER — leave the worker running; it manages the existing position.
+                pass
 
             else:
-                if (session_done
-                        and rt.process is not None
-                        and rt.process.poll() is not None
-                        and rt.last_analysis_date != day):
-                    rc = rt.process.poll()
-                    status = self._classify_exit(spec, rc)
-                    rt.exit_history.append((day, rc, status))
-                    self._log(f"[{spec.name}] auto-exit rc={rc} classified={status}")
-                    self._run_analysis_once(spec, day)
-                    rt.last_analysis_date = day
+                if rt.process is not None and rt.process.poll() is None:
+                    self._stop_worker(spec)
+                    rt.last_stop_ist = now
+                    rt.last_expected_stop_ist = now
+                    if rt.last_analysis_date != day:
+                        self._run_analysis_once(spec, day)
+                        rt.last_analysis_date = day
+                elif rt.process is not None and rt.process.poll() is not None:
+                    if rt.last_analysis_date != day:
+                        rc = rt.process.poll()
+                        status = self._classify_exit(spec, rc, expected_alive=False)
+                        rt.exit_history.append((day, rc, status))
+                        self._log(f"[{spec.name}] auto-exit rc={rc} classified={status}")
+                        self._run_analysis_once(spec, day)
+                        rt.last_analysis_date = day
 
     def run_forever(self, poll_seconds=30.0):
         self._log(f"supervisor started (dry_run={self.dry_run})")
@@ -326,7 +460,20 @@ def _main():
     args = ap.parse_args()
     markets = None
     if args.markets:
-        markets = tuple(s.strip().upper() for s in args.markets.split(",") if s.strip())
+        _VALID = ("NIFTY", "SENSEX", "CRUDEOILM", "GOLDM", "NATGASMINI")
+        tokens = [t.strip().upper() for t in args.markets.split(",") if t.strip()]
+        seen = set()
+        deduped = []
+        for t in tokens:
+            if t not in seen:
+                seen.add(t)
+                deduped.append(t)
+        bad = [t for t in deduped if t not in _VALID]
+        if bad:
+            print(f"--markets: unknown market(s): {', '.join(bad)}", file=sys.stderr)
+            print(f"--markets: allowed values: {', '.join(_VALID)}", file=sys.stderr)
+            return 2
+        markets = tuple(deduped) if deduped else None
     sup = AutomatedPaperSupervisorV2(
         repo_root=args.repo_root,
         python_exe=args.python_exe,
@@ -342,4 +489,3 @@ def _main():
 
 if __name__ == "__main__":
     raise SystemExit(_main())
-
