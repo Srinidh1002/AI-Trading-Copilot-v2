@@ -52,3 +52,22 @@ def snapshot(markets=None):
 
 def all_complete(markets=None) -> bool:
     return all(v >= _TARGET for v in snapshot(markets).values())
+
+_SPEC_NAME_TO_FILE_KEY = {
+    "NIFTY": "nifty",
+    "SENSEX": "sensex",
+    "CRUDEOILM": "mcx_crudeoilm",
+    "GOLDM": "mcx_goldm",
+    "NATGASMINI": "mcx_natgasmini",
+}
+
+
+def market_counter(spec_name):
+    """Countable trades for one market, keyed by supervisor spec name."""
+    key = _SPEC_NAME_TO_FILE_KEY.get(spec_name.upper(), spec_name.lower())
+    return _counter(os.path.join(_STATE_DIR, f"{key}_experimental.json"))
+
+
+def market_complete(spec_name):
+    """True when this single market has reached the 100-trade target."""
+    return market_counter(spec_name) >= _TARGET

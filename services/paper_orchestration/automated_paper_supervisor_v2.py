@@ -26,7 +26,10 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 from services.paper_orchestration.supervisor_lock_v2 import acquire as _acquire_lock
-from services.paper_orchestration.certification_halt_v2 import all_complete as _cert_all_complete
+from services.paper_orchestration.certification_halt_v2 import (
+    all_complete as _cert_all_complete,
+    market_complete as _cert_market_complete,
+)
 IST = ZoneInfo("Asia/Kolkata")
 
 
@@ -121,6 +124,7 @@ class AutomatedPaperSupervisorV2:
         dry_run: bool = False,
         log_dir: str = "logs/supervisor",
         clock=None,
+        markets=None,
     ) -> None:
         self.repo_root = Path(repo_root).resolve()
         self.python_exe = python_exe
@@ -128,7 +132,14 @@ class AutomatedPaperSupervisorV2:
         self.log_dir = self.repo_root / log_dir
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.clock = clock or (lambda: datetime.now(IST))
+        self.markets = tuple(markets) if markets else None
         self.workers = {spec.name: WorkerRuntimeV2(spec=spec) for spec in WORKERS_V2}
+
+    def _enabled_specs(self):
+        if self.markets is None:
+            return WORKERS_V2
+        wanted = {m.upper() for m in self.markets}
+        return tuple(s for s in WORKERS_V2 if s.name in wanted)
 
     def _now_ist(self):
         return self.clock()
@@ -231,8 +242,14 @@ class AutomatedPaperSupervisorV2:
         now = self._now_ist()
         day = now.date()
         self._log(f"tick at {now.isoformat()}")
-        for spec in WORKERS_V2:
+        for spec in self._enabled_specs():
             rt = self.workers[spec.name]
+            if _cert_market_complete(spec.name):
+                if rt.process is not None and rt.process.poll() is None:
+                    self._stop_worker(spec)
+                    rt.last_stop_ist = now
+                    self._log(f"[{spec.name}] certification complete at 100; worker stopped")
+                continue
             if self._is_weekend(day):
                 if rt.process is not None and rt.process.poll() is None:
                     self._stop_worker(spec)
@@ -282,7 +299,7 @@ class AutomatedPaperSupervisorV2:
                 time.sleep(poll_seconds)
         except KeyboardInterrupt:
             self._log("interrupt received; stopping workers")
-            for spec in WORKERS_V2:
+            for spec in self._enabled_specs():
                 self._stop_worker(spec)
             self._log("supervisor stopped")
 
@@ -304,11 +321,17 @@ def _main():
     ap.add_argument("--python-exe", default=sys.executable)
     ap.add_argument("--repo-root",
                     default=str(Path(__file__).resolve().parents[2]))
+    ap.add_argument("--markets", default=None,
+                    help="Comma-separated subset of {NIFTY,SENSEX,CRUDEOILM,GOLDM,NATGASMINI}; default all five.")
     args = ap.parse_args()
+    markets = None
+    if args.markets:
+        markets = tuple(s.strip().upper() for s in args.markets.split(",") if s.strip())
     sup = AutomatedPaperSupervisorV2(
         repo_root=args.repo_root,
         python_exe=args.python_exe,
         dry_run=args.dry_run,
+        markets=markets,
     )
     if args.once:
         sup.tick()
