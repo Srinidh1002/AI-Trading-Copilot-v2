@@ -213,10 +213,16 @@ def check_calendar(markets, now):
 
 
 def _calibration_status_for(product):
-    """Read-only accessor, monkeypatchable for tests."""
+    """Read-only accessor, monkeypatchable for tests.
+
+    Returns a dict with at minimum: calibration_valid, provider_scoped,
+    quantity_verified, freshness_calibrated, entry_execution_calibrated,
+    evidence_kind, calibration_provider, reason. Never mutates config.
+    """
     try:
         from mcx.mcx_exec_config import (
             calibration_status as _cal_status,
+            get_provider_product_config as _get_cfg,
         )
     except Exception as exc:
         return {
@@ -232,7 +238,18 @@ def _calibration_status_for(product):
         }
     if not isinstance(r, dict):
         return {"calibration_valid": False, "reason": "CALIBRATION_SCHEMA_INVALID"}
-    # Ensure reason is present even if the accessor omits it
+    # Enrich with evidence_kind / calibration_provider from the underlying record
+    try:
+        raw = _get_cfg(product)
+        if isinstance(raw, dict):
+            r = dict(r)
+            r["evidence_kind"] = raw.get("evidence_kind")
+            r["calibration_provider"] = (
+                raw.get("calibration_provider")
+                or raw.get("provider")
+            )
+    except Exception:
+        pass
     if "reason" not in r:
         r = dict(r)
         r["reason"] = "UNSPECIFIED"
@@ -240,16 +257,40 @@ def _calibration_status_for(product):
 
 
 def check_calibration(markets):
+    """Strict MCX calibration gate.
+
+    A product is admitted only when every flag below is true AND the
+    evidence kind is LIVE_MARKET_DEPTH AND the provider is FYERS.
+    calibration_valid=True alone is not sufficient.
+    """
     out = {}
     for m in markets:
         if m not in _MCX_MARKETS:
             out[m] = (True, "n/a (index)")
             continue
         r = _calibration_status_for(m)
-        if r.get("calibration_valid"):
-            out[m] = (True, "calibrated")
-        else:
-            out[m] = (False, f"CALIBRATION_MISSING:{r.get('reason', '?')}")
+        reason = str(r.get("reason") or "?")
+        checks = [
+            ("calibration_valid", r.get("calibration_valid")),
+            ("provider_scoped", r.get("provider_scoped")),
+            ("quantity_verified", r.get("quantity_verified")),
+            ("freshness_calibrated", r.get("freshness_calibrated")),
+            ("entry_execution_calibrated", r.get("entry_execution_calibrated")),
+        ]
+        missing = [name for name, val in checks if not bool(val)]
+        if missing:
+            out[m] = (False,
+                      f"CALIBRATION_MISSING:{reason}|missing={','.join(missing)}")
+            continue
+        evk = str(r.get("evidence_kind") or "").upper()
+        if evk != "LIVE_MARKET_DEPTH":
+            out[m] = (False, f"CALIBRATION_EVIDENCE_KIND:{evk or 'NONE'}")
+            continue
+        prov = str(r.get("calibration_provider") or "").upper()
+        if prov != "FYERS":
+            out[m] = (False, f"CALIBRATION_PROVIDER_MISMATCH:{prov or 'NONE'}")
+            continue
+        out[m] = (True, "calibrated")
     return out
 
 
