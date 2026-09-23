@@ -53,3 +53,25 @@ __pycache__/
 # Local env and logs
 .env
 logs/
+
+# Runtime state
+data/paper_trades/*_experimental.json
+data/paper_trades/*_predictions.jsonl
+data/paper_trades/*_outcomes.jsonl
+data/paper_trades/*_decisions.jsonl
+
+# Diagnostics archive
+_diagnostics/
+
+# Backups
+*.bak
+*.bak_*
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local env and logs
+.env
+logs/
