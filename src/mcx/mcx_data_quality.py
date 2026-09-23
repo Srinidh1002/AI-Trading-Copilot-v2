@@ -74,6 +74,8 @@ def check_chain(chain, max_age=CHAIN_MAX_AGE, as_of=None):  # M13_DQ_as_of_fix
     if not chain or chain.get("status") != "OK":
         return False, "CHAIN_UNAVAILABLE"
     age = _age_seconds(chain.get("fetched_at"), as_of=as_of)
+    if age is not None and age < 0:
+        return False, f"CHAIN_AGE_NEGATIVE({int(age)}s)"
     if age is not None and age > max_age:
         return False, f"CHAIN_STALE({int(age)}s)"
     if not chain.get("future_ltp") or chain.get("future_ltp") <= 0:
@@ -89,6 +91,8 @@ def check_external(ctx, max_age=EXTERNAL_MAX_AGE):
     if not ctx or ctx.get("status") != "OK":
         return False, "EXTERNAL_UNAVAILABLE"
     age = _age_seconds(ctx.get("fetched_at"))
+    if age is not None and age < 0:
+        return False, f"EXTERNAL_AGE_NEGATIVE({int(age)}s)"
     if age is not None and age > max_age:
         return False, f"EXTERNAL_STALE({int(age)}s)"
     # Need at least 1 primary driver

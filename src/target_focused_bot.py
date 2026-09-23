@@ -124,6 +124,14 @@ from services.core.market_trading_config_v2 import (
 )
 
 
+def _route_rate_limited(bot, endpoint="default"):
+    """Phase 9.13 - single canonical gate for every FYERS REST call."""
+    try:
+        bot.rate_limiter.wait_if_needed(endpoint)
+    except Exception as _e:
+        print(f"  [RL] limiter error: {str(_e)[:60]}")
+
+
 class UnifiedTradingBot:
     def __init__(self, market='NIFTY'):
         self.market = market.upper()
@@ -224,6 +232,10 @@ class UnifiedTradingBot:
             / f"{self.market.lower()}_experimental.json"
         )
         self.market_intel = None  # Initialized after connection
+        # Phase 9.15 - spot cache for monitoring loop
+        self._spot_cache_value = None
+        self._spot_cache_ts = 0.0
+        self._spot_cache_ttl = 30.0
         self.quote_tracker = QuoteFreshnessTracker(freshness_budget_seconds=90)  # REST cadence: WS broken, 50s polls + buffer
         # Phase 9.12 - short-lived per-token cache for FULL quotes.
         self._FULL_QUOTE_CACHE = {}  # token -> (monotonic_ts, result)
@@ -748,6 +760,7 @@ class UnifiedTradingBot:
     def get_spot(self):
         for attempt in range(3):
             try:
+                _route_rate_limited(self, "ltp_data")
                 data = self.obj.ltpData(self.index_exchange, self.index_symbol, self.index_token)
                 if data and data.get('data'):
                     ltp = float(data['data'].get('ltp', 0))
@@ -781,7 +794,7 @@ class UnifiedTradingBot:
         
         for interval, from_date, to_date in attempts:
             try:
-                self.rate_limiter.wait_if_needed("get_candle_data")
+                _route_rate_limited(self, "candle")
                 candles = self.obj.getCandleData({
                     "exchange": self.index_exchange,
                     "symboltoken": self.index_token,
@@ -862,6 +875,7 @@ class UnifiedTradingBot:
         for inst in self.instruments:
             if inst['expiry'] == expiry and abs(inst['strike'] - atm) <= self.strike_interval * 3:
                 try:
+                    _route_rate_limited(self, "ltp_data")
                     ltp_data = self.obj.ltpData(inst['exchange'], inst['symbol'], inst['token'])
                     if ltp_data and ltp_data.get('data'):
                         ltp = float(ltp_data['data'].get('ltp', 0))
@@ -936,6 +950,8 @@ class UnifiedTradingBot:
                 if not token:
                     missing_count += 1
                     continue
+                
+                _route_rate_limited(self, "ltp_data")
                 
                 quote = self.obj.ltpData('NSE', symbol, token)
                 if not quote or not quote.get('data'):
@@ -1918,9 +1934,12 @@ class UnifiedTradingBot:
         
         start_time = datetime.now()
         last_update = start_time
+        # Phase 9.10b - throttle marker for monitoring-cycle state saves
+        _monitor_last_save_ts = start_time
         
+        MONITOR_TICK_SECONDS = 10  # Phase 9.14
         while self.is_running and self.is_market_open():
-            time.sleep(3)
+            time.sleep(MONITOR_TICK_SECONDS)
             
             if trade_id not in self.active_trades:
                 break
@@ -1983,6 +2002,13 @@ class UnifiedTradingBot:
                         
                         active_trade['current_mark'] = current_mark   # R2_bid_authority
                         active_trade['current_price'] = current_mark  # legacy key, now = bid
+                        # Phase 9.10b - durable during monitoring
+                        if (datetime.now() - _monitor_last_save_ts).seconds >= 20:
+                            try:
+                                self.save_state()
+                            except Exception as _save_e:
+                                print(f'  [R6] save during monitor failed: {str(_save_e)[:60]}')
+                            _monitor_last_save_ts = datetime.now()
                         active_trade['pnl'] = pnl
                         active_trade['pnl_pct'] = pnl_pct
                         
@@ -2036,7 +2062,14 @@ class UnifiedTradingBot:
                         # If spot moves >0.5% against our position, exit early
                         if self.entry_spot and self.entry_spot > 0:
                             try:
-                                current_spot = self.get_spot()
+                                # Phase 9.15 - cache spot 30s
+                                import time as _t9_15
+                                _now915 = _t9_15.monotonic()
+                                if (self._spot_cache_value is None
+                                        or (_now915 - self._spot_cache_ts) >= self._spot_cache_ttl):
+                                    self._spot_cache_value = self.get_spot()
+                                    self._spot_cache_ts = _now915
+                                current_spot = self._spot_cache_value
                                 if current_spot > 0:
                                     spot_move_pct = ((current_spot - self.entry_spot) / self.entry_spot) * 100
                                     

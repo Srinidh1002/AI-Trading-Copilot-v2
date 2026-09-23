@@ -4,7 +4,7 @@ READ-ONLY. Uses yfinance (already installed). No broker calls.
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SRC = os.path.dirname(_HERE)
@@ -125,7 +125,7 @@ def fetch_context(product):
         return {"status": "NO_DRIVER_MAP"}
 
     out = {"status": "OK", "product": product.upper(),
-           "primary": {}, "cross_asset": {}, "fetched_at": datetime.now().isoformat(timespec="seconds")}
+           "primary": {}, "cross_asset": {}, "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
     for label, symbol, note in spec["primary"]:
         d = _fetch_one(symbol)

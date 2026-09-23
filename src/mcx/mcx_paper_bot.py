@@ -55,6 +55,25 @@ from mcx.mcx_health import print_health
 
 load_dotenv()
 
+
+# Phase 9.16 - MCX shares the cross-process FYERS rate limiter.
+_mcx_rate_limiter = None
+
+
+def _get_mcx_rate_limiter():
+    global _mcx_rate_limiter
+    if _mcx_rate_limiter is None:
+        try:
+            from rate_limiter import FyersRateLimitCoordinator
+            _mcx_rate_limiter = FyersRateLimitCoordinator(worker_name=f"MCX_{PRODUCT}")
+        except Exception as _e:
+            print(f"  [RL] mcx limiter init failed: {str(_e)[:60]}")
+            class _NullRL:
+                def wait_if_needed(self, endpoint="default"):
+                    return True
+            _mcx_rate_limiter = _NullRL()
+    return _mcx_rate_limiter
+
 import argparse
 
 # MCX_IST_fix - module-level timezone constant
@@ -222,6 +241,7 @@ def fetch_execution_quote_or_none(obj, product, token, option_meta=None, tick=0.
     Returns validated ExecutionQuoteV1 dict or None on invalid.
     """
     try:
+        _get_mcx_rate_limiter().wait_if_needed("fyers_market_data")
         r = obj.getMarketData("FULL", {"MCX": [str(token)]})
     except Exception as e:
         print(f"  [exec_q] getMarketData err: {str(e)[:60]}")
@@ -266,6 +286,7 @@ def fetch_execution_quote_or_none(obj, product, token, option_meta=None, tick=0.
                 or token
             )
 
+            _get_mcx_rate_limiter().wait_if_needed("fyers_ltp")
             timestamp_response = obj.ltpData(
                 "MCX",
                 trading_symbol,
@@ -522,6 +543,7 @@ def get_bid_mark_for_position(obj, position, tick=0.05):
 
 def fetch_full_quote(obj, token):
     try:
+        _get_mcx_rate_limiter().wait_if_needed("fyers_market_data")
         r = obj.getMarketData("FULL", {"MCX": [str(token)]})
         if r and r.get("data"):
             for row in r["data"].get("fetched", []):

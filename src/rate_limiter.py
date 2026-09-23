@@ -1,75 +1,136 @@
-"""Centralized Angel One Rate Limiter.
-Token bucket + per-endpoint budget.
+"""Cross-process FYERS rate limiter for the five-market PAPER runtime.
+
+Replaces the Angel-era per-process limiter. All workers share one
+budget via a file-backed token bucket so the aggregate stays under the
+provider limit regardless of how many workers run.
+
+FYERS Standard documented limits (2026-09):
+  * 10 req/sec
+  * 200 req/min
+  * 100,000 req/day
+
+We use conservative headroom: 8/sec, 170/min. The extra 30/min of
+provider capacity absorbs retries and any clock skew between workers.
 """
-import time
+from __future__ import annotations
+
+import json
+import os
+import tempfile
 import threading
+import time
+from pathlib import Path
 
 
-class AngelRateLimitCoordinator:
-    def __init__(self):
-        # Angel documented limits for getCandleData: 3/sec, 150/min, 5000/hr
-        # Use conservative values
-        self.limits = {
-            "get_candle_data": {"per_second": 1, "per_minute": 60, "per_hour": 3600},  # D12_tighter
-            "ltp_data":        {"per_second": 10, "per_minute": 300, "per_hour": 10000},
-            "default":         {"per_second": 5, "per_minute": 200, "per_hour": 8000},
-        }
-        self._calls = {}  # endpoint -> [timestamps]
+_STATE_DIR = Path("data") / "rate_limit"
+_STATE_PATH = _STATE_DIR / "state.json"
+_DAY_BUCKET_SECONDS = 86400
+_MINUTE_BUCKET_SECONDS = 60
+_SECOND_BUCKET_SECONDS = 1
+
+# FYERS Standard with headroom
+_LIMITS = {
+    "per_second": 8,
+    "per_minute": 170,
+    "per_day": 90_000,
+}
+
+
+def _prune(calls, now):
+    cutoff = now - _DAY_BUCKET_SECONDS
+    return [t for t in calls if t > cutoff]
+
+
+def _counts(calls, now):
+    return {
+        "sec":  sum(1 for t in calls if t > now - _SECOND_BUCKET_SECONDS),
+        "min":  sum(1 for t in calls if t > now - _MINUTE_BUCKET_SECONDS),
+        "day":  len(calls),
+    }
+
+
+class FyersRateLimitCoordinator:
+    """Single global budget shared across all worker processes."""
+
+    _instance_lock = threading.Lock()
+
+    def __init__(self, *, state_path=None, worker_name: str | None = None):
+        self._state_path = Path(state_path) if state_path else _STATE_PATH
+        self._state_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-    
-    def _prune(self, endpoint, now):
-        if endpoint not in self._calls:
-            self._calls[endpoint] = []
-        # Keep last hour
-        cutoff = now - 3600
-        self._calls[endpoint] = [t for t in self._calls[endpoint] if t > cutoff]
-    
-    def _counts(self, endpoint, now):
-        calls = self._calls.get(endpoint, [])
-        return {
-            "sec":   sum(1 for t in calls if t > now - 1),
-            "min":   sum(1 for t in calls if t > now - 60),
-            "hour":  sum(1 for t in calls if t > now - 3600),
-        }
-    
-    def wait_if_needed(self, endpoint="default"):
-        """Block until safe to make request."""
-        limits = self.limits.get(endpoint, self.limits["default"])
-        
+        self._worker = worker_name or os.getenv("WORKER_NAME", "unknown")
+
+    def _read(self):
+        if not self._state_path.exists():
+            return {"calls": []}
+        try:
+            raw = json.loads(self._state_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {"calls": []}
+        calls = raw.get("calls") or []
+        # Keep only numeric timestamps
+        return {"calls": [float(t) for t in calls if isinstance(t, (int, float))]}
+
+    def _write(self, state):
+        d = self._state_path.parent
+        fd, tmp = tempfile.mkstemp(prefix=".rate_limit_", suffix=".json", dir=str(d))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(state, f, separators=(",", ":"))
+            os.replace(tmp, self._state_path)
+        except Exception:
+            try: os.unlink(tmp)
+            except Exception: pass
+            raise
+
+    def wait_if_needed(self, endpoint: str = "default"):
+        """Block until a call can proceed within the shared budget.
+
+        endpoint parameter is kept for signature compatibility with the
+        legacy AngelRateLimitCoordinator. All calls share the same bucket
+        because FYERS applies one quota per account, not per endpoint.
+        """
         while True:
             with self._lock:
                 now = time.time()
-                self._prune(endpoint, now)
-                counts = self._counts(endpoint, now)
-                
-                # Check limits
-                if counts["sec"] >= limits["per_second"]:
-                    sleep_for = 1.0 - (now - max(self._calls[endpoint]))
-                elif counts["min"] >= limits["per_minute"]:
-                    sleep_for = 2.0
-                elif counts["hour"] >= limits["per_hour"]:
-                    sleep_for = 5.0
+                state = self._read()
+                calls = _prune(state["calls"], now)
+                c = _counts(calls, now)
+
+                if c["sec"] >= _LIMITS["per_second"]:
+                    # Wait until the oldest of the last-second calls ages out
+                    recent = sorted(t for t in calls if t > now - _SECOND_BUCKET_SECONDS)
+                    sleep_for = 1.05 - (now - recent[0]) if recent else 0.2
+                elif c["min"] >= _LIMITS["per_minute"]:
+                    recent = sorted(t for t in calls if t > now - _MINUTE_BUCKET_SECONDS)
+                    # Sleep until the oldest minute-window call ages out, capped at 5s
+                    sleep_for = min(5.0, 60.0 - (now - recent[0])) if recent else 1.0
+                elif c["day"] >= _LIMITS["per_day"]:
+                    # Day cap; unrecoverable in-session, back off hard.
+                    sleep_for = 30.0
                 else:
-                    # OK to proceed
-                    self._calls[endpoint].append(now)
+                    calls.append(now)
+                    self._write({"calls": calls})
                     return True
-            
+
             time.sleep(max(0.1, sleep_for))
-    
+
     def stats(self):
         now = time.time()
-        out = {}
-        for ep in self._calls:
-            out[ep] = self._counts(ep, now)
-        return out
+        with self._lock:
+            calls = _prune(self._read()["calls"], now)
+            return _counts(calls, now)
+
+
+# Backward-compatible alias so existing imports keep working.
+AngelRateLimitCoordinator = FyersRateLimitCoordinator
 
 
 if __name__ == "__main__":
-    rl = AngelRateLimitCoordinator()
-    # Test: 6 rapid calls to a 3/sec endpoint
+    rl = FyersRateLimitCoordinator()
     start = time.time()
-    for i in range(6):
-        rl.wait_if_needed("get_candle_data")
-        print(f"Call {i+1} at t={time.time()-start:.2f}s")
-    print(f"Total: {time.time()-start:.2f}s for 6 calls (should be ~1s due to 3/sec limit)")
-    print("Stats:", rl.stats())
+    for i in range(20):
+        rl.wait_if_needed()
+        if i % 5 == 4:
+            print(f"  {i+1} calls in {time.time()-start:.2f}s")
+    print("stats:", rl.stats())
