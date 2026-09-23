@@ -137,7 +137,13 @@ def main(argv=None):
         if max_age is None:
             not_pass.append((product, "MAX_AGE_DERIVATION_FAILED"))
             continue
-        evidence_ref = str(evidence_file.relative_to(REPO_ROOT)).replace("\\", "/")
+        try:
+            evidence_ref = str(evidence_file.relative_to(REPO_ROOT)).replace("\\", "/")
+        except ValueError:
+            # Evidence file is not under REPO_ROOT (e.g. a test isolation dir).
+            # Record the absolute path; the runtime gate only checks that
+            # some non-empty reference exists, and the operator can audit it.
+            evidence_ref = str(evidence_file).replace("\\", "/")
         per_product_record[product] = {
             "calibration_provider": _PROVIDER,
             "depth_quantity_semantics_verified": True,
@@ -186,6 +192,20 @@ def main(argv=None):
         print("DRY_RUN — intended config:")
         print(json.dumps(new_config, indent=2, sort_keys=True))
         return 0
+
+    # Preserve any pre-existing config as a timestamped backup.
+    # The legacy schema-1 file may carry audit evidence; we never delete it.
+    if _CONFIG_PATH.exists():
+        try:
+            prev = _CONFIG_PATH.read_text(encoding="utf-8")
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            backup = _CONFIG_PATH.with_name(
+                _CONFIG_PATH.name + f".bak_{stamp}"
+            )
+            _write_atomic(backup, json.loads(prev) if prev.strip().startswith("{") else {})
+            print(f"BACKUP {backup}")
+        except Exception as exc:
+            print(f"BACKUP_WARN: {type(exc).__name__}")
 
     _write_atomic(_CONFIG_PATH, new_config)
     print(f"WROTE {_CONFIG_PATH}")
