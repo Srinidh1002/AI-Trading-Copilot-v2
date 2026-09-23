@@ -214,9 +214,20 @@ class UnifiedTradingBot:
         self.strike_divisor = self._market_config.strike_divisor
         self.top_stocks = list(self._market_config.top_stocks)
         
-        self.state_file = f"data/paper_trades/{self.market.lower()}_experimental.json"
+        # Phase 9.10a - absolute path so worker CWD cannot shadow state.
+        from pathlib import Path as _Path_TFB
+        _REPO_ROOT_TFB = _Path_TFB(__file__).resolve().parents[1]
+        self.state_file = str(
+            _REPO_ROOT_TFB
+            / "data"
+            / "paper_trades"
+            / f"{self.market.lower()}_experimental.json"
+        )
         self.market_intel = None  # Initialized after connection
         self.quote_tracker = QuoteFreshnessTracker(freshness_budget_seconds=90)  # REST cadence: WS broken, 50s polls + buffer
+        # Phase 9.12 - short-lived per-token cache for FULL quotes.
+        self._FULL_QUOTE_CACHE = {}  # token -> (monotonic_ts, result)
+        self._FULL_QUOTE_TTL_SECONDS = 3.0
         self.rate_limiter = AngelRateLimitCoordinator()
         self.market_phase = MarketPhaseEngine(self.market)
         # WebSocket + live candle state
@@ -325,8 +336,24 @@ class UnifiedTradingBot:
             'diversity_state': self.certification_diversity.to_state()
         }
         
-        with open(self.state_file, 'w') as f:
-            json.dump(state, f, default=str, indent=2)
+        # Phase 9.10a - atomic write. Never partially overwrite state.
+        import tempfile as _tmp
+        import os as _os
+        from pathlib import Path as _Path_TFB
+        _target = _Path_TFB(self.state_file)
+        _target.parent.mkdir(parents=True, exist_ok=True)
+        _fd, _tmp_path = _tmp.mkstemp(prefix=f".{_target.name}.", suffix=".tmp", dir=str(_target.parent))
+        try:
+            with _os.fdopen(_fd, "w", encoding="utf-8") as _f:
+                json.dump(state, _f, default=str, indent=2)
+            _os.replace(_tmp_path, self.state_file)
+        except Exception as _se:
+            try:
+                _os.unlink(_tmp_path)
+            except Exception:
+                pass
+            print(f"STATE_SAVE_FAILED: {type(_se).__name__}: {str(_se)[:120]}")
+            raise
         
         print(f"✅ State saved")
     
@@ -1851,6 +1878,8 @@ class UnifiedTradingBot:
         }
         
         self.active_trades[trade_id] = active_trade
+
+        self.save_state()  # Phase 9.10a - durable at entry
         self.entry_spot = spot  # Track entry spot for invalidation
         # Phase F: register MFE/MAE tracker + init target state
         self.mfe_mae.register(trade_id, entry)
@@ -2331,6 +2360,8 @@ class UnifiedTradingBot:
         self.completed_trades.append(trade)
         del self.active_trades[trade_id]
 
+        self.save_state()  # Phase 9.10a - durable at close
+
         # R6_cert_counter - official /100 increment (idempotent by trade_id)
         self._try_increment_certification_counter(trade, _reconciled_ok)
         
@@ -2345,13 +2376,24 @@ class UnifiedTradingBot:
     # ===== D7_D9_design_b — full quote + bid-based exits =====
     def _fetch_option_quote_full(self, symbol, token):
         """One REST call: LTP + best bid + best ask. None for missing fields."""
+        # Phase 9.12 - 3-second cache per token.
+        import time as _t912
+        _key = str(token)
+        _now = _t912.monotonic()
+        _hit = self._FULL_QUOTE_CACHE.get(_key)
+        if _hit is not None:
+            _ts, _result = _hit
+            if _now - _ts < self._FULL_QUOTE_TTL_SECONDS:
+                return _result
         try:
             self.rate_limiter.wait_if_needed("ltp_data")
             resp = self.obj.getMarketData(
                 "FULL", {self.option_exchange: [str(token)]}
             )
             if not resp or not resp.get("data"):
-                return {"ltp": None, "bid": None, "ask": None}
+                _empty = {"ltp": None, "bid": None, "ask": None}
+                self._FULL_QUOTE_CACHE[_key] = (_t912.monotonic(), _empty)
+                return _empty
             rows = resp["data"].get("fetched") or []
             row = None
             for r in rows:
@@ -2359,7 +2401,9 @@ class UnifiedTradingBot:
                     row = r
                     break
             if row is None:
-                return {"ltp": None, "bid": None, "ask": None}
+                _empty = {"ltp": None, "bid": None, "ask": None}
+                self._FULL_QUOTE_CACHE[_key] = (_t912.monotonic(), _empty)
+                return _empty
             ltp = row.get("ltp")
             try:
                 ltp = float(ltp) if ltp is not None else None
@@ -2376,7 +2420,9 @@ class UnifiedTradingBot:
             if asks and asks[0].get("price"):
                 try: ask = float(asks[0]["price"])
                 except (TypeError, ValueError): ask = None
-            return {"ltp": ltp, "bid": bid, "ask": ask}
+            _result = {"ltp": ltp, "bid": bid, "ask": ask}
+            self._FULL_QUOTE_CACHE[_key] = (_t912.monotonic(), _result)
+            return _result
         except Exception as e:
             print(f"  [FULL_QUOTE] err: {str(e)[:60]}")
             return {"ltp": None, "bid": None, "ask": None}

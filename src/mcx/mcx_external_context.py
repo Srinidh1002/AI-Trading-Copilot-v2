@@ -3,6 +3,7 @@ READ-ONLY. Uses yfinance (already installed). No broker calls.
 """
 import os
 import sys
+import time
 from datetime import datetime
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +16,11 @@ try:
     YF_OK = True
 except ImportError:
     YF_OK = False
+
+
+# Phase 9.11 - module-level cache. Yahoo rate limits drive this.
+_CONTEXT_CACHE = {}
+_CONTEXT_TTL_SECONDS = 900.0  # 15 minutes
 
 
 # Per-product external driver map (blueprint §9.1-§9.3)
@@ -106,6 +112,14 @@ def _classify(change):
 def fetch_context(product):
     if not YF_OK:
         return {"status": "YF_UNAVAILABLE"}
+    # Phase 9.11 - short-circuit on fresh cache.
+    _key = str(product or "").upper().strip()
+    _now = time.monotonic()
+    _cached = _CONTEXT_CACHE.get(_key)
+    if _cached is not None:
+        _cached_at, _ctx = _cached
+        if _now - _cached_at < _CONTEXT_TTL_SECONDS:
+            return _ctx
     spec = DRIVERS.get(product.upper())
     if not spec:
         return {"status": "NO_DRIVER_MAP"}
@@ -141,6 +155,8 @@ def fetch_context(product):
         out["composite_move_1d_pct"] = None
         out["composite_regime"] = "UNKNOWN"
 
+    # Phase 9.11 - cache before returning.
+    _CONTEXT_CACHE[_key] = (time.monotonic(), out)
     return out
 
 
