@@ -22,6 +22,10 @@ if _REPO_ROOT_MCX not in sys.path:
 
 from dotenv import load_dotenv
 
+from services.paper_orchestration.cooperative_stop_v2 import (
+    acknowledge as _coop_ack,
+    stop_requested as _coop_stop_requested,
+)
 from mcx.mcx_counterfactual import log_rejection
 from mcx.mcx_contracts import PRODUCTS
 from mcx.mcx_fyers_runtime_v2 import build_mcx_fyers_runtime_from_env_v2
@@ -73,14 +77,13 @@ def _get_mcx_rate_limiter():
             from rate_limiter import FyersRateLimitCoordinator
             _mcx_rate_limiter = FyersRateLimitCoordinator(worker_name=f"MCX_{PRODUCT}")
         except Exception as _e:
-            print(f"  [RL] mcx limiter init failed: {str(_e)[:60]}")
-            class _NullRL:
-                def wait_if_needed(self, endpoint="default"):
-                    return True
-            _mcx_rate_limiter = _NullRL()
+            print(f"  RATE_LIMIT_HOLD: {type(_e).__name__}")
+            raise RuntimeError("RATE_LIMIT_HOLD") from _e
     return _mcx_rate_limiter
 
 import argparse
+import tempfile
+from pathlib import Path
 
 # MCX_IST_fix - module-level timezone constant
 IST = ZoneInfo("Asia/Kolkata")
@@ -88,11 +91,19 @@ IST = ZoneInfo("Asia/Kolkata")
 _SUPPORTED_PRODUCTS = ("CRUDEOILM", "GOLDM", "NATGASMINI")
 
 
+_INITIALIZE_NEW_CAMPAIGN = False  # set by --initialize-new-campaign
+
+
 def _parse_args():
+    global _INITIALIZE_NEW_CAMPAIGN
     ap = argparse.ArgumentParser()
     ap.add_argument("--product", required=True,
                     help="One of: " + ", ".join(_SUPPORTED_PRODUCTS))
+    ap.add_argument("--initialize-new-campaign", action="store_true",
+                    help="Create a fresh state file ONLY if none exists. "
+                         "Refuses if a state file already exists for this product.")
     args = ap.parse_args()
+    _INITIALIZE_NEW_CAMPAIGN = bool(args.initialize_new_campaign)
     p = (args.product or "").upper().strip()
     if p not in _SUPPORTED_PRODUCTS:
         raise SystemExit(f"UNSUPPORTED_PRODUCT: {args.product!r}. "
@@ -109,10 +120,11 @@ PRODUCT = "CRUDEOILM"  # overridden in main() from CLI
 BROKER_SUBMISSION = False
 LIVE_EXECUTION = False
 EXECUTION_MODE = "PAPER"
-STATE_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_experimental.json"
-PREDICTIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_predictions.jsonl"
-OUTCOMES_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_outcomes.jsonl"
-DECISIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_decisions.jsonl"
+_REPO_ROOT_STATE = Path(__file__).resolve().parents[2]
+STATE_PATH = str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{PRODUCT.lower()}_experimental.json")
+PREDICTIONS_PATH = str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{PRODUCT.lower()}_predictions.jsonl")
+OUTCOMES_PATH = str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{PRODUCT.lower()}_outcomes.jsonl")
+DECISIONS_PATH = str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{PRODUCT.lower()}_decisions.jsonl")
 
 STOP_LOSS_PCT = -8.0
 T1_PCT = 15.0
@@ -188,7 +200,11 @@ def login():
 
 def _state_path_for(product):
     """Product-scoped state file path (acceptance testable)."""
-    return f"data/paper_trades/mcx_{product.lower()}_experimental.json"
+    return str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{product.lower()}_experimental.json")
+
+
+class MCXStateAuthorityError(RuntimeError):
+    pass
 
 
 def _default_state_for(product):
@@ -215,25 +231,44 @@ def _default_state_for(product):
 def load_state():
     cfg = get_product_epochs(PRODUCT) or {}
     if not os.path.exists(STATE_PATH):
-        return {
-            "product": PRODUCT,
-            "epoch": cfg.get("epoch"),
-            "strategy_version": cfg.get("strategy_version"),
-            "certification_eligible": cfg.get("certification_eligible", False),
-            "starting_capital": 100000,
-            "total_trades": 0, "winning_trades": 0, "losing_trades": 0,
-            "t1_hit_wins": 0, "sl_losses": 0,
-            "total_pnl": 0.0, "active_position": None, "completed_trades": [],
-            "created_at": datetime.now().isoformat(),
-        }
-    with open(STATE_PATH, encoding="utf-8") as f:
-        return json.load(f)
+        raise MCXStateAuthorityError("MISSING_UNEXPECTED")
+    try:
+        with open(STATE_PATH, encoding="utf-8") as f:
+            state = json.load(f)
+    except (OSError, ValueError) as exc:
+        raise MCXStateAuthorityError("CORRUPT") from exc
+    if not isinstance(state, dict) or state.get("product") != PRODUCT:
+        raise MCXStateAuthorityError("SCHEMA_INVALID")
+    if state.get("epoch") != cfg.get("epoch") or state.get("strategy_version") != cfg.get("strategy_version"):
+        raise MCXStateAuthorityError("EPOCH_MISMATCH")
+    ids = state.get("_counted_trade_ids", [])
+    if not isinstance(ids, list) or len(ids) != len(set(ids)):
+        raise MCXStateAuthorityError("COUNTER_INCOHERENT")
+    total = int(state.get("t1_hit_wins", 0) or 0) + int(state.get("sl_losses", 0) or 0)
+    if len(ids) != total:
+        raise MCXStateAuthorityError("COUNTER_INCOHERENT")
+    active = state.get("active_position")
+    if active is not None and (not isinstance(active, dict) or not active.get("trade_id") or not active.get("entry_time")):
+        raise MCXStateAuthorityError("SCHEMA_INVALID_ACTIVE_POSITION")
+    return state
 
 
 def save_state(st):
-    os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
-    with open(STATE_PATH, "w", encoding="utf-8") as f:
-        json.dump(st, f, indent=2, default=str)
+    target = Path(STATE_PATH)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(st, f, indent=2, default=str)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, target)
+    except OSError as exc:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise MCXStateAuthorityError("STATE_WRITE_FAILED") from exc
 
 
 def append_jsonl(path, obj):
@@ -248,6 +283,10 @@ def fetch_execution_quote_or_none(obj, product, token, option_meta=None, tick=0.
     """
     try:
         _get_mcx_rate_limiter().wait_if_needed("fyers_market_data")
+    except Exception as e:
+        print(f"  [exec_q] RATE_LIMIT_HOLD: {type(e).__name__}")
+        return None
+    try:
         r = obj.getMarketData("FULL", {"MCX": [str(token)]})
     except Exception as e:
         print(f"  [exec_q] getMarketData err: {str(e)[:60]}")
@@ -550,6 +589,10 @@ def get_bid_mark_for_position(obj, position, tick=0.05):
 def fetch_full_quote(obj, token):
     try:
         _get_mcx_rate_limiter().wait_if_needed("fyers_market_data")
+    except Exception as e:
+        print(f"  RATE_LIMIT_HOLD: {type(e).__name__}")
+        return None
+    try:
         r = obj.getMarketData("FULL", {"MCX": [str(token)]})
         if r and r.get("data"):
             for row in r["data"].get("fetched", []):
@@ -953,10 +996,12 @@ def main():
     global PRODUCT, STATE_PATH, PREDICTIONS_PATH, OUTCOMES_PATH, DECISIONS_PATH
     global STOP_LOSS_PCT, T1_PCT, T2_PCT, T3_PCT
     PRODUCT = _parse_args()
-    STATE_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_experimental.json"
-    PREDICTIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_predictions.jsonl"
-    OUTCOMES_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_outcomes.jsonl"
-    DECISIONS_PATH = f"data/paper_trades/mcx_{PRODUCT.lower()}_decisions.jsonl"
+    from services.paper_orchestration.worker_lock_v2 import acquire_market_worker_lock
+    acquire_market_worker_lock(PRODUCT)
+    STATE_PATH = _state_path_for(PRODUCT)
+    PREDICTIONS_PATH = str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{PRODUCT.lower()}_predictions.jsonl")
+    OUTCOMES_PATH = str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{PRODUCT.lower()}_outcomes.jsonl")
+    DECISIONS_PATH = str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{PRODUCT.lower()}_decisions.jsonl")
     # Phase 6.2 - exit policy from mcx_contracts.PRODUCTS[PRODUCT]
     _prod_cfg = PRODUCTS[PRODUCT]
     STOP_LOSS_PCT = _prod_cfg["stop_loss_pct"]
@@ -990,7 +1035,21 @@ def main():
         print(f"  MODE                 = OBSERVATION_ONLY (no entries will certify)")
     print("=" * 100)
 
-    state = load_state()
+    try:
+        state = load_state()
+    except MCXStateAuthorityError as _sae:
+        _reason = str(_sae)
+        if _reason == "MISSING_UNEXPECTED" and _INITIALIZE_NEW_CAMPAIGN:
+            state = _default_state_for(PRODUCT)
+            save_state(state)
+            print(
+                f"INITIALIZED_NEW_CAMPAIGN product={PRODUCT} "
+                f"epoch={state.get('epoch')} "
+                f"strategy_version={state.get('strategy_version')}"
+            )
+        else:
+            print(f"STARTUP_BLOCKED: STATE_AUTHORITY: {_reason}")
+            return 1
     save_state(state)  # PATCH A: persist initial state (idempotent)
 
     # Section 7.27 — startup RECOVERY_ONLY if open position exists
@@ -1031,7 +1090,7 @@ def main():
 
     if runtime is None:
         print("FYERS_RUNTIME_FAILED")
-        return
+        return 2
 
     obj = runtime.data
 
@@ -1085,6 +1144,18 @@ def main():
             break
 
         attempts += 1
+
+        # Cooperative stop: supervisor has requested shutdown.
+        if _coop_stop_requested():
+            if not state.get("active_position"):
+                save_state(state)
+                _coop_ack(reason="FLAT_ACK_EXIT")
+                print("COOPERATIVE_STOP_FLAT — saved and ACKed")
+                break
+            print("COOPERATIVE_STOP_POSITION_OPEN — entries suppressed, managing to terminal")
+            _coop_stop_active = True
+        else:
+            _coop_stop_active = False
 
         # Calendar check (replaces market_status)
         cal = get_session()
@@ -1432,6 +1503,9 @@ def main():
                     "(epoch integrity not ready)"
                 )
 
+            elif _coop_stop_active:
+                print("  ENTRY_BLOCKED: COOPERATIVE_STOP_ACTIVE")
+
             elif decision["action"] in ("BUY_CALL", "BUY_PUT") and signals_agree(history, decision["action"]):
                 pos = try_open(obj, chain, mtf, ctx, decision, regime, structure, setup, state)
                 if pos:
@@ -1448,6 +1522,9 @@ def main():
         time.sleep(CYCLE_SECONDS)
 
     save_state(state)
+    if _coop_stop_requested() and not state.get("active_position"):
+        _coop_ack(reason="POST_LOOP_FLAT_ACK")
+        print("COOPERATIVE_STOP_POST_LOOP — ACKed")
     print(f"\n{'=' * 100}")
     _cert_total = cert_status(
         state
@@ -1467,6 +1544,6 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        raise SystemExit(main() or 0)
     except KeyboardInterrupt:
         print("\nInterrupted.")
