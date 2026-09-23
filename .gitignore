@@ -75,3 +75,7 @@ __pycache__/
 # Local env and logs
 .env
 logs/
+
+# Rate limiter runtime state
+data/rate_limit/
+
