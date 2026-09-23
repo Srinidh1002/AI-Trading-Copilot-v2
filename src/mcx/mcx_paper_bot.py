@@ -22,6 +22,7 @@ if _REPO_ROOT_MCX not in sys.path:
 
 from dotenv import load_dotenv
 
+from mcx.mcx_counterfactual import log_rejection
 from mcx.mcx_contracts import PRODUCTS
 from mcx.mcx_fyers_runtime_v2 import build_mcx_fyers_runtime_from_env_v2
 from mcx.mcx_external_context import fetch_context
@@ -1054,7 +1055,7 @@ def main():
             _prev0 = fetch_previous_session(obj, _tok0, exchange="MCX")
             _cal0 = get_session()
             _exp0 = option_expiry_safety(_chain0.get("expiry"), _res0["futures"].get("expiry"))
-            _ev0 = event_get_state()
+            _ev0 = event_get_state(product=PRODUCT)
             _report = ps_build(_chain0, _ctx0, _mtf0, _reg0, _prev0, _cal0, _exp0, _ev0, product=PRODUCT)
             ps_print(_report, product=PRODUCT)
     except Exception as _e:
@@ -1199,7 +1200,7 @@ def main():
                 stable_pcr._prev_put_oi = None
         spcr = stable_pcr.compute(chain)
 
-        ev_state = event_get_state()
+        ev_state = event_get_state(product=PRODUCT)
         expiry_state = option_expiry_safety(chain.get("expiry"),
                                             res["futures"].get("expiry"))
 
@@ -1296,6 +1297,24 @@ def main():
         # Compose decision
         decision = compose_decision(chain, ctx, mtf, regime, vwap_ctx=vwap_ctx,
                                     event_state=ev_state, stable_pcr=spcr)
+        # Phase 9.22 — counterfactual log for rejected 40-69 signals.
+        # Write-only. Never changes the decision.
+        if decision.get("action") == "WAIT":
+            _lcf = decision.get("LONG_CONFIDENCE", 0) or 0
+            _scf = decision.get("SHORT_CONFIDENCE", 0) or 0
+            _peak = max(_lcf, _scf)
+            if _peak >= 40:
+                try:
+                    log_rejection(
+                        product=PRODUCT,
+                        confidence=_peak,
+                        direction="LONG" if _lcf >= _scf else "SHORT",
+                        regime=regime.get("regime") if isinstance(regime, dict) else str(regime),
+                        blocking_reasons=list(decision.get("blockers") or []),
+                        signal_price=chain.get("future_ltp") if isinstance(chain, dict) else None,
+                    )
+                except Exception as _cf_e:
+                    print(f"  [counterfactual log skipped: {_cf_e}]")
         print_decision(decision)
 
         # Setup classification (spec §13)

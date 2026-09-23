@@ -148,6 +148,7 @@ class UnifiedTradingBot:
         self.obj = None
         self.instruments = []
         self.active_trades = {}
+        self.orphaned_trades = []
         self.completed_trades = []
         
         self.total_pnl = 0
@@ -335,6 +336,7 @@ class UnifiedTradingBot:
             'session_history': self.session_history,
             'completed_trades': self.completed_trades,
             'active_trades': list(self.active_trades.values()),
+            'orphaned_trades': list(getattr(self, 'orphaned_trades', [])),
             'sessions_completed_today': self.sessions_completed_today,
             # R9_epoch_metadata - may be None for legacy state; do not silently relabel
             'strategy_version':    self.strategy_version,
@@ -398,6 +400,29 @@ class UnifiedTradingBot:
                     if isinstance(_t, dict) and _t.get('trade_id'):
                         self.active_trades[_t['trade_id']] = _t
 
+                        # Phase 9.21 — orphan purge on load.
+                        # Intraday engine only. Any active trade whose entry_time is from a
+                        # prior calendar day cannot be legitimately live. Archive it under
+                        # orphaned_trades and remove from active_trades. Never touches the
+                        # certification counter, never sets certification_win/loss.
+                        _today = datetime.now().date()
+                        _orphans = []
+                        for _tid, _t in list(self.active_trades.items()):
+                            _et = (_t.get("entry_time") or "")[:10]
+                            try:
+                                _et_date = datetime.fromisoformat(_et).date() if _et else None
+                            except ValueError:
+                                _et_date = None
+                            if _et_date is not None and _et_date < _today:
+                                _rec = dict(_t)
+                                _rec["status"] = "ORPHANED_PRIOR_SESSION"
+                                _rec["reason"] = "ORPHANED_LOAD_STATE"
+                                _rec["orphaned_at"] = datetime.now().isoformat(timespec="seconds")
+                                _orphans.append(_rec)
+                                del self.active_trades[_tid]
+                        if _orphans:
+                            self.orphaned_trades = list(getattr(self, "orphaned_trades", [])) + _orphans
+                            print(f"  ORPHAN_PURGE: {len(_orphans)} prior-session active trade(s) archived")
                 # R9_epoch_metadata - legacy-safe resolution.
                 # No default: if either key is missing, treat as legacy/pre-cert.
                 # Do NOT write the current CERTIFICATION_EPOCH onto old state.
