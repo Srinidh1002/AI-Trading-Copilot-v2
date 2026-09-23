@@ -79,3 +79,7 @@ logs/
 # Rate limiter runtime state
 data/rate_limit/
 
+
+# Rate limiter runtime state
+data/rate_limit/
+
