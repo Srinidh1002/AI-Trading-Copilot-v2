@@ -31,8 +31,10 @@ from typing import Any, Mapping, Optional
 
 try:
     from dotenv import load_dotenv as _load_dotenv
+    from dotenv import dotenv_values as _dotenv_values
 except Exception:
     _load_dotenv = None
+    _dotenv_values = None
 
 
 # ---- Safe reason codes (loggable, never contain token material) ----
@@ -71,6 +73,41 @@ class FyersAuthError(RuntimeError):
         super().__init__(message)
         self.reason_code = reason_code
         self.provider_code = provider_code
+
+
+_FYERS_ENV_KEYS = (
+    "FYERS_APP_ID",
+    "FYERS_SECRET_ID",
+    "FYERS_ACCESS_TOKEN",
+    "FYERS_REFRESH_TOKEN",
+    "FYERS_REDIRECT_URI",
+    "FYERS_PIN",
+    "FYERS_DATA_ONLY",
+)
+
+
+def build_fyers_child_env_v2(env_file: str, parent_env=None) -> dict[str, str]:
+    """Return a child environment whose FYERS authority is the named .env file.
+
+    ``load_dotenv(override=False)`` is intentionally retained for legacy callers;
+    the canonical launcher uses this function instead so an inherited stale token
+    cannot win over the token just written by daily OAuth.
+    """
+    if _dotenv_values is None:
+        raise FyersAuthError(REASON_AUTH_MISSING, "python-dotenv unavailable")
+    values = _dotenv_values(env_file)
+    if not values:
+        raise FyersAuthError(REASON_AUTH_MISSING, "canonical FYERS env file unreadable")
+    child = dict(os.environ if parent_env is None else parent_env)
+    for key in _FYERS_ENV_KEYS:
+        child.pop(key, None)
+    for key in _FYERS_ENV_KEYS:
+        value = values.get(key)
+        if value is not None:
+            child[key] = str(value)
+    if not child.get("FYERS_APP_ID") or not child.get("FYERS_ACCESS_TOKEN"):
+        raise FyersAuthError(REASON_AUTH_MISSING, "canonical FYERS credentials missing")
+    return child
 
 
 def load_fyers_credentials_v2(
