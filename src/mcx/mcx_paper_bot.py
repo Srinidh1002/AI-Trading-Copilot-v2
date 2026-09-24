@@ -1383,24 +1383,49 @@ def main():
         # Compose decision
         decision = compose_decision(chain, ctx, mtf, regime, vwap_ctx=vwap_ctx,
                                     event_state=ev_state, stable_pcr=spcr)
-        # Phase 9.22 — counterfactual log for rejected 40-69 signals.
-        # Write-only. Never changes the decision.
+        # Phase 13 — threshold-only counterfactual capture.
+        # Cheap, no provider calls. Only candidates that passed every hard
+        # gate and were rejected purely on confidence are marked
+        # threshold_only=True; all other rejections are captured with
+        # threshold_only=False so the resolver can exclude them from the
+        # threshold study.
         if decision.get("action") == "WAIT":
             _lcf = decision.get("LONG_CONFIDENCE", 0) or 0
             _scf = decision.get("SHORT_CONFIDENCE", 0) or 0
             _peak = max(_lcf, _scf)
             if _peak >= 40:
+                _blockers = list(decision.get("blockers") or [])
+                _threshold_only = (
+                    not _blockers
+                    and dq_ok
+                    and chain.get("status") == "OK"
+                    and mtf.get("status") == "OK"
+                    and not (ev_state or {}).get("block_entries")
+                    and bool((expiry_state or {}).get("allow_new_entries"))
+                )
+                _hyp_contract = None
+                if _threshold_only:
+                    try:
+                        _bias = "BULLISH" if _lcf >= _scf else "BEARISH"
+                        _hyp_contract = select_strike(chain, _bias)
+                    except Exception:
+                        _hyp_contract = None
                 try:
                     log_rejection(
                         product=PRODUCT,
                         confidence=_peak,
                         direction="LONG" if _lcf >= _scf else "SHORT",
                         regime=regime.get("regime") if isinstance(regime, dict) else str(regime),
-                        blocking_reasons=list(decision.get("blockers") or []),
+                        blocking_reasons=_blockers,
+                        threshold_only=_threshold_only,
                         signal_price=chain.get("future_ltp") if isinstance(chain, dict) else None,
+                        setup_id=setup.get("setup") if isinstance(setup, dict) else None,
                         underlying_future_symbol=(res.get("futures") or {}).get("symbol") if isinstance(res, dict) else None,
+                        future_price=fut_ltp,
                         expiry=chain.get("expiry") if isinstance(chain, dict) else None,
+                        dte=(expiry_state or {}).get("days_to_expiry"),
                         option_side="CE" if _lcf >= _scf else "PE",
+                        hypothetical_contract=_hyp_contract,
                         attempt=attempts,
                     )
                 except Exception as _cf_e:
