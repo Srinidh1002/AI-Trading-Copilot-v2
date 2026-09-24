@@ -29,7 +29,22 @@ from services.paper_orchestration.process_lock_v2 import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_STATE_PATH = _REPO_ROOT / "data" / "rate_limit" / "state.json"
+_LIVE_STATE_PATH = _REPO_ROOT / "data" / "rate_limit" / "state.json"
+
+
+def _default_state_path():
+    """Return the default limiter state path.
+
+    In production this is the live repository path. Offline test suites
+    set FYERS_RATE_LIMIT_STATE_PATH to a temp file so no test can mutate
+    data/rate_limit/state.json. Tests always construct the coordinator
+    with an explicit state_path as well; this env var is the second
+    belt-and-braces layer.
+    """
+    override = os.environ.get("FYERS_RATE_LIMIT_STATE_PATH")
+    if override:
+        return Path(override)
+    return _LIVE_STATE_PATH
 _DAY_BUCKET_SECONDS = 86400
 _MINUTE_BUCKET_SECONDS = 60
 _SECOND_BUCKET_SECONDS = 1
@@ -86,7 +101,9 @@ class FyersRateLimitCoordinator:
     """Single global budget shared across all worker processes."""
 
     def __init__(self, *, state_path=None, worker_name: str | None = None):
-        self._state_path = Path(state_path).resolve() if state_path else _STATE_PATH
+        self._state_path = (
+            Path(state_path).resolve() if state_path else _default_state_path().resolve()
+        )
         self._lock_path = self._state_path.with_suffix(self._state_path.suffix + ".lock")
         self._worker = worker_name or os.getenv("WORKER_NAME", "unknown")
 
