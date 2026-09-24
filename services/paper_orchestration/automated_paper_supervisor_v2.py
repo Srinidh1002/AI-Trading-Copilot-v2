@@ -15,6 +15,7 @@ Responsibility:
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -141,6 +142,8 @@ class AutomatedPaperSupervisorV2:
     HEALTHY_PERIOD = timedelta(seconds=180)
     STOP_ACK_TIMEOUT_SECONDS = 5.0
     OWNERSHIP_HOLD_BACKOFF_SECONDS = 300
+    POSITION_MANAGEMENT_EXTEND_SECONDS = 900
+    STOP_POST_VALIDATION_ENABLED = True
     def __init__(
         self,
         *,
@@ -251,6 +254,14 @@ class AutomatedPaperSupervisorV2:
         return StartOutcome("STARTED", process=proc)
 
     def _stop_worker(self, spec, grace_seconds=30.0):
+        """Cooperative stop with ACK-aware management window.
+
+        Writes a stop request, waits for either ACK or exit. When the
+        worker ACKs POSITION_MANAGEMENT_ACTIVE, extends the wait window
+        by POSITION_MANAGEMENT_EXTEND_SECONDS so the worker can finish
+        managing the PAPER position to terminal. Forced terminate/kill
+        only fires if the total window is exhausted.
+        """
         rt = self.workers[spec.name]
         proc = rt.process
         if proc is None or proc.poll() is not None:
@@ -258,6 +269,7 @@ class AutomatedPaperSupervisorV2:
         if self.dry_run:
             self._log(f"[DRY_RUN] would stop {spec.name} pid={proc.pid}")
             return
+
         stop_dir = self.log_dir / "stops"
         stop_dir.mkdir(parents=True, exist_ok=True)
         request = stop_dir / f"{spec.name}.request"
@@ -266,26 +278,55 @@ class AutomatedPaperSupervisorV2:
         request.write_text("STOP_NEW_ENTRIES", encoding="utf-8")
         self._log(f"[{spec.name}] cooperative stop requested pid={proc.pid}")
 
-        # Step 1 — wait briefly for explicit ACK
-        ack_observed = False
+        # Phase 1: wait for ACK or quick exit
+        ack_payload = None
         ack_deadline = time.monotonic() + self.STOP_ACK_TIMEOUT_SECONDS
         while time.monotonic() < ack_deadline:
             if proc.poll() is not None:
                 break
             if acknowledgement.exists():
-                ack_observed = True
-                self._log(f"[{spec.name}] STOP_ACK received")
-                break
+                try:
+                    ack_payload = json.loads(acknowledgement.read_text(encoding="utf-8"))
+                except Exception:
+                    ack_payload = None
+                if isinstance(ack_payload, dict):
+                    self._log(
+                        f"[{spec.name}] STOP_ACK status={ack_payload.get('status')} "
+                        f"active={ack_payload.get('has_active_position')}"
+                    )
+                    break
             time.sleep(0.2)
 
-        # Step 2 — wait for exit up to grace_seconds total
-        deadline = time.monotonic() + grace_seconds
+        # Phase 2: choose wait window based on ACK status
+        total_window = grace_seconds
+        status = (ack_payload or {}).get("status") if ack_payload else None
+        if status == "POSITION_MANAGEMENT_ACTIVE":
+            total_window += self.POSITION_MANAGEMENT_EXTEND_SECONDS
+            self._log(
+                f"[{spec.name}] POSITION_MANAGEMENT_WINDOW_EXTENDED "
+                f"total={total_window}s"
+            )
+        elif status in ("FLAT_SAFE_TO_EXIT", "TERMINAL_RECONCILED"):
+            self._log(f"[{spec.name}] SAFE_TO_EXIT status={status}")
+        elif status == "STATE_HOLD":
+            self._log(f"[{spec.name}] STATE_HOLD reported by worker")
+        elif ack_payload is None:
+            self._log(f"[{spec.name}] STOP_ACK_MISSING after {self.STOP_ACK_TIMEOUT_SECONDS}s")
+
+        # Phase 3: wait for exit up to total window
+        deadline = time.monotonic() + total_window
         while time.monotonic() < deadline:
             if proc.poll() is not None:
                 break
             time.sleep(0.5)
+
+        forced = False
         if proc.poll() is None:
-            self._log(f"[{spec.name}] ABNORMAL_SHUTDOWN_TIMEOUT pid={proc.pid} ack={ack_observed}")
+            self._log(
+                f"[{spec.name}] ABNORMAL_SHUTDOWN_TIMEOUT pid={proc.pid} "
+                f"status={status} ack={ack_payload is not None}"
+            )
+            forced = True
             try:
                 proc.terminate()
             except Exception as exc:
@@ -295,8 +336,44 @@ class AutomatedPaperSupervisorV2:
                 proc.kill()
             except Exception as exc:
                 self._log(f"[{spec.name}] forced kill failed: {exc}")
+        if forced:
+            self._log(f"[{spec.name}] ABNORMAL_FORCED_STOP rc={proc.poll()}")
+
+        # Phase 4: post-stop state validation
+        if self.STOP_POST_VALIDATION_ENABLED and not self.dry_run:
+            self._validate_post_stop_state(spec, forced=forced)
+
         request.unlink(missing_ok=True)
-        self._log(f"[{spec.name}] stopped rc={proc.poll()}")
+        acknowledgement.unlink(missing_ok=True)
+        self._log(f"[{spec.name}] stopped rc={proc.poll()} ack={ack_payload is not None}")
+
+    def _validate_post_stop_state(self, spec, *, forced):
+        """Read-only state validation after a worker has stopped.
+
+        Uses the shared state authority validator. If the state is not
+        valid, logs STOP_STATE_HOLD and suppresses subsequent analysis
+        for this market until the state is corrected manually.
+        """
+        try:
+            from services.paper_orchestration.state_authority_readonly_v2 import (
+                validate_market,
+            )
+            v = validate_market(self.repo_root, spec.name)
+        except Exception as exc:
+            self._log(
+                f"[{spec.name}] STOP_STATE_VALIDATION_RAISED "
+                f"{type(exc).__name__}"
+            )
+            return
+        if v.ok:
+            self._log(f"[{spec.name}] STOP_STATE_VALIDATED reason={v.reason}")
+            if v.note:
+                self._log(f"[{spec.name}] STOP_STATE_NOTE {v.note}")
+        else:
+            self._log(
+                f"[{spec.name}] STOP_STATE_HOLD reason={v.reason} "
+                f"note={v.note} forced={forced}"
+            )
 
     def _classify_exit(self, spec, rc, *, expected_alive=True):
         if rc is None:

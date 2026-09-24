@@ -116,33 +116,44 @@ class _StoppableProc:
 
 
 def test_stop_worker_observes_ack_file(tmp_path, monkeypatch):
+    """_stop_worker logs STOP_ACK when the worker writes an ACK.
+
+    The supervisor unlinks any pre-existing ACK at the start of
+    _stop_worker. This test guards that unlink so the ACK written by the
+    test stands in for one the worker would have written just after the
+    stop request.
+    """
     sup = _make_supervisor(tmp_path, markets=("NIFTY",))
+    sup.STOP_POST_VALIDATION_ENABLED = False
     spec = next(s for s in WORKERS_V2 if s.name == "NIFTY")
     rt = sup.workers["NIFTY"]
-    proc = _StoppableProc(exit_after=4)
+    proc = _StoppableProc(exit_after=6)
     rt.process = proc
 
-    # Pre-create the ACK file that the worker would write
+    # Pre-create the ACK file that the worker would write.
     ack_dir = tmp_path / "logs" / "supervisor" / "stops"
     ack_dir.mkdir(parents=True, exist_ok=True)
     ack = ack_dir / "NIFTY.ack"
+    ack.write_text(
+        '{"status":"FLAT_SAFE_TO_EXIT","has_active_position":false,'
+        '"market":"NIFTY","pid":12345}',
+        encoding="utf-8",
+    )
 
-    # Patch the ACK check so `exists()` returns True on the second poll
-    real_exists = Path.exists
-    counter = {"n": 0}
-    def _patched_exists(self):
+    # Suppress the supervisor's pre-phase unlink of the ACK file.
+    real_unlink = Path.unlink
+    def _noop_unlink(self, *args, **kwargs):
         if str(self).endswith(".ack"):
-            counter["n"] += 1
-            return counter["n"] >= 2
-        return real_exists(self)
-    monkeypatch.setattr(Path, "exists", _patched_exists)
+            return
+        return real_unlink(self, *args, **kwargs)
+    monkeypatch.setattr(Path, "unlink", _noop_unlink)
 
     logs = []
     monkeypatch.setattr(sup, "_log", lambda m: logs.append(m))
 
     sup._stop_worker(spec, grace_seconds=2.0)
 
-    assert any("STOP_ACK received" in m for m in logs), logs
+    assert any("STOP_ACK status=FLAT_SAFE_TO_EXIT" in m for m in logs), logs
 
 
 def test_stop_worker_forced_when_no_ack(tmp_path, monkeypatch):
