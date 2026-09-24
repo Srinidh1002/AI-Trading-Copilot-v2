@@ -18,6 +18,7 @@ REQUIRED = (
     "fyers_apiv3",
     "SmartApi",
     "pyotp",
+    "logzero",
 )
 
 

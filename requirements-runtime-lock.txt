@@ -18,3 +18,4 @@ websocket-client==1.6.1
 websockets==17.1
 smartapi-python==1.5.5
 PyOTP==2.10.0
+logzero==1.7.0
