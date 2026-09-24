@@ -32,7 +32,11 @@ def test_index_only_still_works(creds, monkeypatch):
     )
     monkeypatch.setattr(
         "services.broker.fyers_sdk_data_client_v2.build_fyers_data_client_v2",
-        lambda **kw: object(),
+        lambda **kw: SimpleNamespace(
+            data_only=True,
+            order_capability_allowed=False,
+            automatic_fallback_allowed=False,
+        ),
     )
     out = pf.check_provider_health(creds, ("NIFTY", "SENSEX"))
     assert out["NIFTY"][0] is True
@@ -42,6 +46,9 @@ def test_index_only_still_works(creds, monkeypatch):
 
 def test_mcx_identity_ok_and_quote_rows(creds, monkeypatch):
     fake_runtime = SimpleNamespace(
+        data_only=True,
+        order_capability_allowed=False,
+        automatic_fallback_allowed=False,
         identity=SimpleNamespace(
             resolve_active=lambda product: {
                 "status": "OK",
@@ -63,6 +70,9 @@ def test_mcx_identity_ok_and_quote_rows(creds, monkeypatch):
 
 def test_mcx_identity_not_ok_is_hold(creds, monkeypatch):
     fake_runtime = SimpleNamespace(
+        data_only=True,
+        order_capability_allowed=False,
+        automatic_fallback_allowed=False,
         identity=SimpleNamespace(
             resolve_active=lambda product: {
                 "status": "EVIDENCE_UNAVAILABLE_IDENTITY",
@@ -83,6 +93,9 @@ def test_mcx_identity_not_ok_is_hold(creds, monkeypatch):
 
 def test_mcx_empty_quote_rows_is_hold(creds, monkeypatch):
     fake_runtime = SimpleNamespace(
+        data_only=True,
+        order_capability_allowed=False,
+        automatic_fallback_allowed=False,
         identity=SimpleNamespace(
             resolve_active=lambda product: {
                 "status": "OK",
@@ -115,6 +128,9 @@ def test_mcx_runtime_build_failure_holds_all(creds, monkeypatch):
 
 def test_mcx_missing_future_token_is_hold(creds, monkeypatch):
     fake_runtime = SimpleNamespace(
+        data_only=True,
+        order_capability_allowed=False,
+        automatic_fallback_allowed=False,
         identity=SimpleNamespace(
             resolve_active=lambda product: {"status": "OK", "futures": {"symbol": "X"}},
         ),
@@ -136,9 +152,16 @@ def test_mixed_index_and_mcx(creds, monkeypatch):
     )
     monkeypatch.setattr(
         "services.broker.fyers_sdk_data_client_v2.build_fyers_data_client_v2",
-        lambda **kw: object(),
+        lambda **kw: SimpleNamespace(
+            data_only=True,
+            order_capability_allowed=False,
+            automatic_fallback_allowed=False,
+        ),
     )
     fake_runtime = SimpleNamespace(
+        data_only=True,
+        order_capability_allowed=False,
+        automatic_fallback_allowed=False,
         identity=SimpleNamespace(
             resolve_active=lambda product: {
                 "status": "OK",

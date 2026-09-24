@@ -103,6 +103,14 @@ def check_env_file(env_file):
 
 
 def check_paper_flags():
+    """Prove PAPER-only authority before any worker is spawned.
+
+    Env-var checks only. Runtime attribute checks (data_only,
+    order_capability_allowed, automatic_fallback_allowed) are enforced
+    by the FYERS client and runtime builders themselves, and are
+    additionally verified in check_provider_health where the objects are
+    already instantiated for a read-only health probe.
+    """
     bad = []
     for name in (
         "BROKER_SUBMISSION", "BROKER_SUBMISSION_ENABLED",
@@ -114,6 +122,15 @@ def check_paper_flags():
             bad.append(name)
     if bad:
         return False, "unsafe flags: " + ",".join(bad)
+
+    mode = str(os.environ.get("EXECUTION_MODE", "PAPER")).strip().upper()
+    if mode not in ("", "PAPER"):
+        return False, f"EXECUTION_MODE={mode} (must be PAPER)"
+
+    data_only = str(os.environ.get("FYERS_DATA_ONLY", "true")).strip().lower()
+    if data_only in ("0", "false", "no", "off", "disabled"):
+        return False, "FYERS_DATA_ONLY is disabled"
+
     return True, "PAPER-only"
 
 
@@ -324,6 +341,13 @@ def check_provider_health(creds, markets):
                 access_token=creds.access_token,
                 log_path=tempfile.mkdtemp(prefix="preflight_health_"),
             )
+            # Part 11: prove the data-only runtime attributes at instantiation
+            if getattr(client, "data_only", None) is not True:
+                raise RuntimeError("INDEX_CLIENT_NOT_DATA_ONLY")
+            if getattr(client, "order_capability_allowed", None) is not False:
+                raise RuntimeError("INDEX_CLIENT_ORDER_CAPABILITY_ENABLED")
+            if getattr(client, "automatic_fallback_allowed", None) is not False:
+                raise RuntimeError("INDEX_CLIENT_FALLBACK_ENABLED")
         except Exception as exc:
             for m in index_markets:
                 out[m] = (
@@ -357,6 +381,12 @@ def check_provider_health(creds, markets):
                     "FYERS_ACCESS_TOKEN": creds.access_token,
                 },
             )
+            if getattr(runtime, "data_only", None) is not True:
+                raise RuntimeError("MCX_RUNTIME_NOT_DATA_ONLY")
+            if getattr(runtime, "order_capability_allowed", None) is not False:
+                raise RuntimeError("MCX_RUNTIME_ORDER_CAPABILITY_ENABLED")
+            if getattr(runtime, "automatic_fallback_allowed", None) is not False:
+                raise RuntimeError("MCX_RUNTIME_FALLBACK_ENABLED")
         except Exception as exc:
             for m in mcx_markets:
                 out[m] = (
@@ -395,9 +425,15 @@ def check_provider_health(creds, markets):
     return out
 
 
-def _summarize(cert, state, cal, calibration, health, locks):
+def _summarize(cert, state, cal, calibration, health, locks, requested=None):
+    """Summarize over the requested markets only.
+
+    If the operator passed --markets NIFTY,SENSEX, only those two are
+    considered. Other markets having no verdict is expected, not a HOLD.
+    """
     ready, held = [], {}
-    for m in _MARKETS:
+    markets = tuple(requested) if requested is not None else _MARKETS
+    for m in markets:
         reasons = []
         for table, label in (
             (cert, "cert"),
@@ -431,6 +467,8 @@ def main(argv=None):
     ap.add_argument("--require-branch", default=None)
     ap.add_argument("--dry-run", action="store_true",
                     help="run every check but do not launch the supervisor")
+    ap.add_argument("--allow-partial", action="store_true",
+                    help="permit launching a subset of markets when some are held")
     ap.add_argument("--markets", default=None,
                     help="comma-separated subset; default all five")
     args = ap.parse_args(argv)
@@ -515,7 +553,7 @@ def main(argv=None):
         _log(m, f"{tag} cert={why_c} state={why_s} cal={why_k} "
                 f"cali={why_l} health={why_h} lock={locks.get(m, False)}")
 
-    ready, held = _summarize(cert, state, cal, calibration, health, locks)
+    ready, held = _summarize(cert, state, cal, calibration, health, locks, requested)
 
     _section("PREFLIGHT SUMMARY")
     if ready and not held:
@@ -530,10 +568,22 @@ def main(argv=None):
     for m, why in held.items():
         print(f"HOLD_REASON[{m}]={why}")
 
-    started = False
-    if not ready:
+    # Return contract (Part 12):
+    #   0  = launched supervisor / dry-run ready
+    #   1  = infrastructure failure (repo, env, token, locks, limiter)
+    #   2  = argument error
+    #   10 = HOLD: zero safe markets
+    #   11 = PARTIAL: subset ready and --allow-partial not supplied
+    if verdict == "HOLD":
         print("SUPERVISOR_STARTED=False")
-        return 0
+        print("EXIT_CODE=10")
+        return 10
+    if verdict == "PARTIAL" and not args.allow_partial:
+        print("SUPERVISOR_STARTED=False")
+        print("EXIT_CODE=11 (pass --allow-partial to launch subset)")
+        return 11
+
+    started = False
 
     cmd = [args.python_exe, "-m",
            "services.paper_orchestration.automated_paper_supervisor_v2",

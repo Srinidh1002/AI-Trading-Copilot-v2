@@ -155,12 +155,29 @@ def test_partial_two_ready(fake_repo, stub_creds, clean_env, monkeypatch):
             for m in markets
         },
     )
+    # Default policy: PARTIAL does not launch and exits 11.
     rc, out = _run(["--repo-root", str(fake_repo), "--dry-run"])
-    assert rc == 0
+    assert rc == 11, out
     assert "PREFLIGHT=PARTIAL" in out
+    assert "EXIT_CODE=11" in out
     assert "READY_MARKETS=NIFTY,SENSEX" in out
     assert "CRUDEOILM" in out.split("HELD_MARKETS=")[1].split("\n")[0]
     assert "SUPERVISOR_STARTED=False" in out
+
+
+def test_partial_with_allow_partial_returns_zero(fake_repo, stub_creds, clean_env, monkeypatch):
+    _patch_all_ok(monkeypatch)
+    monkeypatch.setattr(
+        pf, "check_calibration",
+        lambda markets: {
+            m: ((True, "n/a") if m in ("NIFTY", "SENSEX")
+                else (False, "CALIBRATION_MISSING:X"))
+            for m in markets
+        },
+    )
+    rc, out = _run(["--repo-root", str(fake_repo), "--dry-run", "--allow-partial"])
+    assert rc == 0, out
+    assert "PREFLIGHT=PARTIAL" in out
 
 
 def test_hold_zero_ready(fake_repo, stub_creds, clean_env, monkeypatch):
@@ -170,9 +187,10 @@ def test_hold_zero_ready(fake_repo, stub_creds, clean_env, monkeypatch):
         lambda markets: {m: (False, "CALIBRATION_MISSING:X") for m in markets},
     )
     rc, out = _run(["--repo-root", str(fake_repo), "--dry-run"])
-    assert rc == 0
+    assert rc == 10, out
     assert "PREFLIGHT=HOLD" in out
     assert "SUPERVISOR_STARTED=False" in out
+    assert "EXIT_CODE=10" in out
 
 
 def test_dry_run_does_not_launch(fake_repo, stub_creds, clean_env, monkeypatch):
