@@ -1,0 +1,20 @@
+# AI Trading Copilot v2 ΓÇö validated runtime lockfile
+#
+# Produced on 2026-09-24 from a working Python 3.12.10 venv that
+# completed the five-market PAPER remediation suite (Gates B, Wave 0-15).
+#
+# Install with:
+#   python -m pip install -r requirements-runtime-lock.txt
+#
+# Python: 3.12.10
+#
+fyers-apiv3==3.1.17
+python-dotenv==1.2.3
+pandas==3.0.5
+numpy==2.5.3
+requests==2.31.0
+yfinance==1.7.0
+websocket-client==1.6.1
+websockets==17.1
+smartapi-python==1.5.5
+PyOTP==2.10.0
