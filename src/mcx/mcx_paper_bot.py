@@ -30,7 +30,7 @@ from services.paper_orchestration.cooperative_stop_v2 import (
     acknowledge as _coop_ack,
     stop_requested as _coop_stop_requested,
 )
-from mcx.mcx_counterfactual import log_rejection
+from mcx.mcx_counterfactual import log_rejection, log_cycle_prices
 from mcx.mcx_contracts import PRODUCTS
 from mcx.mcx_fyers_runtime_v2 import build_mcx_fyers_runtime_from_env_v2
 from mcx.mcx_external_context import fetch_context
@@ -1269,6 +1269,13 @@ def main():
         if chain.get("status") != "OK":
             print(f"  Chain: {chain['status']}")
             time.sleep(CYCLE_SECONDS); continue
+
+        # Phase 14 - counterfactual price capture. Pure slice of the
+        # already-fetched chain, zero extra provider calls.
+        try:
+            log_cycle_prices(PRODUCT, chain, attempt=attempts)
+        except Exception as _pcp_e:
+            print(f"  [counterfactual price capture skipped: {_pcp_e}]")
 
         mtf = compute_mtf(obj, fut_token, "MCX")
         ctx = fetch_context(PRODUCT)
