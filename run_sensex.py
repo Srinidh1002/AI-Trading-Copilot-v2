@@ -402,7 +402,11 @@ def _build_fyers_bot():
 
 def main() -> int:
 
+    import os as _os
+    _os.environ.setdefault("PAPER_MARKET_NAME", MARKET)
     from services.paper_orchestration.cooperative_stop_v2 import (
+        STATUS_FLAT_SAFE_TO_EXIT as _COOP_FLAT,
+        STATUS_POSITION_MANAGEMENT_ACTIVE as _COOP_POS_MGMT,
         acknowledge as _coop_ack,
         stop_requested as _coop_stop_requested,
     )
@@ -521,10 +525,15 @@ def main() -> int:
             if _coop_stop_requested():
                 if not bot.active_trades:
                     bot.save_state()
-                    _coop_ack(reason="FLAT_ACK_EXIT")
+                    _coop_ack(reason="FLAT_ACK_EXIT",
+                              status=_COOP_FLAT,
+                              has_active_position=False)
                     print("COOPERATIVE_STOP_FLAT — saved and ACKed")
                     return 0
                 print("COOPERATIVE_STOP_POSITION_OPEN — managing to terminal")
+                _coop_ack(reason="POSITION_MANAGEMENT_ACTIVE",
+                          status=_COOP_POS_MGMT,
+                          has_active_position=True)
                 _coop_stop_active = True
             else:
                 _coop_stop_active = False

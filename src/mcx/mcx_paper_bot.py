@@ -22,7 +22,11 @@ if _REPO_ROOT_MCX not in sys.path:
 
 from dotenv import load_dotenv
 
+import os as _os_coop
+_os_coop.environ.setdefault("PAPER_MARKET_NAME", "")
 from services.paper_orchestration.cooperative_stop_v2 import (
+    STATUS_FLAT_SAFE_TO_EXIT as _COOP_FLAT,
+    STATUS_POSITION_MANAGEMENT_ACTIVE as _COOP_POS_MGMT,
     acknowledge as _coop_ack,
     stop_requested as _coop_stop_requested,
 )
@@ -1149,10 +1153,21 @@ def main():
         if _coop_stop_requested():
             if not state.get("active_position"):
                 save_state(state)
-                _coop_ack(reason="FLAT_ACK_EXIT")
+                _coop_ack(reason="FLAT_ACK_EXIT",
+                          status=_COOP_FLAT,
+                          has_active_position=False)
                 print("COOPERATIVE_STOP_FLAT — saved and ACKed")
                 break
             print("COOPERATIVE_STOP_POSITION_OPEN — entries suppressed, managing to terminal")
+            _active_tid = None
+            try:
+                _active_tid = (state.get("active_position") or {}).get("trade_id")
+            except Exception:
+                _active_tid = None
+            _coop_ack(reason="POSITION_MANAGEMENT_ACTIVE",
+                      status=_COOP_POS_MGMT,
+                      has_active_position=True,
+                      trade_id=_active_tid)
             _coop_stop_active = True
         else:
             _coop_stop_active = False
@@ -1523,7 +1538,9 @@ def main():
 
     save_state(state)
     if _coop_stop_requested() and not state.get("active_position"):
-        _coop_ack(reason="POST_LOOP_FLAT_ACK")
+        _coop_ack(reason="POST_LOOP_FLAT_ACK",
+                  status=_COOP_FLAT,
+                  has_active_position=False)
         print("COOPERATIVE_STOP_POST_LOOP — ACKed")
     print(f"\n{'=' * 100}")
     _cert_total = cert_status(
