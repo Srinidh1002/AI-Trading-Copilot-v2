@@ -350,9 +350,12 @@ class AutomatedPaperSupervisorV2:
         return True
 
     def _run_analysis_once(self, spec, day):
+        """Run the daily analysis once. Returns ANALYSIS_SUCCESS,
+        ANALYSIS_FAILURE, or ANALYSIS_DRY_RUN. Does not mutate runtime state.
+        """
         if self.dry_run:
             self._log(f"[DRY_RUN] would run analysis for {spec.name} {day}")
-            return
+            return "ANALYSIS_DRY_RUN"
         try:
             from services.paper_orchestration.campaign_analysis_v2 import (
                 analyze_market_day, write_daily_report,
@@ -361,8 +364,27 @@ class AutomatedPaperSupervisorV2:
                                          repo_root=str(self.repo_root))
             path = write_daily_report(summary, repo_root=str(self.repo_root))
             self._log(f"[{spec.name}] daily report -> {path}")
+            return "ANALYSIS_SUCCESS"
         except Exception as exc:
             self._log(f"[{spec.name}] analysis failed: {type(exc).__name__}: {exc}")
+            return "ANALYSIS_FAILURE"
+
+    def _run_analysis_and_record(self, rt, spec, day):
+        """Run the daily analysis and persist rt.last_analysis_date only on
+        success. On failure the next tick retries because last_analysis_date
+        is not advanced.
+        """
+        if rt.last_analysis_date == day:
+            return "ALREADY_DONE"
+        result = self._run_analysis_once(spec, day)
+        if result == "ANALYSIS_SUCCESS":
+            rt.last_analysis_date = day
+            self._log(f"[{spec.name}] ANALYSIS_RECORDED day={day}")
+        elif result == "ANALYSIS_FAILURE":
+            self._log(f"[{spec.name}] ANALYSIS_RETRY_PENDING day={day}")
+        # DRY_RUN does not advance last_analysis_date; the operator
+        # controls when the real run happens.
+        return result
 
     def tick(self):
         if _cert_all_complete():
@@ -387,10 +409,7 @@ class AutomatedPaperSupervisorV2:
                     self._stop_worker(spec)
                     rt.last_expected_stop_ist = now
                     self._log(f"[{spec.name}] CERT_COMPLETE counter={ms.counter}; worker stopped")
-                if rt.last_analysis_date != day:
-                    self._run_analysis_once(spec, day)
-                    rt.last_analysis_date = day
-                    self._log(f"[{spec.name}] FINAL_ANALYSIS_DONE counter={ms.counter}")
+                self._run_analysis_and_record(rt, spec, day)
                 continue
 
             # Wave 1 — calendar authority
@@ -440,21 +459,20 @@ class AutomatedPaperSupervisorV2:
                 pass
 
             else:
+                # Session is not open. Stop a live worker if one is running,
+                # record an exited worker's classification, then attempt the
+                # day's analysis. The helper retries on later ticks when
+                # last_analysis_date has not been recorded for the day.
                 if rt.process is not None and rt.process.poll() is None:
                     self._stop_worker(spec)
                     rt.last_stop_ist = now
                     rt.last_expected_stop_ist = now
-                    if rt.last_analysis_date != day:
-                        self._run_analysis_once(spec, day)
-                        rt.last_analysis_date = day
                 elif rt.process is not None and rt.process.poll() is not None:
-                    if rt.last_analysis_date != day:
-                        rc = rt.process.poll()
-                        status = self._classify_exit(spec, rc, expected_alive=False)
-                        rt.exit_history.append((day, rc, status))
-                        self._log(f"[{spec.name}] auto-exit rc={rc} classified={status}")
-                        self._run_analysis_once(spec, day)
-                        rt.last_analysis_date = day
+                    rc = rt.process.poll()
+                    status = self._classify_exit(spec, rc, expected_alive=False)
+                    rt.exit_history.append((day, rc, status))
+                    self._log(f"[{spec.name}] auto-exit rc={rc} classified={status}")
+                self._run_analysis_and_record(rt, spec, day)
 
     def run_forever(self, poll_seconds=30.0):
         self._log(f"supervisor started (dry_run={self.dry_run})")

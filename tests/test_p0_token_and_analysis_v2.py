@@ -184,10 +184,10 @@ def test_complete_branch_runs_final_analysis_once(tmp_path, monkeypatch):
         lambda name: MarketState(name, "COMPLETE", 100),
     )
     calls = []
-    monkeypatch.setattr(
-        sup, "_run_analysis_once",
-        lambda spec_, day: calls.append((spec_.name, day)),
-    )
+    def _stub(spec_, day):
+        calls.append((spec_.name, day))
+        return "ANALYSIS_SUCCESS"
+    monkeypatch.setattr(sup, "_run_analysis_once", _stub)
     # Session authority not consulted for COMPLETE branch
 
     sup.tick()
