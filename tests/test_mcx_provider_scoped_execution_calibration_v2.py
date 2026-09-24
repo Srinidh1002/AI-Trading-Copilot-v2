@@ -14,10 +14,13 @@ from mcx.mcx_exec_quote import (
 )
 
 
+# STALE_ACTIVE_UNIVERSE_ASSUMPTION fixed: SILVERM was replaced by
+# NATGASMINI in the Phase 6 MCX product migration. The active universe
+# per mcx_version.PRODUCT_EPOCHS is now (CRUDEOILM, GOLDM, NATGASMINI).
 TARGET_PRODUCTS = (
     "CRUDEOILM",
     "GOLDM",
-    "SILVERM",
+    "NATGASMINI",
 )
 
 
