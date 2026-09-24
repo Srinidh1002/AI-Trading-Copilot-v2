@@ -16,11 +16,10 @@ jobs:
     timeout-minutes: 20
 
     env:
-      # Never contact FYERS, never require .env, never start workers.
       PYTHONUNBUFFERED: "1"
       PYTHONUTF8: "1"
       PYTHONDONTWRITEBYTECODE: "1"
-      # Explicitly empty so any test that reads .env fails closed.
+      PYTHONPATH: "${{ github.workspace }}/src;${{ github.workspace }}"
       FYERS_APP_ID: ""
       FYERS_ACCESS_TOKEN: ""
 
@@ -38,35 +37,40 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-runtime-lock.txt
-          python -m pip install pytest
+          python -m pip install pytest ruff
 
-      - name: Syntax check — every tracked .py under src/, services/, tools/, tests/
+      - name: Syntax check (portable Python helper)
+        shell: pwsh
+        run: python tools/offline_syntax_check.py
+
+      - name: Ruff check on maintained files
         shell: pwsh
         run: |
-          python - <<'PY'
-          import ast, sys
-          from pathlib import Path
-          roots = [Path("src"), Path("services"), Path("tools"), Path("tests")]
-          bad = []
-          for root in roots:
-              if not root.exists(): continue
-              for p in root.rglob("*.py"):
-                  if "__pycache__" in p.parts: continue
-                  try:
-                      ast.parse(p.read_text(encoding="utf-8"))
-                  except SyntaxError as e:
-                      bad.append((str(p), e.lineno, e.msg))
-          if bad:
-              for b in bad: print("SYNTAX", b)
-              sys.exit(1)
-          print("syntax OK")
-          PY
+          python -m ruff check `
+            tools/offline_syntax_check.py `
+            tools/preflight_and_start_five_market_paper.py `
+            tools/collect_mcx_fyers_execution_calibration.py `
+            tools/verify_mcx_fyers_execution_calibration.py `
+            tools/write_mcx_fyers_execution_calibration.py `
+            tools/resolve_counterfactuals.py `
+            tools/expectancy_report.py `
+            services/paper_orchestration/process_lock_v2.py `
+            services/paper_orchestration/supervisor_lock_v2.py `
+            services/paper_orchestration/worker_lock_v2.py `
+            services/paper_orchestration/worker_session_authority_v2.py `
+            services/paper_orchestration/cooperative_stop_v2.py `
+            services/paper_orchestration/certification_halt_v2.py `
+            services/paper_orchestration/state_authority_readonly_v2.py `
+            services/broker/fyers_auth_v2.py `
+            src/rate_limiter.py `
+            src/mcx/mcx_counterfactual.py
 
       - name: Focused offline test suite
         shell: pwsh
         run: |
           python -m pytest `
             tests/test_p0_runtime_lock_v2.py `
+            tests/test_p0_scheduled_task_v2.py `
             tests/test_p0_counterfactual_resolver_v2.py `
             tests/test_p0_counterfactual_capture_v2.py `
             tests/test_p0_preflight_paper_safety_and_exit_codes_v2.py `
