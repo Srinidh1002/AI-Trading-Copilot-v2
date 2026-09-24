@@ -108,9 +108,7 @@ def release_file_region_lock(handle) -> None:
 
 def _atomic_write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(
-        prefix=path.name + ".", suffix=".tmp", dir=str(path.parent)
-    )
+    fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(json.dumps(payload, sort_keys=True).encode("utf-8"))

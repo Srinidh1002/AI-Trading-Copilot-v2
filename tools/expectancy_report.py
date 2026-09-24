@@ -6,8 +6,11 @@ Section 2 - counterfactual threshold-only rejections from
 
 Never recommends changing ENTRY_THRESHOLD; reports only.
 """
+
 from __future__ import annotations
-import json, os
+
+import json
+import os
 from collections import defaultdict
 
 _TRADES = os.path.join("data", "paper_trades")
@@ -20,7 +23,7 @@ def _jsonl(path):
     if not os.path.exists(path):
         return []
     out = []
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -50,7 +53,7 @@ def _bucket(c):
     if c is None:
         return "unknown"
     lo = int(c // 10) * 10
-    return f"{lo}-{lo+9}"
+    return f"{lo}-{lo + 9}"
 
 
 def _summary(vals):
@@ -74,9 +77,17 @@ def _band_for(c):
 
 
 def section_trades():
-    print(f"{'market':<16} {'n':>5} {'wins':>5} {'win%':>7} {'avg_win':>9} {'avg_loss':>9} {'expect':>9}")
+    header = (
+        f"{'market':<16} {'n':>5} {'wins':>5} {'win%':>7} "
+        f"{'avg_win':>9} {'avg_loss':>9} {'expect':>9}"
+    )
+    print(header)
     for m in _MARKETS:
-        vals = [p for p in (_pnl(r) for r in _jsonl(os.path.join(_TRADES, f"{m}_outcomes.jsonl"))) if p is not None]
+        vals = [
+            p
+            for p in (_pnl(r) for r in _jsonl(os.path.join(_TRADES, f"{m}_outcomes.jsonl")))
+            if p is not None
+        ]
         s = _summary(vals)
         if not s:
             print(f"{m:<16} {0:>5}")
@@ -107,8 +118,7 @@ def section_counterfactuals():
         print()
         print("-- counterfactual threshold-only rejections (no rows yet) --")
         return
-    by_band = defaultdict(lambda: {"n": 0, "t1": 0, "sl": 0, "unres": 0,
-                                    "mfe": [], "mae": []})
+    by_band = defaultdict(lambda: {"n": 0, "t1": 0, "sl": 0, "unres": 0, "mfe": [], "mae": []})
     for r in rows:
         c = r.get("confidence")
         band = _band_for(c)
@@ -129,8 +139,10 @@ def section_counterfactuals():
             b["mae"].append(float(r["mae_pct"]))
     print()
     print("-- counterfactual threshold-only rejections by confidence band --")
-    print(f"{'band':<8} {'n':>5} {'t1_first':>9} {'sl_first':>9} {'unres':>7} "
-          f"{'t1_rate':>8} {'avg_mfe':>8} {'avg_mae':>8}")
+    print(
+        f"{'band':<8} {'n':>5} {'t1_first':>9} {'sl_first':>9} {'unres':>7} "
+        f"{'t1_rate':>8} {'avg_mfe':>8} {'avg_mae':>8}"
+    )
     for band in [f"{lo}-{hi}" for lo, hi in _BANDS]:
         b = by_band.get(band)
         if not b or b["n"] == 0:
@@ -139,16 +151,20 @@ def section_counterfactuals():
         rate = (b["t1"] / denom * 100.0) if denom else 0.0
         mfe = sum(b["mfe"]) / len(b["mfe"]) if b["mfe"] else 0.0
         mae = sum(b["mae"]) / len(b["mae"]) if b["mae"] else 0.0
-        print(f"{band:<8} {b['n']:>5} {b['t1']:>9} {b['sl']:>9} {b['unres']:>7} "
-              f"{rate:>7.1f}% {mfe:>8.2f} {mae:>8.2f}")
+        print(
+            f"{band:<8} {b['n']:>5} {b['t1']:>9} {b['sl']:>9} {b['unres']:>7} "
+            f"{rate:>7.1f}% {mfe:>8.2f} {mae:>8.2f}"
+        )
 
 
 def main():
     section_trades()
     section_counterfactuals()
     print()
-    print("NOTE: ENTRY_THRESHOLD remains 70. This report is read-only "
-          "research and does not recommend changing it.")
+    print(
+        "NOTE: ENTRY_THRESHOLD remains 70. This report is read-only "
+        "research and does not recommend changing it."
+    )
 
 
 if __name__ == "__main__":

@@ -16,13 +16,14 @@ and independently determines whether the evidence can prove:
 Emits a machine-readable verdict dict and prints a summary. Exit 0 only
 on VERDICT=PASS. Never writes config.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -46,7 +47,7 @@ def _load_rows(product=None):
         if product and not p.name.startswith(product):
             continue
         try:
-            with open(p, "r", encoding="utf-8") as f:
+            with open(p, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if not line:
@@ -130,10 +131,10 @@ def _check_quantity_coherence(rows):
     for (token, side), grp in groups.items():
         qs = []
         for r in grp:
-            for q in (r.get("bid_quantities") or []):
+            for q in r.get("bid_quantities") or []:
                 if isinstance(q, (int, float)):
                     qs.append(float(q))
-            for q in (r.get("ask_quantities") or []):
+            for q in r.get("ask_quantities") or []:
                 if isinstance(q, (int, float)):
                     qs.append(float(q))
         if not qs:
@@ -147,7 +148,9 @@ def _check_quantity_coherence(rows):
             continue
         distinct = len(set(qs))
         if distinct < 2:
-            failures.append(f"{token}/{side}: quantity field constant ({qs[:3]}) — cannot rule out placeholder")
+            failures.append(
+                f"{token}/{side}: quantity field constant ({qs[:3]}) — cannot rule out placeholder"
+            )
             continue
     if failures:
         return False, "; ".join(failures[:5])
@@ -158,7 +161,10 @@ def _check_distinct_hashes(rows):
     hashes = [r.get("quote_payload_hash") for r in rows if r.get("quote_payload_hash")]
     distinct = len(set(hashes))
     if distinct < MIN_DISTINCT_PAYLOAD_HASHES:
-        return False, f"only {distinct} distinct payload hashes; need {MIN_DISTINCT_PAYLOAD_HASHES}"
+        return (
+            False,
+            f"only {distinct} distinct payload hashes; need {MIN_DISTINCT_PAYLOAD_HASHES}",
+        )
     return True, f"{distinct} distinct payload hashes"
 
 
@@ -166,8 +172,7 @@ def _check_timestamps(rows):
     with_ts = [r for r in rows if r.get("provider_timestamp")]
     if not with_ts:
         return False, "no provider timestamps on any sample"
-    ages = [r.get("age_seconds") for r in with_ts
-            if isinstance(r.get("age_seconds"), (int, float))]
+    ages = [r.get("age_seconds") for r in with_ts if isinstance(r.get("age_seconds"), (int, float))]
     if not ages:
         return False, "provider timestamps present but ages not computable"
     if any(a < 0 for a in ages):
@@ -178,8 +183,7 @@ def _check_timestamps(rows):
 
 
 def _check_freshness(rows):
-    ages = [r.get("age_seconds") for r in rows
-            if isinstance(r.get("age_seconds"), (int, float))]
+    ages = [r.get("age_seconds") for r in rows if isinstance(r.get("age_seconds"), (int, float))]
     if not ages:
         return False, "cannot assess freshness; no ages"
     ages_sorted = sorted(ages)
@@ -190,7 +194,7 @@ def _check_freshness(rows):
 
 
 def _check_sample_recency(rows):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     recent = 0
     for r in rows:
         ts = r.get("collection_utc") or r.get("local_receive_timestamp")
@@ -201,8 +205,8 @@ def _check_sample_recency(rows):
         except Exception:
             continue
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        if (now - dt.astimezone(timezone.utc)).total_seconds() <= MAX_ACCEPTABLE_SAMPLE_AGE_SECONDS:
+            dt = dt.replace(tzinfo=UTC)
+        if (now - dt.astimezone(UTC)).total_seconds() <= MAX_ACCEPTABLE_SAMPLE_AGE_SECONDS:
             recent += 1
     if recent == 0:
         return False, "no sample collected within last 24h"
@@ -212,8 +216,12 @@ def _check_sample_recency(rows):
 def verify_product(product):
     rows = _load_rows(product)
     if not rows:
-        return {"product": product, "verdict": "HOLD",
-                "reason": "NO_EVIDENCE", "checks": {}}
+        return {
+            "product": product,
+            "verdict": "HOLD",
+            "reason": "NO_EVIDENCE",
+            "checks": {},
+        }
     results = {}
     ok, msg = _check_provider(rows)
     results["provider"] = (ok, msg)
@@ -237,8 +245,7 @@ def verify_product(product):
     failures = [k for k, (ok, _) in results.items() if not ok]
     verdict = "PASS" if not failures else "HOLD"
     p95_age = None
-    ages = [r.get("age_seconds") for r in rows
-            if isinstance(r.get("age_seconds"), (int, float))]
+    ages = [r.get("age_seconds") for r in rows if isinstance(r.get("age_seconds"), (int, float))]
     if ages:
         ages_sorted = sorted(ages)
         p95_age = ages_sorted[int(0.95 * (len(ages_sorted) - 1))]
@@ -247,7 +254,9 @@ def verify_product(product):
         "product": product,
         "verdict": verdict,
         "sample_count": len(rows),
-        "distinct_payload_hashes": len({r.get("quote_payload_hash") for r in rows if r.get("quote_payload_hash")}),
+        "distinct_payload_hashes": len(
+            {r.get("quote_payload_hash") for r in rows if r.get("quote_payload_hash")}
+        ),
         "p95_age_seconds": p95_age,
         "failures": failures,
         "checks": {k: {"ok": v[0], "note": v[1]} for k, v in results.items()},
@@ -257,8 +266,7 @@ def verify_product(product):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--products", default=",".join(_SUPPORTED))
-    ap.add_argument("--report", default=None,
-                    help="write verdict JSON to this path")
+    ap.add_argument("--report", default=None, help="write verdict JSON to this path")
     args = ap.parse_args(argv)
 
     products = tuple(p.strip().upper() for p in args.products.split(",") if p.strip())
@@ -266,9 +274,11 @@ def main(argv=None):
 
     for p, r in reports.items():
         print(f"===== {p} =====")
-        print(f"  verdict={r['verdict']}  samples={r.get('sample_count', 0)}  "
-              f"distinct_hashes={r.get('distinct_payload_hashes', 0)}  "
-              f"p95_age_s={r.get('p95_age_seconds')}")
+        print(
+            f"  verdict={r['verdict']}  samples={r.get('sample_count', 0)}  "
+            f"distinct_hashes={r.get('distinct_payload_hashes', 0)}  "
+            f"p95_age_s={r.get('p95_age_seconds')}"
+        )
         for k, v in r.get("checks", {}).items():
             marker = "OK" if v["ok"] else "FAIL"
             print(f"    [{marker}] {k}: {v['note']}")

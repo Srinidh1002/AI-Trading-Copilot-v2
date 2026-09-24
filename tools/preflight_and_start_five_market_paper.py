@@ -21,6 +21,7 @@ Zero ready markets is not an error: prints HOLD summary, exits 0.
 Infrastructure failure (env, locks, limiter, repo) exits 1.
 Never prints tokens, secrets, or auth codes.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,6 +42,7 @@ _MCX_MARKETS = {"CRUDEOILM", "GOLDM", "NATGASMINI"}
 
 # ---------------------------------------------------------------- helpers
 
+
 def _log(tag, msg):
     print(f"[{tag:8s}] {msg}")
 
@@ -54,6 +56,7 @@ def _section(title):
 
 # ---------------------------------------------------------------- checks
 
+
 def check_repo(args):
     repo = Path(args.repo_root).resolve()
     if not repo.is_dir():
@@ -64,7 +67,9 @@ def check_repo(args):
         try:
             out = subprocess.check_output(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                cwd=str(repo), text=True, stderr=subprocess.DEVNULL,
+                cwd=str(repo),
+                text=True,
+                stderr=subprocess.DEVNULL,
             ).strip()
         except Exception as exc:
             return False, f"git branch read failed: {type(exc).__name__}"
@@ -90,7 +95,11 @@ def check_env_file(env_file):
     try:
         creds = load_canonical_credentials_v2(str(p))
     except FyersAuthError as exc:
-        return False, f"credential load failed: {getattr(exc, 'reason_code', 'AUTH_MISSING')}", None
+        return (
+            False,
+            f"credential load failed: {getattr(exc, 'reason_code', 'AUTH_MISSING')}",
+            None,
+        )
     except Exception as exc:
         return False, f"credential load failed: {type(exc).__name__}", None
     try:
@@ -113,8 +122,10 @@ def check_paper_flags():
     """
     bad = []
     for name in (
-        "BROKER_SUBMISSION", "BROKER_SUBMISSION_ENABLED",
-        "LIVE_EXECUTION", "LIVE_EXECUTION_ENABLED",
+        "BROKER_SUBMISSION",
+        "BROKER_SUBMISSION_ENABLED",
+        "LIVE_EXECUTION",
+        "LIVE_EXECUTION_ENABLED",
         "LIVE_EXECUTION_ELIGIBLE",
     ):
         v = str(os.environ.get(name, "")).strip().lower()
@@ -151,6 +162,7 @@ def check_locks(markets):
     try:
         from services.paper_orchestration.process_lock_v2 import lock_available
         from services.paper_orchestration.supervisor_lock_v2 import LOCK_PATH
+
         sup_ok = bool(lock_available(str(LOCK_PATH), role="PREFLIGHT_PROBE"))
     except Exception:
         sup_ok = False
@@ -196,6 +208,7 @@ def check_state_authority(markets, repo_root):
     from services.paper_orchestration.state_authority_readonly_v2 import (
         validate_markets,
     )
+
     verdicts = validate_markets(Path(repo_root).resolve(), markets)
     out = {}
     for m, v in verdicts.items():
@@ -206,11 +219,11 @@ def check_state_authority(markets, repo_root):
 
 def check_calendar(markets, now):
     try:
-        from services.paper_orchestration.worker_session_authority_v2 import (
-            authority_for,
-        )
         from services.paper_orchestration.automated_paper_supervisor_v2 import (
             WORKERS_V2,
+        )
+        from services.paper_orchestration.worker_session_authority_v2 import (
+            authority_for,
         )
     except Exception as exc:
         return {m: (False, f"cal import failed: {type(exc).__name__}") for m in markets}
@@ -239,6 +252,8 @@ def _calibration_status_for(product):
     try:
         from mcx.mcx_exec_config import (
             calibration_status as _cal_status,
+        )
+        from mcx.mcx_exec_config import (
             get_provider_product_config as _get_cfg,
         )
     except Exception as exc:
@@ -261,10 +276,7 @@ def _calibration_status_for(product):
         if isinstance(raw, dict):
             r = dict(r)
             r["evidence_kind"] = raw.get("evidence_kind")
-            r["calibration_provider"] = (
-                raw.get("calibration_provider")
-                or raw.get("provider")
-            )
+            r["calibration_provider"] = raw.get("calibration_provider") or raw.get("provider")
     except Exception:
         pass
     if "reason" not in r:
@@ -296,8 +308,10 @@ def check_calibration(markets):
         ]
         missing = [name for name, val in checks if not bool(val)]
         if missing:
-            out[m] = (False,
-                      f"CALIBRATION_MISSING:{reason}|missing={','.join(missing)}")
+            out[m] = (
+                False,
+                f"CALIBRATION_MISSING:{reason}|missing={','.join(missing)}",
+            )
             continue
         evk = str(r.get("evidence_kind") or "").upper()
         if evk != "LIVE_MARKET_DEPTH":
@@ -329,13 +343,15 @@ def check_provider_health(creds, markets):
 
     if index_markets:
         try:
+            import tempfile
+
             from services.broker.fyers_provider_runtime_v2 import (
                 check_fyers_provider_health_v2,
             )
             from services.broker.fyers_sdk_data_client_v2 import (
                 build_fyers_data_client_v2,
             )
-            import tempfile
+
             client = build_fyers_data_client_v2(
                 client_id=creds.app_id,
                 access_token=creds.access_token,
@@ -360,7 +376,10 @@ def check_provider_health(creds, markets):
                 try:
                     h = check_fyers_provider_health_v2(client, symbol=index_syms[m])
                 except Exception as exc:
-                    out[m] = (False, f"health: INDEX_HEALTH_RAISED:{type(exc).__name__}")
+                    out[m] = (
+                        False,
+                        f"health: INDEX_HEALTH_RAISED:{type(exc).__name__}",
+                    )
                     continue
                 if h.ok:
                     out[m] = (True, f"health: OK symbol={h.symbol}")
@@ -369,10 +388,12 @@ def check_provider_health(creds, markets):
 
     if mcx_markets:
         try:
+            import tempfile
+
             from mcx.mcx_fyers_runtime_v2 import (
                 build_mcx_fyers_runtime_from_env_v2,
             )
-            import tempfile
+
             log_dir = tempfile.mkdtemp(prefix="preflight_mcx_health_")
             runtime = build_mcx_fyers_runtime_from_env_v2(
                 log_path=log_dir,
@@ -400,7 +421,10 @@ def check_provider_health(creds, markets):
                 try:
                     ident = runtime.identity.resolve_active(m)
                 except Exception as exc:
-                    out[m] = (False, f"health: MCX_IDENTITY_RAISED:{type(exc).__name__}")
+                    out[m] = (
+                        False,
+                        f"health: MCX_IDENTITY_RAISED:{type(exc).__name__}",
+                    )
                     continue
                 if not isinstance(ident, dict) or ident.get("status") != "OK":
                     status = (ident or {}).get("status") if isinstance(ident, dict) else None
@@ -458,19 +482,24 @@ def _summarize(cert, state, cal, calibration, health, locks, requested=None):
 
 # ---------------------------------------------------------------- main
 
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo-root", default=str(REPO_DEFAULT))
-    ap.add_argument("--env-file", default=None,
-                    help="default: <repo-root>/.env")
+    ap.add_argument("--env-file", default=None, help="default: <repo-root>/.env")
     ap.add_argument("--python-exe", default=sys.executable)
     ap.add_argument("--require-branch", default=None)
-    ap.add_argument("--dry-run", action="store_true",
-                    help="run every check but do not launch the supervisor")
-    ap.add_argument("--allow-partial", action="store_true",
-                    help="permit launching a subset of markets when some are held")
-    ap.add_argument("--markets", default=None,
-                    help="comma-separated subset; default all five")
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="run every check but do not launch the supervisor",
+    )
+    ap.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="permit launching a subset of markets when some are held",
+    )
+    ap.add_argument("--markets", default=None, help="comma-separated subset; default all five")
     args = ap.parse_args(argv)
 
     args.env_file = args.env_file or str(Path(args.repo_root) / ".env")
@@ -534,7 +563,8 @@ def main(argv=None):
 
     # provider health only for markets that passed everything so far
     pre_ready = [
-        m for m in requested
+        m
+        for m in requested
         if cert.get(m, (False,))[0]
         and state.get(m, (False,))[0]
         and cal.get(m, (False,))[0]
@@ -550,8 +580,11 @@ def main(argv=None):
         ok_l, why_l = calibration.get(m, (False, "?"))
         ok_h, why_h = health.get(m, (True, "not probed"))
         tag = "OK" if all([ok_c, ok_s, ok_k, ok_l, ok_h]) else "HOLD"
-        _log(m, f"{tag} cert={why_c} state={why_s} cal={why_k} "
-                f"cali={why_l} health={why_h} lock={locks.get(m, False)}")
+        _log(
+            m,
+            f"{tag} cert={why_c} state={why_s} cal={why_k} "
+            f"cali={why_l} health={why_h} lock={locks.get(m, False)}",
+        )
 
     ready, held = _summarize(cert, state, cal, calibration, health, locks, requested)
 
@@ -585,9 +618,13 @@ def main(argv=None):
 
     started = False
 
-    cmd = [args.python_exe, "-m",
-           "services.paper_orchestration.automated_paper_supervisor_v2",
-           "--markets", ",".join(ready)]
+    cmd = [
+        args.python_exe,
+        "-m",
+        "services.paper_orchestration.automated_paper_supervisor_v2",
+        "--markets",
+        ",".join(ready),
+    ]
     if args.dry_run:
         print(f"DRY_RUN: would exec: {' '.join(cmd)}")
         print("SUPERVISOR_STARTED=False")

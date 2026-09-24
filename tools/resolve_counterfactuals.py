@@ -17,13 +17,14 @@ determine whether SL or T1 was touched first.
 Never infers option premium from futures prices. Never writes runtime
 state. Never influences live decisions.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -42,7 +43,7 @@ def _read_jsonl(path):
     if not path.exists():
         return []
     out = []
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -64,6 +65,7 @@ def _parse_ts(s):
 def _product_thresholds(product):
     try:
         from mcx.mcx_contracts import PRODUCTS
+
         cfg = PRODUCTS.get(product)
     except Exception:
         cfg = None
@@ -132,10 +134,8 @@ def resolve_one(rejection, prices_rows, thresholds):
     mfe = entry_price
     mae = entry_price
     for ts, ltp in obs:
-        if ltp > mfe:
-            mfe = ltp
-        if ltp < mae:
-            mae = ltp
+        mfe = max(mfe, ltp)
+        mae = min(mae, ltp)
         if first_sl_ts is None and ltp <= sl:
             first_sl_ts = ts
         if first_t1_ts is None and ltp >= t1:
@@ -181,8 +181,14 @@ def main(argv=None):
     products = tuple(p.strip().upper() for p in args.products.split(",") if p.strip())
     existing = _existing_keys()
     resolved_rows = []
-    stats = {"attempted": 0, "skipped_already": 0, "resolved": 0,
-             "t1_first": 0, "sl_first": 0, "unresolved": 0}
+    stats = {
+        "attempted": 0,
+        "skipped_already": 0,
+        "resolved": 0,
+        "t1_first": 0,
+        "sl_first": 0,
+        "unresolved": 0,
+    }
 
     for product in products:
         cf_path = _CF_DIR / (product.lower() + "_counterfactual.jsonl")
@@ -225,19 +231,34 @@ def main(argv=None):
             elif res.get("outcome") == "UNRESOLVED":
                 stats["unresolved"] += 1
 
-    print("attempted=" + str(stats["attempted"])
-          + " skipped_already=" + str(stats["skipped_already"]))
-    print("resolved=" + str(len(resolved_rows))
-          + " t1_first=" + str(stats["t1_first"])
-          + " sl_first=" + str(stats["sl_first"])
-          + " unresolved=" + str(stats["unresolved"]))
+    print(
+        "attempted=" + str(stats["attempted"]) + " skipped_already=" + str(stats["skipped_already"])
+    )
+    print(
+        "resolved="
+        + str(len(resolved_rows))
+        + " t1_first="
+        + str(stats["t1_first"])
+        + " sl_first="
+        + str(stats["sl_first"])
+        + " unresolved="
+        + str(stats["unresolved"])
+    )
 
     if args.dry_run:
         for r in resolved_rows[:10]:
-            print("  " + r["product"] + " conf=" + str(r["confidence"])
-                  + " outcome=" + r["outcome"]
-                  + " mfe=" + str(r.get("mfe_pct"))
-                  + " mae=" + str(r.get("mae_pct")))
+            print(
+                "  "
+                + r["product"]
+                + " conf="
+                + str(r["confidence"])
+                + " outcome="
+                + r["outcome"]
+                + " mfe="
+                + str(r.get("mfe_pct"))
+                + " mae="
+                + str(r.get("mae_pct"))
+            )
         return 0
 
     if resolved_rows:

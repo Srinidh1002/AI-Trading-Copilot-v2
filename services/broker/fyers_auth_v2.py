@@ -20,45 +20,47 @@ Explicitly out of scope:
     regulations"). Access tokens expire daily at 06:30 IST and require
     manual OAuth re-auth via the FYERS web flow.
 """
+
 from __future__ import annotations
 
 import base64
 import json
 import os
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any
 
 try:
-    from dotenv import load_dotenv as _load_dotenv
     from dotenv import dotenv_values as _dotenv_values
+    from dotenv import load_dotenv as _load_dotenv
 except Exception:
     _load_dotenv = None
     _dotenv_values = None
 
 
 # ---- Safe reason codes (loggable, never contain token material) ----
-REASON_OK                = "OK"
-REASON_AUTH_INVALID      = "AUTH_INVALID"
-REASON_AUTH_EXPIRED      = "AUTH_EXPIRED"
-REASON_AUTH_MISSING      = "AUTH_MISSING"
-REASON_NETWORK_ERROR     = "NETWORK_ERROR"
-REASON_RATE_LIMIT        = "RATE_LIMIT"
-REASON_PROVIDER_ERROR    = "PROVIDER_ERROR"
-REASON_MALFORMED         = "MALFORMED_RESPONSE"
+REASON_OK = "OK"
+REASON_AUTH_INVALID = "AUTH_INVALID"
+REASON_AUTH_EXPIRED = "AUTH_EXPIRED"
+REASON_AUTH_MISSING = "AUTH_MISSING"
+REASON_NETWORK_ERROR = "NETWORK_ERROR"
+REASON_RATE_LIMIT = "RATE_LIMIT"
+REASON_PROVIDER_ERROR = "PROVIDER_ERROR"
+REASON_MALFORMED = "MALFORMED_RESPONSE"
 
 _AUTH_INVALID_CODES = {-15, -16, -17, -8}
-_RATE_LIMIT_CODES   = {429, -429}
+_RATE_LIMIT_CODES = {429, -429}
 
 
 @dataclass(frozen=True)
 class FyersCredentialsV2:
     app_id: str
-    secret_id: Optional[str]
+    secret_id: str | None
     access_token: str
-    refresh_token: Optional[str]
-    redirect_uri: Optional[str]
-    pin: Optional[str]
+    refresh_token: str | None
+    redirect_uri: str | None
+    pin: str | None
     source: str
 
 
@@ -68,7 +70,7 @@ class FyersAuthError(RuntimeError):
         reason_code: str,
         message: str,
         *,
-        provider_code: Optional[int] = None,
+        provider_code: int | None = None,
     ):
         super().__init__(message)
         self.reason_code = reason_code
@@ -142,9 +144,7 @@ def load_canonical_credentials_v2(env_file: str) -> FyersCredentialsV2:
     pin = _val("FYERS_PIN") or None
 
     if not app_id:
-        raise FyersAuthError(
-            REASON_AUTH_MISSING, "FYERS_APP_ID missing in canonical env file"
-        )
+        raise FyersAuthError(REASON_AUTH_MISSING, "FYERS_APP_ID missing in canonical env file")
     if not access_token:
         raise FyersAuthError(
             REASON_AUTH_MISSING, "FYERS_ACCESS_TOKEN missing in canonical env file"
@@ -162,7 +162,7 @@ def load_canonical_credentials_v2(env_file: str) -> FyersCredentialsV2:
 
 
 def load_fyers_credentials_v2(
-    env_file: Optional[str] = None,
+    env_file: str | None = None,
 ) -> FyersCredentialsV2:
     """
     Canonical credential reader.
@@ -178,26 +178,19 @@ def load_fyers_credentials_v2(
     if _load_dotenv is not None:
         _load_dotenv(env_file, override=False)
 
-    app_id        = (os.getenv("FYERS_APP_ID")        or "").strip()
-    access_token  = (os.getenv("FYERS_ACCESS_TOKEN")  or "").strip()
-    secret_id     = (os.getenv("FYERS_SECRET_ID")     or "").strip() or None
+    app_id = (os.getenv("FYERS_APP_ID") or "").strip()
+    access_token = (os.getenv("FYERS_ACCESS_TOKEN") or "").strip()
+    secret_id = (os.getenv("FYERS_SECRET_ID") or "").strip() or None
     refresh_token = (os.getenv("FYERS_REFRESH_TOKEN") or "").strip() or None
-    redirect_uri  = (os.getenv("FYERS_REDIRECT_URI")  or "").strip() or None
-    pin           = (os.getenv("FYERS_PIN")           or "").strip() or None
+    redirect_uri = (os.getenv("FYERS_REDIRECT_URI") or "").strip() or None
+    pin = (os.getenv("FYERS_PIN") or "").strip() or None
 
-    source = (
-        f"env_file:{env_file}" if env_file
-        else "process_env_or_default_env"
-    )
+    source = f"env_file:{env_file}" if env_file else "process_env_or_default_env"
 
     if not app_id:
-        raise FyersAuthError(
-            REASON_AUTH_MISSING, "FYERS_APP_ID not set"
-        )
+        raise FyersAuthError(REASON_AUTH_MISSING, "FYERS_APP_ID not set")
     if not access_token:
-        raise FyersAuthError(
-            REASON_AUTH_MISSING, "FYERS_ACCESS_TOKEN not set"
-        )
+        raise FyersAuthError(REASON_AUTH_MISSING, "FYERS_ACCESS_TOKEN not set")
 
     return FyersCredentialsV2(
         app_id=app_id,
@@ -213,9 +206,9 @@ def load_fyers_credentials_v2(
 @dataclass(frozen=True)
 class JwtExpiryV2:
     is_jwt: bool
-    exp_epoch: Optional[int]
-    iat_epoch: Optional[int]
-    seconds_remaining: Optional[int]
+    exp_epoch: int | None
+    iat_epoch: int | None
+    seconds_remaining: int | None
     payload_keys: tuple
 
 
@@ -274,14 +267,10 @@ def assert_fyers_token_current_v2(
             "access token JWT has no exp claim",
         )
 
-    if (
-        info.seconds_remaining is not None
-        and info.seconds_remaining <= skew_seconds
-    ):
+    if info.seconds_remaining is not None and info.seconds_remaining <= skew_seconds:
         raise FyersAuthError(
             REASON_AUTH_EXPIRED,
-            f"access token expired or within skew "
-            f"({info.seconds_remaining}s remaining)",
+            f"access token expired or within skew ({info.seconds_remaining}s remaining)",
         )
 
     return info
@@ -289,7 +278,7 @@ def assert_fyers_token_current_v2(
 
 def classify_fyers_response_v2(
     response: Mapping[str, Any],
-) -> Optional[FyersAuthError]:
+) -> FyersAuthError | None:
     """
     Return FyersAuthError if the response is an FYERS error, else None.
 
@@ -297,9 +286,7 @@ def classify_fyers_response_v2(
     through this function.
     """
     if not isinstance(response, Mapping):
-        return FyersAuthError(
-            REASON_MALFORMED, "response is not a mapping"
-        )
+        return FyersAuthError(REASON_MALFORMED, "response is not a mapping")
 
     status = response.get("s")
     code = response.get("code")
@@ -354,6 +341,8 @@ def classify_fyers_exception_v2(
         return FyersAuthError(REASON_RATE_LIMIT, msg or name)
 
     return FyersAuthError(REASON_PROVIDER_ERROR, msg or name)
+
+
 @dataclass(frozen=True)
 class FyersOAuthInputsV2:
     """Static OAuth inputs plus an optional current access token."""
@@ -384,39 +373,15 @@ def load_fyers_oauth_inputs_v2(
             override=False,
         )
 
-    app_id = (
-        os.getenv(
-            "FYERS_APP_ID"
-        )
-        or ""
-    ).strip()
+    app_id = (os.getenv("FYERS_APP_ID") or "").strip()
 
-    secret_id = (
-        os.getenv(
-            "FYERS_SECRET_ID"
-        )
-        or ""
-    ).strip()
+    secret_id = (os.getenv("FYERS_SECRET_ID") or "").strip()
 
-    redirect_uri = (
-        os.getenv(
-            "FYERS_REDIRECT_URI"
-        )
-        or ""
-    ).strip()
+    redirect_uri = (os.getenv("FYERS_REDIRECT_URI") or "").strip()
 
-    access_token = (
-        os.getenv(
-            "FYERS_ACCESS_TOKEN"
-        )
-        or ""
-    ).strip() or None
+    access_token = (os.getenv("FYERS_ACCESS_TOKEN") or "").strip() or None
 
-    source = (
-        f"env_file:{env_file}"
-        if env_file
-        else "process_env_or_default_env"
-    )
+    source = f"env_file:{env_file}" if env_file else "process_env_or_default_env"
 
     if not app_id:
         raise FyersAuthError(

@@ -3,10 +3,10 @@
 Walks src/, services/, tools/, tests/ and asserts every .py parses.
 No imports, no network, no .env. Exits 0 on success, 1 on any failure.
 """
+
 from __future__ import annotations
 
 import ast
-import sys
 from pathlib import Path
 
 ROOTS = ("src", "services", "tools", "tests")

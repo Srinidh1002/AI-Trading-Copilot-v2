@@ -13,25 +13,27 @@ ACK payload contains only non-sensitive fields: market, pid, status,
 timestamp, reason, has_active_position boolean, and (optionally) a
 trade_id string. No tokens, no secrets.
 """
+
 from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
 
 STATUS_FLAT_SAFE_TO_EXIT = "FLAT_SAFE_TO_EXIT"
 STATUS_POSITION_MANAGEMENT_ACTIVE = "POSITION_MANAGEMENT_ACTIVE"
 STATUS_TERMINAL_RECONCILED = "TERMINAL_RECONCILED"
 STATUS_STATE_HOLD = "STATE_HOLD"
 
-_ALLOWED_STATUSES = frozenset({
-    STATUS_FLAT_SAFE_TO_EXIT,
-    STATUS_POSITION_MANAGEMENT_ACTIVE,
-    STATUS_TERMINAL_RECONCILED,
-    STATUS_STATE_HOLD,
-})
+_ALLOWED_STATUSES = frozenset(
+    {
+        STATUS_FLAT_SAFE_TO_EXIT,
+        STATUS_POSITION_MANAGEMENT_ACTIVE,
+        STATUS_TERMINAL_RECONCILED,
+        STATUS_STATE_HOLD,
+    }
+)
 
 
 def _request_path():
@@ -76,7 +78,7 @@ def acknowledge(
     if status not in _ALLOWED_STATUSES:
         status = STATUS_STATE_HOLD
     payload = {
-        "acked_at_utc": datetime.now(timezone.utc).isoformat(),
+        "acked_at_utc": datetime.now(UTC).isoformat(),
         "pid": os.getpid(),
         "market": _market_name(),
         "status": status,

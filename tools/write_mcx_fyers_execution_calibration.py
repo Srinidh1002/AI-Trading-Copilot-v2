@@ -24,6 +24,7 @@ Shape:
     }
   }
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,7 +32,7 @@ import json
 import os
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -54,8 +55,11 @@ def _newest_evidence_for(product):
     """Return the newest evidence file for a product, or None."""
     if not _EVIDENCE_DIR.exists():
         return None
-    cands = sorted(_EVIDENCE_DIR.glob(f"{product}_*.jsonl"),
-                   key=lambda p: p.stat().st_mtime, reverse=True)
+    cands = sorted(
+        _EVIDENCE_DIR.glob(f"{product}_*.jsonl"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
     return cands[0] if cands else None
 
 
@@ -69,8 +73,7 @@ def _derive_max_age(verifier_entry):
 
 def _write_atomic(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp",
-                               dir=str(path.parent))
+    fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, sort_keys=True)
@@ -87,12 +90,17 @@ def _write_atomic(path: Path, payload: dict) -> None:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--report", required=True,
-                    help="path to verifier report JSON")
-    ap.add_argument("--products", default=",".join(_SUPPORTED),
-                    help="comma-separated subset to write")
-    ap.add_argument("--dry-run", action="store_true",
-                    help="validate and print intended config; do not write")
+    ap.add_argument("--report", required=True, help="path to verifier report JSON")
+    ap.add_argument(
+        "--products",
+        default=",".join(_SUPPORTED),
+        help="comma-separated subset to write",
+    )
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="validate and print intended config; do not write",
+    )
     args = ap.parse_args(argv)
 
     products = tuple(p.strip().upper() for p in args.products.split(",") if p.strip())
@@ -150,7 +158,7 @@ def main(argv=None):
             "depth_quantity_unit": "LOTS",
             "execution_freshness_calibrated": True,
             "execution_quote_max_age_seconds": max_age,
-            "calibrated_at": datetime.now(timezone.utc).isoformat(),
+            "calibrated_at": datetime.now(UTC).isoformat(),
             "evidence_ref": evidence_ref,
             "evidence_kind": _EVIDENCE_KIND,
         }
@@ -173,8 +181,10 @@ def main(argv=None):
     # Refuse to silently drop a schema-1 file that isn't a superset.
     existing_providers = existing.get("providers")
     if existing_providers is not None and not isinstance(existing_providers, dict):
-        print("existing config providers is not a dict; refusing to overwrite",
-              file=sys.stderr)
+        print(
+            "existing config providers is not a dict; refusing to overwrite",
+            file=sys.stderr,
+        )
         return 1
 
     providers = dict(existing_providers or {})
@@ -186,7 +196,7 @@ def main(argv=None):
     new_config = dict(existing)
     new_config["schema_version"] = _SCHEMA_VERSION
     new_config["providers"] = providers
-    new_config["updated_at"] = datetime.now(timezone.utc).isoformat()
+    new_config["updated_at"] = datetime.now(UTC).isoformat()
 
     if args.dry_run:
         print("DRY_RUN — intended config:")
@@ -198,10 +208,8 @@ def main(argv=None):
     if _CONFIG_PATH.exists():
         try:
             prev = _CONFIG_PATH.read_text(encoding="utf-8")
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            backup = _CONFIG_PATH.with_name(
-                _CONFIG_PATH.name + f".bak_{stamp}"
-            )
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+            backup = _CONFIG_PATH.with_name(_CONFIG_PATH.name + f".bak_{stamp}")
             _write_atomic(backup, json.loads(prev) if prev.strip().startswith("{") else {})
             print(f"BACKUP {backup}")
         except Exception as exc:
@@ -210,8 +218,10 @@ def main(argv=None):
     _write_atomic(_CONFIG_PATH, new_config)
     print(f"WROTE {_CONFIG_PATH}")
     for product, record in per_product_record.items():
-        print(f"  {product}: evidence_ref={record['evidence_ref']} "
-              f"max_age={record['execution_quote_max_age_seconds']}s")
+        print(
+            f"  {product}: evidence_ref={record['evidence_ref']} "
+            f"max_age={record['execution_quote_max_age_seconds']}s"
+        )
     return 0
 
 

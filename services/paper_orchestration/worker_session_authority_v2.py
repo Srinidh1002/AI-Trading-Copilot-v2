@@ -8,11 +8,11 @@ Dispatches to the exchange-authoritative calendar for each market type:
 Fails closed with calendar_authoritative=False for unknown market types,
 unknown calendar years, or any exception from the underlying authority.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import time as dtime
-
 
 _INDEX_CLOSE = dtime(15, 30)
 _INDEX_CALENDAR_YEAR = 2026
@@ -34,15 +34,25 @@ def _mcx_authority(now):
         from mcx.mcx_calendar import get_session
     except Exception as exc:
         return SessionAuthority(
-            False, False, False, None, False,
-            "MCX_CALENDAR_IMPORT_FAILED", type(exc).__name__,
+            False,
+            False,
+            False,
+            None,
+            False,
+            "MCX_CALENDAR_IMPORT_FAILED",
+            type(exc).__name__,
         )
     try:
         r = get_session(now)
     except Exception as exc:
         return SessionAuthority(
-            False, False, False, None, False,
-            "MCX_CALENDAR_RAISED", type(exc).__name__,
+            False,
+            False,
+            False,
+            None,
+            False,
+            "MCX_CALENDAR_RAISED",
+            type(exc).__name__,
         )
     return SessionAuthority(
         session_open=bool(r.get("session_open")),
@@ -58,35 +68,56 @@ def _mcx_authority(now):
 def _index_authority(now, spec_name):
     if now.year != _INDEX_CALENDAR_YEAR:
         return SessionAuthority(
-            False, False, False, _INDEX_CLOSE, False,
+            False,
+            False,
+            False,
+            _INDEX_CLOSE,
+            False,
             "CALENDAR_YEAR_UNKNOWN",
             f"NSE/BSE holiday data not loaded for {now.year}",
         )
     try:
         from services.market_session_guard import evaluate_market_session
+
         if spec_name == "NIFTY":
             from services.nse_holiday_calendar import get_nse_holiday_calendar
+
             cal = get_nse_holiday_calendar()
         elif spec_name == "SENSEX":
             from services.bse_holiday_calendar import get_bse_holiday_calendar
+
             cal = get_bse_holiday_calendar()
         else:
             return SessionAuthority(
-                False, False, False, _INDEX_CLOSE, False,
+                False,
+                False,
+                False,
+                _INDEX_CLOSE,
+                False,
                 "INDEX_MARKET_UNKNOWN",
                 f"no calendar source for {spec_name}",
             )
     except Exception as exc:
         return SessionAuthority(
-            False, False, False, _INDEX_CLOSE, False,
-            "INDEX_CALENDAR_IMPORT_FAILED", type(exc).__name__,
+            False,
+            False,
+            False,
+            _INDEX_CLOSE,
+            False,
+            "INDEX_CALENDAR_IMPORT_FAILED",
+            type(exc).__name__,
         )
     try:
         r = evaluate_market_session(now=now, holiday_calendar=cal)
     except Exception as exc:
         return SessionAuthority(
-            False, False, False, _INDEX_CLOSE, False,
-            "INDEX_CALENDAR_RAISED", type(exc).__name__,
+            False,
+            False,
+            False,
+            _INDEX_CLOSE,
+            False,
+            "INDEX_CALENDAR_RAISED",
+            type(exc).__name__,
         )
 
     market_open = bool(r.get("market_open"))
@@ -121,6 +152,11 @@ def authority_for(spec, now):
     if spec.market_type == "INDEX":
         return _index_authority(now, spec.name)
     return SessionAuthority(
-        False, False, False, None, False,
-        "MARKET_TYPE_UNKNOWN", f"{spec.market_type}",
+        False,
+        False,
+        False,
+        None,
+        False,
+        "MARKET_TYPE_UNKNOWN",
+        f"{spec.market_type}",
     )

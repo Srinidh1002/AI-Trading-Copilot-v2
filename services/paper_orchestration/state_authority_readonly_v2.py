@@ -11,14 +11,13 @@ accept or reject a state file for trading. This module mirrors their
 schema rules so the morning preflight can fail closed BEFORE a worker is
 spawned.
 """
+
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-
 
 INDEX_MARKETS = ("NIFTY", "SENSEX")
 MCX_MARKETS = ("CRUDEOILM", "GOLDM", "NATGASMINI")
@@ -71,20 +70,36 @@ def _validate_index(repo_root: Path, market: str) -> Verdict:
         return Verdict(market, False, "STATE_SCHEMA_INVALID")
 
     if data.get("market") != market:
-        return Verdict(market, False, "STATE_MARKET_MISMATCH",
-                       f"file market={data.get('market')!r}")
+        return Verdict(
+            market,
+            False,
+            "STATE_MARKET_MISMATCH",
+            f"file market={data.get('market')!r}",
+        )
 
     sv = data.get("strategy_version")
     ce = data.get("certification_epoch")
     if sv is None or ce is None:
-        return Verdict(market, False, "STATE_EPOCH_MISSING",
-                       "legacy state without epoch metadata cannot authorize a certified run")
+        return Verdict(
+            market,
+            False,
+            "STATE_EPOCH_MISSING",
+            "legacy state without epoch metadata cannot authorize a certified run",
+        )
     if sv != INDEX_STRATEGY_VERSION:
-        return Verdict(market, False, "STATE_STRATEGY_VERSION_MISMATCH",
-                       f"{sv!r} != {INDEX_STRATEGY_VERSION!r}")
+        return Verdict(
+            market,
+            False,
+            "STATE_STRATEGY_VERSION_MISMATCH",
+            f"{sv!r} != {INDEX_STRATEGY_VERSION!r}",
+        )
     if ce != INDEX_CERTIFICATION_EPOCH:
-        return Verdict(market, False, "STATE_EPOCH_MISMATCH",
-                       f"{ce!r} != {INDEX_CERTIFICATION_EPOCH!r}")
+        return Verdict(
+            market,
+            False,
+            "STATE_EPOCH_MISMATCH",
+            f"{ce!r} != {INDEX_CERTIFICATION_EPOCH!r}",
+        )
 
     counter = data.get("certification_counter")
     ids = data.get("counted_trade_ids")
@@ -95,15 +110,23 @@ def _validate_index(repo_root: Path, market: str) -> Verdict:
     if len(ids) != len(set(ids)):
         return Verdict(market, False, "STATE_COUNTED_IDS_DUPLICATE")
     if len(ids) != counter:
-        return Verdict(market, False, "STATE_COUNTER_INCOHERENT",
-                       f"counter={counter} ids={len(ids)}")
+        return Verdict(
+            market,
+            False,
+            "STATE_COUNTER_INCOHERENT",
+            f"counter={counter} ids={len(ids)}",
+        )
 
     wins = data.get("certification_wins")
     losses = data.get("certification_losses")
     if isinstance(wins, int) and isinstance(losses, int):
         if wins < 0 or losses < 0 or wins + losses != counter:
-            return Verdict(market, False, "STATE_WINS_LOSSES_INCOHERENT",
-                           f"wins={wins} losses={losses} counter={counter}")
+            return Verdict(
+                market,
+                False,
+                "STATE_WINS_LOSSES_INCOHERENT",
+                f"wins={wins} losses={losses} counter={counter}",
+            )
 
     active = data.get("active_trades")
     if active is None:
@@ -118,8 +141,7 @@ def _validate_index(repo_root: Path, market: str) -> Verdict:
             return Verdict(market, False, "STATE_MALFORMED_ACTIVE_TRADE")
         tid = t.get("trade_id")
         if not isinstance(tid, str) or not tid.strip():
-            return Verdict(market, False, "STATE_MALFORMED_ACTIVE_TRADE",
-                           "missing trade_id")
+            return Verdict(market, False, "STATE_MALFORMED_ACTIVE_TRADE", "missing trade_id")
         et = t.get("entry_time")
         if not isinstance(et, str) or len(et) < 10:
             return Verdict(market, False, "STATE_MALFORMED_ACTIVE_ENTRY_TIME")
@@ -149,24 +171,35 @@ def _validate_mcx(repo_root: Path, market: str) -> Verdict:
         return Verdict(market, False, "STATE_SCHEMA_INVALID")
 
     if data.get("product") != market:
-        return Verdict(market, False, "STATE_PRODUCT_MISMATCH",
-                       f"file product={data.get('product')!r}")
+        return Verdict(
+            market,
+            False,
+            "STATE_PRODUCT_MISMATCH",
+            f"file product={data.get('product')!r}",
+        )
 
     try:
         from mcx.mcx_version import PRODUCT_EPOCHS
     except Exception as exc:
-        return Verdict(market, False, "STATE_EPOCH_AUTHORITY_UNAVAILABLE",
-                       type(exc).__name__)
+        return Verdict(market, False, "STATE_EPOCH_AUTHORITY_UNAVAILABLE", type(exc).__name__)
     cfg = PRODUCT_EPOCHS.get(market)
     if not cfg:
         return Verdict(market, False, "STATE_PRODUCT_UNKNOWN")
 
     if data.get("epoch") != cfg["epoch"]:
-        return Verdict(market, False, "STATE_EPOCH_MISMATCH",
-                       f"{data.get('epoch')!r} != {cfg['epoch']!r}")
+        return Verdict(
+            market,
+            False,
+            "STATE_EPOCH_MISMATCH",
+            f"{data.get('epoch')!r} != {cfg['epoch']!r}",
+        )
     if data.get("strategy_version") != cfg["strategy_version"]:
-        return Verdict(market, False, "STATE_STRATEGY_VERSION_MISMATCH",
-                       f"{data.get('strategy_version')!r} != {cfg['strategy_version']!r}")
+        return Verdict(
+            market,
+            False,
+            "STATE_STRATEGY_VERSION_MISMATCH",
+            f"{data.get('strategy_version')!r} != {cfg['strategy_version']!r}",
+        )
 
     ids = data.get("_counted_trade_ids", [])
     if ids is None:
@@ -179,8 +212,12 @@ def _validate_mcx(repo_root: Path, market: str) -> Verdict:
     wins = int(data.get("t1_hit_wins", 0) or 0)
     losses = int(data.get("sl_losses", 0) or 0)
     if wins < 0 or losses < 0 or len(ids) != wins + losses:
-        return Verdict(market, False, "STATE_COUNTER_INCOHERENT",
-                       f"ids={len(ids)} wins={wins} losses={losses}")
+        return Verdict(
+            market,
+            False,
+            "STATE_COUNTER_INCOHERENT",
+            f"ids={len(ids)} wins={wins} losses={losses}",
+        )
 
     active = data.get("active_position")
     if active is not None:
@@ -215,6 +252,7 @@ def validate_markets(repo_root, markets) -> dict:
 
 if __name__ == "__main__":
     import sys
+
     root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.cwd()
     for v in validate_markets(root, list(_MARKET_TO_FILE_KEY)).values():
         print(f"  {v.market:12s} ok={v.ok}  reason={v.reason}  note={v.note}")

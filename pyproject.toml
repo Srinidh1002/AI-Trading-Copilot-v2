@@ -19,3 +19,18 @@ dependencies = [
     "websocket-client>=1.6.1",
     "websockets>=17.1",
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+# Correctness-focused selection. The maintained runtime code intentionally
+# contains fail-closed defensive patterns (broad except, try/except/pass,
+# many branches, magic numbers) that a broader ruleset would flag as
+# stylistic concerns but that are intentional and covered by tests.
+select = ["E", "F", "W", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

@@ -14,12 +14,12 @@ locking is needed. Writes are line-buffered appends.
 
 Never influences runtime decisions. Never takes additional provider calls.
 """
+
 from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
-
+from datetime import UTC, datetime
 
 _LOG_DIR = os.path.join("data", "paper_trades", "counterfactual")
 
@@ -63,7 +63,7 @@ def log_rejection(
     """Append one rejection row. Process-safe by per-product file."""
     os.makedirs(_LOG_DIR, exist_ok=True)
     row = {
-        "ts_utc": datetime.now(timezone.utc).isoformat(),
+        "ts_utc": datetime.now(UTC).isoformat(),
         "product": product,
         "confidence": float(confidence),
         "direction": direction,
@@ -89,6 +89,7 @@ def log_rejection(
         except OSError:
             pass
 
+
 def log_cycle_prices(product, chain, *, attempt=None, price_window_steps=3):
     """Append per-cycle ATM CE/PE LTP evidence for the resolver.
 
@@ -96,67 +97,68 @@ def log_cycle_prices(product, chain, *, attempt=None, price_window_steps=3):
     Records every in-window CE and PE strike's current LTP so an
     offline resolver can walk forward from a past rejection.
     """
-    if not isinstance(chain, dict) or chain.get('status') != 'OK':
+    if not isinstance(chain, dict) or chain.get("status") != "OK":
         return
-    atm = chain.get('atm')
+    atm = chain.get("atm")
     if atm is None:
         return
     try:
         from mcx.mcx_contracts import PRODUCTS as _PRODUCTS
-        step = (_PRODUCTS.get(product) or {}).get('strike_interval')
+
+        step = (_PRODUCTS.get(product) or {}).get("strike_interval")
     except Exception:
         step = None
     if not step:
         return
     low = atm - price_window_steps * step
     high = atm + price_window_steps * step
-    ts = datetime.now(timezone.utc).isoformat()
-    ce = chain.get('ce_data') or {}
-    pe = chain.get('pe_data') or {}
+    ts = datetime.now(UTC).isoformat()
+    ce = chain.get("ce_data") or {}
+    pe = chain.get("pe_data") or {}
     prices = {}
     for strike, entry in ce.items():
         try:
             if low <= float(strike) <= high:
-                prices[str(strike) + ':CE'] = {
-                    'side': 'CE',
-                    'token': str(entry.get('token')),
-                    'symbol': entry.get('symbol'),
-                    'ltp': entry.get('ltp'),
-                    'bid': entry.get('bid'),
-                    'ask': entry.get('ask'),
-                    'oi': entry.get('oi'),
+                prices[str(strike) + ":CE"] = {
+                    "side": "CE",
+                    "token": str(entry.get("token")),
+                    "symbol": entry.get("symbol"),
+                    "ltp": entry.get("ltp"),
+                    "bid": entry.get("bid"),
+                    "ask": entry.get("ask"),
+                    "oi": entry.get("oi"),
                 }
         except Exception:
             continue
     for strike, entry in pe.items():
         try:
             if low <= float(strike) <= high:
-                prices[str(strike) + ':PE'] = {
-                    'side': 'PE',
-                    'token': str(entry.get('token')),
-                    'symbol': entry.get('symbol'),
-                    'ltp': entry.get('ltp'),
-                    'bid': entry.get('bid'),
-                    'ask': entry.get('ask'),
-                    'oi': entry.get('oi'),
+                prices[str(strike) + ":PE"] = {
+                    "side": "PE",
+                    "token": str(entry.get("token")),
+                    "symbol": entry.get("symbol"),
+                    "ltp": entry.get("ltp"),
+                    "bid": entry.get("bid"),
+                    "ask": entry.get("ask"),
+                    "oi": entry.get("oi"),
                 }
         except Exception:
             continue
     if not prices:
         return
     row = {
-        'ts_utc': ts,
-        'product': product,
-        'attempt': attempt,
-        'future_ltp': chain.get('future_ltp'),
-        'atm': atm,
-        'expiry': chain.get('expiry'),
-        'prices': prices,
+        "ts_utc": ts,
+        "product": product,
+        "attempt": attempt,
+        "future_ltp": chain.get("future_ltp"),
+        "atm": atm,
+        "expiry": chain.get("expiry"),
+        "prices": prices,
     }
     os.makedirs(_LOG_DIR, exist_ok=True)
-    path = os.path.join(_LOG_DIR, str(product).lower() + '_prices.jsonl')
-    with open(path, 'a', encoding='utf-8') as f:
-        f.write(json.dumps(row, separators=(',', ':')) + '\n')
+    path = os.path.join(_LOG_DIR, str(product).lower() + "_prices.jsonl")
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(row, separators=(",", ":")) + "\n")
         f.flush()
         try:
             os.fsync(f.fileno())

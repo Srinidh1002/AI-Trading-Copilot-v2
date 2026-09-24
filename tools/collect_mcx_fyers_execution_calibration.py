@@ -9,6 +9,7 @@ Each collection session appends rows to:
 
 One row per observed contract depth sample.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,7 @@ import hashlib
 import json
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +30,7 @@ _PROVIDER = "FYERS"
 
 
 def _utc_iso():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _hash_payload(payload) -> str:
@@ -44,7 +45,7 @@ def _extract_depth(row: dict):
     where each level is {price, volume, orders?}. We accept either key name.
     Returns (bids, asks) as lists of dicts.
     """
-    depth = (row.get("depth") or {})
+    depth = row.get("depth") or {}
     bids = depth.get("bids") or depth.get("bid") or []
     asks = depth.get("asks") or depth.get("ask") or []
     if not isinstance(bids, list):
@@ -70,8 +71,8 @@ def _age_seconds(provider_ts, local_dt):
     except Exception:
         return None
     if pt.tzinfo is None:
-        pt = pt.replace(tzinfo=timezone.utc)
-    return max(0.0, (local_dt - pt.astimezone(timezone.utc)).total_seconds())
+        pt = pt.replace(tzinfo=UTC)
+    return max(0.0, (local_dt - pt.astimezone(UTC)).total_seconds())
 
 
 def _select_atm(chain, future_ltp):
@@ -113,6 +114,7 @@ def _emit_row(session_id, product, phase, contract, side, future_info, row, loca
     trading_unit = None
     try:
         from mcx.mcx_contracts import PRODUCTS as _PRODUCTS
+
         trading_unit = (_PRODUCTS.get(product) or {}).get("trading_unit")
     except Exception:
         trading_unit = None
@@ -151,7 +153,7 @@ def _fetch_row(data_api, token):
     """One read-only FULL quote. Returns row dict or None."""
     try:
         r = data_api.getMarketData("FULL", {"MCX": [str(token)]})
-    except Exception as exc:
+    except Exception:
         return None
     if not isinstance(r, dict):
         return None
@@ -176,7 +178,9 @@ def collect_for_product(runtime, product, samples_per_contract, session_id, dry_
         return 0
 
     if resolved.get("status") != "OK":
-        print(f"[{product}] identity not OK: {resolved.get('status')} reason={resolved.get('reason')}")
+        print(
+            f"[{product}] identity not OK: {resolved.get('status')} reason={resolved.get('reason')}"
+        )
         return 0
 
     future_info = resolved.get("futures") or {}
@@ -223,17 +227,28 @@ def collect_for_product(runtime, product, samples_per_contract, session_id, dry_
             continue
         for _ in range(max(1, int(samples_per_contract))):
             ordinal += 1
-            local_dt = datetime.now(timezone.utc)
+            local_dt = datetime.now(UTC)
             row = _fetch_row(data_api, token)
             if not row:
                 time.sleep(0.4)
                 continue
             out_row = _emit_row(
-                session_id, product, "OBSERVATION",
-                contract, side, future_info, row, local_dt, ordinal,
+                session_id,
+                product,
+                "OBSERVATION",
+                contract,
+                side,
+                future_info,
+                row,
+                local_dt,
+                ordinal,
             )
             if dry_run:
-                print(f"  [dry] {product} {side} strike={contract.get('strike')} age={out_row['age_seconds']}")
+                print(
+                    f"  [dry] {product} {side} "
+                    f"strike={contract.get('strike')} "
+                    f"age={out_row['age_seconds']}"
+                )
             else:
                 with open(out_path, "a", encoding="utf-8") as f:
                     f.write(json.dumps(out_row, default=str) + "\n")
@@ -246,12 +261,18 @@ def collect_for_product(runtime, product, samples_per_contract, session_id, dry_
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--products", default=",".join(_SUPPORTED),
-                    help="comma-separated subset of " + ",".join(_SUPPORTED))
+    ap.add_argument(
+        "--products",
+        default=",".join(_SUPPORTED),
+        help="comma-separated subset of " + ",".join(_SUPPORTED),
+    )
     ap.add_argument("--samples-per-contract", type=int, default=10)
     ap.add_argument("--env-file", default=str(REPO_ROOT / ".env"))
-    ap.add_argument("--dry-run", action="store_true",
-                    help="resolve identities but do not write evidence")
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="resolve identities but do not write evidence",
+    )
     args = ap.parse_args(argv)
 
     products = tuple(p.strip().upper() for p in args.products.split(",") if p.strip())
@@ -265,6 +286,7 @@ def main(argv=None):
         assert_fyers_token_current_v2,
         load_canonical_credentials_v2,
     )
+
     try:
         creds = load_canonical_credentials_v2(args.env_file)
         assert_fyers_token_current_v2(creds.access_token)
@@ -276,6 +298,7 @@ def main(argv=None):
         return 1
 
     import tempfile
+
     from mcx.mcx_fyers_runtime_v2 import build_mcx_fyers_runtime_from_env_v2
 
     log_dir = tempfile.mkdtemp(prefix="mcx_calib_")
@@ -291,11 +314,16 @@ def main(argv=None):
         print(f"RUNTIME_HOLD: {type(exc).__name__}: {str(exc)[:120]}", file=sys.stderr)
         return 1
 
-    session_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    session_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     total = 0
     for product in products:
-        n = collect_for_product(runtime, product, args.samples_per_contract,
-                                session_id, dry_run=args.dry_run)
+        n = collect_for_product(
+            runtime,
+            product,
+            args.samples_per_contract,
+            session_id,
+            dry_run=args.dry_run,
+        )
         total += n
     print(f"COLLECTION_TOTAL={total} session={session_id}")
     return 0 if total > 0 else 1

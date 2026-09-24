@@ -11,6 +11,7 @@ Public API:
   market_complete(spec_name) -> bool (False on HOLD)
   all_complete(markets=None) -> bool
 """
+
 from __future__ import annotations
 
 import json
@@ -52,16 +53,12 @@ def _state_path(key: str) -> str:
 
 def _read_json(path: str) -> dict:
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
     except FileNotFoundError as exc:
-        raise CertificationStateAuthorityError(
-            "CERTIFICATION_STATE_MISSING"
-        ) from exc
+        raise CertificationStateAuthorityError("CERTIFICATION_STATE_MISSING") from exc
     except (OSError, ValueError) as exc:
-        raise CertificationStateAuthorityError(
-            "CERTIFICATION_STATE_UNREADABLE"
-        ) from exc
+        raise CertificationStateAuthorityError("CERTIFICATION_STATE_UNREADABLE") from exc
     if not isinstance(data, dict):
         raise CertificationStateAuthorityError("CERTIFICATION_STATE_SCHEMA_INVALID")
     return data

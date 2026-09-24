@@ -87,9 +87,7 @@ class FyersRateLimitCoordinator:
 
     def __init__(self, *, state_path=None, worker_name: str | None = None):
         self._state_path = Path(state_path).resolve() if state_path else _STATE_PATH
-        self._lock_path = self._state_path.with_suffix(
-            self._state_path.suffix + ".lock"
-        )
+        self._lock_path = self._state_path.with_suffix(self._state_path.suffix + ".lock")
         self._worker = worker_name or os.getenv("WORKER_NAME", "unknown")
 
     def _read(self):
@@ -136,14 +134,10 @@ class FyersRateLimitCoordinator:
 
                 if c["sec"] >= _LIMITS["per_second"]:
                     # Wait until the oldest of the last-second calls ages out
-                    recent = sorted(
-                        t for t in calls if t > now - _SECOND_BUCKET_SECONDS
-                    )
+                    recent = sorted(t for t in calls if t > now - _SECOND_BUCKET_SECONDS)
                     sleep_for = 1.05 - (now - recent[0]) if recent else 0.2
                 elif c["min"] >= _LIMITS["per_minute"]:
-                    recent = sorted(
-                        t for t in calls if t > now - _MINUTE_BUCKET_SECONDS
-                    )
+                    recent = sorted(t for t in calls if t > now - _MINUTE_BUCKET_SECONDS)
                     # Sleep until the oldest minute-window call ages out, capped at 5s
                     sleep_for = min(5.0, 60.0 - (now - recent[0])) if recent else 1.0
                 elif c["day"] >= _LIMITS["per_day"]:

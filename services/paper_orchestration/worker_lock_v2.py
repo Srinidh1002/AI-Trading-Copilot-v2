@@ -17,9 +17,7 @@ def market_lock_path(market: str) -> Path:
 def acquire_market_worker_lock(market: str) -> ProcessLockV2:
     key = market.upper()
     if key not in _locks:
-        _locks[key] = ProcessLockV2(
-            market_lock_path(key), role=f"WORKER:{key}"
-        ).acquire()
+        _locks[key] = ProcessLockV2(market_lock_path(key), role=f"WORKER:{key}").acquire()
     return _locks[key]
 
 
