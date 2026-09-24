@@ -42,6 +42,8 @@ def clean_env(monkeypatch):
               "LIVE_EXECUTION", "LIVE_EXECUTION_ENABLED",
               "LIVE_EXECUTION_ELIGIBLE", "EXECUTION_MODE", "FYERS_DATA_ONLY"):
         monkeypatch.delenv(k, raising=False)
+    # R2-4: preflight requires FYERS_DATA_ONLY=true explicitly.
+    monkeypatch.setenv("FYERS_DATA_ONLY", "true")
 
 
 def _run(argv):
@@ -90,8 +92,9 @@ def test_execution_mode_must_be_paper(fake_repo, stub_creds, monkeypatch):
 
 def test_execution_mode_paper_passes(fake_repo, stub_creds, monkeypatch):
     monkeypatch.setenv("EXECUTION_MODE", "PAPER")
+    monkeypatch.setenv("FYERS_DATA_ONLY", "true")
     ok, why = pf.check_paper_flags()
-    assert ok is True
+    assert ok is True, why
 
 
 def test_fyers_data_only_false_fails(monkeypatch):
@@ -167,3 +170,31 @@ def test_missing_repo_returns_1(tmp_path, stub_creds, clean_env):
     rc, out = _run(["--repo-root", str(tmp_path / "nope"), "--dry-run"])
     assert rc == 1
     assert "PREFLIGHT=HOLD" in out
+
+
+def test_fyers_data_only_missing_is_hold(monkeypatch):
+    monkeypatch.delenv("FYERS_DATA_ONLY", raising=False)
+    for k in ("BROKER_SUBMISSION", "BROKER_SUBMISSION_ENABLED",
+              "LIVE_EXECUTION", "LIVE_EXECUTION_ENABLED",
+              "LIVE_EXECUTION_ELIGIBLE", "EXECUTION_MODE"):
+        monkeypatch.delenv(k, raising=False)
+    ok, why = pf.check_paper_flags()
+    assert ok is False
+    assert "FYERS_DATA_ONLY" in why and "missing" in why
+
+
+def test_fyers_data_only_false_is_hold(monkeypatch):
+    monkeypatch.setenv("FYERS_DATA_ONLY", "false")
+    ok, why = pf.check_paper_flags()
+    assert ok is False
+    assert "FYERS_DATA_ONLY" in why
+
+
+def test_fyers_data_only_true_explicit_passes(monkeypatch):
+    for k in ("BROKER_SUBMISSION", "BROKER_SUBMISSION_ENABLED",
+              "LIVE_EXECUTION", "LIVE_EXECUTION_ENABLED",
+              "LIVE_EXECUTION_ELIGIBLE", "EXECUTION_MODE"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("FYERS_DATA_ONLY", "true")
+    ok, why = pf.check_paper_flags()
+    assert ok is True, why

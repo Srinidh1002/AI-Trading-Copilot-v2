@@ -47,11 +47,13 @@ def stub_creds(monkeypatch):
 
 @pytest.fixture
 def clean_env(monkeypatch):
-    """Ensure no unsafe flags leak in from the environment."""
+    """Clean environment for a successful preflight."""
     for k in ("BROKER_SUBMISSION", "BROKER_SUBMISSION_ENABLED",
               "LIVE_EXECUTION", "LIVE_EXECUTION_ENABLED",
-              "LIVE_EXECUTION_ELIGIBLE"):
+              "LIVE_EXECUTION_ELIGIBLE", "EXECUTION_MODE"):
         monkeypatch.delenv(k, raising=False)
+    # R2-4: preflight requires FYERS_DATA_ONLY=true explicitly.
+    monkeypatch.setenv("FYERS_DATA_ONLY", "true")
 
 
 def _run(argv):

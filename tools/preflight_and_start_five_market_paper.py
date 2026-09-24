@@ -114,11 +114,11 @@ def check_env_file(env_file):
 def check_paper_flags():
     """Prove PAPER-only authority before any worker is spawned.
 
-    Env-var checks only. Runtime attribute checks (data_only,
-    order_capability_allowed, automatic_fallback_allowed) are enforced
-    by the FYERS client and runtime builders themselves, and are
-    additionally verified in check_provider_health where the objects are
-    already instantiated for a read-only health probe.
+    FYERS_DATA_ONLY is required to be explicitly true in the canonical
+    environment. Missing or false is HOLD. Parent-process stale env is
+    not trusted: the caller must supply the sanitized child environment
+    (or, in the operator run, the shell environment already loaded from
+    the canonical .env).
     """
     bad = []
     for name in (
@@ -134,13 +134,18 @@ def check_paper_flags():
     if bad:
         return False, "unsafe flags: " + ",".join(bad)
 
-    mode = str(os.environ.get("EXECUTION_MODE", "PAPER")).strip().upper()
-    if mode not in ("", "PAPER"):
+    mode = str(os.environ.get("EXECUTION_MODE", "")).strip().upper()
+    if mode and mode != "PAPER":
         return False, f"EXECUTION_MODE={mode} (must be PAPER)"
 
-    data_only = str(os.environ.get("FYERS_DATA_ONLY", "true")).strip().lower()
-    if data_only in ("0", "false", "no", "off", "disabled"):
-        return False, "FYERS_DATA_ONLY is disabled"
+    raw = os.environ.get("FYERS_DATA_ONLY")
+    if raw is None or str(raw).strip() == "":
+        return False, "FYERS_DATA_ONLY is missing (must be true)"
+    v = str(raw).strip().lower()
+    if v in ("0", "false", "no", "off", "disabled"):
+        return False, f"FYERS_DATA_ONLY={raw!r} (must be true)"
+    if v not in ("1", "true", "yes", "on", "enabled"):
+        return False, f"FYERS_DATA_ONLY={raw!r} is not a valid boolean"
 
     return True, "PAPER-only"
 
