@@ -1,0 +1,107 @@
+name: offline-stability
+
+on:
+  push:
+    branches:
+      - five-market-offline-readiness
+  pull_request:
+    branches:
+      - five-market-offline-readiness
+  workflow_dispatch:
+
+jobs:
+  offline-tests:
+    name: Offline stability suite
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    env:
+      # Never contact FYERS, never require .env, never start workers.
+      PYTHONUNBUFFERED: "1"
+      PYTHONUTF8: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      # Explicitly empty so any test that reads .env fails closed.
+      FYERS_APP_ID: ""
+      FYERS_ACCESS_TOKEN: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime lock (validated deps only)
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-runtime-lock.txt
+          python -m pip install pytest
+
+      - name: Syntax check — every tracked .py under src/, services/, tools/, tests/
+        shell: pwsh
+        run: |
+          python - <<'PY'
+          import ast, sys
+          from pathlib import Path
+          roots = [Path("src"), Path("services"), Path("tools"), Path("tests")]
+          bad = []
+          for root in roots:
+              if not root.exists(): continue
+              for p in root.rglob("*.py"):
+                  if "__pycache__" in p.parts: continue
+                  try:
+                      ast.parse(p.read_text(encoding="utf-8"))
+                  except SyntaxError as e:
+                      bad.append((str(p), e.lineno, e.msg))
+          if bad:
+              for b in bad: print("SYNTAX", b)
+              sys.exit(1)
+          print("syntax OK")
+          PY
+
+      - name: Focused offline test suite
+        shell: pwsh
+        run: |
+          python -m pytest `
+            tests/test_p0_runtime_lock_v2.py `
+            tests/test_p0_counterfactual_resolver_v2.py `
+            tests/test_p0_counterfactual_capture_v2.py `
+            tests/test_p0_preflight_paper_safety_and_exit_codes_v2.py `
+            tests/test_p0_preflight_v2.py `
+            tests/test_p0_preflight_mcx_health_v2.py `
+            tests/test_p0_preflight_auth_authority_v2.py `
+            tests/test_p0_state_authority_readonly_v2.py `
+            tests/test_p0_preflight_calibration_gate_v2.py `
+            tests/test_p0_mcx_calibration_workflow_v2.py `
+            tests/test_p0_supervisor_stop_ack_v2.py `
+            tests/test_p0_cooperative_stop_ack_v2.py `
+            tests/test_p0_cooperative_stop_v2.py `
+            tests/test_p0_analysis_retry_v2.py `
+            tests/test_p0_supervisor_start_failure_v2.py `
+            tests/test_p0_token_and_analysis_v2.py `
+            tests/test_p0_index_close_authority_v2.py `
+            tests/test_p0_supervisor_lifecycle_v2.py `
+            tests/test_p0_state_authority_v2.py `
+            tests/test_p0_certification_authority_v2.py `
+            tests/test_p0_windows_lock_foundation.py `
+            tests/test_p0_gate_b_fail_closed.py `
+            -q --tb=short
+
+      - name: Confirm no live-state artifact was created in the repo
+        shell: pwsh
+        run: |
+          $bad = @()
+          foreach ($p in @(
+              "data\rate_limit\state.json.lock",
+              "data\rate_limit\state.json.lock.guard",
+              "logs\supervisor\.lock")) {
+              if (Test-Path $p) { $bad += $p }
+          }
+          if ($bad.Count -gt 0) {
+              Write-Host "FORBIDDEN artifacts: $bad"
+              exit 1
+          }
+          Write-Host "clean"
