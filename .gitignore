@@ -87,3 +87,7 @@ data/rate_limit/
 # Daily evidence archive
 _evidence/
 
+
+# R2-5 differential triage scratch
+_r2_worktrees/
+
