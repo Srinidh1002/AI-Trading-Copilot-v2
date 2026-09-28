@@ -24,6 +24,18 @@ Never prints tokens, secrets, or auth codes.
 
 from __future__ import annotations
 
+# _REPO_ROOT_BOOTSTRAP - make `services` and `src` importable regardless
+# of the shell CWD or PYTHONPATH. Required so the operator can run this
+# file directly without any environment setup beyond the venv.
+import sys as _sys
+from pathlib import Path as _Path
+
+_REPO_ROOT_BOOTSTRAP = _Path(__file__).resolve().parents[1]
+for _p in (str(_REPO_ROOT_BOOTSTRAP), str(_REPO_ROOT_BOOTSTRAP / "src")):
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+del _p
+
 import argparse
 import os
 import subprocess
