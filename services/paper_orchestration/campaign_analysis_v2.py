@@ -90,7 +90,8 @@ def analyze_market_day(*, market: str, day: date, repo_root: str) -> dict:
         "decisions_today": pred_summary["total"],
         "decision_actions": dict(decision_actions),
         "wait_reasons_top": wait_reasons.most_common(5),
-        "entry_trades_today": pred_summary["entry_actions"],
+        "entry_signal_decisions": pred_summary["entry_actions"],
+        "actual_trade_opens": out_summary["total"] + active_count,
         "wait_actions": pred_summary["wait_actions"],
         "other_actions": pred_summary["other_actions"],
         "outcomes_today": out_summary["total"],
@@ -132,12 +133,17 @@ def write_daily_report(summary: dict, *, repo_root: str) -> str:
     )
     lines.append("")
     lines.append("## Decisions")
-    lines.append(f"- Total decisions: {summary['decisions_today']}")
+    lines.append(f"- Total decisions (cycle ticks): {summary['decisions_today']}")
     lines.append(
-        f"- Entry actions (BUY_CALL/BUY_PUT): {summary['entry_trades_today']}"
+        f"- Entry signal decisions (BUY_CALL/BUY_PUT): "
+        f"{summary.get('entry_signal_decisions', 0)}"
     )
     lines.append(f"- WAIT/NO_TRADE actions: {summary.get('wait_actions', 0)}")
     lines.append(f"- Action histogram: {summary['decision_actions']}")
+    lines.append(
+        f"- Actual trade opens (closed + active at close): "
+        f"{summary.get('actual_trade_opens', 0)}"
+    )
     lines.append("- Top WAIT reasons:")
     for reason, count in summary.get("wait_reasons_top") or []:
         lines.append(f"    - {reason} ({count})")
@@ -152,7 +158,8 @@ def write_daily_report(summary: dict, *, repo_root: str) -> str:
     lines.append("")
     lines.append("### Certification outcome")
     lines.append(
-        f"- Certification countable: {summary.get('certification_countable', 0)}"
+        f"- Certification accepted trades: "
+        f"{summary.get('certification_countable', 0)}"
     )
     lines.append(
         f"- Certification wins: {summary.get('certification_wins', 0)}"

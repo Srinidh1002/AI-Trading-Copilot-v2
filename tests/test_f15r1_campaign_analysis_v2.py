@@ -76,7 +76,7 @@ def test_index_market_analyze_uses_active_trades_list(tmp_path):
         market="NIFTY", day=date(2026, 9, 28), repo_root=str(tmp_path)
     )
     assert s["decisions_today"] == 3
-    assert s["entry_trades_today"] == 2
+    assert s["entry_signal_decisions"] == 2
     assert s["wait_actions"] == 1
     assert s["outcomes_today"] == 3
     assert s["wins"] == 1           # econ wins (T3 only)
@@ -132,7 +132,7 @@ def test_write_daily_report_contains_cert_section(tmp_path):
     text = open(p, encoding="utf-8").read()
     assert "Economic wins: 1" in text
     assert "Economic losses: 2" in text
-    assert "Certification countable: 2" in text
+    assert "Certification accepted trades: 2" in text
     assert "Certification wins: 1" in text
     assert "Certification losses: 1" in text
     assert "T1_FIRST: 1" in text
