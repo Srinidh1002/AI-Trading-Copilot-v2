@@ -14,6 +14,8 @@ Responsibility:
   * run post-close analysis once per day per market
 """
 
+# ruff: noqa: E402, I001, F401, E501, E702, UP045
+
 from __future__ import annotations
 
 # _REPO_ROOT_BOOTSTRAP_SUP - make `services` and `src` importable when
