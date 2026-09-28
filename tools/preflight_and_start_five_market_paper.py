@@ -111,14 +111,36 @@ def check_env_file(env_file):
     return True, "token fresh", creds
 
 
-def check_paper_flags():
+def _canonical_env_value(env_file, key):
+    """Read one key from the canonical .env as a mapping.
+
+    Never touches os.environ. Returns (value_or_None, error_or_None).
+    """
+    try:
+        from dotenv import dotenv_values as _dv
+    except Exception as exc:
+        return None, f"dotenv unavailable: {type(exc).__name__}"
+    try:
+        values = _dv(str(env_file))
+    except Exception as exc:
+        return None, f"canonical env unreadable: {type(exc).__name__}"
+    if not values:
+        return None, "canonical env empty"
+    raw = values.get(key)
+    return (raw, None) if raw is not None else (None, "not present")
+
+
+def check_paper_flags(env_file=None):
     """Prove PAPER-only authority before any worker is spawned.
 
-    FYERS_DATA_ONLY is required to be explicitly true in the canonical
-    environment. Missing or false is HOLD. Parent-process stale env is
-    not trusted: the caller must supply the sanitized child environment
-    (or, in the operator run, the shell environment already loaded from
-    the canonical .env).
+    FYERS_DATA_ONLY:
+      When env_file is given, read from the canonical .env mapping only.
+      A stale or true/false parent-process value cannot override the file.
+      When env_file is None, fall back to process environment (legacy).
+
+    Other safety flags (BROKER_SUBMISSION, LIVE_EXECUTION, etc.) are read
+    from the process environment so that any accidental true anywhere
+    still fails closed.
     """
     bad = []
     for name in (
@@ -138,14 +160,27 @@ def check_paper_flags():
     if mode and mode != "PAPER":
         return False, f"EXECUTION_MODE={mode} (must be PAPER)"
 
-    raw = os.environ.get("FYERS_DATA_ONLY")
-    if raw is None or str(raw).strip() == "":
-        return False, "FYERS_DATA_ONLY is missing (must be true)"
+    truthy = ("1", "true", "yes", "on", "enabled")
+    falsey = ("0", "false", "no", "off", "disabled")
+
+    if env_file is not None:
+        raw, err = _canonical_env_value(env_file, "FYERS_DATA_ONLY")
+        if err == "not present":
+            return False, "FYERS_DATA_ONLY is missing in canonical .env (must be true)"
+        if err is not None:
+            return False, f"cannot read canonical env: {err}"
+        where = "canonical .env"
+    else:
+        raw = os.environ.get("FYERS_DATA_ONLY")
+        if raw is None or str(raw).strip() == "":
+            return False, "FYERS_DATA_ONLY is missing (must be true)"
+        where = "process env"
+
     v = str(raw).strip().lower()
-    if v in ("0", "false", "no", "off", "disabled"):
-        return False, f"FYERS_DATA_ONLY={raw!r} (must be true)"
-    if v not in ("1", "true", "yes", "on", "enabled"):
-        return False, f"FYERS_DATA_ONLY={raw!r} is not a valid boolean"
+    if v in falsey:
+        return False, f"FYERS_DATA_ONLY={raw!r} in {where} (must be true)"
+    if v not in truthy:
+        return False, f"FYERS_DATA_ONLY={raw!r} in {where} is not a valid boolean"
 
     return True, "PAPER-only"
 
@@ -540,7 +575,7 @@ def main(argv=None):
         print("PREFLIGHT=HOLD")
         return 1
 
-    ok, detail = check_paper_flags()
+    ok, detail = check_paper_flags(args.env_file)
     _log("PAPER", f"{'OK' if ok else 'FAIL'} {detail}")
     if not ok:
         print("PREFLIGHT=HOLD")

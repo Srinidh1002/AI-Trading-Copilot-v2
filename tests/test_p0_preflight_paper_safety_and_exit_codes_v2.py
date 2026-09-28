@@ -21,7 +21,9 @@ def fake_repo(tmp_path):
     (tmp_path / "run_nifty.py").write_text("# stub\n", encoding="utf-8")
     (tmp_path / "run_sensex.py").write_text("# stub\n", encoding="utf-8")
     (tmp_path / ".env").write_text(
-        "FYERS_APP_ID=FAKE\nFYERS_ACCESS_TOKEN=FAKE.TOKEN.SIG\n",
+        "FYERS_APP_ID=FAKE\n"
+        "FYERS_ACCESS_TOKEN=FAKE.TOKEN.SIG\n"
+        "FYERS_DATA_ONLY=true\n",
         encoding="utf-8",
     )
     return tmp_path
