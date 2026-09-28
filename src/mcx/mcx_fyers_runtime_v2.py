@@ -14,15 +14,8 @@ It does not:
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
-
-from services.broker.fyers_sdk_data_client_v2 import (
-    build_fyers_data_client_v2,
-)
-from services.broker.fyers_symbol_master_v2 import (
-    FyersSymbolMasterStoreV2,
-)
 
 from mcx.mcx_fyers_bridge_v2 import (
     MCXFyersBridgeV2,
@@ -31,7 +24,12 @@ from mcx.mcx_fyers_bridge_v2 import (
 from mcx.mcx_fyers_native_chain_v2 import (
     MCXFyersNativeChainV2,
 )
-
+from services.broker.fyers_sdk_data_client_v2 import (
+    build_fyers_data_client_v2,
+)
+from services.broker.fyers_symbol_master_v2 import (
+    FyersSymbolMasterStoreV2,
+)
 
 DEFAULT_MASTER_CACHE_DIR = (
     "data/provider_cache/fyers_master"
@@ -104,6 +102,14 @@ def build_mcx_fyers_runtime_v2(
         log_path,
         "log_path",
     )
+
+    # Phase F15-R1: guarantee the FYERS SDK log directory exists.
+    # Ad-hoc MCX scripts (probe/replay/snapshot/calibration) may not
+    # create it themselves; doing it here removes the dependency on
+    # caller discipline without redefining the shared SDK facade's
+    # contract. Fail-closed: if log_path points at an existing file,
+    # os.makedirs raises FileExistsError.
+    os.makedirs(log_path, exist_ok=True)
 
     if not callable(client_builder):
         raise MCXFyersRuntimeError(
