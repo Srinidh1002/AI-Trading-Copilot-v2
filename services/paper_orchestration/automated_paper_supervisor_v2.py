@@ -153,6 +153,13 @@ class WorkerRuntimeV2:
     last_healthy_ist: Optional[datetime] = None
     last_expected_stop_ist: Optional[datetime] = None
     consecutive_healthy_ticks: int = 0
+    # Phase F15-R1: process-generation exit accounting.
+    generation_id: int = 0
+    consumed_exit_count: int = 0
+    last_exit_rc: Optional[int] = None
+    last_exit_status: Optional[str] = None
+    last_exit_at: Optional[datetime] = None
+    runtime_session_date: Optional[date] = None
 
 
 class AutomatedPaperSupervisorV2:
@@ -164,6 +171,11 @@ class AutomatedPaperSupervisorV2:
     OWNERSHIP_HOLD_BACKOFF_SECONDS = 300
     POSITION_MANAGEMENT_EXTEND_SECONDS = 900
     STOP_POST_VALIDATION_ENABLED = True
+    # Phase F15-R1: legitimate worker close window (relative to close_hhmm).
+    # 25 min before covers MCX forced exit at close-20min and index forced
+    # exit at close-2min. 5 min after covers any residual slow close.
+    CLOSE_GRACE_BEFORE_SECONDS = 1500
+    CLOSE_GRACE_AFTER_SECONDS = 300
 
     def __init__(
         self,
@@ -395,6 +407,85 @@ class AutomatedPaperSupervisorV2:
             return "STARTUP_FAILURE"
         return "RUNTIME_FAILURE"
 
+    def _in_close_grace(self, spec, now):
+        """True when `now` falls inside the approved worker close window."""
+        try:
+            close_dt = datetime(
+                now.year,
+                now.month,
+                now.day,
+                spec.close_hhmm[0],
+                spec.close_hhmm[1],
+                tzinfo=IST,
+            )
+        except Exception:
+            return False
+        delta = (close_dt - now).total_seconds()
+        return (
+            -self.CLOSE_GRACE_AFTER_SECONDS
+            <= delta
+            <= self.CLOSE_GRACE_BEFORE_SECONDS
+        )
+
+    def _consume_exit(self, rt, spec, now, day, *, expected_alive):
+        """Consume one process exit exactly once.
+
+        Returns the classification string, or None if there was
+        nothing to consume. On return, rt.process is None regardless
+        of classification, so the same Popen cannot be re-consumed on
+        a later tick.
+        """
+        proc = rt.process
+        if proc is None:
+            return None
+        rc = proc.poll()
+        if rc is None:
+            return None
+        # Close-window override: a legitimate voluntary end-of-session
+        # exit inside the grace window is CLEAN_SESSION_END even if the
+        # supervisor would otherwise have expected the worker alive.
+        if rc == 0 and self._in_close_grace(spec, now):
+            status = "CLEAN_SESSION_END"
+        else:
+            status = self._classify_exit(
+                spec, rc, expected_alive=expected_alive
+            )
+        rt.exit_history.append((day, rc, status))
+        rt.last_exit_rc = rc
+        rt.last_exit_status = status
+        rt.last_exit_at = now
+        rt.consumed_exit_count += 1
+        if status in (
+            "STARTUP_FAILURE",
+            "RUNTIME_FAILURE",
+            "UNEXPECTED_EXIT_ZERO",
+        ):
+            self._record_failure(rt, now, rc)
+        self._log(
+            f"[{spec.name}] WORKER_EXIT rc={rc} classified={status} "
+            f"generation={rt.generation_id} consumed={rt.consumed_exit_count}"
+        )
+        rt.process = None
+        return status
+
+    def _reset_session_authority_if_needed(self, rt, day):
+        """When the authoritative trading day advances, reset per-day
+        restart authority. Preserves exit_history for audit.
+        """
+        prev = getattr(rt, "runtime_session_date", None)
+        if prev == day:
+            return
+        rt.runtime_session_date = day
+        if rt.circuit_open:
+            self._log(
+                f"[{rt.spec.name}] SESSION_RESET day={day} "
+                f"prior_circuit_open=True cleared"
+            )
+        rt.restart_failures = []
+        rt.next_restart_ist = None
+        rt.circuit_open = False
+        rt.consecutive_healthy_ticks = 0
+
     def _record_ownership_hold(self, rt, now):
         """Another process owns this market's worker lock. Push the
         next retry forward without incrementing restart_failures; contention
@@ -485,7 +576,10 @@ class AutomatedPaperSupervisorV2:
         for spec in self._enabled_specs():
             rt = self.workers[spec.name]
 
-            # Wave 0 — certification authority gate
+            # Phase F15-R1: per-day session authority reset.
+            self._reset_session_authority_if_needed(rt, day)
+
+            # Wave 0 - certification authority gate
             ms = _cert_market_state(spec.name)
             if ms.status == "HOLD":
                 self._log(f"[{spec.name}] CERT_AUTHORITY_HOLD reason={ms.reason}")
@@ -497,68 +591,77 @@ class AutomatedPaperSupervisorV2:
                 if rt.process is not None and rt.process.poll() is None:
                     self._stop_worker(spec)
                     rt.last_expected_stop_ist = now
-                    self._log(f"[{spec.name}] CERT_COMPLETE counter={ms.counter}; worker stopped")
+                    self._log(
+                        f"[{spec.name}] CERT_COMPLETE counter={ms.counter}; worker stopped"
+                    )
                 self._run_analysis_and_record(rt, spec, day)
                 continue
 
-            # Wave 1 — calendar authority
+            # Wave 1 - calendar authority
             auth = _session_authority_for(spec, now)
             if not auth.calendar_authoritative:
-                self._log(f"[{spec.name}] CALENDAR_HOLD status={auth.status} note={auth.note}")
-                # Do not start. Do not stop a running worker: it must be able to close positions.
+                self._log(
+                    f"[{spec.name}] CALENDAR_HOLD status={auth.status} note={auth.note}"
+                )
                 continue
 
             if auth.session_open:
-                if rt.process is None or rt.process.poll() is not None:
-                    if rt.process is not None:
-                        rc = rt.process.poll()
-                        expected_alive = not (
-                            rt.last_expected_stop_ist is not None
-                            and rt.last_start_ist is not None
-                            and rt.last_expected_stop_ist >= rt.last_start_ist
-                        )
-                        status = self._classify_exit(spec, rc, expected_alive=expected_alive)
-                        rt.exit_history.append((day, rc, status))
-                        self._log(f"[{spec.name}] WORKER_EXIT rc={rc} classified={status}")
-                        if status in ("STARTUP_FAILURE", "RUNTIME_FAILURE", "UNEXPECTED_EXIT_ZERO"):
-                            self._record_failure(rt, now, rc)
-                    if not self._may_start(rt, now):
+                # Consume any pending exit exactly once.
+                if rt.process is not None:
+                    rc = rt.process.poll()
+                    if rc is None:
+                        # Worker alive and healthy.
+                        self._record_healthy(rt, now)
                         continue
-                    outcome = self._start_worker(spec)
-                    if outcome.status == "STARTED":
-                        rt.process = outcome.process
-                        rt.last_start_ist = now
-                        rt.consecutive_healthy_ticks = 0
-                    elif outcome.status == "START_OWNERSHIP_HOLD":
-                        self._record_ownership_hold(rt, now)
-                    elif outcome.status in ("START_ENV_FAILURE", "START_SPAWN_FAILURE"):
-                        self._record_failure(rt, now, -1)
-                    # DRY_RUN: no-op
-                else:
-                    self._record_healthy(rt, now)
+                    status = self._consume_exit(
+                        rt, spec, now, day, expected_alive=True
+                    )
+                    if status == "CLEAN_SESSION_END":
+                        # Legitimate close-window exit: no restart, run analysis.
+                        self._run_analysis_and_record(rt, spec, day)
+                        continue
+                # rt.process is None. Respect backoff and try to start.
+                if not self._may_start(rt, now):
+                    continue
+                outcome = self._start_worker(spec)
+                if outcome.status == "STARTED":
+                    rt.process = outcome.process
+                    rt.last_start_ist = now
+                    rt.generation_id += 1
+                    rt.consecutive_healthy_ticks = 0
+                elif outcome.status == "START_OWNERSHIP_HOLD":
+                    self._record_ownership_hold(rt, now)
+                elif outcome.status in (
+                    "START_ENV_FAILURE",
+                    "START_SPAWN_FAILURE",
+                ):
+                    self._record_failure(rt, now, -1)
 
             elif (
                 auth.position_management_allowed
                 and rt.process is not None
                 and rt.process.poll() is None
             ):
-                # CLOSE_BUFFER — leave the worker running; it manages the existing position.
+                # CLOSE_BUFFER - leave the worker running; it manages the
+                # existing position and will exit voluntarily.
                 pass
 
             else:
-                # Session is not open. Stop a live worker if one is running,
-                # record an exited worker's classification, then attempt the
-                # day's analysis. The helper retries on later ticks when
-                # last_analysis_date has not been recorded for the day.
-                if rt.process is not None and rt.process.poll() is None:
-                    self._stop_worker(spec)
-                    rt.last_stop_ist = now
-                    rt.last_expected_stop_ist = now
-                elif rt.process is not None and rt.process.poll() is not None:
+                # Session not open.
+                if rt.process is not None:
                     rc = rt.process.poll()
-                    status = self._classify_exit(spec, rc, expected_alive=False)
-                    rt.exit_history.append((day, rc, status))
-                    self._log(f"[{spec.name}] auto-exit rc={rc} classified={status}")
+                    if rc is None:
+                        # Live worker in closed session: stop it. Fall
+                        # through to attempt analysis in the same tick;
+                        # analysis reads ledgers, not the worker process,
+                        # and will retry on later ticks if not yet ready.
+                        self._stop_worker(spec)
+                        rt.last_stop_ist = now
+                        rt.last_expected_stop_ist = now
+                    else:
+                        self._consume_exit(
+                            rt, spec, now, day, expected_alive=False
+                        )
                 self._run_analysis_and_record(rt, spec, day)
 
     def run_forever(self, poll_seconds=30.0):
