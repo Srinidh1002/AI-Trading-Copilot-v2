@@ -1416,6 +1416,10 @@ def main():
         # threshold_only=True; all other rejections are captured with
         # threshold_only=False so the resolver can exclude them from the
         # threshold study.
+        # R2-4: setup classification hoisted above the WAIT block because
+        # log_rejection() reads setup.get("setup"). classify_setup() is
+        # pure, so ordering change does not alter the trading decision.
+        setup = classify_setup(decision, regime, structure, mtf, poi.get("state"))
         if decision.get("action") == "WAIT":
             _lcf = decision.get("LONG_CONFIDENCE", 0) or 0
             _scf = decision.get("SHORT_CONFIDENCE", 0) or 0
@@ -1455,12 +1459,19 @@ def main():
                         hypothetical_contract=_hyp_contract,
                         attempt=attempts,
                     )
+                except (NameError, AttributeError, TypeError) as _cf_e:
+                    # R2-4: programmer error in the research path —
+                    # visible in logs but never crashes the trading loop.
+                    import traceback as _tb
+                    print(f"  [counterfactual log CODE BUG — "
+                          f"{type(_cf_e).__name__}: {_cf_e}]")
+                    _tb.print_exc()
                 except Exception as _cf_e:
                     print(f"  [counterfactual log skipped: {_cf_e}]")
         print_decision(decision)
 
-        # Setup classification (spec §13)
-        setup = classify_setup(decision, regime, structure, mtf, poi.get("state"))
+        # R2-4: setup was already classified above (before the WAIT
+        # counterfactual block, which reads setup.get("setup")).
         print(f"  SETUP: {setup_describe(setup)}")
 
         # Persist decision record
