@@ -10,6 +10,8 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
+from services.paper_orchestration import ledger_schema_v2 as ledger  # noqa: E402
+
 
 def _iter_jsonl(path: Path):
     if not path.is_file():
@@ -28,61 +30,34 @@ def _iter_jsonl(path: Path):
 def analyze_market_day(*, market: str, day: date, repo_root: str) -> dict:
     root = Path(repo_root)
     lower = market.lower()
-
     if market in ("NIFTY", "SENSEX"):
-        pred = root / f"data/paper_trades/{lower}_predictions.jsonl"
-        outc = root / f"data/paper_trades/{lower}_outcomes.jsonl"
         state = root / f"data/paper_trades/{lower}_experimental.json"
     else:
-        pred = root / f"data/paper_trades/mcx_{lower}_predictions.jsonl"
-        outc = root / f"data/paper_trades/mcx_{lower}_outcomes.jsonl"
         state = root / f"data/paper_trades/mcx_{lower}_experimental.json"
 
     day_str = day.isoformat()
 
-    decisions_today = 0
+    pred_rows_day = ledger.rows_for_day(
+        ledger.read_predictions(repo_root, market), day_str
+    )
+    out_rows_day = ledger.rows_for_day(
+        ledger.read_outcomes(repo_root, market), day_str
+    )
+
+    pred_summary = ledger.summarize_predictions(pred_rows_day)
+    out_summary = ledger.summarize_outcomes(out_rows_day)
+
     decision_actions = Counter()
     wait_reasons = Counter()
-    entry_trades_today = 0
-    for rec in _iter_jsonl(pred):
-        ts = str(rec.get("timestamp") or rec.get("ts") or "")
-        if not ts.startswith(day_str):
-            continue
-        decisions_today += 1
+    for rec in pred_rows_day:
         action = str(rec.get("action") or rec.get("decision") or "").upper()
         if action:
             decision_actions[action] += 1
+        for b in rec.get("blockers") or []:
+            wait_reasons[str(b)[:80]] += 1
         reason = rec.get("reason") or rec.get("wait_reason")
         if reason:
             wait_reasons[str(reason)[:80]] += 1
-        if action in ("CALL", "PUT"):
-            entry_trades_today += 1
-
-    outcomes_today = 0
-    wins = 0
-    losses = 0
-    first_t1 = 0
-    first_sl = 0
-    net_pnl = 0.0
-    for rec in _iter_jsonl(outc):
-        ts = str(rec.get("closed_at") or rec.get("timestamp") or "")
-        if not ts.startswith(day_str):
-            continue
-        outcomes_today += 1
-        outcome = str(rec.get("outcome") or "").upper()
-        if outcome in ("T1", "T1_FIRST", "T2", "T3", "WIN"):
-            wins += 1
-        elif outcome in ("SL", "SL_FIRST", "LOSS"):
-            losses += 1
-        if outcome == "T1_FIRST":
-            first_t1 += 1
-        elif outcome == "SL_FIRST":
-            first_sl += 1
-        pnl = rec.get("net_pnl") or rec.get("pnl") or 0.0
-        try:
-            net_pnl += float(pnl)
-        except Exception:
-            pass
 
     state_dict = {}
     if state.is_file():
@@ -96,22 +71,44 @@ def analyze_market_day(*, market: str, day: date, repo_root: str) -> dict:
         counter = state_dict.get("total_trades")
     epoch = state_dict.get("epoch") or state_dict.get("certification_epoch")
 
+    # Index state uses active_trades (list); MCX uses active_position (dict).
+    active_list = state_dict.get("active_trades")
+    active_pos = state_dict.get("active_position")
+    if isinstance(active_list, list) and active_list:
+        active_bool = True
+        active_count = len(active_list)
+    elif isinstance(active_pos, dict) and active_pos.get("trade_id"):
+        active_bool = True
+        active_count = 1
+    else:
+        active_bool = False
+        active_count = 0
+
     return {
         "market": market,
         "day": day_str,
-        "decisions_today": decisions_today,
+        "decisions_today": pred_summary["total"],
         "decision_actions": dict(decision_actions),
         "wait_reasons_top": wait_reasons.most_common(5),
-        "entry_trades_today": entry_trades_today,
-        "outcomes_today": outcomes_today,
-        "wins": wins,
-        "losses": losses,
-        "first_t1": first_t1,
-        "first_sl": first_sl,
-        "net_pnl": round(net_pnl, 2),
+        "entry_trades_today": pred_summary["entry_actions"],
+        "wait_actions": pred_summary["wait_actions"],
+        "other_actions": pred_summary["other_actions"],
+        "outcomes_today": out_summary["total"],
+        "wins": out_summary["economic_wins"],
+        "losses": out_summary["economic_losses"],
+        "first_t1": out_summary["first_touch_T1_FIRST"],
+        "first_sl": out_summary["first_touch_SL_FIRST"],
+        "first_ambiguous": out_summary["first_touch_AMBIGUOUS"],
+        "first_none": out_summary["first_touch_NONE"],
+        "net_pnl": out_summary["net_pnl"],
+        "certification_countable": out_summary["certification_countable"],
+        "certification_wins": out_summary["certification_wins"],
+        "certification_losses": out_summary["certification_losses"],
+        "evidence_ambiguous": out_summary["evidence_ambiguous"],
         "counter": counter,
         "epoch": epoch,
-        "active_position": bool(state_dict.get("active_position")),
+        "active_position": active_bool,
+        "active_position_count": active_count,
     }
 
 
@@ -129,23 +126,49 @@ def write_daily_report(summary: dict, *, repo_root: str) -> str:
     lines.append("")
     lines.append(f"- Epoch: `{summary.get('epoch')}`")
     lines.append(f"- Counter: `{summary.get('counter')}`")
-    lines.append(f"- Active position at close: `{summary.get('active_position')}`")
+    lines.append(
+        f"- Active position at close: `{summary.get('active_position')}` "
+        f"(count={summary.get('active_position_count', 0)})"
+    )
     lines.append("")
     lines.append("## Decisions")
     lines.append(f"- Total decisions: {summary['decisions_today']}")
-    lines.append(f"- Actions: {summary['decision_actions']}")
+    lines.append(
+        f"- Entry actions (BUY_CALL/BUY_PUT): {summary['entry_trades_today']}"
+    )
+    lines.append(f"- WAIT/NO_TRADE actions: {summary.get('wait_actions', 0)}")
+    lines.append(f"- Action histogram: {summary['decision_actions']}")
     lines.append("- Top WAIT reasons:")
     for reason, count in summary.get("wait_reasons_top") or []:
         lines.append(f"    - {reason} ({count})")
     lines.append("")
     lines.append("## Trades")
-    lines.append(f"- Entries: {summary['entry_trades_today']}")
-    lines.append(f"- Closed: {summary['outcomes_today']}")
-    lines.append(f"- Wins: {summary['wins']}")
-    lines.append(f"- Losses: {summary['losses']}")
-    lines.append(f"- First touch T1: {summary['first_t1']}")
-    lines.append(f"- First touch SL: {summary['first_sl']}")
+    lines.append(f"- Raw closed outcomes: {summary['outcomes_today']}")
+    lines.append("")
+    lines.append("### Economic outcome")
+    lines.append(f"- Economic wins: {summary['wins']}")
+    lines.append(f"- Economic losses: {summary['losses']}")
     lines.append(f"- Net P&L: Rs {summary['net_pnl']}")
+    lines.append("")
+    lines.append("### Certification outcome")
+    lines.append(
+        f"- Certification countable: {summary.get('certification_countable', 0)}"
+    )
+    lines.append(
+        f"- Certification wins: {summary.get('certification_wins', 0)}"
+    )
+    lines.append(
+        f"- Certification losses: {summary.get('certification_losses', 0)}"
+    )
+    lines.append("")
+    lines.append("### First-touch histogram")
+    lines.append(f"- T1_FIRST: {summary['first_t1']}")
+    lines.append(f"- SL_FIRST: {summary['first_sl']}")
+    lines.append(f"- AMBIGUOUS: {summary.get('first_ambiguous', 0)}")
+    lines.append(f"- NONE: {summary.get('first_none', 0)}")
+    lines.append(
+        f"- Monitoring-gap ambiguity: {summary.get('evidence_ambiguous', 0)}"
+    )
     lines.append("")
     lines.append("_Strategy version frozen for this epoch. No threshold change._")
 
