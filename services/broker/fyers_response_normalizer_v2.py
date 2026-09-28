@@ -158,9 +158,19 @@ def normalize_ltp_data(
 
     timestamp = payload.get("tt")
 
+    # FYERS sometimes serializes tt as a string (epoch seconds).
+    # Accept both int/float and numeric string forms.
+    _tt = None
     if isinstance(timestamp, (int, float)):
-        data["exchange_timestamp"] = timestamp
-        data["timestamp"] = timestamp
+        _tt = timestamp
+    elif isinstance(timestamp, str) and timestamp.strip():
+        try:
+            _tt = int(float(timestamp.strip()))
+        except (TypeError, ValueError):
+            _tt = None
+    if _tt is not None:
+        data["exchange_timestamp"] = _tt
+        data["timestamp"] = _tt
 
     fy_token = payload.get("fyToken")
 

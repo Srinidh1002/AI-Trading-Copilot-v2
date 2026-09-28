@@ -124,7 +124,7 @@ def _provider_ts_from_depth(row):
             return v, f"DEPTH:{k}"
     depth = row.get("depth")
     if isinstance(depth, dict):
-        for k in ("exchange_timestamp", "timestamp", "tt"):
+        for k in ("exchange_timestamp", "timestamp", "tt", "ltt"):
             v = depth.get(k)
             if v:
                 return v, f"DEPTH:{k}"
@@ -134,29 +134,43 @@ def _provider_ts_from_depth(row):
 def _provider_ts_from_quotes(runtime, exchange, symbol, token):
     """Read-only paired quotes call for the same symbol.
 
-    Uses the compatibility layer's ltpData which internally calls the native
-    FYERS quotes() endpoint. FYERS exposes `tt` (provider trade time). Never
-    uses local time.
+    Prefers the raw SDK quotes() endpoint (returns the provider's own
+    `tt` field). Falls back to the compatibility ltpData path if raw
+    access is unavailable. Never uses local time.
     """
+    # Path 1: raw SDK quotes
+    try:
+        raw_client = runtime.data_client
+        q = raw_client.quotes({"symbols": str(symbol)})
+        if isinstance(q, dict):
+            d = q.get("d")
+            if isinstance(d, list) and d:
+                rec = d[0]
+                if isinstance(rec, dict):
+                    v = rec.get("v")
+                    if isinstance(v, dict):
+                        tt = v.get("tt")
+                        if tt is not None and str(tt).strip():
+                            return tt, "QUOTES:tt"
+    except Exception:
+        pass
+
+    # Path 2: compat ltpData
     try:
         api = runtime.data
-    except Exception:
-        return None, None
-    if api is None:
-        return None, None
-    try:
+        if api is None:
+            return None, None
         resp = api.ltpData(str(exchange), str(symbol), str(token))
+        if isinstance(resp, dict):
+            data = resp.get("data")
+            if isinstance(data, dict):
+                for k in ("timestamp", "exchange_timestamp"):
+                    v = data.get(k)
+                    if v:
+                        return v, "QUOTES:tt"
     except Exception:
-        return None, None
-    if not isinstance(resp, dict):
-        return None, None
-    data = resp.get("data")
-    if not isinstance(data, dict):
-        return None, None
-    for k in ("timestamp", "exchange_timestamp"):
-        v = data.get(k)
-        if v:
-            return v, "QUOTES:tt"
+        pass
+
     return None, None
 
 
@@ -167,6 +181,25 @@ def _age_seconds(provider_ts, local_dt):
     if pt.tzinfo is None:
         pt = pt.replace(tzinfo=UTC)
     return max(0.0, (local_dt - pt.astimezone(UTC)).total_seconds())
+
+
+def _depth_is_empty(bids, asks):
+    """True when every level on both sides is zero/placeholder.
+
+    FYERS returns 5 zero levels when the market is closed or the book
+    is empty. Those samples cannot prove depth semantics.
+    """
+    if not bids or not asks:
+        return True
+    nonzero_b = any(
+        isinstance(b.get("price"), (int, float)) and b.get("price") > 0
+        for b in bids
+    )
+    nonzero_a = any(
+        isinstance(a.get("price"), (int, float)) and a.get("price") > 0
+        for a in asks
+    )
+    return not (nonzero_b and nonzero_a)
 
 
 def _fetch_row(data_api, token):
@@ -329,6 +362,8 @@ def collect_side(
     last_hash = None
     rows_written = 0
     ordinal = ordinal_start
+    consecutive_empty = 0
+    MAX_CONSECUTIVE_EMPTY = 5
 
     while rows_written < min_samples or len(seen_hashes) < min_distinct_hashes:
         if time.monotonic() >= deadline:
@@ -341,6 +376,18 @@ def collect_side(
         if not row:
             time.sleep(0.4)
             continue
+        _b, _a = _extract_depth(row)
+        if _depth_is_empty(_b, _a):
+            consecutive_empty += 1
+            if consecutive_empty >= MAX_CONSECUTIVE_EMPTY:
+                print(
+                    f"[{product}] {side}: market closed or book empty "
+                    f"({consecutive_empty} consecutive zero-depth samples)"
+                )
+                break
+            time.sleep(0.5)
+            continue
+        consecutive_empty = 0
         ts, ts_src = _provider_ts_from_depth(row)
         if ts is None:
             ts, ts_src = _provider_ts_from_quotes(
