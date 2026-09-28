@@ -42,6 +42,7 @@ from target_policy import TargetPolicy
 from close_drain_policy import CloseDrainPolicy
 from prediction_ledger import PredictionLedger
 from outcome_ledger import OutcomeLedger
+from trade_identity import make_trade_id  # R2-3 market-scoped IDs
 from first_touch_tracker import EquityFirstTouchTracker  # R3_first_touch_wire
 from diversity_tracker import EquityCertificationDiversityTracker  # R15_diversity_authority
 from services.core.premarket_state_builder_v2 import build_premarket_state_v2
@@ -1820,7 +1821,7 @@ class UnifiedTradingBot:
             print("No trade selected")
             return None
         
-        trade_id = f"TRD_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        trade_id = make_trade_id(self.market)
         
         # ===== PHASE A1: Dynamic lot size from instrument master =====
         _lot_size, _lot_source = resolve_lot_size(

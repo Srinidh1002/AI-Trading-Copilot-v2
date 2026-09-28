@@ -38,6 +38,7 @@ from mcx.mcx_mtf import compute_mtf
 from mcx.mcx_regime import classify as classify_regime, describe as describe_regime
 from mcx.mcx_decision import compose as compose_decision, print_decision
 from mcx.mcx_strike import select_strike
+from trade_identity import make_trade_id  # R2-3 market-scoped IDs
 from mcx.mcx_capital import compute_lots  # M8_dead_import_removed (compute_paper_fill was unused)
 from mcx.mcx_exec_quote import make_execution_quote, validate_quote
 from mcx.mcx_exec_depth import extract_depth
@@ -709,7 +710,7 @@ def try_open(obj, chain, mtf, ctx, decision, regime, structure, setup, state):
     fill = fill_result["fill_price"]
 
     pos = {
-        "trade_id": f"MCX_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+        "trade_id": make_trade_id(PRODUCT),
         "epoch_id": (get_product_epochs(PRODUCT) or {}).get("epoch"),
         "strategy_version": (get_product_epochs(PRODUCT) or {}).get("strategy_version"),
         "certification_eligible": is_certification_eligible(PRODUCT),
