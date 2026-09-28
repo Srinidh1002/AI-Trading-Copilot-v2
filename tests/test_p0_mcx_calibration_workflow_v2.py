@@ -42,11 +42,20 @@ def _write_row(fp, product, token, side, strike, age, qty_bid, qty_ask, ts_off=0
         "future_symbol": f"{product}_FUT",
         "future_token": "FUT_TOKEN",
         "future_price": 100.0,
-        "bid_levels": [{"price": 99.5, "volume": qty_bid}],
-        "ask_levels": [{"price": 100.5, "volume": qty_ask}],
+        "ltp": 100.0,
+        "oi": 12345,
+        "volume": 678,
+        "bid_levels": [{"price": 99.5, "quantity": qty_bid, "orders": 3}],
+        "ask_levels": [{"price": 100.5, "quantity": qty_ask, "orders": 4}],
         "bid_quantities": [qty_bid],
         "ask_quantities": [qty_ask],
+        "bid_orders": [3],
+        "ask_orders": [4],
+        "total_buy_quantity": qty_bid,
+        "total_sell_quantity": qty_ask,
+        "spread": 1.0,
         "provider_timestamp": f"2026-09-24T10:00:{ts_off:02d}+00:00",
+        "provider_timestamp_source": "QUOTES:tt",
         "local_receive_timestamp": datetime.now(timezone.utc).isoformat(),
         "age_seconds": age,
         "trading_unit": 10,
@@ -55,6 +64,7 @@ def _write_row(fp, product, token, side, strike, age, qty_bid, qty_ask, ts_off=0
         "quote_payload_hash": f"hash_{token}_{side}_{ts_off}{hash_suffix}",
         "sample_ordinal": ts_off,
         "collection_utc": datetime.now(timezone.utc).isoformat(),
+        "raw_shape_v1": {"top_level_keys": ["bids", "ask", "ltp"]},
         "sdk_version": None,
     }
     with open(fp, "a", encoding="utf-8") as f:
@@ -190,6 +200,8 @@ def test_verifier_rejects_missing_timestamps(isolated_evidence):
 def _make_pass_report(products):
     return {p: {"verdict": "PASS", "p95_age_seconds": 10.0,
                 "sample_count": 12, "distinct_payload_hashes": 12,
+                "verified_quantity_unit": "PROVIDER_QUANTITY",
+                "quantity_unit_basis": "test fixture basis",
                 "failures": [], "checks": {}}
             for p in products}
 
@@ -244,6 +256,8 @@ def test_writer_writes_schema2_on_pass(isolated_evidence, tmp_path):
     assert payload["providers"]["FYERS"]["CRUDEOILM"]["depth_quantity_semantics_verified"] is True
     assert payload["providers"]["FYERS"]["CRUDEOILM"]["execution_freshness_calibrated"] is True
     assert payload["providers"]["FYERS"]["CRUDEOILM"]["execution_quote_max_age_seconds"] == 20
+    assert payload["providers"]["FYERS"]["CRUDEOILM"]["depth_quantity_unit"] == "PROVIDER_QUANTITY"
+    assert "quantity_unit_basis" in payload["providers"]["FYERS"]["CRUDEOILM"]
 
 
 def test_writer_backs_up_existing_config(isolated_evidence, tmp_path):
