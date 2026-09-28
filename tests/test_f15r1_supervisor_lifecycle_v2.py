@@ -10,8 +10,6 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import pytest
-
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO))
@@ -20,7 +18,6 @@ from services.paper_orchestration import automated_paper_supervisor_v2 as sup_mo
 from services.paper_orchestration.automated_paper_supervisor_v2 import (  # noqa: E402
     AutomatedPaperSupervisorV2,
     StartOutcome,
-    WORKERS_V2,
 )
 from services.paper_orchestration.certification_halt_v2 import MarketState  # noqa: E402
 from services.paper_orchestration.worker_session_authority_v2 import (  # noqa: E402
