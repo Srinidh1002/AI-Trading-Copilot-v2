@@ -360,28 +360,60 @@ def load_fyers_oauth_inputs_v2(
 ) -> FyersOAuthInputsV2:
     """Load the canonical inputs required to perform FYERS daily OAuth.
 
-    Unlike load_fyers_credentials_v2(), access_token is deliberately optional.
-    This allows the official interactive OAuth flow to recover when yesterday's
-    access token is expired or has been removed.
+    When env_file is provided, the named .env file is the SOLE authority for
+    every FYERS OAuth input. Parent-process FYERS_* values are not read and
+    cannot override the file. This is required so that stale or empty
+    variables in the operator's shell cannot cause AUTH_MISSING even though
+    the file is correct.
 
-    This remains inside fyers_auth_v2.py so credential environment reads retain
-    one canonical repository authority.
+    When env_file is None, falls back to the legacy behavior: the default
+    .env is loaded non-overriding, then process environment is read. This
+    preserves compatibility for any caller that has not been migrated.
+
+    Access token remains deliberately OPTIONAL: OAuth must be able to run
+    when yesterday's token is expired or has been removed.
+
+    Never mutates os.environ. Never prints token material.
     """
-    if _load_dotenv is not None:
-        _load_dotenv(
-            env_file,
-            override=False,
-        )
+    if env_file is not None:
+        if _dotenv_values is None:
+            raise FyersAuthError(
+                REASON_AUTH_MISSING,
+                "python-dotenv unavailable",
+            )
+        try:
+            values = _dotenv_values(str(env_file))
+        except Exception as exc:
+            raise FyersAuthError(
+                REASON_AUTH_MISSING,
+                "canonical env file unreadable",
+            ) from exc
+        if not values:
+            raise FyersAuthError(
+                REASON_AUTH_MISSING,
+                "canonical env file empty",
+            )
 
-    app_id = (os.getenv("FYERS_APP_ID") or "").strip()
+        def _v(key: str) -> str:
+            raw = values.get(key)
+            return str(raw).strip() if raw is not None else ""
 
-    secret_id = (os.getenv("FYERS_SECRET_ID") or "").strip()
-
-    redirect_uri = (os.getenv("FYERS_REDIRECT_URI") or "").strip()
-
-    access_token = (os.getenv("FYERS_ACCESS_TOKEN") or "").strip() or None
-
-    source = f"env_file:{env_file}" if env_file else "process_env_or_default_env"
+        app_id = _v("FYERS_APP_ID")
+        secret_id = _v("FYERS_SECRET_ID")
+        redirect_uri = _v("FYERS_REDIRECT_URI")
+        access_token = _v("FYERS_ACCESS_TOKEN") or None
+        source = f"canonical:{env_file}"
+    else:
+        if _load_dotenv is not None:
+            _load_dotenv(
+                None,
+                override=False,
+            )
+        app_id = (os.getenv("FYERS_APP_ID") or "").strip()
+        secret_id = (os.getenv("FYERS_SECRET_ID") or "").strip()
+        redirect_uri = (os.getenv("FYERS_REDIRECT_URI") or "").strip()
+        access_token = (os.getenv("FYERS_ACCESS_TOKEN") or "").strip() or None
+        source = "process_env_or_default_env"
 
     if not app_id:
         raise FyersAuthError(
@@ -408,3 +440,5 @@ def load_fyers_oauth_inputs_v2(
         access_token=access_token,
         source=source,
     )
+
+
