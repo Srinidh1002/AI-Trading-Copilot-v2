@@ -1,21 +1,18 @@
-"""Read-only MCX FYERS execution calibration collector.
+"""Read-only MCX FYERS execution calibration collector (Option D).
 
-No orders. No state mutation. Only provider data reads. Requires a valid
-FYERS access token in the canonical .env file. The operator runs this
-manually on a provider-alive day; it is NOT automated.
+Semantics:
+  * Execution snapshot freshness = local observation age of a synchronous
+    FYERS depth response. Not a provider timestamp. Explicit basis:
+    "SYNCHRONOUS_FYERS_DEPTH_RESPONSE".
+  * Provider last-trade time from the depth payload `ltt` is recorded as
+    informational liquidity evidence (never used as a freshness clock).
+  * FYERS does not publish a per-snapshot depth-update timestamp;
+    depth_provider_timestamp_available is recorded accordingly.
 
-Each session appends one row per observed contract depth sample to
-  data/execution_evidence/mcx/fyers/<product>_<utc>_<session_id>.jsonl
-
-Depth comes from the native FYERS depth() endpoint, surfaced through the
-existing compatibility layer (getMarketData("FULL")). Provider timestamp
-comes from the depth response itself if present, otherwise from a paired
-read-only quotes call for the same symbol (the FYERS `tt` field). Local
-wall time is never used as provider time.
-
-Sampling continues until BOTH the minimum sample count and the minimum
-distinct payload-hash count are met, or a bounded timeout elapses.
+Every sample records round-trip latency of the depth request, the local
+observation age, and the market session status at collection time.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,15 +45,7 @@ def _hash_payload(payload) -> str:
 
 
 def _extract_depth(row):
-    """Return (bids, asks) from a normalizer-emitted FULL row.
-
-    Normalizer emits:
-      row["depth"] = {"buy": [...], "sell": [...]}
-      row["bestFiveBuyData"] = <same list>
-      row["bestFiveSellData"] = <same list>
-
-    Each level is a dict with keys among {"price", "quantity", "orders"}.
-    """
+    """Return (bids, asks) from a normalizer-emitted FULL row."""
     if not isinstance(row, dict):
         return [], []
     depth = row.get("depth")
@@ -97,11 +86,13 @@ def _level_orders(level):
 def _parse_provider_ts(raw):
     """Return timezone-aware datetime (UTC) or None.
 
-    Accepts epoch seconds, epoch milliseconds (> 1e12), or ISO-8601 strings.
+    Accepts int/float epoch seconds, epoch ms, numeric-string epoch
+    seconds/milliseconds, and ISO-8601 strings.
     """
     if raw is None:
         return None
-    if isinstance(raw, (int, float)):
+
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
         v = float(raw)
         if v > 1e12:
             v = v / 1000.0
@@ -109,96 +100,51 @@ def _parse_provider_ts(raw):
             return datetime.fromtimestamp(v, tz=UTC)
         except (OverflowError, OSError, ValueError):
             return None
-    try:
-        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
-    except Exception:
-        return None
+
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return None
+        try:
+            v = float(s)
+            if v > 1e12:
+                v = v / 1000.0
+            if v >= 946684800:
+                try:
+                    return datetime.fromtimestamp(v, tz=UTC)
+                except (OverflowError, OSError, ValueError):
+                    pass
+        except ValueError:
+            pass
+        try:
+            return datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except Exception:
+            return None
+
+    return None
 
 
-def _provider_ts_from_depth(row):
+def _provider_ltt_from_depth(row):
+    """Return the raw FYERS depth `ltt` value if present, else None."""
     if not isinstance(row, dict):
-        return None, None
-    for k in ("exchange_timestamp", "timestamp", "exchFeedTime", "exchTradeTime", "tt"):
-        v = row.get(k)
-        if v:
-            return v, f"DEPTH:{k}"
+        return None
+    v = row.get("ltt")
+    if v is not None and str(v).strip():
+        return v
     depth = row.get("depth")
     if isinstance(depth, dict):
-        for k in ("exchange_timestamp", "timestamp", "tt", "ltt"):
-            v = depth.get(k)
-            if v:
-                return v, f"DEPTH:{k}"
-    return None, None
-
-
-def _provider_ts_from_quotes(runtime, exchange, symbol, token):
-    """Read-only paired quotes call for the same symbol.
-
-    Prefers the raw SDK quotes() endpoint (returns the provider's own
-    `tt` field). Falls back to the compatibility ltpData path if raw
-    access is unavailable. Never uses local time.
-    """
-    # Path 1: raw SDK quotes
-    try:
-        raw_client = runtime.data_client
-        q = raw_client.quotes({"symbols": str(symbol)})
-        if isinstance(q, dict):
-            d = q.get("d")
-            if isinstance(d, list) and d:
-                rec = d[0]
-                if isinstance(rec, dict):
-                    v = rec.get("v")
-                    if isinstance(v, dict):
-                        tt = v.get("tt")
-                        if tt is not None and str(tt).strip():
-                            return tt, "QUOTES:tt"
-    except Exception:
-        pass
-
-    # Path 2: compat ltpData
-    try:
-        api = runtime.data
-        if api is None:
-            return None, None
-        resp = api.ltpData(str(exchange), str(symbol), str(token))
-        if isinstance(resp, dict):
-            data = resp.get("data")
-            if isinstance(data, dict):
-                for k in ("timestamp", "exchange_timestamp"):
-                    v = data.get(k)
-                    if v:
-                        return v, "QUOTES:tt"
-    except Exception:
-        pass
-
-    return None, None
-
-
-def _age_seconds(provider_ts, local_dt):
-    pt = _parse_provider_ts(provider_ts)
-    if pt is None:
-        return None
-    if pt.tzinfo is None:
-        pt = pt.replace(tzinfo=UTC)
-    return max(0.0, (local_dt - pt.astimezone(UTC)).total_seconds())
+        v = depth.get("ltt")
+        if v is not None and str(v).strip():
+            return v
+    return None
 
 
 def _depth_is_empty(bids, asks):
-    """True when every level on both sides is zero/placeholder.
-
-    FYERS returns 5 zero levels when the market is closed or the book
-    is empty. Those samples cannot prove depth semantics.
-    """
+    """True when every level on both sides is zero/placeholder."""
     if not bids or not asks:
         return True
-    nonzero_b = any(
-        isinstance(b.get("price"), (int, float)) and b.get("price") > 0
-        for b in bids
-    )
-    nonzero_a = any(
-        isinstance(a.get("price"), (int, float)) and a.get("price") > 0
-        for a in asks
-    )
+    nonzero_b = any(isinstance(b.get("price"), (int, float)) and b.get("price") > 0 for b in bids)
+    nonzero_a = any(isinstance(a.get("price"), (int, float)) and a.get("price") > 0 for a in asks)
     return not (nonzero_b and nonzero_a)
 
 
@@ -227,18 +173,32 @@ def _emit_row(
     side,
     future_info,
     row,
-    local_dt,
+    depth_request_started_at,
+    depth_request_completed_at,
+    depth_round_trip_ms,
+    session_status,
     ordinal,
-    provider_ts,
-    provider_ts_source,
 ):
     bids, asks = _extract_depth(row)
-    age = _age_seconds(provider_ts, local_dt)
-
     bq = [_level_quantity(x) for x in bids]
     aq = [_level_quantity(x) for x in asks]
     bo = [_level_orders(x) for x in bids]
     ao = [_level_orders(x) for x in asks]
+
+    now_utc = datetime.now(UTC)
+
+    depth_received_at = depth_request_completed_at
+    exec_age = (now_utc - depth_received_at).total_seconds()
+    if exec_age < 0:
+        exec_age = 0.0
+
+    ltt_raw = _provider_ltt_from_depth(row)
+    ltt_dt = _parse_provider_ts(ltt_raw) if ltt_raw is not None else None
+    if ltt_dt is not None and ltt_dt > now_utc:
+        ltt_dt = None
+    last_trade_age = (now_utc - ltt_dt).total_seconds() if ltt_dt is not None else None
+    if last_trade_age is not None and last_trade_age < 0:
+        last_trade_age = None
 
     row_identity = {
         "product": product,
@@ -249,14 +209,14 @@ def _emit_row(
         "side": side,
         "bid_levels": bids,
         "ask_levels": asks,
-        "provider_ts": provider_ts,
-        "provider_ts_source": provider_ts_source,
+        "depth_received_at": depth_received_at.isoformat(),
     }
     payload_hash = _hash_payload(row_identity)
 
     trading_unit = None
     try:
         from mcx.mcx_contracts import PRODUCTS as _PRODUCTS
+
         trading_unit = (_PRODUCTS.get(product) or {}).get("trading_unit")
     except Exception:
         trading_unit = None
@@ -279,9 +239,23 @@ def _emit_row(
         "future_symbol": (future_info or {}).get("symbol"),
         "future_token": (future_info or {}).get("token"),
         "future_price": (future_info or {}).get("future_price"),
+        "depth_request_started_at": depth_request_started_at.isoformat(),
+        "depth_request_completed_at": depth_request_completed_at.isoformat(),
+        "depth_received_at": depth_received_at.isoformat(),
+        "depth_round_trip_ms": float(depth_round_trip_ms),
+        "execution_snapshot_observed_at": depth_received_at.isoformat(),
+        "execution_snapshot_age_seconds": exec_age,
+        "depth_freshness_basis": "SYNCHRONOUS_FYERS_DEPTH_RESPONSE",
+        "depth_provider_timestamp": None,
+        "depth_provider_timestamp_available": False,
+        "provider_last_trade_timestamp": (ltt_dt.isoformat() if ltt_dt is not None else None),
+        "provider_last_trade_timestamp_raw": (str(ltt_raw) if ltt_raw is not None else None),
+        "last_trade_age_seconds": last_trade_age,
+        "last_trade_timestamp_source": "DEPTH:ltt" if ltt_dt is not None else None,
+        "last_trade_recency_basis": ("DEPTH:ltt" if ltt_dt is not None else "UNAVAILABLE"),
         "ltp": row.get("ltp") if isinstance(row, dict) else None,
-        "oi": row.get("opnInterest") if isinstance(row, dict) else None,
-        "volume": row.get("tradeVolume") if isinstance(row, dict) else None,
+        "oi": row.get("oi") if isinstance(row, dict) else None,
+        "volume": row.get("v") if isinstance(row, dict) else None,
         "bid_levels": bids,
         "ask_levels": asks,
         "bid_quantities": [q for q in bq if isinstance(q, (int, float))],
@@ -300,16 +274,15 @@ def _emit_row(
             )
             else None
         ),
-        "provider_timestamp": provider_ts,
-        "provider_timestamp_source": provider_ts_source,
-        "local_receive_timestamp": local_dt.isoformat(),
-        "age_seconds": age,
+        "session_status_at_collection": session_status,
+        "local_receive_timestamp": now_utc.isoformat(),
         "trading_unit": trading_unit,
         "lot_size": contract.get("lot_size"),
         "tick_size": contract.get("tick_size"),
         "quote_payload_hash": payload_hash,
+        "depth_payload_hash": payload_hash,
         "sample_ordinal": ordinal,
-        "collection_utc": local_dt.isoformat(),
+        "collection_utc": now_utc.isoformat(),
         "raw_shape_v1": raw_shape,
         "sdk_version": None,
     }
@@ -349,10 +322,9 @@ def collect_side(
     timeout_seconds,
     ordinal_start,
     dry_run,
+    session_status,
 ):
-    """Collect for one side of one contract. Returns (rows_written, ordinal_end)."""
     token = contract.get("token")
-    symbol = contract.get("symbol")
     if not token:
         print(f"[{product}] {side} token missing")
         return 0, ordinal_start
@@ -372,10 +344,14 @@ def collect_side(
                 f"{len(seen_hashes)} distinct hashes"
             )
             break
+
+        t0 = datetime.now(UTC)
         row = _fetch_row(data_api, token)
+        t1 = datetime.now(UTC)
         if not row:
             time.sleep(0.4)
             continue
+
         _b, _a = _extract_depth(row)
         if _depth_is_empty(_b, _a):
             consecutive_empty += 1
@@ -388,13 +364,9 @@ def collect_side(
             time.sleep(0.5)
             continue
         consecutive_empty = 0
-        ts, ts_src = _provider_ts_from_depth(row)
-        if ts is None:
-            ts, ts_src = _provider_ts_from_quotes(
-                runtime, "MCX", symbol, token
-            )
-        local_dt = datetime.now(UTC)
+
         ordinal += 1
+        rtt_ms = (t1 - t0).total_seconds() * 1000.0
         out = _emit_row(
             session_id=session_id,
             product=product,
@@ -403,10 +375,11 @@ def collect_side(
             side=side,
             future_info=future_info,
             row=row,
-            local_dt=local_dt,
+            depth_request_started_at=t0,
+            depth_request_completed_at=t1,
+            depth_round_trip_ms=rtt_ms,
+            session_status=session_status,
             ordinal=ordinal,
-            provider_ts=ts,
-            provider_ts_source=ts_src,
         )
         h = out["quote_payload_hash"]
         if h != last_hash:
@@ -416,8 +389,8 @@ def collect_side(
             print(
                 f"  [dry] {product} {side} strike={contract.get('strike')} "
                 f"ltp={out['ltp']} bq={out['bid_quantities']} aq={out['ask_quantities']} "
-                f"ts_src={out['provider_timestamp_source']} age={out['age_seconds']} "
-                f"hash={h[:8]}"
+                f"rtt_ms={rtt_ms:.0f} lt_src={out['last_trade_timestamp_source']} "
+                f"lt_age={out['last_trade_age_seconds']} hash={h[:8]}"
             )
         else:
             with open(out_path, "a", encoding="utf-8") as f:
@@ -427,10 +400,7 @@ def collect_side(
             break
         time.sleep(0.3)
 
-    print(
-        f"[{product}] {side}: {rows_written} rows, "
-        f"{len(seen_hashes)} distinct hashes"
-    )
+    print(f"[{product}] {side}: {rows_written} rows, {len(seen_hashes)} distinct hashes")
     return rows_written, ordinal
 
 
@@ -447,6 +417,16 @@ def collect_for_product(
     identity = runtime.identity
     data_api = runtime.data
 
+    session_status = "UNKNOWN"
+    try:
+        from mcx.mcx_calendar import get_session as _get_session
+
+        sess = _get_session()
+        session_status = str(sess.get("status") or "UNKNOWN")
+    except Exception:
+        session_status = "UNKNOWN"
+    print(f"[{product}] session_status={session_status}")
+
     try:
         resolved = identity.resolve_active(product)
     except Exception as exc:
@@ -455,8 +435,7 @@ def collect_for_product(
 
     if resolved.get("status") != "OK":
         print(
-            f"[{product}] identity not OK: {resolved.get('status')} "
-            f"reason={resolved.get('reason')}"
+            f"[{product}] identity not OK: {resolved.get('status')} reason={resolved.get('reason')}"
         )
         return 0
 
@@ -511,12 +490,12 @@ def collect_for_product(
             timeout_seconds=float(timeout_seconds),
             ordinal_start=ordinal,
             dry_run=dry_run,
+            session_status=session_status,
         )
         total_rows += n
 
     print(
-        f"[{product}] collected {total_rows} samples "
-        f"-> {out_path if not dry_run else '(dry-run)'}"
+        f"[{product}] collected {total_rows} samples -> {out_path if not dry_run else '(dry-run)'}"
     )
     return total_rows
 

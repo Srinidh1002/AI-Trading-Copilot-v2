@@ -1,33 +1,40 @@
 """Section 7.5 — Canonical ExecutionQuoteV1. Immutable snapshot of real depth."""
+
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Certification freshness is provider-scoped in mcx_exec_config.
 # This conservative fallback is operational only, allowing an already-open
 # PAPER position to remain monitorable/closable while calibration is pending.
 OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS = 20.0
 
-EXECUTION_QUOTE_MAX_AGE_SECONDS = (
-    OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
-)
+EXECUTION_QUOTE_MAX_AGE_SECONDS = OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
 
 EXECUTION_FRESHNESS_CALIBRATED = False
 
-EXECUTION_FRESHNESS_SOURCE = (
-    "PROVIDER_SCOPED_CALIBRATION_REQUIRED"
-)
+EXECUTION_FRESHNESS_SOURCE = "PROVIDER_SCOPED_CALIBRATION_REQUIRED"
 
 QUOTE_SOURCES = ("WS_DEPTH", "REST_FULL")
 
 VALIDATION_STATUSES = ("VALID", "INVALID")
 
 REJECTIONS = (
-    "SYMBOL_TOKEN_MISMATCH", "WRONG_EXCHANGE", "NO_BID", "NO_ASK",
-    "NEGATIVE_QUANTITY", "ZERO_BEST_BID", "ZERO_BEST_ASK",
-    "CROSSED_BOOK_INVALID", "BIDS_NOT_SORTED", "ASKS_NOT_SORTED",
-    "TICK_MISALIGNED", "NAN_VALUE", "STALE_QUOTE",
-    "MISSING_FEED_TIME", "MISSING_PROVIDER_TIME",
+    "SYMBOL_TOKEN_MISMATCH",
+    "WRONG_EXCHANGE",
+    "NO_BID",
+    "NO_ASK",
+    "NEGATIVE_QUANTITY",
+    "ZERO_BEST_BID",
+    "ZERO_BEST_ASK",
+    "CROSSED_BOOK_INVALID",
+    "BIDS_NOT_SORTED",
+    "ASKS_NOT_SORTED",
+    "TICK_MISALIGNED",
+    "NAN_VALUE",
+    "STALE_QUOTE",
+    "MISSING_FEED_TIME",
+    "MISSING_PROVIDER_TIME",
 )
 
 
@@ -47,19 +54,30 @@ def _is_nan(x):
 
 
 def make_execution_quote(
-    product, option_symbol, token, exchange,
-    option_type, strike, expiry,
-    ltp, bids, asks,
-    volume=None, open_interest=None,
-    exchange_feed_time=None, exchange_trade_time=None,
+    product,
+    option_symbol,
+    token,
+    exchange,
+    option_type,
+    strike,
+    expiry,
+    ltp,
+    bids,
+    asks,
+    volume=None,
+    open_interest=None,
+    exchange_feed_time=None,
+    exchange_trade_time=None,
     provider_received_at=None,
-    provider="UNSPECIFIED", source_mode="REST_FULL",
-    sequence_number=None, tick_size=None,
+    provider="UNSPECIFIED",
+    source_mode="REST_FULL",
+    sequence_number=None,
+    tick_size=None,
     raw_payload=None,
 ):
     """bids/asks must be lists of dicts: {price, quantity, orders}."""
     if provider_received_at is None:
-        provider_received_at = datetime.now(timezone.utc).isoformat()
+        provider_received_at = datetime.now(UTC).isoformat()
     bids = list(bids or [])
     asks = list(asks or [])
     best_bid = bids[0].get("price") if bids else None
@@ -94,6 +112,12 @@ def make_execution_quote(
         "exchange_feed_time": exchange_feed_time,
         "exchange_trade_time": exchange_trade_time,
         "provider_received_at": provider_received_at,
+        # Execution snapshot freshness is LOCAL observation age: the time
+        # between synchronously receiving a provider depth response and
+        # this quote being evaluated. It is NOT a provider-supplied
+        # feed timestamp. Named explicitly so downstream code does not
+        # conflate it with provider time.
+        "execution_snapshot_observed_at": provider_received_at,
         "provider": provider,
         "source_mode": source_mode,
         "sequence_number": sequence_number,
@@ -104,8 +128,7 @@ def make_execution_quote(
     }
 
 
-def validate_quote(q, expected_token, expected_exchange="MCX",
-                   now_iso=None, max_age_seconds=None):
+def validate_quote(q, expected_token, expected_exchange="MCX", now_iso=None, max_age_seconds=None):
     """Section 7.6 + 7.7 validation. Pure function; returns (ok, quote_with_reasons)."""
     reasons = []
     q = dict(q)
@@ -166,155 +189,81 @@ def validate_quote(q, expected_token, expected_exchange="MCX",
     # 3. conservative operational fallback.
     #
     # The operational fallback never makes a trade certification-countable.
-    ref_now = (
-        now_iso
-        or datetime.now(
-            timezone.utc
-        ).isoformat()
-    )
+    ref_now = now_iso or datetime.now(UTC).isoformat()
 
-    resolved_max_age = (
-        max_age_seconds
-    )
+    resolved_max_age = max_age_seconds
 
     freshness_mode = None
 
-    provider_calibrated = (
-        False
-    )
+    provider_calibrated = False
 
-    if (
-        resolved_max_age
-        is not None
-    ):
-        freshness_mode = (
-            "EXPLICIT_OPERATIONAL"
-        )
+    if resolved_max_age is not None:
+        freshness_mode = "EXPLICIT_OPERATIONAL"
 
-    if (
-        resolved_max_age
-        is None
-    ):
-        product = q.get(
-            "product"
-        )
+    if resolved_max_age is None:
+        product = q.get("product")
 
-        provider = (
-            str(
-                q.get(
-                    "provider"
-                )
-                or ""
-            )
-            .strip()
-            .upper()
-        )
+        provider = str(q.get("provider") or "").strip().upper()
 
         try:
             from mcx.mcx_exec_config import (
-                get_execution_quote_max_age_seconds
-                as _config_age,
+                get_execution_quote_max_age_seconds as _config_age,
             )
 
-            resolved_max_age = (
-                _config_age(
-                    product,
-                    provider=provider,
-                )
+            resolved_max_age = _config_age(
+                product,
+                provider=provider,
             )
 
         except Exception:
-            resolved_max_age = (
-                None
-            )
+            resolved_max_age = None
 
-        if (
-            resolved_max_age
-            is not None
-        ):
-            freshness_mode = (
-                "PROVIDER_CALIBRATED"
-            )
+        if resolved_max_age is not None:
+            freshness_mode = "PROVIDER_CALIBRATED"
 
-            provider_calibrated = (
-                True
-            )
+            provider_calibrated = True
 
-    if (
-        resolved_max_age
-        is None
-    ):
-        resolved_max_age = (
-            OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
-        )
+    if resolved_max_age is None:
+        resolved_max_age = OPERATIONAL_EXECUTION_QUOTE_MAX_AGE_SECONDS
 
-        freshness_mode = (
-            "OPERATIONAL_UNCALIBRATED"
-        )
+        freshness_mode = "OPERATIONAL_UNCALIBRATED"
 
     try:
-        max_age = float(
-            resolved_max_age
-        )
+        max_age = float(resolved_max_age)
 
-        received = (
-            datetime.fromisoformat(
-                q.get(
-                    "provider_received_at"
-                )
-            )
-        )
+        # Prefer the explicit execution-snapshot observation time.
+        # Fall back to the historical provider_received_at field which
+        # was always the same local receipt time.
+        _observed_at = q.get("execution_snapshot_observed_at") or q.get("provider_received_at")
 
-        now = (
-            datetime.fromisoformat(
-                ref_now
-            )
-        )
+        received = datetime.fromisoformat(_observed_at)
+
+        now = datetime.fromisoformat(ref_now)
 
         if received.tzinfo is None:
-            received = (
-                received.replace(
-                    tzinfo=timezone.utc
-                )
-            )
+            received = received.replace(tzinfo=UTC)
 
         if now.tzinfo is None:
-            now = now.replace(
-                tzinfo=timezone.utc
-            )
+            now = now.replace(tzinfo=UTC)
 
-        age = (
-            now - received
-        ).total_seconds()
+        age = (now - received).total_seconds()
 
         if age > max_age:
-            reasons.append(
-                "STALE_QUOTE"
-            )
+            reasons.append("STALE_QUOTE")
 
-        q["_age_seconds"] = (
-            round(
-                age,
-                3,
-            )
+        q["_age_seconds"] = round(
+            age,
+            3,
         )
 
     except Exception:
-        reasons.append(
-            "MISSING_PROVIDER_TIME"
-        )
+        reasons.append("MISSING_PROVIDER_TIME")
 
-    q[
-        "execution_freshness_status"
-    ] = freshness_mode
+    q["execution_freshness_status"] = freshness_mode
 
-    q[
-        "certification_freshness_calibrated"
-    ] = provider_calibrated
+    q["certification_freshness_calibrated"] = provider_calibrated
 
-    q[
-        "execution_quote_max_age_seconds_used"
-    ] = resolved_max_age
+    q["execution_quote_max_age_seconds_used"] = resolved_max_age
 
     q["validation_status"] = "INVALID" if reasons else "VALID"
     q["rejection_reasons"] = reasons
@@ -323,11 +272,18 @@ def validate_quote(q, expected_token, expected_exchange="MCX",
 
 if __name__ == "__main__":
     q = make_execution_quote(
-        product="CRUDEOILM", option_symbol="TEST", token="999",
-        exchange="MCX", option_type="CE", strike=9500, expiry="2026-09-17",
-        ltp=100.0, bids=[{"price": 99.9, "quantity": 100, "orders": 5}],
+        product="CRUDEOILM",
+        option_symbol="TEST",
+        token="999",
+        exchange="MCX",
+        option_type="CE",
+        strike=9500,
+        expiry="2026-09-17",
+        ltp=100.0,
+        bids=[{"price": 99.9, "quantity": 100, "orders": 5}],
         asks=[{"price": 100.1, "quantity": 100, "orders": 5}],
-        exchange_feed_time="2026-09-12T10:00:00+00:00", tick_size=0.05,
+        exchange_feed_time="2026-09-12T10:00:00+00:00",
+        tick_size=0.05,
     )
     ok, q = validate_quote(q, "999")
     print("valid:", ok, "reasons:", q["rejection_reasons"])

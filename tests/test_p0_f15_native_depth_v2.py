@@ -1,9 +1,13 @@
-"""F15 Phase 10 — native depth extraction, timestamps, quantity semantics,
-verifier gates, writer unit propagation."""
+"""F15 — native depth extraction, provider ltt evidence, writer unit propagation.
+
+Option D aligned. Tests only reference the current collector API.
+"""
+
 from __future__ import annotations
 
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -12,12 +16,12 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO))
 
-from tools import collect_mcx_fyers_execution_calibration as collector
-from tools import verify_mcx_fyers_execution_calibration as verifier
-from tools import write_mcx_fyers_execution_calibration as writer
-
+from tools import collect_mcx_fyers_execution_calibration as collector  # noqa: E402
+from tools import verify_mcx_fyers_execution_calibration as verifier  # noqa: E402
+from tools import write_mcx_fyers_execution_calibration as writer  # noqa: E402
 
 # --- _extract_depth variants ----------------------------------------------
+
 
 def test_extract_depth_buy_sell_shape():
     row = {
@@ -59,56 +63,62 @@ def test_level_orders_variants():
     assert collector._level_orders({}) is None
 
 
-# --- provider timestamp paths ---------------------------------------------
-
-def test_provider_ts_from_depth_finds_tt():
-    row = {"depth": {"tt": 1790211451, "buy": [], "sell": []}}
-    ts, src = collector._provider_ts_from_depth(row)
-    assert ts == 1790211451
-    assert src == "DEPTH:tt"
+# --- provider ltt extraction ----------------------------------------------
 
 
-def test_provider_ts_from_depth_top_level():
-    row = {"exchange_timestamp": "2026-09-24T10:00:00+00:00"}
-    ts, src = collector._provider_ts_from_depth(row)
-    assert ts is not None
-    assert src == "DEPTH:exchange_timestamp"
+def test_provider_ltt_from_depth_top_level():
+    v = collector._provider_ltt_from_depth({"ltt": 1790359088})
+    assert v == 1790359088
 
 
-def test_provider_ts_from_depth_missing():
-    ts, src = collector._provider_ts_from_depth({"ltp": 100})
-    assert ts is None and src is None
+def test_provider_ltt_from_depth_nested():
+    v = collector._provider_ltt_from_depth({"depth": {"ltt": 1790359088}})
+    assert v == 1790359088
 
 
-def test_age_seconds_epoch_seconds():
-    import datetime as _dt
-    local = _dt.datetime(2026, 9, 24, 10, 0, 5, tzinfo=_dt.UTC)
-    age = collector._age_seconds(1790244000, local)
-    assert age is not None and age >= 0
+def test_provider_ltt_from_depth_missing():
+    assert collector._provider_ltt_from_depth({"ltp": 100}) is None
 
 
-def test_age_seconds_epoch_millis():
-    import datetime as _dt
-    local = _dt.datetime(2026, 9, 24, 10, 0, 5, tzinfo=_dt.UTC)
-    age = collector._age_seconds(1790244000000, local)
-    assert age is not None and age >= 0
+# --- _parse_provider_ts ---------------------------------------------------
 
 
-def test_age_seconds_iso_string():
-    import datetime as _dt
-    local = _dt.datetime(2026, 9, 24, 10, 0, 5, tzinfo=_dt.UTC)
-    age = collector._age_seconds("2026-09-24T10:00:00+00:00", local)
-    assert age is not None
-    assert 4.0 < age < 6.0
+def test_parse_provider_ts_epoch_seconds():
+    dt = collector._parse_provider_ts(1790359088)
+    assert dt is not None
+    assert dt.tzinfo is not None
 
 
-def test_age_seconds_unparsable_returns_none():
-    import datetime as _dt
-    local = _dt.datetime(2026, 9, 24, 10, 0, 5, tzinfo=_dt.UTC)
-    assert collector._age_seconds("banana", local) is None
+def test_parse_provider_ts_epoch_seconds_string():
+    dt = collector._parse_provider_ts("1790359088")
+    assert dt is not None
+    assert dt.tzinfo is not None
 
 
-# --- verifier CE/PE + expiry coherence + timestamp source -----------------
+def test_parse_provider_ts_epoch_millis():
+    dt = collector._parse_provider_ts(1790359088000)
+    assert dt is not None
+
+
+def test_parse_provider_ts_iso_string():
+    dt = collector._parse_provider_ts("2026-09-28T10:00:00+00:00")
+    assert dt is not None
+    assert dt.year == 2026
+
+
+def test_parse_provider_ts_iso_z():
+    dt = collector._parse_provider_ts("2026-09-28T03:00:00Z")
+    assert dt is not None
+
+
+def test_parse_provider_ts_unparsable_returns_none():
+    assert collector._parse_provider_ts("banana") is None
+    assert collector._parse_provider_ts("") is None
+    assert collector._parse_provider_ts(None) is None
+
+
+# --- verifier gates -------------------------------------------------------
+
 
 @pytest.fixture
 def isolated_evidence(tmp_path, monkeypatch):
@@ -121,8 +131,8 @@ def isolated_evidence(tmp_path, monkeypatch):
     return ev, cfg
 
 
-def _row(product, token, side, *, expiry="2026-12-31", ts_src="QUOTES:tt",
-         qty_bid=10, qty_ask=20, ordinal=0, hash_suffix=""):
+def _row(product, token, side, *, expiry="2026-12-31", qty_bid=10, qty_ask=20, ordinal=0):
+    now = datetime.now(UTC).isoformat()
     return {
         "session_id": "T",
         "phase": "OBSERVATION",
@@ -136,15 +146,25 @@ def _row(product, token, side, *, expiry="2026-12-31", ts_src="QUOTES:tt",
         "ask_levels": [{"price": 100.5, "quantity": qty_ask, "orders": 3}],
         "bid_quantities": [qty_bid],
         "ask_quantities": [qty_ask],
-        "provider_timestamp": f"2026-09-24T10:00:{ordinal:02d}+00:00",
-        "provider_timestamp_source": ts_src,
-        "local_receive_timestamp": "2026-09-24T10:00:00+00:00",
-        "age_seconds": 5.0 + ordinal,
-        "quote_payload_hash": f"h_{token}_{side}_{ordinal}{hash_suffix}",
+        "depth_request_started_at": now,
+        "depth_request_completed_at": now,
+        "depth_received_at": now,
+        "depth_round_trip_ms": 100.0,
+        "execution_snapshot_observed_at": now,
+        "execution_snapshot_age_seconds": 0.05,
+        "depth_freshness_basis": "SYNCHRONOUS_FYERS_DEPTH_RESPONSE",
+        "depth_provider_timestamp": None,
+        "depth_provider_timestamp_available": False,
+        "provider_last_trade_timestamp": None,
+        "provider_last_trade_timestamp_raw": None,
+        "last_trade_age_seconds": 5.0 + ordinal,
+        "last_trade_timestamp_source": "DEPTH:ltt",
+        "last_trade_recency_basis": "DEPTH:ltt",
+        "session_status_at_collection": "OPEN",
+        "local_receive_timestamp": now,
+        "quote_payload_hash": f"h_{token}_{side}_{ordinal}",
         "sample_ordinal": ordinal,
-        "collection_utc": __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        ).isoformat(),
+        "collection_utc": now,
     }
 
 
@@ -175,16 +195,18 @@ def test_verifier_requires_single_expiry(isolated_evidence):
     assert any("expiry" in f for f in r["failures"])
 
 
-def test_verifier_rejects_missing_timestamp_source(isolated_evidence):
+def test_verifier_rejects_non_open_session(isolated_evidence):
     ev, _ = isolated_evidence
     rows = []
     for tok, side in (("T1", "CE"), ("T2", "PE")):
         for i in range(6):
-            rows.append(_row("CRUDEOILM", tok, side, ordinal=i, ts_src="LOCAL:"))
+            row = _row("CRUDEOILM", tok, side, ordinal=i, qty_bid=10 + i, qty_ask=20 + i)
+            row["session_status_at_collection"] = "CLOSED"
+            rows.append(row)
     _write_rows(ev, "CRUDEOILM", rows)
     r = verifier.verify_product("CRUDEOILM")
     assert r["verdict"] == "HOLD"
-    assert any("timestamps" in f for f in r["failures"])
+    assert "session_open" in r["failures"]
 
 
 def test_verifier_pass_emits_provider_quantity(isolated_evidence):
@@ -192,36 +214,25 @@ def test_verifier_pass_emits_provider_quantity(isolated_evidence):
     rows = []
     for tok, side in (("T1", "CE"), ("T2", "PE")):
         for i in range(6):
-            # Vary quantity per row so the verifier's non-constant
-            # quantity check is satisfied (it requires >=2 distinct
-            # values per contract).
-            rows.append(
-                _row("CRUDEOILM", tok, side, ordinal=i,
-                     qty_bid=10 + i, qty_ask=20 + i)
-            )
+            rows.append(_row("CRUDEOILM", tok, side, ordinal=i, qty_bid=10 + i, qty_ask=20 + i))
     _write_rows(ev, "CRUDEOILM", rows)
     r = verifier.verify_product("CRUDEOILM")
     assert r["verdict"] == "PASS", r
     assert r["verified_quantity_unit"] == "PROVIDER_QUANTITY"
     basis = r["quantity_unit_basis"]
     assert isinstance(basis, str) and len(basis) > 30
-    assert "quantity" in basis.lower()
 
 
 # --- writer unit propagation ----------------------------------------------
 
+
 def test_writer_refuses_without_verified_unit(isolated_evidence, tmp_path):
     ev, cfg = isolated_evidence
-    # write minimal evidence file so writer's "evidence exists" gate passes
     _write_rows(ev, "CRUDEOILM", [_row("CRUDEOILM", "T1", "CE", ordinal=0)])
     report = tmp_path / "r.json"
-    report.write_text(json.dumps({
-        "CRUDEOILM": {
-            "verdict": "PASS",
-            "p95_age_seconds": 10.0,
-            # no verified_quantity_unit
-        }
-    }), encoding="utf-8")
+    report.write_text(
+        json.dumps({"CRUDEOILM": {"verdict": "PASS", "p95_age_seconds": 10.0}}), encoding="utf-8"
+    )
     rc = writer.main(["--report", str(report), "--products", "CRUDEOILM"])
     assert rc == 1
     assert not cfg.exists()
@@ -231,14 +242,19 @@ def test_writer_uses_verified_unit_not_lots(isolated_evidence, tmp_path):
     ev, cfg = isolated_evidence
     _write_rows(ev, "CRUDEOILM", [_row("CRUDEOILM", "T1", "CE", ordinal=0)])
     report = tmp_path / "r.json"
-    report.write_text(json.dumps({
-        "CRUDEOILM": {
-            "verdict": "PASS",
-            "p95_age_seconds": 10.0,
-            "verified_quantity_unit": "PROVIDER_QUANTITY",
-            "quantity_unit_basis": "sdk has no lot proof",
-        }
-    }), encoding="utf-8")
+    report.write_text(
+        json.dumps(
+            {
+                "CRUDEOILM": {
+                    "verdict": "PASS",
+                    "p95_age_seconds": 10.0,
+                    "verified_quantity_unit": "PROVIDER_QUANTITY",
+                    "quantity_unit_basis": "sdk has no lot proof",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     rc = writer.main(["--report", str(report), "--products", "CRUDEOILM"])
     assert rc == 0
     payload = json.loads(cfg.read_text(encoding="utf-8"))
@@ -250,10 +266,12 @@ def test_writer_uses_verified_unit_not_lots(isolated_evidence, tmp_path):
 
 # --- normalizer raw_shape_v1 ---------------------------------------------
 
+
 def test_normalizer_emits_raw_shape():
     from services.broker.fyers_response_normalizer_v2 import (
         normalize_full_market_data,
     )
+
     response = {
         "s": "ok",
         "d": {

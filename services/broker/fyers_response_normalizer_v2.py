@@ -31,9 +31,7 @@ class FyersResponseNormalizationError(ValueError):
 
 def _mapping(value: object, *, field: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
-        raise FyersResponseNormalizationError(
-            f"{field} must be a mapping"
-        )
+        raise FyersResponseNormalizationError(f"{field} must be a mapping")
     return value
 
 
@@ -60,9 +58,7 @@ def _number(
     allow_zero: bool = True,
 ) -> float:
     if not isinstance(value, (int, float)):
-        raise FyersResponseNormalizationError(
-            f"{field} must be numeric"
-        )
+        raise FyersResponseNormalizationError(f"{field} must be numeric")
 
     result = float(value)
 
@@ -72,9 +68,7 @@ def _number(
         valid = result > 0
 
     if not valid:
-        raise FyersResponseNormalizationError(
-            f"{field} has invalid value"
-        )
+        raise FyersResponseNormalizationError(f"{field} has invalid value")
 
     return result
 
@@ -91,9 +85,7 @@ def _quote_entry(
         rows,
         (str, bytes),
     ):
-        raise FyersResponseNormalizationError(
-            "FYERS quote response d must be a sequence"
-        )
+        raise FyersResponseNormalizationError("FYERS quote response d must be a sequence")
 
     candidates: list[Mapping[str, Any]] = []
 
@@ -107,16 +99,11 @@ def _quote_entry(
 
         value = raw.get("v")
 
-        if (
-            isinstance(value, Mapping)
-            and value.get("symbol") == provider_symbol
-        ):
+        if isinstance(value, Mapping) and value.get("symbol") == provider_symbol:
             candidates.append(raw)
 
     if len(candidates) != 1:
-        raise FyersResponseNormalizationError(
-            "expected exactly one FYERS quote row"
-        )
+        raise FyersResponseNormalizationError("expected exactly one FYERS quote row")
 
     envelope = candidates[0]
 
@@ -245,21 +232,15 @@ def normalize_history(
     candles = response.get("candles")
 
     if not isinstance(candles, list):
-        raise FyersResponseNormalizationError(
-            "FYERS history candles must be a list"
-        )
+        raise FyersResponseNormalizationError("FYERS history candles must be a list")
 
     normalized: list[list[object]] = []
 
     for index, candle in enumerate(candles):
         if not isinstance(candle, list) or len(candle) < 6:
-            raise FyersResponseNormalizationError(
-                f"invalid candle at index {index}"
-            )
+            raise FyersResponseNormalizationError(f"invalid candle at index {index}")
 
-        normalized.append(
-            list(candle)
-        )
+        normalized.append(list(candle))
 
     return {
         "status": True,
@@ -287,9 +268,7 @@ def _depth_payload(
     if root.get("symbol") == provider_symbol:
         return root
 
-    raise FyersResponseNormalizationError(
-        "FYERS depth symbol payload not found"
-    )
+    raise FyersResponseNormalizationError("FYERS depth symbol payload not found")
 
 
 def _levels(
@@ -404,6 +383,12 @@ def normalize_full_market_data(
         ("h", "high"),
         ("l", "low"),
         ("c", "close"),
+        # FYERS depth payload exposes last-trade time as ltt (epoch
+        # seconds). Preserved so the MCX calibration collector can
+        # record it as informational last-trade recency. It is NOT a
+        # depth-update timestamp and must not be used as a freshness
+        # clock.
+        ("ltt", "ltt"),
     )
 
     for source, target in mappings:
@@ -427,9 +412,7 @@ def normalize_full_market_data(
                 and len(v) > 0
                 and isinstance(v[0], Mapping)
             ):
-                raw_shape["bid_level_keys"] = sorted(
-                    str(k) for k in v[0].keys()
-                )[:16]
+                raw_shape["bid_level_keys"] = sorted(str(k) for k in v[0].keys())[:16]
                 break
         for candidate in ("ask", "asks"):
             v = payload.get(candidate)
@@ -439,18 +422,14 @@ def normalize_full_market_data(
                 and len(v) > 0
                 and isinstance(v[0], Mapping)
             ):
-                raw_shape["ask_level_keys"] = sorted(
-                    str(k) for k in v[0].keys()
-                )[:16]
+                raw_shape["ask_level_keys"] = sorted(str(k) for k in v[0].keys())[:16]
                 break
         fetched["raw_shape_v1"] = raw_shape
 
     return {
         "status": True,
         "data": {
-            "fetched": [
-                fetched
-            ],
+            "fetched": [fetched],
         },
     }
 
@@ -470,9 +449,7 @@ def normalize_option_chain(
     rows = data.get("optionsChain")
 
     if not isinstance(rows, list):
-        raise FyersResponseNormalizationError(
-            "optionsChain must be a list"
-        )
+        raise FyersResponseNormalizationError("optionsChain must be a list")
 
     result: list[dict[str, object]] = []
 
@@ -480,10 +457,7 @@ def normalize_option_chain(
         if not isinstance(row, Mapping):
             continue
 
-        option_type = str(
-            row.get("option_type")
-            or ""
-        ).upper()
+        option_type = str(row.get("option_type") or "").upper()
 
         if option_type not in {
             "CE",
@@ -496,19 +470,13 @@ def normalize_option_chain(
         ltp = row.get("ltp")
 
         if not isinstance(symbol, str) or not symbol:
-            raise FyersResponseNormalizationError(
-                "option symbol missing"
-            )
+            raise FyersResponseNormalizationError("option symbol missing")
 
         if not isinstance(strike, (int, float)):
-            raise FyersResponseNormalizationError(
-                "option strike missing"
-            )
+            raise FyersResponseNormalizationError("option strike missing")
 
         if not isinstance(ltp, (int, float)):
-            raise FyersResponseNormalizationError(
-                "option ltp missing"
-            )
+            raise FyersResponseNormalizationError("option ltp missing")
 
         normalized: dict[str, object] = {
             "symbol": symbol,
@@ -537,8 +505,6 @@ def normalize_option_chain(
         result.append(normalized)
 
     if not result:
-        raise FyersResponseNormalizationError(
-            "no CE/PE option rows found"
-        )
+        raise FyersResponseNormalizationError("no CE/PE option rows found")
 
     return tuple(result)

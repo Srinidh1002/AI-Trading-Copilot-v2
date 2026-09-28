@@ -1,26 +1,38 @@
-"""Offline verifier for MCX FYERS execution calibration evidence.
+"""Offline verifier for MCX FYERS execution calibration evidence (Option D).
 
-Reads the JSONL produced by collect_mcx_fyers_execution_calibration.py
-and independently determines whether the evidence can prove live
-execution-depth semantics for a product.
+Semantics:
+  * Execution snapshot freshness = local observation age of a synchronous
+    FYERS depth response. It is NOT a provider timestamp. Basis string:
+    "SYNCHRONOUS_FYERS_DEPTH_RESPONSE".
+  * Provider last-trade timestamp (from FYERS depth `ltt`) is informational
+    liquidity evidence. It is not the freshness clock.
+  * FYERS does not publish a per-snapshot depth-update timestamp; the
+    collector reports depth_provider_timestamp_available accordingly.
 
-Required evidence per product:
-  * one provider identity (FYERS only)
+Gates (all required):
+  * provider == FYERS
   * supported product
-  * real option identities: CE and PE both present, same expiry
-  * non-empty two-sided depth with positive bid and ask prices
-  * quantities positive, integral, and non-constant
-  * enough independent observations per contract
-  * minimum distinct payload hashes (proves the market moved / ticked)
-  * provider timestamp on every sample, from an authoritative provider
-    source (never local wall time)
-  * freshness computable and within the tolerance derived from the
-    observed distribution
-  * evidence recency within the last 24h
+  * two-sided depth with positive best bid/ask
+  * coherent quantities (positive, integral, non-constant per contract)
+  * CE + PE represented, single expiry
+  * >= MIN_SAMPLES_PER_CONTRACT samples per contract
+  * >= MIN_CONTRACTS_PER_PRODUCT contracts
+  * >= MIN_DISTINCT_PAYLOAD_HASHES distinct depth payload hashes
+  * session_status_at_collection == OPEN for every sample
+  * bounded depth RTT: p95(depth_round_trip_ms) < MAX_P95_RTT_MS
+  * bounded observation age: max(execution_snapshot_age_seconds) < MAX_SNAPSHOT_AGE_S
+  * sample collected within last 24h
 
-Emits a machine-readable verdict dict and prints a summary. Exit 0 only
-on OVERALL=PASS. Never writes config.
+Reported but not gating:
+  * depth_provider_timestamp_available
+  * last_trade_age p95
+  * last_trade_timestamp_source
+  * quantity_semantics
+
+Emits a machine-readable verdict dict. Exit 0 only on OVERALL=PASS.
+Never writes config.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,14 +53,10 @@ _PROVIDER = "FYERS"
 MIN_SAMPLES_PER_CONTRACT = 5
 MIN_CONTRACTS_PER_PRODUCT = 2
 MIN_DISTINCT_PAYLOAD_HASHES = 3
-MAX_P95_AGE_SECONDS = 300
+MAX_P95_RTT_MS = 10000.0
+MAX_SNAPSHOT_AGE_S = 5.0
 MAX_ACCEPTABLE_SAMPLE_AGE_SECONDS = 86400
 
-# Verified quantity unit: FYERS depth API exposes per-level quantity but
-# does not, in the SDK surface available to this repository, publish an
-# authoritative statement that this figure is expressed in exchange lots.
-# Recording the truthful, verifiable semantics is required; recording
-# "LOTS" without that proof would be fabrication.
 _VERIFIED_QUANTITY_UNIT = "PROVIDER_QUANTITY"
 _QUANTITY_UNIT_BASIS = (
     "FYERS depth level quantity. Provider documentation available in this "
@@ -56,10 +64,6 @@ _QUANTITY_UNIT_BASIS = (
     "provider quantity. Consumed only for relative liquidity and two-sided "
     "presence. Position sizing uses contract lot size, not this field."
 )
-
-# Provider timestamp source must begin with one of these. Local wall time
-# is never a provider timestamp.
-_PROVIDER_TS_SOURCE_PREFIXES = ("DEPTH:", "QUOTES:")
 
 
 def _load_rows(product=None):
@@ -82,6 +86,17 @@ def _load_rows(product=None):
     return rows
 
 
+def _positive(x):
+    return isinstance(x, (int, float)) and x > 0
+
+
+def _p95(values):
+    if not values:
+        return None
+    vs = sorted(values)
+    return vs[int(0.95 * (len(vs) - 1))]
+
+
 def _check_provider(rows):
     providers = {str(r.get("provider") or "").upper() for r in rows}
     if providers != {_PROVIDER}:
@@ -96,12 +111,7 @@ def _check_product(rows, product):
     return True, f"product={product}"
 
 
-def _positive(x):
-    return isinstance(x, (int, float)) and x > 0
-
-
 def _check_depth(rows):
-    """Two-sided depth with positive bid and ask prices per sample."""
     bad_depth = 0
     bad_price = 0
     for r in rows:
@@ -165,7 +175,7 @@ def _check_expiry_coherence(rows):
     if not expiries:
         return False, "no expiry recorded"
     if len(expiries) > 1:
-        return False, f"multiple expiries in one product sample: {sorted(expiries)}"
+        return False, f"multiple expiries: {sorted(expiries)}"
     return True, f"single expiry {next(iter(expiries))}"
 
 
@@ -209,53 +219,48 @@ def _check_distinct_hashes(rows):
     return True, f"{distinct} distinct payload hashes"
 
 
-def _check_timestamps(rows):
-    with_ts = [r for r in rows if r.get("provider_timestamp")]
-    if not with_ts:
-        return False, "no provider timestamps on any sample"
-    bad_source = []
-    for r in with_ts:
-        src = str(r.get("provider_timestamp_source") or "")
-        if not any(src.startswith(p) for p in _PROVIDER_TS_SOURCE_PREFIXES):
-            bad_source.append((r.get("sample_ordinal"), src or "<none>"))
-    if bad_source:
-        return False, (
-            f"{len(bad_source)} samples lack an authoritative provider "
-            f"timestamp source (first: ordinal={bad_source[0][0]} "
-            f"source={bad_source[0][1]})"
-        )
-    ages = [
-        r.get("age_seconds")
-        for r in with_ts
-        if isinstance(r.get("age_seconds"), (int, float))
-    ]
-    if not ages:
-        return False, "provider timestamps present but ages not computable"
-    if any(a < 0 for a in ages):
-        return False, "negative age observed"
-    ages_sorted = sorted(ages)
-    p95 = ages_sorted[int(0.95 * (len(ages_sorted) - 1))]
-    sources = sorted({str(r.get("provider_timestamp_source") or "") for r in with_ts})
-    return (
-        True,
-        f"n_ts={len(ages)} p95_age_s={p95:.1f} max_age_s={ages_sorted[-1]:.1f} "
-        f"sources={sources}",
-    )
-
-
-def _check_freshness(rows):
-    ages = [
-        r.get("age_seconds")
+def _check_session_open(rows):
+    bad = [
+        (r.get("sample_ordinal"), r.get("session_status_at_collection"))
         for r in rows
-        if isinstance(r.get("age_seconds"), (int, float))
+        if str(r.get("session_status_at_collection") or "").upper() != "OPEN"
+    ]
+    if bad:
+        return False, (
+            f"{len(bad)} samples collected while session was not OPEN "
+            f"(first: ordinal={bad[0][0]} status={bad[0][1]!r})"
+        )
+    return True, f"all {len(rows)} samples collected with session OPEN"
+
+
+def _check_depth_rtt(rows):
+    rtts = [
+        r.get("depth_round_trip_ms")
+        for r in rows
+        if isinstance(r.get("depth_round_trip_ms"), (int, float))
+    ]
+    if not rtts:
+        return False, "no depth_round_trip_ms recorded"
+    p95 = _p95(rtts)
+    if p95 > MAX_P95_RTT_MS:
+        return False, f"p95 depth RTT {p95:.0f}ms exceeds {MAX_P95_RTT_MS:.0f}ms"
+    return True, f"p95 rtt_ms={p95:.0f} (cap {MAX_P95_RTT_MS:.0f}ms)"
+
+
+def _check_snapshot_age(rows):
+    ages = [
+        r.get("execution_snapshot_age_seconds")
+        for r in rows
+        if isinstance(r.get("execution_snapshot_age_seconds"), (int, float))
     ]
     if not ages:
-        return False, "cannot assess freshness; no ages"
-    ages_sorted = sorted(ages)
-    p95 = ages_sorted[int(0.95 * (len(ages_sorted) - 1))]
-    if p95 > MAX_P95_AGE_SECONDS:
-        return False, f"p95 age {p95:.1f}s exceeds {MAX_P95_AGE_SECONDS}s"
-    return True, f"p95 age {p95:.1f}s within {MAX_P95_AGE_SECONDS}s"
+        return False, "no execution_snapshot_age_seconds recorded"
+    if any(a < 0 for a in ages):
+        return False, "negative snapshot age observed"
+    mx = max(ages)
+    if mx > MAX_SNAPSHOT_AGE_S:
+        return False, f"max observation age {mx:.3f}s exceeds {MAX_SNAPSHOT_AGE_S:.3f}s"
+    return True, f"max observation age {mx:.3f}s (cap {MAX_SNAPSHOT_AGE_S:.3f}s)"
 
 
 def _check_sample_recency(rows):
@@ -287,6 +292,7 @@ def verify_product(product):
             "reason": "NO_EVIDENCE",
             "checks": {},
         }
+
     results = {}
     for name, fn in (
         ("provider", lambda: _check_provider(rows)),
@@ -297,8 +303,9 @@ def verify_product(product):
         ("expiry_coherence", lambda: _check_expiry_coherence(rows)),
         ("quantity_coherence", lambda: _check_quantity_coherence(rows)),
         ("distinct_hashes", lambda: _check_distinct_hashes(rows)),
-        ("timestamps", lambda: _check_timestamps(rows)),
-        ("freshness", lambda: _check_freshness(rows)),
+        ("session_open", lambda: _check_session_open(rows)),
+        ("depth_rtt", lambda: _check_depth_rtt(rows)),
+        ("snapshot_age", lambda: _check_snapshot_age(rows)),
         ("sample_recency", lambda: _check_sample_recency(rows)),
     ):
         try:
@@ -310,15 +317,30 @@ def verify_product(product):
     failures = [k for k, (ok, _) in results.items() if not ok]
     verdict = "PASS" if not failures else "HOLD"
 
-    ages = [
-        r.get("age_seconds")
+    # --- evidence-derived summaries ---
+    rtts = [
+        r.get("depth_round_trip_ms")
         for r in rows
-        if isinstance(r.get("age_seconds"), (int, float))
+        if isinstance(r.get("depth_round_trip_ms"), (int, float))
     ]
-    p95_age = None
-    if ages:
-        ages_sorted = sorted(ages)
-        p95_age = ages_sorted[int(0.95 * (len(ages_sorted) - 1))]
+    lt_ages = [
+        r.get("last_trade_age_seconds")
+        for r in rows
+        if isinstance(r.get("last_trade_age_seconds"), (int, float))
+    ]
+    snap_ages = [
+        r.get("execution_snapshot_age_seconds")
+        for r in rows
+        if isinstance(r.get("execution_snapshot_age_seconds"), (int, float))
+    ]
+    lt_sources = sorted({str(r.get("last_trade_timestamp_source") or "UNAVAILABLE") for r in rows})
+    provider_depth_ts_available = (
+        all(bool(r.get("depth_provider_timestamp_available")) for r in rows) if rows else False
+    )
+
+    p95_rtt = _p95(rtts)
+    p95_lt_age = _p95(lt_ages)
+    max_snap_age = max(snap_ages) if snap_ages else None
 
     out = {
         "product": product,
@@ -327,9 +349,28 @@ def verify_product(product):
         "distinct_payload_hashes": len(
             {r.get("quote_payload_hash") for r in rows if r.get("quote_payload_hash")}
         ),
-        "p95_age_seconds": p95_age,
+        "deprecated_freshness_fields": [],
         "failures": failures,
         "checks": {k: {"ok": v[0], "note": v[1]} for k, v in results.items()},
+        "reported": {
+            "DEPTH_SAMPLES": len(rows),
+            "DISTINCT_DEPTH_HASHES": len(
+                {r.get("quote_payload_hash") for r in rows if r.get("quote_payload_hash")}
+            ),
+            "DEPTH_TWO_SIDED": all(
+                bool(r.get("bid_levels")) and bool(r.get("ask_levels")) for r in rows
+            ),
+            "DEPTH_RTT_P95_MS": p95_rtt,
+            "DEPTH_OBSERVATION_FRESHNESS": (
+                f"max_snapshot_age_s={max_snap_age:.3f}" if max_snap_age is not None else None
+            ),
+            "PROVIDER_DEPTH_TIMESTAMP_AVAILABLE": provider_depth_ts_available,
+            "LAST_TRADE_AGE_P95": p95_lt_age,
+            "LAST_TRADE_TIMESTAMP_SOURCE": lt_sources,
+            "QUANTITY_SEMANTICS": _VERIFIED_QUANTITY_UNIT,
+        },
+        "depth_freshness_basis": "SYNCHRONOUS_FYERS_DEPTH_RESPONSE",
+        "last_trade_recency_basis": (lt_sources[0] if len(lt_sources) == 1 else lt_sources),
     }
     if verdict == "PASS":
         out["verified_quantity_unit"] = _VERIFIED_QUANTITY_UNIT
@@ -350,12 +391,16 @@ def main(argv=None):
         print(f"===== {p} =====")
         print(
             f"  verdict={r['verdict']}  samples={r.get('sample_count', 0)}  "
-            f"distinct_hashes={r.get('distinct_payload_hashes', 0)}  "
-            f"p95_age_s={r.get('p95_age_seconds')}"
+            f"distinct_hashes={r.get('distinct_payload_hashes', 0)}"
         )
         for k, v in r.get("checks", {}).items():
             marker = "OK" if v["ok"] else "FAIL"
             print(f"    [{marker}] {k}: {v['note']}")
+        reported = r.get("reported") or {}
+        if reported:
+            print("  -- reported --")
+            for k, v in reported.items():
+                print(f"    {k} = {v}")
 
     if args.report:
         out = Path(args.report)
