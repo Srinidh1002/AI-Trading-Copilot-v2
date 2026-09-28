@@ -91,3 +91,10 @@ _evidence/
 # R2-5 differential triage scratch
 _r2_worktrees/
 
+
+# F15 pre-Option-D evidence archive and prior format snapshots
+data/execution_evidence/mcx/_archive_*/
+data/execution_evidence/mcx/_pre_*/
+
+# Local verifier report (reproducible from evidence)
+_mcx_calibration_verifier.json
