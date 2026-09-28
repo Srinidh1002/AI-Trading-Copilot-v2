@@ -22,6 +22,8 @@ Infrastructure failure (env, locks, limiter, repo) exits 1.
 Never prints tokens, secrets, or auth codes.
 """
 
+# ruff: noqa: E402, I001, F401, E501, E702, UP045
+
 from __future__ import annotations
 
 # _REPO_ROOT_BOOTSTRAP - make `services` and `src` importable regardless
