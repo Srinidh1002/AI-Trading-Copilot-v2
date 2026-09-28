@@ -8,6 +8,7 @@ legacy schema-1 evidence into PASS.
 
 Config file: data/execution_evidence/mcx/exec_config.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,18 +47,41 @@ def _newest_evidence_for(product):
 
 
 def _derive_max_age(verifier_entry):
-    p95 = verifier_entry.get("p95_age_seconds")
-    if not isinstance(p95, (int, float)) or p95 <= 0:
+    """Derive the runtime execution-quote max age from Option D evidence.
+
+    Option D retires the equity-index-style provider-feed freshness
+    concept. The synchronous FYERS depth response is observed locally
+    at depth_received_at; snapshot age is the local observation age.
+    The runtime max_age_seconds is the conservative ceiling under which
+    a freshly observed depth snapshot is considered execution-valid.
+
+    A snapshot observed milliseconds before evaluation is fresh by
+    construction. We still cap conservatively so a paused collector or
+    a stale replay cannot be admitted. The p95_age_seconds field from
+    the old gate is not required and is intentionally ignored.
+    """
+    # If a summary snapshot age is present, bound by it.
+    freshness = verifier_entry.get("reported", {}).get("DEPTH_OBSERVATION_FRESHNESS")
+    snapshot_max = None
+    if isinstance(freshness, str) and "max_snapshot_age_s=" in freshness:
+        try:
+            snapshot_max = float(freshness.split("max_snapshot_age_s=", 1)[1].strip())
+        except (ValueError, IndexError):
+            snapshot_max = None
+
+    # snapshot_max is the observed max local observation age. A value
+    # of 0.0 is legitimate: the depth snapshot was evaluated at the same
+    # instant it was recorded. Negative values indicate corrupt evidence.
+    if snapshot_max is None or snapshot_max < 0:
         return None
-    candidate = int(p95 * _FRESHNESS_HEADROOM)
+
+    candidate = int(snapshot_max * _FRESHNESS_HEADROOM)
     return max(_FRESHNESS_MIN, min(candidate, _FRESHNESS_MAX))
 
 
 def _write_atomic(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(
-        prefix=path.name + ".", suffix=".tmp", dir=str(path.parent)
-    )
+    fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, sort_keys=True)
@@ -122,10 +146,22 @@ def main(argv=None):
             not_pass.append((product, "NO_VERIFIED_QUANTITY_UNIT"))
             continue
         unit = unit.strip()
+        if unit == "LOTS":
+            # Option D forbids hard-coded LOTS: FYERS does not publish an
+            # authoritative unit proof in the SDK surface we use.
+            not_pass.append((product, "FORBIDDEN_QUANTITY_UNIT_LOTS"))
+            continue
 
-        p95 = entry.get("p95_age_seconds")
-        if not isinstance(p95, (int, float)) or p95 <= 0:
-            not_pass.append((product, "NO_P95_AGE"))
+        # Option D: the required freshness signal is the synchronous
+        # depth-snapshot observation. Verify the verifier entry agrees.
+        basis = entry.get("depth_freshness_basis")
+        if basis != "SYNCHRONOUS_FYERS_DEPTH_RESPONSE":
+            not_pass.append((product, f"BAD_DEPTH_FRESHNESS_BASIS:{basis!r}"))
+            continue
+        reported = entry.get("reported") or {}
+        freshness = reported.get("DEPTH_OBSERVATION_FRESHNESS")
+        if not (isinstance(freshness, str) and "max_snapshot_age_s=" in freshness):
+            not_pass.append((product, "NO_SNAPSHOT_FRESHNESS"))
             continue
 
         evidence_file = _newest_evidence_for(product)
@@ -149,6 +185,11 @@ def main(argv=None):
             "depth_quantity_unit": unit,
             "execution_freshness_calibrated": True,
             "execution_quote_max_age_seconds": max_age,
+            "depth_freshness_basis": ("SYNCHRONOUS_FYERS_DEPTH_RESPONSE"),
+            "depth_provider_timestamp_available": bool(
+                reported.get("PROVIDER_DEPTH_TIMESTAMP_AVAILABLE", False)
+            ),
+            "last_trade_timestamp_source": reported.get("LAST_TRADE_TIMESTAMP_SOURCE"),
             "calibrated_at": datetime.now(UTC).isoformat(),
             "evidence_ref": evidence_ref,
             "evidence_kind": _EVIDENCE_KIND,
@@ -201,9 +242,7 @@ def main(argv=None):
             prev = _CONFIG_PATH.read_text(encoding="utf-8")
             stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
             backup = _CONFIG_PATH.with_name(_CONFIG_PATH.name + f".bak_{stamp}")
-            _write_atomic(
-                backup, json.loads(prev) if prev.strip().startswith("{") else {}
-            )
+            _write_atomic(backup, json.loads(prev) if prev.strip().startswith("{") else {})
             print(f"BACKUP {backup}")
         except Exception as exc:
             print(f"BACKUP_WARN: {type(exc).__name__}")

@@ -222,6 +222,12 @@ def _make_pass_report(products):
             "distinct_payload_hashes": 12,
             "verified_quantity_unit": "PROVIDER_QUANTITY",
             "quantity_unit_basis": "test fixture basis",
+            "depth_freshness_basis": "SYNCHRONOUS_FYERS_DEPTH_RESPONSE",
+            "reported": {
+                "DEPTH_OBSERVATION_FRESHNESS": "max_snapshot_age_s=0.100",
+                "PROVIDER_DEPTH_TIMESTAMP_AVAILABLE": False,
+                "LAST_TRADE_TIMESTAMP_SOURCE": ["DEPTH:ltt"],
+            },
             "failures": [],
             "checks": {},
         }
@@ -277,7 +283,7 @@ def test_writer_writes_schema2_on_pass(isolated_evidence, tmp_path):
     assert payload["providers"]["FYERS"]["CRUDEOILM"]["calibration_provider"] == "FYERS"
     assert payload["providers"]["FYERS"]["CRUDEOILM"]["depth_quantity_semantics_verified"] is True
     assert payload["providers"]["FYERS"]["CRUDEOILM"]["execution_freshness_calibrated"] is True
-    assert payload["providers"]["FYERS"]["CRUDEOILM"]["execution_quote_max_age_seconds"] == 20
+    assert payload["providers"]["FYERS"]["CRUDEOILM"]["execution_quote_max_age_seconds"] == 15
     assert payload["providers"]["FYERS"]["CRUDEOILM"]["depth_quantity_unit"] == "PROVIDER_QUANTITY"
     assert "quantity_unit_basis" in payload["providers"]["FYERS"]["CRUDEOILM"]
 

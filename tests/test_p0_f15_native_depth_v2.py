@@ -250,6 +250,12 @@ def test_writer_uses_verified_unit_not_lots(isolated_evidence, tmp_path):
                     "p95_age_seconds": 10.0,
                     "verified_quantity_unit": "PROVIDER_QUANTITY",
                     "quantity_unit_basis": "sdk has no lot proof",
+                    "depth_freshness_basis": "SYNCHRONOUS_FYERS_DEPTH_RESPONSE",
+                    "reported": {
+                        "DEPTH_OBSERVATION_FRESHNESS": "max_snapshot_age_s=0.100",
+                        "PROVIDER_DEPTH_TIMESTAMP_AVAILABLE": False,
+                        "LAST_TRADE_TIMESTAMP_SOURCE": ["DEPTH:ltt"],
+                    },
                 }
             }
         ),
