@@ -64,7 +64,14 @@ def _stream_access_token(
     access_token: str,
     client_id: str | None,
 ) -> str:
-    token = str(access_token).strip()
+    # R2-10: reject non-string credentials explicitly. Without this
+    # guard, str(None) == "None" and str(42) == "42" would silently
+    # pass the emptiness check below.
+    if not isinstance(access_token, str):
+        raise FyersStreamingConfigurationError(
+            "access_token must be a string"
+        )
+    token = access_token.strip()
     if not token:
         raise FyersStreamingConfigurationError(
             "access_token is required"
