@@ -2242,25 +2242,21 @@ class UnifiedTradingBot:
 
         return False
 
-    def _try_increment_certification_counter(self, trade, reconciled_ok):
-        """R6_cert_counter - official /100 increment (idempotent by trade_id).
+    def _evaluate_certification_admission(self, trade):
+        """R6_cert_counter (F15-R2) - pure admission check.
 
-        Increments only when ALL pass:
-          entered (implicit in close_position call)
-          status == CLOSED
-          reconciled (ledger write succeeded)
-          unique trade_id
-          execution_mode == PAPER
-          broker_submission == False
-          live_execution == False
-          certification_eligible == True
-          certification_countable == True (R4 not ambiguous)
-          first_touch_result in {T1_FIRST, SL_FIRST}
-          strategy_version == STRATEGY_VERSION
-          certification_epoch == CERTIFICATION_EPOCH
+        Returns (accepted: bool, reason: str | None).
+        Does NOT mutate trade or state.
+
+        Reconciliation (ledger write) is NOT evaluated here. The
+        caller must overlay NOT_RECONCILED after the row write,
+        because the row itself is where the reconciliation result
+        lives. This separation lets close_position resolve the
+        authoritative admission decision BEFORE the row is written,
+        so row['certification_countable'] is never the optimistic
+        entry-time default when the trade is actually rejected.
         """
         reasons = []
-        # R15_epoch_cap - hard per-epoch cap: no trade may enter beyond 100
         if self.certification_counter >= 100:
             reasons.append('COUNTER_AT_CAP_100')
         tid = trade.get('trade_id')
@@ -2270,8 +2266,6 @@ class UnifiedTradingBot:
             reasons.append('DUPLICATE_TRADE_ID')
         if trade.get('status') != 'CLOSED':
             reasons.append('NOT_CLOSED')
-        if not reconciled_ok:
-            reasons.append('NOT_RECONCILED')
         if trade.get('execution_mode') != 'PAPER':
             reasons.append('NOT_PAPER')
         if trade.get('broker_submission') is not False:
@@ -2289,10 +2283,8 @@ class UnifiedTradingBot:
         _ftr = trade.get('first_touch_result')
         if _ftr not in ('T1_FIRST', 'SL_FIRST'):
             reasons.append(f'NO_TERMINAL_FIRST_TOUCH({_ftr!r})')
-
         if reasons:
-            print(f'  [R6] NOT_COUNTED trade={tid} reasons={reasons}')
-            return False
+            return False, '|'.join(reasons)
 
         # R15_diversity_authority - daily-cap gate BEFORE counter increment
         _trade_date = trade.get('certification_trade_date') or datetime.now().strftime("%Y-%m-%d")
@@ -2301,19 +2293,30 @@ class UnifiedTradingBot:
         _div_ok, _div_reason = self.certification_diversity.would_count(
             _trade_date, _regime, _phase)
         if not _div_ok:
-            trade['certification_countable'] = False
-            trade['certification_countability_reason'] = _div_reason
-            print(f'  [R15] NOT_COUNTED trade={tid} reason={_div_reason} '
-                  f'date={_trade_date}')
-            return False
+            return False, _div_reason
+        return True, None
 
+    def _apply_certification_acceptance(self, trade):
+        """R6_cert_counter (F15-R2) - mutate state for one accepted trade.
+
+        Caller must have already confirmed admission via
+        _evaluate_certification_admission AND a successful ledger
+        write. Idempotent by trade_id: if the ID is already in
+        self.counted_trade_ids, this is a no-op.
+        """
+        tid = trade.get('trade_id')
+        if not tid or tid in self.counted_trade_ids:
+            return
+        _ftr = trade.get('first_touch_result')
+        _trade_date = trade.get('certification_trade_date') or datetime.now().strftime("%Y-%m-%d")
+        _regime     = trade.get('certification_regime') or 'UNKNOWN'
+        _phase      = trade.get('certification_session_phase') or 'UNKNOWN'
         self.certification_counter += 1
         self.counted_trade_ids.add(tid)
         if _ftr == 'T1_FIRST':
             self.certification_wins += 1
         else:
             self.certification_losses += 1
-        # R15_diversity_authority - atomic with counter++ and counted_trade_ids
         self.certification_diversity.record(_trade_date, _regime, _phase)
         trade['diversity_daily_count_after'] = int(
             self.certification_diversity.countable_by_day.get(_trade_date, 0))
@@ -2321,12 +2324,10 @@ class UnifiedTradingBot:
         print(f'  [R6] COUNTED trade={tid} result={_ftr} '
               f'cert={self.certification_counter}/100 '
               f'wins={self.certification_wins} losses={self.certification_losses}')
-        # Immediate persist to survive crash after count
         try:
             self.save_state()
         except Exception as _se:
             print(f'  [R6] save_state after count failed: {str(_se)[:60]}')
-        return True
 
     def final_certification_evaluation(self):
         """R15_diversity_authority - final verdict for the /100 sample.
@@ -2399,8 +2400,26 @@ class UnifiedTradingBot:
             trade['certification_win'] = False
             trade['certification_loss'] = False
 
-        # ===== PHASE G2: Record outcome to ledger =====
-        _reconciled_ok = False  # R6_cert_counter
+        # ===== PHASE G2 + R6 (F15-R2 fix) - record outcome, then apply
+        # certification authority. Ordering contract:
+        #   1. Evaluate admission (pure).
+        #   2. Snapshot the decision onto `trade` so the row reflects
+        #      the authoritative answer, not the optimistic entry-time
+        #      default that silently survives any non-diversity reject.
+        #   3. Write the row.
+        #   4. If the row wrote OK AND admission accepted: apply counter.
+        #   5. If the row write failed after acceptance: downgrade the
+        #      trade to NOT_RECONCILED (row was never written, so no
+        #      on-disk inconsistency).
+        _admitted, _admission_reason = self._evaluate_certification_admission(trade)
+        if _admitted:
+            trade['certification_countable'] = True
+            trade['certification_countability_reason'] = None
+        else:
+            trade['certification_countable'] = False
+            trade['certification_countability_reason'] = _admission_reason
+
+        _reconciled_ok = False
         try:
             _rec_ok = self.outcome_ledger.record(trade)
             if _rec_ok:
@@ -2427,13 +2446,21 @@ class UnifiedTradingBot:
             print(f'  [Re-entry] Same-dir stops: {self.same_direction_stops} | Daily trades: {self.daily_trade_count} | Daily P&L: ₹{self.daily_realized_loss:.0f}')
         except Exception as _e:
             print(f'  [G2] outcome ledger error: {str(_e)[:60]}')
-        
+
+        # If the row write failed after admission accepted, downgrade
+        # the in-memory trade; the row was never written so no on-disk
+        # row and state disagree.
+        if _admitted and not _reconciled_ok:
+            trade['certification_countable'] = False
+            trade['certification_countability_reason'] = 'NOT_RECONCILED'
+            print(f'  [R6] NOT_COUNTED trade={trade.get("trade_id")} reasons=[NOT_RECONCILED]')
+
         # D10_net_pnl - running total uses net P&L when available
         _pnl_for_total = trade.get('net_pnl')
         if _pnl_for_total is None:
             _pnl_for_total = pnl
         self.total_pnl += _pnl_for_total
-        
+
         # R5_milestone_accounting - winning_trades/losing_trades remain
         # ECONOMIC statistics only (net_pnl sign). Certification win/loss
         # is set above from first_touch_result and is NOT derived from P&L.
@@ -2445,15 +2472,19 @@ class UnifiedTradingBot:
             self.losing_trades += 1
             self.consecutive_losses += 1
             self.consecutive_wins = 0
-        
+
         self.completed_trades.append(trade)
         del self.active_trades[trade_id]
 
         self.save_state()  # Phase 9.10a - durable at close
 
-        # R6_cert_counter - official /100 increment (idempotent by trade_id)
-        self._try_increment_certification_counter(trade, _reconciled_ok)
-        
+        # R6 (F15-R2) - apply certification acceptance only after the
+        # row has been successfully written AND admission accepted.
+        if _reconciled_ok and _admitted:
+            self._apply_certification_acceptance(trade)
+        elif not _admitted:
+            print(f'  [R6] NOT_COUNTED trade={trade.get("trade_id")} reasons=[{_admission_reason}]')
+
         print(f"\n{'='*60}")
         print(f"📊 Position Closed: {reason}")
         print(f"{'='*60}")
