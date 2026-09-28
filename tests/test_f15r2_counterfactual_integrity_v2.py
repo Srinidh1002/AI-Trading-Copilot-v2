@@ -18,6 +18,7 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO))
 
 import pytest  # noqa: E402
+
 import mcx.mcx_counterfactual as cf  # noqa: E402
 
 REQUIRED_FIELDS = (
