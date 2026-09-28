@@ -160,6 +160,9 @@ class WorkerRuntimeV2:
     last_exit_status: Optional[str] = None
     last_exit_at: Optional[datetime] = None
     runtime_session_date: Optional[date] = None
+    # Phase F15-R1: worker liveness (Phase 6).
+    last_heartbeat_age_seconds: Optional[float] = None
+    recovery_required: bool = False
 
 
 class AutomatedPaperSupervisorV2:
@@ -176,6 +179,9 @@ class AutomatedPaperSupervisorV2:
     # exit at close-2min. 5 min after covers any residual slow close.
     CLOSE_GRACE_BEFORE_SECONDS = 1500
     CLOSE_GRACE_AFTER_SECONDS = 300
+    # Phase F15-R1: worker liveness (Phase 6).
+    HEARTBEAT_MAX_AGE_SECONDS = 300.0
+    HUNG_STOP_GRACE_SECONDS = 5.0
 
     def __init__(
         self,
@@ -398,6 +404,67 @@ class AutomatedPaperSupervisorV2:
                 f"[{spec.name}] STOP_STATE_HOLD reason={v.reason} note={v.note} forced={forced}"
             )
 
+    def _market_has_persisted_position(self, spec):
+        """True when the market's persisted state shows an active position.
+
+        MCX only for Phase 6a. Index positions are handled by session
+        authority; adding them here is a Phase 6b concern.
+        """
+        if spec.name not in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
+            return False
+        path = (
+            self.repo_root
+            / "data"
+            / "paper_trades"
+            / f"mcx_{spec.name.lower()}_experimental.json"
+        )
+        try:
+            st = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return False
+        if not isinstance(st, dict):
+            return False
+        ap = st.get("active_position")
+        return isinstance(ap, dict) and bool(ap.get("trade_id"))
+
+    def _check_worker_liveness(self, rt, spec, now):
+        """Recycle or flag a stale worker. Returns True when the
+        tick's normal processing for this spec should be skipped.
+        """
+        from services.paper_orchestration.worker_liveness_v2 import (  # noqa: E402
+            classify as _classify_liveness,
+        )
+
+        cls, hb, age = _classify_liveness(
+            spec.name, now, max_age_seconds=self.HEARTBEAT_MAX_AGE_SECONDS
+        )
+        rt.last_heartbeat_age_seconds = age
+        if cls != "HEARTBEAT_STALE":
+            # NO_HEARTBEAT is treated as 'not yet emitting' — normal
+            # during startup ticks before the first stage marker.
+            return False
+
+        stage = (hb or {}).get("stage", "?")
+        has_pos = self._market_has_persisted_position(spec)
+        tid = ((hb or {}).get("trade_id")) or None
+        if has_pos:
+            self._log(
+                f"[{spec.name}] ACTIVE_POSITION_RECOVERY_REQUIRED "
+                f"stage={stage} age={age:.1f}s trade_id={tid}"
+            )
+            rt.recovery_required = True
+        else:
+            self._log(
+                f"[{spec.name}] HUNG_WORKER_DETECTED "
+                f"stage={stage} age={age:.1f}s"
+            )
+            rt.recovery_required = False
+
+        self._stop_worker(spec, grace_seconds=self.HUNG_STOP_GRACE_SECONDS)
+        rt.last_stop_ist = now
+        rt.last_expected_stop_ist = now
+        return True
+
     def _classify_exit(self, spec, rc, *, expected_alive=True):
         if rc is None:
             return "STILL_RUNNING"
@@ -455,11 +522,14 @@ class AutomatedPaperSupervisorV2:
         rt.last_exit_status = status
         rt.last_exit_at = now
         rt.consumed_exit_count += 1
+        # Phase F15-R1: during a liveness recovery cycle, exit is
+        # expected and must not be counted as a restart failure.
+        in_recovery = bool(getattr(rt, "recovery_required", False))
         if status in (
             "STARTUP_FAILURE",
             "RUNTIME_FAILURE",
             "UNEXPECTED_EXIT_ZERO",
-        ):
+        ) and not in_recovery:
             self._record_failure(rt, now, rc)
         self._log(
             f"[{spec.name}] WORKER_EXIT rc={rc} classified={status} "
@@ -522,6 +592,11 @@ class AutomatedPaperSupervisorV2:
         self._log(f"[{rt.spec.name}] WORKER_RESTART_BACKOFF seconds={delay} rc={rc}")
 
     def _may_start(self, rt, now):
+        # Phase F15-R1: during an active-position recovery cycle, the
+        # circuit must not block restart — the position needs its
+        # managing worker back online.
+        if getattr(rt, "recovery_required", False):
+            return True
         if rt.circuit_open:
             return False
         if rt.next_restart_ist is not None and now < rt.next_restart_ist:
@@ -610,7 +685,10 @@ class AutomatedPaperSupervisorV2:
                 if rt.process is not None:
                     rc = rt.process.poll()
                     if rc is None:
-                        # Worker alive and healthy.
+                        # Worker alive. Phase F15-R1: liveness check
+                        # before declaring healthy.
+                        if self._check_worker_liveness(rt, spec, now):
+                            continue
                         self._record_healthy(rt, now)
                         continue
                     status = self._consume_exit(
@@ -629,6 +707,13 @@ class AutomatedPaperSupervisorV2:
                     rt.last_start_ist = now
                     rt.generation_id += 1
                     rt.consecutive_healthy_ticks = 0
+                    if getattr(rt, "recovery_required", False):
+                        if not self._market_has_persisted_position(spec):
+                            self._log(
+                                f"[{spec.name}] RECOVERY_COMPLETE "
+                                f"position_terminal_cleared flag"
+                            )
+                            rt.recovery_required = False
                 elif outcome.status == "START_OWNERSHIP_HOLD":
                     self._record_ownership_hold(rt, now)
                 elif outcome.status in (
