@@ -92,6 +92,15 @@ jobs:
             tests/test_p0_certification_authority_v2.py `
             tests/test_p0_windows_lock_foundation.py `
             tests/test_p0_gate_b_fail_closed.py `
+            tests/test_p0_f15_option_d_freshness_v2.py `
+            tests/test_f15r1_worker_heartbeat_v2.py `
+            tests/test_f15r1_worker_liveness_v2.py `
+            tests/test_f15r1_supervisor_liveness_v2.py `
+            tests/test_f15r1_supervisor_lifecycle_v2.py `
+            tests/test_f15r1_ledger_schema_v2.py `
+            tests/test_f15r1_campaign_analysis_v2.py `
+            tests/test_f15r1_active_state_reconciler_v2.py `
+            tests/test_f15r1_mcx_runtime_log_dir_v2.py `
             -q --tb=short
 
       - name: Confirm no live-state artifact was created in the repo
