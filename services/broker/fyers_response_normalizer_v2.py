@@ -402,6 +402,39 @@ def normalize_full_market_data(
         if isinstance(value, (int, float)):
             fetched[target] = value
 
+    # Phase 12 evidence: record top-level and per-level key names only,
+    # never values. Used by the read-only live probe to confirm the
+    # provider response shape without dumping payloads.
+    if isinstance(payload, Mapping):
+        raw_shape: dict[str, object] = {
+            "top_level_keys": sorted(str(k) for k in payload.keys())[:32],
+        }
+        for candidate in ("bids", "bid"):
+            v = payload.get(candidate)
+            if (
+                isinstance(v, Sequence)
+                and not isinstance(v, (str, bytes))
+                and len(v) > 0
+                and isinstance(v[0], Mapping)
+            ):
+                raw_shape["bid_level_keys"] = sorted(
+                    str(k) for k in v[0].keys()
+                )[:16]
+                break
+        for candidate in ("ask", "asks"):
+            v = payload.get(candidate)
+            if (
+                isinstance(v, Sequence)
+                and not isinstance(v, (str, bytes))
+                and len(v) > 0
+                and isinstance(v[0], Mapping)
+            ):
+                raw_shape["ask_level_keys"] = sorted(
+                    str(k) for k in v[0].keys()
+                )[:16]
+                break
+        fetched["raw_shape_v1"] = raw_shape
+
     return {
         "status": True,
         "data": {

@@ -1,30 +1,13 @@
 """Schema-2 provider-scoped MCX execution calibration writer.
 
 Refuses to write unless a verifier report says PASS for every product
-being written. Never upgrades legacy schema-1 evidence. Preserves
-existing providers in the config (merge, do not clobber).
+being written. Uses the verifier's verified_quantity_unit; never
+hard-codes LOTS. Preserves existing providers in the config (merge, do
+not clobber). Backs up any prior exec_config.json. Never converts
+legacy schema-1 evidence into PASS.
 
 Config file: data/execution_evidence/mcx/exec_config.json
-Shape:
-  {
-    "schema_version": 2,
-    "providers": {
-      "FYERS": {
-        "CRUDEOILM": {
-          "calibration_provider": "FYERS",
-          "depth_quantity_semantics_verified": true,
-          "depth_quantity_unit": "...",
-          "execution_freshness_calibrated": true,
-          "execution_quote_max_age_seconds": N,
-          "calibrated_at": "...",
-          "evidence_ref": "data/execution_evidence/mcx/fyers/<file>",
-          "evidence_kind": "LIVE_MARKET_DEPTH"
-        }
-      }
-    }
-  }
 """
-
 from __future__ import annotations
 
 import argparse
@@ -46,13 +29,12 @@ _PROVIDER = "FYERS"
 _SCHEMA_VERSION = 2
 _EVIDENCE_KIND = "LIVE_MARKET_DEPTH"
 
-# Freshness derived from verifier p95 age, capped conservatively.
 _FRESHNESS_HEADROOM = 2.0
 _FRESHNESS_MIN = 15
+_FRESHNESS_MAX = 300
 
 
 def _newest_evidence_for(product):
-    """Return the newest evidence file for a product, or None."""
     if not _EVIDENCE_DIR.exists():
         return None
     cands = sorted(
@@ -68,12 +50,14 @@ def _derive_max_age(verifier_entry):
     if not isinstance(p95, (int, float)) or p95 <= 0:
         return None
     candidate = int(p95 * _FRESHNESS_HEADROOM)
-    return max(_FRESHNESS_MIN, min(candidate, 300))
+    return max(_FRESHNESS_MIN, min(candidate, _FRESHNESS_MAX))
 
 
 def _write_atomic(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
+    fd, tmp = tempfile.mkstemp(
+        prefix=path.name + ".", suffix=".tmp", dir=str(path.parent)
+    )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, sort_keys=True)
@@ -122,7 +106,6 @@ def main(argv=None):
         print("report not a dict", file=sys.stderr)
         return 1
 
-    # Every product to write must be PASS in the verifier report.
     not_pass = []
     per_product_record = {}
     for product in products:
@@ -133,35 +116,47 @@ def main(argv=None):
         if entry.get("verdict") != "PASS":
             not_pass.append((product, entry.get("verdict") or "NO_VERDICT"))
             continue
+
+        unit = entry.get("verified_quantity_unit")
+        if not isinstance(unit, str) or not unit.strip():
+            not_pass.append((product, "NO_VERIFIED_QUANTITY_UNIT"))
+            continue
+        unit = unit.strip()
+
         p95 = entry.get("p95_age_seconds")
         if not isinstance(p95, (int, float)) or p95 <= 0:
             not_pass.append((product, "NO_P95_AGE"))
             continue
+
         evidence_file = _newest_evidence_for(product)
         if evidence_file is None:
             not_pass.append((product, "NO_EVIDENCE_FILE"))
             continue
+
         max_age = _derive_max_age(entry)
         if max_age is None:
             not_pass.append((product, "MAX_AGE_DERIVATION_FAILED"))
             continue
+
         try:
             evidence_ref = str(evidence_file.relative_to(REPO_ROOT)).replace("\\", "/")
         except ValueError:
-            # Evidence file is not under REPO_ROOT (e.g. a test isolation dir).
-            # Record the absolute path; the runtime gate only checks that
-            # some non-empty reference exists, and the operator can audit it.
             evidence_ref = str(evidence_file).replace("\\", "/")
-        per_product_record[product] = {
+
+        record = {
             "calibration_provider": _PROVIDER,
             "depth_quantity_semantics_verified": True,
-            "depth_quantity_unit": "LOTS",
+            "depth_quantity_unit": unit,
             "execution_freshness_calibrated": True,
             "execution_quote_max_age_seconds": max_age,
             "calibrated_at": datetime.now(UTC).isoformat(),
             "evidence_ref": evidence_ref,
             "evidence_kind": _EVIDENCE_KIND,
         }
+        basis = entry.get("quantity_unit_basis")
+        if isinstance(basis, str) and basis.strip():
+            record["quantity_unit_basis"] = basis.strip()
+        per_product_record[product] = record
 
     if not_pass:
         print("WRITER_HOLD — cannot write schema-2 for:")
@@ -169,7 +164,6 @@ def main(argv=None):
             print(f"  {product}: {why}")
         return 1
 
-    # Load existing config (merge, do not clobber other providers).
     existing = {}
     if _CONFIG_PATH.exists():
         try:
@@ -178,7 +172,6 @@ def main(argv=None):
             existing = {}
     if not isinstance(existing, dict):
         existing = {}
-    # Refuse to silently drop a schema-1 file that isn't a superset.
     existing_providers = existing.get("providers")
     if existing_providers is not None and not isinstance(existing_providers, dict):
         print(
@@ -203,14 +196,14 @@ def main(argv=None):
         print(json.dumps(new_config, indent=2, sort_keys=True))
         return 0
 
-    # Preserve any pre-existing config as a timestamped backup.
-    # The legacy schema-1 file may carry audit evidence; we never delete it.
     if _CONFIG_PATH.exists():
         try:
             prev = _CONFIG_PATH.read_text(encoding="utf-8")
             stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
             backup = _CONFIG_PATH.with_name(_CONFIG_PATH.name + f".bak_{stamp}")
-            _write_atomic(backup, json.loads(prev) if prev.strip().startswith("{") else {})
+            _write_atomic(
+                backup, json.loads(prev) if prev.strip().startswith("{") else {}
+            )
             print(f"BACKUP {backup}")
         except Exception as exc:
             print(f"BACKUP_WARN: {type(exc).__name__}")
@@ -219,7 +212,8 @@ def main(argv=None):
     print(f"WROTE {_CONFIG_PATH}")
     for product, record in per_product_record.items():
         print(
-            f"  {product}: evidence_ref={record['evidence_ref']} "
+            f"  {product}: unit={record['depth_quantity_unit']} "
+            f"evidence_ref={record['evidence_ref']} "
             f"max_age={record['execution_quote_max_age_seconds']}s"
         )
     return 0

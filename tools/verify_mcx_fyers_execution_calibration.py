@@ -1,22 +1,26 @@
 """Offline verifier for MCX FYERS execution calibration evidence.
 
 Reads the JSONL produced by collect_mcx_fyers_execution_calibration.py
-and independently determines whether the evidence can prove:
+and independently determines whether the evidence can prove live
+execution-depth semantics for a product.
 
+Required evidence per product:
   * one provider identity (FYERS only)
   * supported product
-  * real option identities
-  * non-empty depth on both sides
-  * quantity values coherent within a contract's lot-size story
-  * enough independent observations
-  * usable timestamp semantics and defensible freshness distribution
-  * no duplicate payload hashes inflating the sample
-  * evidence not stale and not fabricated
+  * real option identities: CE and PE both present, same expiry
+  * non-empty two-sided depth with positive bid and ask prices
+  * quantities positive, integral, and non-constant
+  * enough independent observations per contract
+  * minimum distinct payload hashes (proves the market moved / ticked)
+  * provider timestamp on every sample, from an authoritative provider
+    source (never local wall time)
+  * freshness computable and within the tolerance derived from the
+    observed distribution
+  * evidence recency within the last 24h
 
 Emits a machine-readable verdict dict and prints a summary. Exit 0 only
-on VERDICT=PASS. Never writes config.
+on OVERALL=PASS. Never writes config.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -39,6 +43,23 @@ MIN_CONTRACTS_PER_PRODUCT = 2
 MIN_DISTINCT_PAYLOAD_HASHES = 3
 MAX_P95_AGE_SECONDS = 300
 MAX_ACCEPTABLE_SAMPLE_AGE_SECONDS = 86400
+
+# Verified quantity unit: FYERS depth API exposes per-level quantity but
+# does not, in the SDK surface available to this repository, publish an
+# authoritative statement that this figure is expressed in exchange lots.
+# Recording the truthful, verifiable semantics is required; recording
+# "LOTS" without that proof would be fabrication.
+_VERIFIED_QUANTITY_UNIT = "PROVIDER_QUANTITY"
+_QUANTITY_UNIT_BASIS = (
+    "FYERS depth level quantity. Provider documentation available in this "
+    "repository does not establish the unit as exchange lots; recorded as "
+    "provider quantity. Consumed only for relative liquidity and two-sided "
+    "presence. Position sizing uses contract lot size, not this field."
+)
+
+# Provider timestamp source must begin with one of these. Local wall time
+# is never a provider timestamp.
+_PROVIDER_TS_SOURCE_PREFIXES = ("DEPTH:", "QUOTES:")
 
 
 def _load_rows(product=None):
@@ -75,26 +96,33 @@ def _check_product(rows, product):
     return True, f"product={product}"
 
 
+def _positive(x):
+    return isinstance(x, (int, float)) and x > 0
+
+
 def _check_depth(rows):
-    """Every row must have at least one bid and one ask level with numeric volume."""
-    bad = 0
+    """Two-sided depth with positive bid and ask prices per sample."""
+    bad_depth = 0
+    bad_price = 0
     for r in rows:
         bids = r.get("bid_levels") or []
         asks = r.get("ask_levels") or []
         if not bids or not asks:
-            bad += 1
+            bad_depth += 1
             continue
-        bq = r.get("bid_quantities") or []
-        aq = r.get("ask_quantities") or []
-        if not any(isinstance(x, (int, float)) and x > 0 for x in bq):
-            bad += 1
+        b0 = bids[0]
+        a0 = asks[0]
+        if not isinstance(b0, dict) or not _positive(b0.get("price")):
+            bad_price += 1
             continue
-        if not any(isinstance(x, (int, float)) and x > 0 for x in aq):
-            bad += 1
+        if not isinstance(a0, dict) or not _positive(a0.get("price")):
+            bad_price += 1
             continue
-    if bad:
-        return False, f"{bad} rows lack coherent two-sided depth"
-    return True, f"all {len(rows)} rows have two-sided depth"
+    if bad_depth:
+        return False, f"{bad_depth} rows lack two-sided depth"
+    if bad_price:
+        return False, f"{bad_price} rows have non-positive best bid/ask"
+    return True, f"all {len(rows)} rows have two-sided depth with positive prices"
 
 
 def _group_by_contract(rows):
@@ -109,7 +137,7 @@ def _group_by_contract(rows):
 def _check_contracts(rows):
     groups = _group_by_contract(rows)
     good = 0
-    for key, grp in groups.items():
+    for _key, grp in groups.items():
         if len(grp) >= MIN_SAMPLES_PER_CONTRACT:
             good += 1
     if good < MIN_CONTRACTS_PER_PRODUCT:
@@ -120,12 +148,28 @@ def _check_contracts(rows):
     return True, f"{good} contracts with sufficient samples"
 
 
+def _check_ce_pe_coverage(rows):
+    sides = {str(r.get("side") or "").upper() for r in rows}
+    missing = []
+    if "CE" not in sides:
+        missing.append("CE")
+    if "PE" not in sides:
+        missing.append("PE")
+    if missing:
+        return False, f"missing side(s): {missing}"
+    return True, "both CE and PE represented"
+
+
+def _check_expiry_coherence(rows):
+    expiries = {str(r.get("expiry") or "") for r in rows if r.get("expiry")}
+    if not expiries:
+        return False, "no expiry recorded"
+    if len(expiries) > 1:
+        return False, f"multiple expiries in one product sample: {sorted(expiries)}"
+    return True, f"single expiry {next(iter(expiries))}"
+
+
 def _check_quantity_coherence(rows):
-    """Within each contract, quantity values must be positive integers that
-    are consistent with the contract's lot-size multiples. We do not require
-    a fixed multiple; we require (a) all positive, (b) at least two distinct
-    values observed across the group (proving the field varies and is not a
-    placeholder), and (c) values are integral."""
     groups = _group_by_contract(rows)
     failures = []
     for (token, side), grp in groups.items():
@@ -141,16 +185,13 @@ def _check_quantity_coherence(rows):
             failures.append(f"{token}/{side}: no numeric quantities")
             continue
         if any(q <= 0 for q in qs):
-            failures.append(f"{token}/{side}: non-positive quantity observed")
+            failures.append(f"{token}/{side}: non-positive quantity")
             continue
         if any(abs(q - round(q)) > 1e-6 for q in qs):
-            failures.append(f"{token}/{side}: non-integral quantity observed")
+            failures.append(f"{token}/{side}: non-integral quantity")
             continue
-        distinct = len(set(qs))
-        if distinct < 2:
-            failures.append(
-                f"{token}/{side}: quantity field constant ({qs[:3]}) — cannot rule out placeholder"
-            )
+        if len(set(qs)) < 2:
+            failures.append(f"{token}/{side}: quantity field constant")
             continue
     if failures:
         return False, "; ".join(failures[:5])
@@ -172,18 +213,42 @@ def _check_timestamps(rows):
     with_ts = [r for r in rows if r.get("provider_timestamp")]
     if not with_ts:
         return False, "no provider timestamps on any sample"
-    ages = [r.get("age_seconds") for r in with_ts if isinstance(r.get("age_seconds"), (int, float))]
+    bad_source = []
+    for r in with_ts:
+        src = str(r.get("provider_timestamp_source") or "")
+        if not any(src.startswith(p) for p in _PROVIDER_TS_SOURCE_PREFIXES):
+            bad_source.append((r.get("sample_ordinal"), src or "<none>"))
+    if bad_source:
+        return False, (
+            f"{len(bad_source)} samples lack an authoritative provider "
+            f"timestamp source (first: ordinal={bad_source[0][0]} "
+            f"source={bad_source[0][1]})"
+        )
+    ages = [
+        r.get("age_seconds")
+        for r in with_ts
+        if isinstance(r.get("age_seconds"), (int, float))
+    ]
     if not ages:
         return False, "provider timestamps present but ages not computable"
     if any(a < 0 for a in ages):
         return False, "negative age observed"
     ages_sorted = sorted(ages)
     p95 = ages_sorted[int(0.95 * (len(ages_sorted) - 1))]
-    return True, f"n_ts={len(ages)} p95_age_s={p95:.1f} max_age_s={ages_sorted[-1]:.1f}"
+    sources = sorted({str(r.get("provider_timestamp_source") or "") for r in with_ts})
+    return (
+        True,
+        f"n_ts={len(ages)} p95_age_s={p95:.1f} max_age_s={ages_sorted[-1]:.1f} "
+        f"sources={sources}",
+    )
 
 
 def _check_freshness(rows):
-    ages = [r.get("age_seconds") for r in rows if isinstance(r.get("age_seconds"), (int, float))]
+    ages = [
+        r.get("age_seconds")
+        for r in rows
+        if isinstance(r.get("age_seconds"), (int, float))
+    ]
     if not ages:
         return False, "cannot assess freshness; no ages"
     ages_sorted = sorted(ages)
@@ -223,34 +288,39 @@ def verify_product(product):
             "checks": {},
         }
     results = {}
-    ok, msg = _check_provider(rows)
-    results["provider"] = (ok, msg)
-    ok, msg = _check_product(rows, product)
-    results["product"] = (ok, msg)
-    ok, msg = _check_depth(rows)
-    results["depth"] = (ok, msg)
-    ok, msg = _check_contracts(rows)
-    results["contracts"] = (ok, msg)
-    ok, msg = _check_quantity_coherence(rows)
-    results["quantity_coherence"] = (ok, msg)
-    ok, msg = _check_distinct_hashes(rows)
-    results["distinct_hashes"] = (ok, msg)
-    ok, msg = _check_timestamps(rows)
-    results["timestamps"] = (ok, msg)
-    ok, msg = _check_freshness(rows)
-    results["freshness"] = (ok, msg)
-    ok, msg = _check_sample_recency(rows)
-    results["sample_recency"] = (ok, msg)
+    for name, fn in (
+        ("provider", lambda: _check_provider(rows)),
+        ("product", lambda: _check_product(rows, product)),
+        ("depth", lambda: _check_depth(rows)),
+        ("contracts", lambda: _check_contracts(rows)),
+        ("ce_pe_coverage", lambda: _check_ce_pe_coverage(rows)),
+        ("expiry_coherence", lambda: _check_expiry_coherence(rows)),
+        ("quantity_coherence", lambda: _check_quantity_coherence(rows)),
+        ("distinct_hashes", lambda: _check_distinct_hashes(rows)),
+        ("timestamps", lambda: _check_timestamps(rows)),
+        ("freshness", lambda: _check_freshness(rows)),
+        ("sample_recency", lambda: _check_sample_recency(rows)),
+    ):
+        try:
+            ok, msg = fn()
+        except Exception as exc:
+            ok, msg = False, f"raised {type(exc).__name__}"
+        results[name] = (ok, msg)
 
     failures = [k for k, (ok, _) in results.items() if not ok]
     verdict = "PASS" if not failures else "HOLD"
+
+    ages = [
+        r.get("age_seconds")
+        for r in rows
+        if isinstance(r.get("age_seconds"), (int, float))
+    ]
     p95_age = None
-    ages = [r.get("age_seconds") for r in rows if isinstance(r.get("age_seconds"), (int, float))]
     if ages:
         ages_sorted = sorted(ages)
         p95_age = ages_sorted[int(0.95 * (len(ages_sorted) - 1))]
 
-    return {
+    out = {
         "product": product,
         "verdict": verdict,
         "sample_count": len(rows),
@@ -261,6 +331,10 @@ def verify_product(product):
         "failures": failures,
         "checks": {k: {"ok": v[0], "note": v[1]} for k, v in results.items()},
     }
+    if verdict == "PASS":
+        out["verified_quantity_unit"] = _VERIFIED_QUANTITY_UNIT
+        out["quantity_unit_basis"] = _QUANTITY_UNIT_BASIS
+    return out
 
 
 def main(argv=None):
