@@ -202,6 +202,8 @@ def login():
         return None
 
 
+from services.paper_orchestration.worker_heartbeat_v2 import beat as _hb_beat  # noqa: E402
+
 def _state_path_for(product):
     """Product-scoped state file path (acceptance testable)."""
     return str(_REPO_ROOT_STATE / "data" / "paper_trades" / f"mcx_{product.lower()}_experimental.json")
@@ -1131,6 +1133,16 @@ def main():
     history = []
 
     attempts = 0
+
+    def _hb(stage):
+        _ap = state.get("active_position") or {}
+        _hb_beat(
+            PRODUCT, stage,
+            cycle_number=attempts,
+            has_active_position=bool(_ap),
+            trade_id=_ap.get("trade_id") if _ap else None,
+        )
+
     while attempts < MAX_ATTEMPTS:
         if (
             certification_target_reached(
@@ -1172,7 +1184,7 @@ def main():
         else:
             _coop_stop_active = False
 
-        # Calendar check (replaces market_status)
+        _hb("CALENDAR")
         cal = get_session()
         print(f"\n{'=' * 100}")
         _cert_total = cert_status(
@@ -1257,14 +1269,14 @@ def main():
             )
             continue
 
-        # Resolve identity
+        _hb("IDENTITY")
         res = resolver.resolve_active(PRODUCT)
         if res["status"] != "OK":
             print(f"  Identity: {res['status']}")
             time.sleep(CYCLE_SECONDS); continue
         fut_token = str(res["futures"]["token"])
 
-        # Build chain + mtf + external
+        _hb("CHAIN")
         chain = runtime.native_chain.build(PRODUCT, window_steps=20)
         if chain.get("status") != "OK":
             print(f"  Chain: {chain['status']}")
@@ -1277,7 +1289,9 @@ def main():
         except Exception as _pcp_e:
             print(f"  [counterfactual price capture skipped: {_pcp_e}]")
 
+        _hb("MTF")
         mtf = compute_mtf(obj, fut_token, "MCX")
+        _hb("EXTERNAL")
         ctx = fetch_context(PRODUCT)
         regime = classify_regime(mtf.get("timeframes", {}), chain=chain)
 
@@ -1291,6 +1305,7 @@ def main():
                 stable_pcr.reference_strike = mp
                 stable_pcr._prev_call_oi = None
                 stable_pcr._prev_put_oi = None
+        _hb("PCR")
         spcr = stable_pcr.compute(chain)
 
         ev_state = event_get_state(product=PRODUCT)
@@ -1298,10 +1313,12 @@ def main():
                                             res["futures"].get("expiry"))
 
         # VWAP + structure
+        _hb("VWAP")
         vwap_ctx = session_vwap(obj, fut_token, exchange="MCX")
         structure = compute_structure(mtf, vwap_ctx, chain.get("future_ltp"))
 
         # Price/OI update
+        _hb("FUTURE_QUOTE")
         fq = fetch_full_quote(obj, fut_token)
         fut_ltp = float(fq.get("ltp", 0) or 0) if fq else 0
         # MCX futures OI may arrive under opnInterest instead of oi
@@ -1314,6 +1331,7 @@ def main():
         poi = price_oi.update(fut_ltp, fut_oi)
 
         # Data quality gate (spec §5)
+        _hb("DATA_QUALITY")
         dq_ok, dq_blockers = quality_evaluate(
             mtf=mtf, chain=chain, external=ctx, session=cal,
             identity=res, future_quote=fq,
@@ -1388,6 +1406,7 @@ def main():
         print(f"  MARKET_EVIDENCE_READY: {mkt_ready}")
 
         # Compose decision
+        _hb("DECISION")
         decision = compose_decision(chain, ctx, mtf, regime, vwap_ctx=vwap_ctx,
                                     event_state=ev_state, stable_pcr=spcr)
         # Phase 13 — threshold-only counterfactual capture.
@@ -1468,6 +1487,7 @@ def main():
         active = state.get("active_position")
         if active:
             # Section 7.18 — use real bid-side VWAP as executable mark
+            _hb("POSITION_MARK")
             mark, mark_q = get_bid_mark_for_position(obj, active, tick=0.05)
             if mark is None:
                 print(f"  MARK_EVIDENCE_UNAVAILABLE: {(mark_q or {}).get('rejection_reasons')}")
@@ -1493,6 +1513,7 @@ def main():
             entry_dt = datetime.fromisoformat(active["entry_time"])
             mins = int((datetime.now() - entry_dt).total_seconds() / 60)
 
+            _hb("POSITION_EXIT")
             closed = False
             if pnl_pct <= STOP_LOSS_PCT:
                 close_and_reconcile(obj, active, "STOP_LOSS", ltp, pnl_pct, state); closed = True
@@ -1565,7 +1586,9 @@ def main():
                 puts = sum(1 for h in history if h["action"] == "BUY_PUT")
                 print(f"  No entry. persistence CALL={calls}/3 PUT={puts}/3")
 
+        _hb("STATE_SAVE")
         save_state(state)
+        _hb("SLEEP")
         time.sleep(CYCLE_SECONDS)
 
     save_state(state)

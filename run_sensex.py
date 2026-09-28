@@ -410,6 +410,7 @@ def main() -> int:
         acknowledge as _coop_ack,
         stop_requested as _coop_stop_requested,
     )
+    from services.paper_orchestration.worker_heartbeat_v2 import beat as _hb_beat
     from services.paper_orchestration.worker_lock_v2 import acquire_market_worker_lock
     acquire_market_worker_lock(MARKET)
 
@@ -516,6 +517,13 @@ def main() -> int:
         attempts = 0
         max_attempts = 1000
 
+        def _hb(stage):
+            _hb_beat(
+                MARKET, stage,
+                cycle_number=attempts,
+                has_active_position=bool(getattr(bot, "active_trades", None)),
+            )
+
         while (
             bot.is_market_open()
             and bot.certification_counter < 100
@@ -554,6 +562,7 @@ def main() -> int:
 
             print("=" * 40)
 
+            _hb("SESSION")
             result = bot.run_single_session()
 
             if result:
@@ -583,6 +592,7 @@ def main() -> int:
                 and bot.certification_counter < 100
                 and attempts < max_attempts
             ):
+                _hb("SLEEP")
                 time.sleep(30)
             else:
                 break
