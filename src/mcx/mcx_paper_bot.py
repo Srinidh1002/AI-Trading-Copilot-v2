@@ -1458,6 +1458,9 @@ def main():
                         option_side="CE" if _lcf >= _scf else "PE",
                         hypothetical_contract=_hyp_contract,
                         attempt=attempts,
+                        strategy_version=(get_product_epochs(PRODUCT) or {}).get("strategy_version"),
+                        policy_epoch=(get_product_epochs(PRODUCT) or {}).get("epoch"),
+                        decision="WAIT",
                     )
                 except (NameError, AttributeError, TypeError) as _cf_e:
                     # R2-4: programmer error in the research path —

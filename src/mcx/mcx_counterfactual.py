@@ -59,12 +59,18 @@ def log_rejection(
     option_side=None,
     hypothetical_contract=None,
     attempt=None,
+    strategy_version=None,
+    policy_epoch=None,
+    decision="WAIT",
 ):
     """Append one rejection row. Process-safe by per-product file."""
     os.makedirs(_LOG_DIR, exist_ok=True)
     row = {
         "ts_utc": datetime.now(UTC).isoformat(),
         "product": product,
+        "strategy_version": strategy_version,
+        "policy_epoch": policy_epoch,
+        "decision": decision,
         "confidence": float(confidence),
         "direction": direction,
         "regime": regime,
