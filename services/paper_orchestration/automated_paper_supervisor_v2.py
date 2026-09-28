@@ -13,28 +13,44 @@ Responsibility:
   * classify worker exit codes for restart policy
   * run post-close analysis once per day per market
 """
+
 from __future__ import annotations
 
-import json
-import os
-import subprocess
-import sys
-import time
-from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
-from pathlib import Path
-from typing import Optional
-from zoneinfo import ZoneInfo
+# _REPO_ROOT_BOOTSTRAP_SUP - make `services` and `src` importable when
+# this module is launched via `python -m services.paper_orchestration....`
+# from the repo root without PYTHONPATH. Required so child authorities
+# (mcx.mcx_calendar, mcx.mcx_contracts, etc.) resolve inside the
+# supervisor process.
+import sys as _sys
+from pathlib import Path as _Path
 
-from services.paper_orchestration.supervisor_lock_v2 import acquire as _acquire_lock
-from services.paper_orchestration.worker_lock_v2 import market_worker_available
-from services.paper_orchestration.certification_halt_v2 import (
+_REPO_ROOT_BOOTSTRAP_SUP = _Path(__file__).resolve().parents[2]
+for _p in (str(_REPO_ROOT_BOOTSTRAP_SUP), str(_REPO_ROOT_BOOTSTRAP_SUP / "src")):
+    if _p not in _sys.path:
+        _sys.path.insert(0, _p)
+del _p
+
+import json  # noqa: E402
+import os  # noqa: E402
+import subprocess  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+from dataclasses import dataclass, field  # noqa: E402
+from datetime import date, datetime, timedelta  # noqa: E402
+from pathlib import Path  # noqa: E402
+from typing import Optional  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
+
+from services.paper_orchestration.supervisor_lock_v2 import acquire as _acquire_lock  # noqa: E402
+from services.paper_orchestration.worker_lock_v2 import market_worker_available  # noqa: E402
+from services.paper_orchestration.certification_halt_v2 import (  # noqa: E402
     all_complete as _cert_all_complete,
     market_state as _cert_market_state,
 )
-from services.paper_orchestration.worker_session_authority_v2 import (
+from services.paper_orchestration.worker_session_authority_v2 import (  # noqa: E402
     authority_for as _session_authority_for,
 )
+
 IST = ZoneInfo("Asia/Kolkata")
 
 
@@ -110,11 +126,13 @@ WORKERS_V2: tuple = (
 )
 
 
-from typing import NamedTuple
+from typing import NamedTuple  # noqa: E402
 
 
 class StartOutcome(NamedTuple):
-    status: str  # STARTED | DRY_RUN | START_OWNERSHIP_HOLD | START_ENV_FAILURE | START_SPAWN_FAILURE
+    status: (
+        str  # STARTED | DRY_RUN | START_OWNERSHIP_HOLD | START_ENV_FAILURE | START_SPAWN_FAILURE
+    )
     process: object = None
     note: str = ""
 
@@ -144,6 +162,7 @@ class AutomatedPaperSupervisorV2:
     OWNERSHIP_HOLD_BACKOFF_SECONDS = 300
     POSITION_MANAGEMENT_EXTEND_SECONDS = 900
     STOP_POST_VALIDATION_ENABLED = True
+
     def __init__(
         self,
         *,
@@ -201,15 +220,12 @@ class AutomatedPaperSupervisorV2:
             return StartOutcome("START_OWNERSHIP_HOLD", note="lock held by another process")
 
         try:
-            from services.broker.fyers_auth_v2 import (
+            from services.broker.fyers_auth_v2 import (  # noqa: E402
                 FyersAuthError as _FyersAuthError,
                 build_fyers_child_env_v2 as _build_env,
             )
         except Exception as exc:
-            self._log(
-                f"[{spec.name}] START_FAILED: FYERS_ENV_IMPORT: "
-                f"{type(exc).__name__}"
-            )
+            self._log(f"[{spec.name}] START_FAILED: FYERS_ENV_IMPORT: {type(exc).__name__}")
             return StartOutcome("START_ENV_FAILURE", note=f"import:{type(exc).__name__}")
 
         try:
@@ -219,19 +235,16 @@ class AutomatedPaperSupervisorV2:
                 f"[{spec.name}] START_FAILED: FYERS_ENV: "
                 f"{getattr(exc, 'reason_code', 'AUTH_MISSING')}"
             )
-            return StartOutcome("START_ENV_FAILURE", note=getattr(exc, "reason_code", "AUTH_MISSING"))
-        except Exception as exc:
-            self._log(
-                f"[{spec.name}] START_FAILED: FYERS_ENV: "
-                f"{type(exc).__name__}"
+            return StartOutcome(
+                "START_ENV_FAILURE", note=getattr(exc, "reason_code", "AUTH_MISSING")
             )
+        except Exception as exc:
+            self._log(f"[{spec.name}] START_FAILED: FYERS_ENV: {type(exc).__name__}")
             return StartOutcome("START_ENV_FAILURE", note=type(exc).__name__)
 
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONUTF8"] = "1"
-        env["PAPER_STOP_REQUEST_FILE"] = str(
-            self.log_dir / "stops" / f"{spec.name}.request"
-        )
+        env["PAPER_STOP_REQUEST_FILE"] = str(self.log_dir / "stops" / f"{spec.name}.request")
         env["PAPER_STOP_ACK_FILE"] = str(self.log_dir / "stops" / f"{spec.name}.ack")
 
         stdout_path = self.log_dir / f"{spec.name}_stdout.log"
@@ -240,10 +253,12 @@ class AutomatedPaperSupervisorV2:
         out_f = open(stdout_path, "a", encoding="utf-8", errors="replace")
         err_f = open(stderr_path, "a", encoding="utf-8", errors="replace")
         try:
-            proc = subprocess.Popen(args, cwd=str(self.repo_root),
-                                    stdout=out_f, stderr=err_f, env=env)
+            proc = subprocess.Popen(
+                args, cwd=str(self.repo_root), stdout=out_f, stderr=err_f, env=env
+            )
         except Exception as exc:
-            out_f.close(); err_f.close()
+            out_f.close()
+            err_f.close()
             self._log(f"[{spec.name}] START_FAILED: {type(exc).__name__}: {exc}")
             return StartOutcome("START_SPAWN_FAILURE", note=type(exc).__name__)
         self._log(f"[{spec.name}] started pid={proc.pid}")
@@ -302,10 +317,7 @@ class AutomatedPaperSupervisorV2:
         status = (ack_payload or {}).get("status") if ack_payload else None
         if status == "POSITION_MANAGEMENT_ACTIVE":
             total_window += self.POSITION_MANAGEMENT_EXTEND_SECONDS
-            self._log(
-                f"[{spec.name}] POSITION_MANAGEMENT_WINDOW_EXTENDED "
-                f"total={total_window}s"
-            )
+            self._log(f"[{spec.name}] POSITION_MANAGEMENT_WINDOW_EXTENDED total={total_window}s")
         elif status in ("FLAT_SAFE_TO_EXIT", "TERMINAL_RECONCILED"):
             self._log(f"[{spec.name}] SAFE_TO_EXIT status={status}")
         elif status == "STATE_HOLD":
@@ -355,15 +367,13 @@ class AutomatedPaperSupervisorV2:
         for this market until the state is corrected manually.
         """
         try:
-            from services.paper_orchestration.state_authority_readonly_v2 import (
+            from services.paper_orchestration.state_authority_readonly_v2 import (  # noqa: E402
                 validate_market,
             )
+
             v = validate_market(self.repo_root, spec.name)
         except Exception as exc:
-            self._log(
-                f"[{spec.name}] STOP_STATE_VALIDATION_RAISED "
-                f"{type(exc).__name__}"
-            )
+            self._log(f"[{spec.name}] STOP_STATE_VALIDATION_RAISED {type(exc).__name__}")
             return
         if v.ok:
             self._log(f"[{spec.name}] STOP_STATE_VALIDATED reason={v.reason}")
@@ -371,8 +381,7 @@ class AutomatedPaperSupervisorV2:
                 self._log(f"[{spec.name}] STOP_STATE_NOTE {v.note}")
         else:
             self._log(
-                f"[{spec.name}] STOP_STATE_HOLD reason={v.reason} "
-                f"note={v.note} forced={forced}"
+                f"[{spec.name}] STOP_STATE_HOLD reason={v.reason} note={v.note} forced={forced}"
             )
 
     def _classify_exit(self, spec, rc, *, expected_alive=True):
@@ -434,11 +443,12 @@ class AutomatedPaperSupervisorV2:
             self._log(f"[DRY_RUN] would run analysis for {spec.name} {day}")
             return "ANALYSIS_DRY_RUN"
         try:
-            from services.paper_orchestration.campaign_analysis_v2 import (
-                analyze_market_day, write_daily_report,
+            from services.paper_orchestration.campaign_analysis_v2 import (  # noqa: E402
+                analyze_market_day,
+                write_daily_report,
             )
-            summary = analyze_market_day(market=spec.name, day=day,
-                                         repo_root=str(self.repo_root))
+
+            summary = analyze_market_day(market=spec.name, day=day, repo_root=str(self.repo_root))
             path = write_daily_report(summary, repo_root=str(self.repo_root))
             self._log(f"[{spec.name}] daily report -> {path}")
             return "ANALYSIS_SUCCESS"
@@ -492,9 +502,7 @@ class AutomatedPaperSupervisorV2:
             # Wave 1 — calendar authority
             auth = _session_authority_for(spec, now)
             if not auth.calendar_authoritative:
-                self._log(
-                    f"[{spec.name}] CALENDAR_HOLD status={auth.status} note={auth.note}"
-                )
+                self._log(f"[{spec.name}] CALENDAR_HOLD status={auth.status} note={auth.note}")
                 # Do not start. Do not stop a running worker: it must be able to close positions.
                 continue
 
@@ -576,16 +584,19 @@ class AutomatedPaperSupervisorV2:
 
 def _main():
     _acquire_lock()
-    import argparse
+    import argparse  # noqa: E402
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--poll-seconds", type=float, default=30.0)
     ap.add_argument("--python-exe", default=sys.executable)
-    ap.add_argument("--repo-root",
-                    default=str(Path(__file__).resolve().parents[2]))
-    ap.add_argument("--markets", default=None,
-                    help="Comma-separated subset of {NIFTY,SENSEX,CRUDEOILM,GOLDM,NATGASMINI}; default all five.")
+    ap.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[2]))
+    ap.add_argument(
+        "--markets",
+        default=None,
+        help="Comma-separated subset of {NIFTY,SENSEX,CRUDEOILM,GOLDM,NATGASMINI}; default all five.",
+    )
     args = ap.parse_args()
     markets = None
     if args.markets:
