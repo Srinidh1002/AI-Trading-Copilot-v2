@@ -16,10 +16,18 @@ PRODUCT_EPOCHS = {
         "certification_eligible": True,
     },
     "GOLDM": {
-        "strategy_version": "MCX_GOLDM_PRECERT_V1",
-        "epoch": "GOLDM_PRECERT_V1",
+        "strategy_version": "MCX_GOLDM_PRECERT_V2",
+        "epoch": "GOLDM_PRECERT_V2",
         "version_path": "data/paper_trades/mcx_goldm_strategy_version.json",
         # PROMOTED 2026-09-23 - certification_eligible flipped to True
+        # M5 F15-R2 (2026-09-29): epoch bumped V1 -> V2 after the
+        # StablePCR repair (commit 88583a9) changed GOLDM entry
+        # eligibility from always-blocked by PCR_INCOMPLETE to
+        # potentially tradeable when the reference region has >=5
+        # paired listed strikes with >=2 on each side. This is a
+        # strategy evidence semantics change and requires a fresh
+        # epoch per spec section 34. V1 authority and state are
+        # archived, not deleted.
         "certification_eligible": True,
     },
     "NATGASMINI": {
