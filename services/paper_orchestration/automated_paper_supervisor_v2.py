@@ -232,6 +232,20 @@ class AutomatedPaperSupervisorV2:
         Returns StartOutcome. Callers route status into the per-market
         restart authority; None is never returned for a real start.
         """
+        # F15-R2 M9c: clear any stale cooperative-stop artifacts from a
+        # previous session before spawning. A leftover .request file
+        # would make the fresh worker exit immediately on startup as a
+        # cooperative FLAT_ACK_EXIT, which the supervisor then
+        # misclassifies as UNEXPECTED_EXIT_ZERO and enters a restart
+        # backoff loop. Runs even in dry-run so repeated preflights do
+        # not leave the state inconsistent.
+        _stops = self.log_dir / "stops"
+        try:
+            _stops.mkdir(parents=True, exist_ok=True)
+            (_stops / f"{spec.name}.request").unlink(missing_ok=True)
+            (_stops / f"{spec.name}.ack").unlink(missing_ok=True)
+        except OSError:
+            pass
         if self.dry_run:
             self._log(f"[DRY_RUN] would start {spec.name}: {spec.script} {spec.args}")
             return StartOutcome("DRY_RUN")
@@ -472,6 +486,24 @@ class AutomatedPaperSupervisorV2:
             spec.name, now, max_age_seconds=self.HEARTBEAT_MAX_AGE_SECONDS
         )
         rt.last_heartbeat_age_seconds = age
+        # F15-R2 M9c: ignore heartbeats written before the current
+        # worker started. A fresh spawn has not had time to write its
+        # first heartbeat yet; the previous session's file may still
+        # be on disk and would otherwise be classified HEARTBEAT_STALE.
+        if (
+            cls == "HEARTBEAT_STALE"
+            and rt.last_start_ist is not None
+            and isinstance(hb, dict)
+        ):
+            try:
+                from datetime import datetime as _dt_hb
+                _hb_ts = _dt_hb.fromisoformat(str(hb.get("timestamp") or ""))
+                if _hb_ts.tzinfo is None:
+                    _hb_ts = _hb_ts.replace(tzinfo=rt.last_start_ist.tzinfo)
+                if _hb_ts < rt.last_start_ist:
+                    cls = "NO_HEARTBEAT"
+            except (ValueError, TypeError):
+                pass
         if cls != "HEARTBEAT_STALE":
             # NO_HEARTBEAT is treated as 'not yet emitting' — normal
             # during startup ticks before the first stage marker.
