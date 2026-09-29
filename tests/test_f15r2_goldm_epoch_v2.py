@@ -13,6 +13,7 @@ This file proves:
   * no other market epoch was modified
   * GOLDM counter is still 0 (nothing was counted under V1)
 """
+
 from __future__ import annotations
 
 import json
@@ -33,35 +34,41 @@ V2_AUTH = REPO / "data" / "paper_trades" / "mcx_goldm_strategy_version.json"
 V2_STATE = REPO / "data" / "paper_trades" / "mcx_goldm_experimental.json"
 
 
-# ---------- registry ----------
+# ---------- current successor registry ----------
 
-def test_goldm_registry_is_v2():
+
+def test_goldm_registry_has_r22_successor_v3():
     cfg = get_product_epochs("GOLDM")
-    assert cfg["strategy_version"] == "MCX_GOLDM_PRECERT_V2"
-    assert cfg["epoch"] == "GOLDM_PRECERT_V2"
+
+    assert cfg["strategy_version"] == "MCX_GOLDM_PRECERT_V3"
+
+    assert cfg["epoch"] == "GOLDM_PRECERT_V3"
+
     assert cfg["certification_eligible"] is True
 
 
-def test_crudeoilm_epoch_unchanged():
-    assert get_product_epochs("CRUDEOILM")["epoch"] == "POST_PRECISION_V4"
-    assert (
-        get_product_epochs("CRUDEOILM")["strategy_version"]
-        == "MCX_POST_PRECISION_V4"
-    )
+def test_crudeoilm_registry_has_r22_successor_v5():
+    cfg = get_product_epochs("CRUDEOILM")
+
+    assert cfg["epoch"] == "POST_PRECISION_V5"
+
+    assert cfg["strategy_version"] == "MCX_POST_PRECISION_V5"
+
+    assert cfg["certification_eligible"] is True
 
 
-def test_natgasmini_epoch_unchanged():
-    assert (
-        get_product_epochs("NATGASMINI")["epoch"]
-        == "NATGASMINI_PRECERT_V1"
-    )
-    assert (
-        get_product_epochs("NATGASMINI")["strategy_version"]
-        == "MCX_NATGASMINI_PRECERT_V1"
-    )
+def test_natgasmini_registry_has_r22_successor_v2():
+    cfg = get_product_epochs("NATGASMINI")
+
+    assert cfg["epoch"] == "NATGASMINI_PRECERT_V2"
+
+    assert cfg["strategy_version"] == "MCX_NATGASMINI_PRECERT_V2"
+
+    assert cfg["certification_eligible"] is True
 
 
 # ---------- archive ----------
+
 
 def test_v1_authority_archived_intact():
     v1 = ARCHIVE / "mcx_goldm_strategy_version.json"
@@ -84,6 +91,7 @@ def test_v1_state_archived_intact():
 
 # ---------- fresh V2 ----------
 
+
 def test_v2_authority_valid():
     assert V2_AUTH.is_file()
     rec = json.loads(V2_AUTH.read_text(encoding="utf-8"))
@@ -105,22 +113,86 @@ def test_v2_state_valid_and_flat():
     assert int(st.get("total_trades", 0) or 0) == 0
 
 
-def test_initialize_or_verify_goldm_is_ok(monkeypatch):
-    monkeypatch.chdir(REPO)
-    r = initialize_or_verify_for_product("GOLDM")
-    assert r.get("status") == "OK", r
+def _assert_old_authority_is_refused(
+    monkeypatch,
+    tmp_path,
+    *,
+    product,
+    old_strategy,
+    old_epoch,
+):
+    cfg = get_product_epochs(product)
+
+    assert cfg is not None
+
+    old_authority = tmp_path / f"{product.lower()}_old_authority.json"
+
+    old_authority.write_text(
+        json.dumps(
+            {
+                "product": product,
+                "strategy_version": old_strategy,
+                "epoch": old_epoch,
+                "certification_eligible": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setitem(
+        cfg,
+        "version_path",
+        str(old_authority),
+    )
+
+    result = initialize_or_verify_for_product(product)
+
+    assert result["status"] == "VERSION_MISMATCH"
+
+    assert result["stored"] == old_strategy
+
+    assert result["current"] == cfg["strategy_version"]
+
+    assert result["action"] == "REFUSE_TO_TRADE"
 
 
-def test_initialize_or_verify_crudeoilm_still_ok(monkeypatch):
-    monkeypatch.chdir(REPO)
-    r = initialize_or_verify_for_product("CRUDEOILM")
-    assert r.get("status") in ("OK", "INITIALIZED"), r
+def test_old_goldm_v2_authority_is_refused(
+    monkeypatch,
+    tmp_path,
+):
+    _assert_old_authority_is_refused(
+        monkeypatch,
+        tmp_path,
+        product="GOLDM",
+        old_strategy="MCX_GOLDM_PRECERT_V2",
+        old_epoch="GOLDM_PRECERT_V2",
+    )
 
 
-def test_initialize_or_verify_natgasmini_still_ok(monkeypatch):
-    monkeypatch.chdir(REPO)
-    r = initialize_or_verify_for_product("NATGASMINI")
-    assert r.get("status") in ("OK", "INITIALIZED"), r
+def test_old_crude_v4_authority_is_refused(
+    monkeypatch,
+    tmp_path,
+):
+    _assert_old_authority_is_refused(
+        monkeypatch,
+        tmp_path,
+        product="CRUDEOILM",
+        old_strategy="MCX_POST_PRECISION_V4",
+        old_epoch="POST_PRECISION_V4",
+    )
+
+
+def test_old_natgasmini_v1_authority_is_refused(
+    monkeypatch,
+    tmp_path,
+):
+    _assert_old_authority_is_refused(
+        monkeypatch,
+        tmp_path,
+        product="NATGASMINI",
+        old_strategy="MCX_NATGASMINI_PRECERT_V1",
+        old_epoch="NATGASMINI_PRECERT_V1",
+    )
 
 
 def test_goldm_counter_still_zero():

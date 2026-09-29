@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -24,6 +25,30 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DIR = _REPO_ROOT / "logs" / "supervisor" / "heartbeats"
 
 _WARNED: set[str] = set()
+
+# R22_HEARTBEAT_REPLACE_RETRY — OneDrive/Windows can transiently hold
+# the destination of os.replace(). Retry PermissionError only; other
+# filesystem failures retain the existing best-effort behavior.
+_REPLACE_MAX_ATTEMPTS = 6
+_REPLACE_BASE_DELAY_SECONDS = 0.05
+_REPLACE_MAX_DELAY_SECONDS = 0.40
+
+
+def _replace_with_permission_retry(source, target) -> None:
+    for attempt in range(_REPLACE_MAX_ATTEMPTS):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt + 1 >= _REPLACE_MAX_ATTEMPTS:
+                raise
+
+            delay = min(
+                _REPLACE_BASE_DELAY_SECONDS * (2 ** attempt),
+                _REPLACE_MAX_DELAY_SECONDS,
+            )
+
+            time.sleep(delay)
 
 
 def _heartbeat_dir() -> Path:
@@ -112,7 +137,7 @@ def beat(
                 json.dump(payload, f, indent=2, default=str)
                 f.flush()
                 os.fsync(f.fileno())
-            os.replace(tmp, path)
+            _replace_with_permission_retry(tmp, path)
         except OSError:
             try:
                 os.unlink(tmp)

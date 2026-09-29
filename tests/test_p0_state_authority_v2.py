@@ -1,4 +1,5 @@
 """Wave 2 — state authority for index and MCX. Synthetic fixtures, temp paths."""
+
 from __future__ import annotations
 
 import json
@@ -15,19 +16,30 @@ sys.path.insert(0, str(REPO))
 @pytest.fixture
 def mcx_bot(monkeypatch, tmp_path):
     from mcx import mcx_paper_bot as m
+
     monkeypatch.setattr(m, "PRODUCT", "CRUDEOILM")
-    monkeypatch.setattr(
-        m, "STATE_PATH", str(tmp_path / "mcx_crudeoilm_experimental.json")
-    )
+    monkeypatch.setattr(m, "STATE_PATH", str(tmp_path / "mcx_crudeoilm_experimental.json"))
     return m
 
 
-def _valid_mcx_state(product="CRUDEOILM", epoch="POST_PRECISION_V4",
-                     version="MCX_POST_PRECISION_V4"):
+def _valid_mcx_state(
+    product="CRUDEOILM",
+    epoch=None,
+    version=None,
+):
+    from mcx.mcx_version import (
+        get_product_epochs,
+    )
+
+    cfg = get_product_epochs(product)
+
+    if cfg is None:
+        raise AssertionError(f"missing product registry: {product}")
+
     return {
         "product": product,
-        "epoch": epoch,
-        "strategy_version": version,
+        "epoch": (cfg["epoch"] if epoch is None else epoch),
+        "strategy_version": (cfg["strategy_version"] if version is None else version),
         "_counted_trade_ids": [],
         "t1_hit_wins": 0,
         "sl_losses": 0,
@@ -100,9 +112,7 @@ def test_mcx_malformed_active_position_raises(mcx_bot):
     st = _valid_mcx_state()
     st["active_position"] = {"symbol": "X"}  # missing trade_id and entry_time
     _write(mcx_bot.STATE_PATH, st)
-    with pytest.raises(
-        mcx_bot.MCXStateAuthorityError, match="SCHEMA_INVALID_ACTIVE_POSITION"
-    ):
+    with pytest.raises(mcx_bot.MCXStateAuthorityError, match="SCHEMA_INVALID_ACTIVE_POSITION"):
         mcx_bot.load_state()
 
 
@@ -117,7 +127,16 @@ def test_mcx_save_is_atomic(mcx_bot):
 
 
 def test_default_state_for_matches_epoch(mcx_bot):
+    from mcx.mcx_version import (
+        get_product_epochs,
+    )
+
+    cfg = get_product_epochs("CRUDEOILM")
+
     st = mcx_bot._default_state_for("CRUDEOILM")
+
     assert st["product"] == "CRUDEOILM"
-    assert st["epoch"] == "POST_PRECISION_V4"
-    assert st["strategy_version"] == "MCX_POST_PRECISION_V4"
+
+    assert st["epoch"] == cfg["epoch"]
+
+    assert st["strategy_version"] == cfg["strategy_version"]

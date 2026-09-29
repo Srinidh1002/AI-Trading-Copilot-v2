@@ -10,14 +10,14 @@ from datetime import datetime
 # GOLDM / NATGASMINI use PRECERT epochs until their FYERS PAPER paths are proven.
 PRODUCT_EPOCHS = {
     "CRUDEOILM": {
-        "strategy_version": "MCX_POST_PRECISION_V4",
-        "epoch": "POST_PRECISION_V4",
+        "strategy_version": "MCX_POST_PRECISION_V5",
+        "epoch": "POST_PRECISION_V5",
         "version_path": "data/paper_trades/mcx_strategy_version.json",
         "certification_eligible": True,
     },
     "GOLDM": {
-        "strategy_version": "MCX_GOLDM_PRECERT_V2",
-        "epoch": "GOLDM_PRECERT_V2",
+        "strategy_version": "MCX_GOLDM_PRECERT_V3",
+        "epoch": "GOLDM_PRECERT_V3",
         "version_path": "data/paper_trades/mcx_goldm_strategy_version.json",
         # PROMOTED 2026-09-23 - certification_eligible flipped to True
         # M5 F15-R2 (2026-09-29): epoch bumped V1 -> V2 after the
@@ -31,8 +31,8 @@ PRODUCT_EPOCHS = {
         "certification_eligible": True,
     },
     "NATGASMINI": {
-        "strategy_version": "MCX_NATGASMINI_PRECERT_V1",
-        "epoch": "NATGASMINI_PRECERT_V1",
+        "strategy_version": "MCX_NATGASMINI_PRECERT_V2",
+        "epoch": "NATGASMINI_PRECERT_V2",
         "version_path": "data/paper_trades/mcx_natgasmini_strategy_version.json",
         # PROMOTED 2026-09-23 - certification_eligible flipped to True
         "certification_eligible": True,

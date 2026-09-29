@@ -11,10 +11,41 @@ class PriceOITracker:
         self._prev = None  # {price, oi, ts}
 
     def update(self, price, oi):
-        """Call once per cycle with current future price and OI."""
+        """Call once per cycle with current future price and OI.
+
+        Invalid or missing observations must never replace the most recent
+        valid baseline. Otherwise a transient provider failure such as
+        price=0 / oi=0 can manufacture a false -100% Price/OI transition.
+        """
         state = "UNKNOWN"
         price_chg_pct = None
         oi_chg_pct = None
+
+        try:
+            price_value = float(price)
+            oi_value = float(oi)
+        except (TypeError, ValueError):
+            return {
+                "state": "UNKNOWN",
+                "reason": "INVALID_OBSERVATION",
+                "price_chg_pct": None,
+                "oi_chg_pct": None,
+                "price": price,
+                "oi": oi,
+            }
+
+        if price_value <= 0 or oi_value <= 0:
+            return {
+                "state": "UNKNOWN",
+                "reason": "INVALID_OBSERVATION",
+                "price_chg_pct": None,
+                "oi_chg_pct": None,
+                "price": price,
+                "oi": oi,
+            }
+
+        price = price_value
+        oi = oi_value
 
         if self._prev is not None and self._prev["price"] > 0 and self._prev["oi"] > 0:
             price_chg_pct = (price - self._prev["price"]) / self._prev["price"] * 100
@@ -25,11 +56,16 @@ class PriceOITracker:
             oi_up = oi_chg_pct > 0.1
             oi_dn = oi_chg_pct < -0.1
 
-            if price_up and oi_up:   state = "LONG_BUILDUP"
-            elif price_dn and oi_up: state = "SHORT_BUILDUP"
-            elif price_up and oi_dn: state = "SHORT_COVERING"
-            elif price_dn and oi_dn: state = "LONG_UNWINDING"
-            else:                    state = "FLAT"
+            if price_up and oi_up:
+                state = "LONG_BUILDUP"
+            elif price_dn and oi_up:
+                state = "SHORT_BUILDUP"
+            elif price_up and oi_dn:
+                state = "SHORT_COVERING"
+            elif price_dn and oi_dn:
+                state = "LONG_UNWINDING"
+            else:
+                state = "FLAT"
 
         self._prev = {"price": price, "oi": oi}
 
@@ -37,7 +73,7 @@ class PriceOITracker:
         if price_chg_pct is None:
             reason = "BASELINE_UNAVAILABLE"
         elif state == "FLAT":
-            reason = f"BOTH_BELOW_THRESHOLD(p<0.10%,oi<0.10%)"
+            reason = "BOTH_BELOW_THRESHOLD(p<0.10%,oi<0.10%)"
         else:
             reason = f"CLASSIFIED_{state}"
 

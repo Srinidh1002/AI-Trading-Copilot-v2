@@ -112,7 +112,7 @@ def t11_silver_default_state_shape():
 
 
 def t12_crude_default_state_preserves_v3_epoch():
-    """Legacy test name retained; authority is current V4 epoch."""
+    """Legacy function name retained; authority is current V5 epoch."""
     from mcx.mcx_paper_bot import _default_state_for
     from mcx.mcx_version import get_product_epochs
 
@@ -123,12 +123,12 @@ def t12_crude_default_state_preserves_v3_epoch():
 
     assert (
         authority["strategy_version"]
-        == "MCX_POST_PRECISION_V4"
+        == "MCX_POST_PRECISION_V5"
     )
 
     assert (
         authority["epoch"]
-        == "POST_PRECISION_V4"
+        == "POST_PRECISION_V5"
     )
 
     assert (

@@ -66,7 +66,18 @@ try:
         "current_session": 3,
         "total_trades": 3,
         "total_pnl": -833.85,
-        # NOTE: no strategy_version, no certification_epoch
+
+        # Current state-authority schema must still be coherent.
+        # This fixture is legacy ONLY with respect to epoch metadata.
+        "certification_counter": 0,
+        "certification_wins": 0,
+        "certification_losses": 0,
+        "counted_trade_ids": [],
+        "active_trades": [],
+
+        # Intentionally absent:
+        # strategy_version
+        # certification_epoch
     }
     with open(legacy_path, "w", encoding="utf-8") as f:
         json.dump(legacy_state, f, indent=2)
@@ -103,10 +114,10 @@ ok("trade dict has certification_epoch",
 # --- Case E: constants are exact strings ---
 print("\n[E] Constants match approved values")
 ok("STRATEGY_VERSION exact",
-   STRATEGY_VERSION == "NS_DESIGN_B_BID_AUTH_V3",
+   STRATEGY_VERSION == "NS_DESIGN_B_BID_AUTH_V4",
    f"{STRATEGY_VERSION!r}")
 ok("CERTIFICATION_EPOCH exact",
-   CERTIFICATION_EPOCH == "NS_CERT_20260916_V3",
+   CERTIFICATION_EPOCH == "NS_CERT_20260929_V4",
    f"{CERTIFICATION_EPOCH!r}")
 
 # --- Summary ---

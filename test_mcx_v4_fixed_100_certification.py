@@ -280,11 +280,29 @@ def test_runner_stops_when_fixed_sample_reaches_100():
         is True
     )
 
-    # PRECERT products must not be governed by /100.
+    # Every certification-eligible current MCX product is governed
+    # by the same fixed first-100 campaign boundary.
     assert (
         certification_target_reached(
             at_100_failed,
             "GOLDM",
+        )
+        is True
+    )
+
+    assert (
+        certification_target_reached(
+            at_100_failed,
+            "NATGASMINI",
+        )
+        is True
+    )
+
+    # Unknown / non-registry products cannot certify.
+    assert (
+        certification_target_reached(
+            at_100_failed,
+            "SILVERM",
         )
         is False
     )

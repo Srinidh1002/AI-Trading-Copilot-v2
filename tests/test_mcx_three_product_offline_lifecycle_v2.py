@@ -15,11 +15,6 @@ execution evidence.
 
 from __future__ import annotations
 
-from datetime import (
-    datetime,
-    timezone,
-)
-
 import pytest
 
 from mcx.mcx_certification import (
@@ -54,7 +49,6 @@ from mcx.mcx_reconcile import (
 from mcx.mcx_version import (
     get_product_epochs,
 )
-
 
 PRODUCTS_UNDER_TEST = (
     "CRUDEOILM",
@@ -870,20 +864,20 @@ def test_reconciliation_uses_current_product_registry(
     )
 
 
-def test_crude_uses_current_v4_not_stale_v2():
+def test_crude_uses_current_v5_not_stale_v4():
     cfg = get_product_epochs(
         "CRUDEOILM"
     )
 
     assert (
         cfg["epoch"]
-        == "POST_PRECISION_V4"
+        == "POST_PRECISION_V5"
     )
 
     rec = reconcile(
         {
             "trade_id":
-                "CRUDE_V4_PROOF",
+                "CRUDE_V5_PROOF",
             "product":
                 "CRUDEOILM",
             "entry":
@@ -898,18 +892,18 @@ def test_crude_uses_current_v4_not_stale_v2():
 
     assert (
         rec["epoch_id"]
-        == "POST_PRECISION_V4"
+        == "POST_PRECISION_V5"
     )
 
     assert (
         rec[
             "strategy_version"
         ]
-        == "MCX_POST_PRECISION_V4"
+        == "MCX_POST_PRECISION_V5"
     )
 
     assert (
-        "POST_PRECISION_V2"
+        "POST_PRECISION_V4"
         not in rec["epoch_id"]
     )
 

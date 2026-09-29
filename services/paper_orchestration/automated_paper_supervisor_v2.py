@@ -160,6 +160,9 @@ class WorkerRuntimeV2:
     last_exit_status: Optional[str] = None
     last_exit_at: Optional[datetime] = None
     runtime_session_date: Optional[date] = None
+    # R22_SESSION_END_LATCH — once this market has cleanly ended its
+    # authorised session, do not spawn another worker on the same day.
+    session_end_latched_date: Optional[date] = None
     # Phase F15-R1: worker liveness (Phase 6).
     last_heartbeat_age_seconds: Optional[float] = None
     recovery_required: bool = False
@@ -603,6 +606,8 @@ class AutomatedPaperSupervisorV2:
         rt.last_exit_rc = rc
         rt.last_exit_status = status
         rt.last_exit_at = now
+        if status == "CLEAN_SESSION_END":
+            rt.session_end_latched_date = day
         rt.consumed_exit_count += 1
         # Phase F15-R1: during a liveness recovery cycle, exit is
         # expected and must not be counted as a restart failure.
@@ -638,6 +643,7 @@ class AutomatedPaperSupervisorV2:
         rt.next_restart_ist = None
         rt.circuit_open = False
         rt.consecutive_healthy_ticks = 0
+        rt.session_end_latched_date = None
 
     def _record_ownership_hold(self, rt, now):
         """Another process owns this market's worker lock. Push the
@@ -750,6 +756,14 @@ class AutomatedPaperSupervisorV2:
                     self._stop_worker(spec)
                     rt.last_expected_stop_ist = now
                     self._log(f"[{spec.name}] CERT_COMPLETE counter={ms.counter}; worker stopped")
+                self._run_analysis_and_record(rt, spec, day)
+                continue
+
+            # R22_SESSION_END_LATCH — a clean session-end exit is
+            # terminal for this market/day even if the calendar still reports
+            # the close-grace interval as session_open. Without this latch the
+            # supervisor can repeatedly respawn a worker after 15:28.
+            if rt.session_end_latched_date == day:
                 self._run_analysis_and_record(rt, spec, day)
                 continue
 

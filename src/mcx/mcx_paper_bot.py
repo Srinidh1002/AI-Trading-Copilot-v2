@@ -1,4 +1,4 @@
-"""MCX PAPER BOT V4 — POST_PRECISION_V4.
+"""MCX PAPER BOT — product-scoped frozen certification policy.
 Full integration: calendar, data quality, structure, price/OI, greeks,
 stable PCR, event risk, setup classifier, position manager, reconciliation.
 NO broker orders. PAPER only. Version frozen per spec §34.
@@ -260,6 +260,31 @@ def load_state():
     return state
 
 
+# R22_MCX_STATE_REPLACE_RETRY — Windows/OneDrive can transiently
+# deny replacement of an otherwise writable state file. Retry only
+# PermissionError and remain fail-closed if the bounded window expires.
+_STATE_REPLACE_MAX_ATTEMPTS = 6
+_STATE_REPLACE_BASE_DELAY_SECONDS = 0.05
+_STATE_REPLACE_MAX_DELAY_SECONDS = 0.40
+
+
+def _replace_state_with_permission_retry(source, target) -> None:
+    for attempt in range(_STATE_REPLACE_MAX_ATTEMPTS):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt + 1 >= _STATE_REPLACE_MAX_ATTEMPTS:
+                raise
+
+            delay = min(
+                _STATE_REPLACE_BASE_DELAY_SECONDS * (2 ** attempt),
+                _STATE_REPLACE_MAX_DELAY_SECONDS,
+            )
+
+            time.sleep(delay)
+
+
 def save_state(st):
     target = Path(STATE_PATH)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -269,7 +294,10 @@ def save_state(st):
             json.dump(st, f, indent=2, default=str)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(temporary, target)
+        _replace_state_with_permission_retry(
+            temporary,
+            target,
+        )
     except OSError as exc:
         try:
             os.unlink(temporary)
