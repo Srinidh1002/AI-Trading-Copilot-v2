@@ -647,4 +647,18 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # F15-R2 M9b: after main() returns, hard-exit to bypass any
+    # non-daemon SDK threads (e.g. FYERS DataSocket reader) that
+    # would otherwise keep the interpreter alive after cleanup.
+    # Observed after FLAT_ACK_EXIT: worker ACKed flat but the parent
+    # process lingered indefinitely because the streaming reader
+    # thread never joined. Exit code from main() is preserved.
+    import os as _os_exit
+    import sys as _sys_exit
+    try:
+        _code = main()
+    except SystemExit as _se:
+        _code = _se.code if isinstance(_se.code, int) else 0
+    _sys_exit.stdout.flush()
+    _sys_exit.stderr.flush()
+    _os_exit._exit(_code)
