@@ -407,25 +407,46 @@ class AutomatedPaperSupervisorV2:
     def _market_has_persisted_position(self, spec):
         """True when the market's persisted state shows an active position.
 
-        MCX only for Phase 6a. Index positions are handled by session
-        authority; adding them here is a Phase 6b concern.
+        Index state uses a list key `active_trades`; MCX state uses a
+        single dict key `active_position`. Both shapes are handled here
+        so the recovery path works for every market. F15-R2 M9: index
+        parity added after a canary incident in which the liveness
+        watchdog did not recognise a live index position as active.
         """
-        if spec.name not in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
-            return False
-        path = (
-            self.repo_root
-            / "data"
-            / "paper_trades"
-            / f"mcx_{spec.name.lower()}_experimental.json"
-        )
-        try:
-            st = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return False
-        if not isinstance(st, dict):
-            return False
-        ap = st.get("active_position")
-        return isinstance(ap, dict) and bool(ap.get("trade_id"))
+        if spec.name in ("NIFTY", "SENSEX"):
+            path = (
+                self.repo_root
+                / "data"
+                / "paper_trades"
+                / f"{spec.name.lower()}_experimental.json"
+            )
+            try:
+                st = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return False
+            if not isinstance(st, dict):
+                return False
+            active = st.get("active_trades")
+            if isinstance(active, list) and active:
+                return True
+            ap = st.get("active_position")
+            return isinstance(ap, dict) and bool(ap.get("trade_id"))
+        if spec.name in ("CRUDEOILM", "GOLDM", "NATGASMINI"):
+            path = (
+                self.repo_root
+                / "data"
+                / "paper_trades"
+                / f"mcx_{spec.name.lower()}_experimental.json"
+            )
+            try:
+                st = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return False
+            if not isinstance(st, dict):
+                return False
+            ap = st.get("active_position")
+            return isinstance(ap, dict) and bool(ap.get("trade_id"))
+        return False
 
     def _check_worker_liveness(self, rt, spec, now):
         """Recycle or flag a stale worker. Returns True when the
@@ -434,6 +455,18 @@ class AutomatedPaperSupervisorV2:
         from services.paper_orchestration.worker_liveness_v2 import (  # noqa: E402
             classify as _classify_liveness,
         )
+
+        # F15-R2 M9 fix: the liveness watchdog was designed for the
+        # MCX pipeline hang (NATGAS stuck ~4.5h in a synchronous
+        # provider call). Index workers (NIFTY/SENSEX) emit heartbeats
+        # only at SESSION start and SLEEP end, NOT during active
+        # trade management. A stale-looking index heartbeat while a
+        # position is open is EXPECTED and must not trigger a recycle
+        # that would abandon the position. Skip the liveness check
+        # for index markets; their session-close authority already
+        # governs lifecycle at 15:28.
+        if spec.name in ("NIFTY", "SENSEX"):
+            return False
 
         cls, hb, age = _classify_liveness(
             spec.name, now, max_age_seconds=self.HEARTBEAT_MAX_AGE_SECONDS
