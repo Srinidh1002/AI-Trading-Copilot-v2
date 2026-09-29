@@ -400,6 +400,25 @@ def _build_fyers_bot():
     )
 
 
+def _f15r2_compute_exit_code(exc_info):
+    """F15-R2 M9b: map in-flight exception to process exit code.
+
+    Used inside main()'s finally so os._exit() can propagate the same
+    exit status Python would have produced.
+    """
+    exc_type, exc_val, _ = exc_info
+    if exc_type is None:
+        return 0
+    if exc_type is SystemExit and exc_val is not None:
+        code = getattr(exc_val, "code", 0)
+        if code is None:
+            return 0
+        if isinstance(code, int):
+            return code
+        return 1
+    return 1
+
+
 def main() -> int:
 
     import os as _os
@@ -644,6 +663,18 @@ def main() -> int:
                 stream_log,
                 ignore_errors=True,
             )
+
+        # F15-R2 M9b: force-exit inside finally. main() reached its
+        # return/raise site, but the interpreter was blocking at
+        # Py_Finalize on a non-daemon FYERS DataSocket reader thread
+        # that streaming.close() does not join. os._exit() bypasses
+        # Py_Finalize and terminates the process immediately. Exit
+        # code is derived from any in-flight exception.
+        import sys as _sys_fin
+        import os as _os_fin
+        _sys_fin.stdout.flush()
+        _sys_fin.stderr.flush()
+        _os_fin._exit(_f15r2_compute_exit_code(_sys_fin.exc_info()))
 
 
 if __name__ == "__main__":
