@@ -1,7 +1,99 @@
 {
-  "schema_version": "1.0",
+  "CRUDEOILM": {
+    "calibration_source": "S7_STAGE_2_3_4",
+    "depth_quantity_semantics_verified": true,
+    "depth_quantity_unit": "units",
+    "execution_freshness_calibrated": true,
+    "execution_quote_max_age_seconds": 10.0,
+    "observed_best_ask_qty_median": 30,
+    "observed_max_age_s": 7.58,
+    "observed_median_spread_ticks": 10.5,
+    "observed_p95_age_s": 7.03,
+    "rest_depth_supported": true,
+    "websocket_depth_supported": true
+  },
+  "GOLDM": {
+    "calibration_source": "S7_STAGE_2_3_4",
+    "depth_quantity_semantics_verified": true,
+    "depth_quantity_unit": "units",
+    "execution_freshness_calibrated": true,
+    "execution_quote_max_age_seconds": 12.0,
+    "observed_best_ask_qty_median": 100,
+    "observed_max_age_s": 9.58,
+    "observed_median_spread_ticks": 28.0,
+    "observed_p95_age_s": 7.57,
+    "rest_depth_supported": true,
+    "websocket_depth_supported": true
+  },
+  "NATGASMINI": {
+    "calibration_source": "S7_STAGE_2_3_4",
+    "caution": "high_lag_and_duplicate_ticks; PRECERT only",
+    "depth_quantity_semantics_verified": true,
+    "depth_quantity_unit": "units",
+    "execution_freshness_calibrated": true,
+    "execution_quote_max_age_seconds": 20.0,
+    "observed_best_ask_qty_median": 52250,
+    "observed_max_age_s": 18.55,
+    "observed_median_spread_ticks": 1.0,
+    "observed_p95_age_s": 11.58,
+    "rest_depth_supported": true,
+    "websocket_depth_supported": true
+  },
   "calibrated_at": "2026-09-15T10:11:11+05:30",
   "evidence_session": "2026-09-14_1733_to_2026-09-15_1009",
+  "providers": {
+    "FYERS": {
+      "CRUDEOILM": {
+        "calibrated_at": "2026-09-29T05:19:11.365863+00:00",
+        "calibration_provider": "FYERS",
+        "depth_freshness_basis": "SYNCHRONOUS_FYERS_DEPTH_RESPONSE",
+        "depth_provider_timestamp_available": false,
+        "depth_quantity_semantics_verified": true,
+        "depth_quantity_unit": "PROVIDER_QUANTITY",
+        "evidence_kind": "LIVE_MARKET_DEPTH",
+        "evidence_ref": "data/execution_evidence/mcx/fyers/CRUDEOILM_20260929T051631Z.jsonl",
+        "execution_freshness_calibrated": true,
+        "execution_quote_max_age_seconds": 15,
+        "last_trade_timestamp_source": [
+          "DEPTH:ltt"
+        ],
+        "quantity_unit_basis": "FYERS depth level quantity. Provider documentation available in this repository does not establish the unit as exchange lots; recorded as provider quantity. Consumed only for relative liquidity and two-sided presence. Position sizing uses contract lot size, not this field."
+      },
+      "GOLDM": {
+        "calibrated_at": "2026-09-29T05:19:11.365863+00:00",
+        "calibration_provider": "FYERS",
+        "depth_freshness_basis": "SYNCHRONOUS_FYERS_DEPTH_RESPONSE",
+        "depth_provider_timestamp_available": false,
+        "depth_quantity_semantics_verified": true,
+        "depth_quantity_unit": "PROVIDER_QUANTITY",
+        "evidence_kind": "LIVE_MARKET_DEPTH",
+        "evidence_ref": "data/execution_evidence/mcx/fyers/GOLDM_20260929T051631Z.jsonl",
+        "execution_freshness_calibrated": true,
+        "execution_quote_max_age_seconds": 15,
+        "last_trade_timestamp_source": [
+          "DEPTH:ltt"
+        ],
+        "quantity_unit_basis": "FYERS depth level quantity. Provider documentation available in this repository does not establish the unit as exchange lots; recorded as provider quantity. Consumed only for relative liquidity and two-sided presence. Position sizing uses contract lot size, not this field."
+      },
+      "NATGASMINI": {
+        "calibrated_at": "2026-09-29T05:19:11.365863+00:00",
+        "calibration_provider": "FYERS",
+        "depth_freshness_basis": "SYNCHRONOUS_FYERS_DEPTH_RESPONSE",
+        "depth_provider_timestamp_available": false,
+        "depth_quantity_semantics_verified": true,
+        "depth_quantity_unit": "PROVIDER_QUANTITY",
+        "evidence_kind": "LIVE_MARKET_DEPTH",
+        "evidence_ref": "data/execution_evidence/mcx/fyers/NATGASMINI_20260929T051631Z.jsonl",
+        "execution_freshness_calibrated": true,
+        "execution_quote_max_age_seconds": 15,
+        "last_trade_timestamp_source": [
+          "DEPTH:ltt"
+        ],
+        "quantity_unit_basis": "FYERS depth level quantity. Provider documentation available in this repository does not establish the unit as exchange lots; recorded as provider quantity. Consumed only for relative liquidity and two-sided presence. Position sizing uses contract lot size, not this field."
+      }
+    }
+  },
+  "schema_version": 2,
   "stage_evidence": {
     "stage2_snapshots": 2,
     "stage3_ws_tokens_resolved": 9,
@@ -10,44 +102,5 @@
     "stage5_spread_samples_per_token": 180,
     "stage5a_depth_samples_per_token": 75
   },
-  "CRUDEOILM": {
-    "depth_quantity_semantics_verified": true,
-    "depth_quantity_unit": "units",
-    "execution_freshness_calibrated": true,
-    "execution_quote_max_age_seconds": 10.0,
-    "rest_depth_supported": true,
-    "websocket_depth_supported": true,
-    "calibration_source": "S7_STAGE_2_3_4",
-    "observed_p95_age_s": 7.03,
-    "observed_max_age_s": 7.58,
-    "observed_median_spread_ticks": 10.5,
-    "observed_best_ask_qty_median": 30
-  },
-  "GOLDM": {
-    "depth_quantity_semantics_verified": true,
-    "depth_quantity_unit": "units",
-    "execution_freshness_calibrated": true,
-    "execution_quote_max_age_seconds": 12.0,
-    "rest_depth_supported": true,
-    "websocket_depth_supported": true,
-    "calibration_source": "S7_STAGE_2_3_4",
-    "observed_p95_age_s": 7.57,
-    "observed_max_age_s": 9.58,
-    "observed_median_spread_ticks": 28.0,
-    "observed_best_ask_qty_median": 100
-  },
-  "NATGASMINI": {
-    "depth_quantity_semantics_verified": true,
-    "depth_quantity_unit": "units",
-    "execution_freshness_calibrated": true,
-    "execution_quote_max_age_seconds": 20.0,
-    "rest_depth_supported": true,
-    "websocket_depth_supported": true,
-    "calibration_source": "S7_STAGE_2_3_4",
-    "observed_p95_age_s": 11.58,
-    "observed_max_age_s": 18.55,
-    "observed_median_spread_ticks": 1.0,
-    "observed_best_ask_qty_median": 52250,
-    "caution": "high_lag_and_duplicate_ticks; PRECERT only"
-  }
+  "updated_at": "2026-09-29T05:19:11.365863+00:00"
 }
