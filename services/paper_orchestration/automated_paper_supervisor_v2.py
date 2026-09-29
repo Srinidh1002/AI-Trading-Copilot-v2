@@ -429,10 +429,7 @@ class AutomatedPaperSupervisorV2:
         """
         if spec.name in ("NIFTY", "SENSEX"):
             path = (
-                self.repo_root
-                / "data"
-                / "paper_trades"
-                / f"{spec.name.lower()}_experimental.json"
+                self.repo_root / "data" / "paper_trades" / f"{spec.name.lower()}_experimental.json"
             )
             try:
                 st = json.loads(path.read_text(encoding="utf-8"))
@@ -470,18 +467,6 @@ class AutomatedPaperSupervisorV2:
             classify as _classify_liveness,
         )
 
-        # F15-R2 M9 fix: the liveness watchdog was designed for the
-        # MCX pipeline hang (NATGAS stuck ~4.5h in a synchronous
-        # provider call). Index workers (NIFTY/SENSEX) emit heartbeats
-        # only at SESSION start and SLEEP end, NOT during active
-        # trade management. A stale-looking index heartbeat while a
-        # position is open is EXPECTED and must not trigger a recycle
-        # that would abandon the position. Skip the liveness check
-        # for index markets; their session-close authority already
-        # governs lifecycle at 15:28.
-        if spec.name in ("NIFTY", "SENSEX"):
-            return False
-
         cls, hb, age = _classify_liveness(
             spec.name, now, max_age_seconds=self.HEARTBEAT_MAX_AGE_SECONDS
         )
@@ -490,13 +475,10 @@ class AutomatedPaperSupervisorV2:
         # worker started. A fresh spawn has not had time to write its
         # first heartbeat yet; the previous session's file may still
         # be on disk and would otherwise be classified HEARTBEAT_STALE.
-        if (
-            cls == "HEARTBEAT_STALE"
-            and rt.last_start_ist is not None
-            and isinstance(hb, dict)
-        ):
+        if cls == "HEARTBEAT_STALE" and rt.last_start_ist is not None and isinstance(hb, dict):
             try:
                 from datetime import datetime as _dt_hb
+
                 _hb_ts = _dt_hb.fromisoformat(str(hb.get("timestamp") or ""))
                 if _hb_ts.tzinfo is None:
                     _hb_ts = _hb_ts.replace(tzinfo=rt.last_start_ist.tzinfo)
@@ -509,6 +491,50 @@ class AutomatedPaperSupervisorV2:
             # during startup ticks before the first stage marker.
             return False
 
+        # F15-R2.1 final hardening:
+        #
+        # Index workers intentionally do not emit normal heartbeat
+        # markers while an active PAPER position is being managed.
+        # Therefore a stale heartbeat is NOT sufficient authority to
+        # recycle an index worker.
+        #
+        # Recycle NIFTY/SENSEX only when durable state explicitly says
+        # active_trades == [].
+        #
+        # Active, missing, unreadable, or malformed state fails safe:
+        # preserve the worker and log a hold instead of risking
+        # abandonment of a PAPER position.
+        if spec.name in ("NIFTY", "SENSEX"):
+            state_path = (
+                self.repo_root / "data" / "paper_trades" / f"{spec.name.lower()}_experimental.json"
+            )
+            try:
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                self._log(f"[{spec.name}] INDEX_LIVENESS_STATE_HOLD reason=STATE_UNREADABLE")
+                return False
+
+            if not isinstance(state, dict):
+                self._log(f"[{spec.name}] INDEX_LIVENESS_STATE_HOLD reason=STATE_NOT_OBJECT")
+                return False
+
+            active_trades = state.get("active_trades")
+
+            if not isinstance(active_trades, list):
+                self._log(f"[{spec.name}] INDEX_LIVENESS_STATE_HOLD reason=ACTIVE_TRADES_NOT_LIST")
+                return False
+
+            if active_trades:
+                self._log(
+                    f"[{spec.name}] INDEX_ACTIVE_POSITION_LIVENESS_SKIP "
+                    f"active_count={len(active_trades)}"
+                )
+                return False
+
+            # Explicit durable flat state. Normal stale-heartbeat
+            # recovery below is now authorized.
+            self._log(f"[{spec.name}] INDEX_FLAT_LIVENESS_RECOVERY_AUTHORIZED")
+
         stage = (hb or {}).get("stage", "?")
         has_pos = self._market_has_persisted_position(spec)
         tid = ((hb or {}).get("trade_id")) or None
@@ -519,10 +545,7 @@ class AutomatedPaperSupervisorV2:
             )
             rt.recovery_required = True
         else:
-            self._log(
-                f"[{spec.name}] HUNG_WORKER_DETECTED "
-                f"stage={stage} age={age:.1f}s"
-            )
+            self._log(f"[{spec.name}] HUNG_WORKER_DETECTED stage={stage} age={age:.1f}s")
             rt.recovery_required = False
 
         self._stop_worker(spec, grace_seconds=self.HUNG_STOP_GRACE_SECONDS)
@@ -553,11 +576,7 @@ class AutomatedPaperSupervisorV2:
         except Exception:
             return False
         delta = (close_dt - now).total_seconds()
-        return (
-            -self.CLOSE_GRACE_AFTER_SECONDS
-            <= delta
-            <= self.CLOSE_GRACE_BEFORE_SECONDS
-        )
+        return -self.CLOSE_GRACE_AFTER_SECONDS <= delta <= self.CLOSE_GRACE_BEFORE_SECONDS
 
     def _consume_exit(self, rt, spec, now, day, *, expected_alive):
         """Consume one process exit exactly once.
@@ -579,9 +598,7 @@ class AutomatedPaperSupervisorV2:
         if rc == 0 and self._in_close_grace(spec, now):
             status = "CLEAN_SESSION_END"
         else:
-            status = self._classify_exit(
-                spec, rc, expected_alive=expected_alive
-            )
+            status = self._classify_exit(spec, rc, expected_alive=expected_alive)
         rt.exit_history.append((day, rc, status))
         rt.last_exit_rc = rc
         rt.last_exit_status = status
@@ -590,11 +607,15 @@ class AutomatedPaperSupervisorV2:
         # Phase F15-R1: during a liveness recovery cycle, exit is
         # expected and must not be counted as a restart failure.
         in_recovery = bool(getattr(rt, "recovery_required", False))
-        if status in (
-            "STARTUP_FAILURE",
-            "RUNTIME_FAILURE",
-            "UNEXPECTED_EXIT_ZERO",
-        ) and not in_recovery:
+        if (
+            status
+            in (
+                "STARTUP_FAILURE",
+                "RUNTIME_FAILURE",
+                "UNEXPECTED_EXIT_ZERO",
+            )
+            and not in_recovery
+        ):
             self._record_failure(rt, now, rc)
         self._log(
             f"[{spec.name}] WORKER_EXIT rc={rc} classified={status} "
@@ -612,10 +633,7 @@ class AutomatedPaperSupervisorV2:
             return
         rt.runtime_session_date = day
         if rt.circuit_open:
-            self._log(
-                f"[{rt.spec.name}] SESSION_RESET day={day} "
-                f"prior_circuit_open=True cleared"
-            )
+            self._log(f"[{rt.spec.name}] SESSION_RESET day={day} prior_circuit_open=True cleared")
         rt.restart_failures = []
         rt.next_restart_ist = None
         rt.circuit_open = False
@@ -731,18 +749,14 @@ class AutomatedPaperSupervisorV2:
                 if rt.process is not None and rt.process.poll() is None:
                     self._stop_worker(spec)
                     rt.last_expected_stop_ist = now
-                    self._log(
-                        f"[{spec.name}] CERT_COMPLETE counter={ms.counter}; worker stopped"
-                    )
+                    self._log(f"[{spec.name}] CERT_COMPLETE counter={ms.counter}; worker stopped")
                 self._run_analysis_and_record(rt, spec, day)
                 continue
 
             # Wave 1 - calendar authority
             auth = _session_authority_for(spec, now)
             if not auth.calendar_authoritative:
-                self._log(
-                    f"[{spec.name}] CALENDAR_HOLD status={auth.status} note={auth.note}"
-                )
+                self._log(f"[{spec.name}] CALENDAR_HOLD status={auth.status} note={auth.note}")
                 continue
 
             if auth.session_open:
@@ -756,9 +770,7 @@ class AutomatedPaperSupervisorV2:
                             continue
                         self._record_healthy(rt, now)
                         continue
-                    status = self._consume_exit(
-                        rt, spec, now, day, expected_alive=True
-                    )
+                    status = self._consume_exit(rt, spec, now, day, expected_alive=True)
                     if status == "CLEAN_SESSION_END":
                         # Legitimate close-window exit: no restart, run analysis.
                         self._run_analysis_and_record(rt, spec, day)
@@ -775,8 +787,7 @@ class AutomatedPaperSupervisorV2:
                     if getattr(rt, "recovery_required", False):
                         if not self._market_has_persisted_position(spec):
                             self._log(
-                                f"[{spec.name}] RECOVERY_COMPLETE "
-                                f"position_terminal_cleared flag"
+                                f"[{spec.name}] RECOVERY_COMPLETE position_terminal_cleared flag"
                             )
                             rt.recovery_required = False
                 elif outcome.status == "START_OWNERSHIP_HOLD":
@@ -809,9 +820,7 @@ class AutomatedPaperSupervisorV2:
                         rt.last_stop_ist = now
                         rt.last_expected_stop_ist = now
                     else:
-                        self._consume_exit(
-                            rt, spec, now, day, expected_alive=False
-                        )
+                        self._consume_exit(rt, spec, now, day, expected_alive=False)
                 self._run_analysis_and_record(rt, spec, day)
 
     def run_forever(self, poll_seconds=30.0):
