@@ -670,8 +670,8 @@ def main() -> int:
         # that streaming.close() does not join. os._exit() bypasses
         # Py_Finalize and terminates the process immediately. Exit
         # code is derived from any in-flight exception.
-        import sys as _sys_fin
         import os as _os_fin
+        import sys as _sys_fin
         _sys_fin.stdout.flush()
         _sys_fin.stderr.flush()
         _os_fin._exit(_f15r2_compute_exit_code(_sys_fin.exc_info()))
