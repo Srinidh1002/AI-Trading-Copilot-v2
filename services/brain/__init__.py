@@ -108,7 +108,35 @@ from .shadow_reducer_v1 import (
     reduce_category_v1,
 )
 
+from .shadow_market_hypothesis_v1 import (
+    CONFIDENCE_V1_DEFERRED_SENTINEL,
+    RESOLVED_CATEGORY_STATES,
+    UNRESOLVED_CATEGORY_STATES,
+    RATIONALE_BULLISH,
+    RATIONALE_BEARISH,
+    RATIONALE_NEUTRAL,
+    RATIONALE_INSUFFICIENT,
+    RATIONALE_MISSING,
+    RATIONALE_UNKNOWN,
+    RATIONALE_CONFLICT,
+    expected_market_categories_v1,
+    evaluate_market_hypothesis_v1,
+)
+
 __all__ = [
+    "CONFIDENCE_V1_DEFERRED_SENTINEL",
+    "RESOLVED_CATEGORY_STATES",
+    "UNRESOLVED_CATEGORY_STATES",
+    "RATIONALE_BULLISH",
+    "RATIONALE_BEARISH",
+    "RATIONALE_NEUTRAL",
+    "RATIONALE_INSUFFICIENT",
+    "RATIONALE_MISSING",
+    "RATIONALE_UNKNOWN",
+    "RATIONALE_CONFLICT",
+    "expected_market_categories_v1",
+    "evaluate_market_hypothesis_v1",
+
     "ANALYZER_REDUCER_STATES",
     "CATEGORY_REDUCER_STATES",
     "AnalyzerReductionV1",
