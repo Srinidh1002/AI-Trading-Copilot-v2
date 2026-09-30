@@ -127,7 +127,35 @@ from .shadow_composer_v1 import (
     compose_shadow_brain_v1,
 )
 
+from .shadow_result_persistence_v1 import (
+    SHADOW_RESULT_RECORD_SCHEMA_V1,
+    ShadowResultIntegrityError,
+    ShadowResultPersistenceConflictError,
+    ShadowResultPersistenceError,
+    ShadowResultRecordDecodeError,
+    ShadowResultReplayError,
+    ShadowResultSchemaError,
+    load_shadow_result_record_v1,
+    persist_shadow_result_record_v1,
+    replay_shadow_result_record_v1,
+    serialize_shadow_result_record_v1,
+    shadow_result_record_v1,
+)
+
 __all__ = [
+    "SHADOW_RESULT_RECORD_SCHEMA_V1",
+    "ShadowResultPersistenceError",
+    "ShadowResultPersistenceConflictError",
+    "ShadowResultReplayError",
+    "ShadowResultRecordDecodeError",
+    "ShadowResultSchemaError",
+    "ShadowResultIntegrityError",
+    "shadow_result_record_v1",
+    "serialize_shadow_result_record_v1",
+    "replay_shadow_result_record_v1",
+    "persist_shadow_result_record_v1",
+    "load_shadow_result_record_v1",
+
     "compose_shadow_brain_v1",
 
     "CONFIDENCE_V1_DEFERRED_SENTINEL",
