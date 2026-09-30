@@ -56,6 +56,13 @@ from .capture_coordinator_v1 import (
     capture_index_sources_v1,
     capture_mcx_sources_v1,
 )
+from .shadow_brain_v1 import (
+    SHADOW_BRAIN_RESULT_SCHEMA_V1,
+    SHADOW_HYPOTHESIS_SCHEMA_V1,
+    SHADOW_HYPOTHESES,
+    ShadowBrainResultV1,
+    ShadowHypothesisV1,
+)
 from .source_adapters_v1 import (
     IndexBreadthSourceV1,
     IndexNewsSourceV1,
@@ -116,6 +123,11 @@ __all__ = [
     "McxCaptureSourcesV1",
     "capture_index_sources_v1",
     "capture_mcx_sources_v1",
+    "SHADOW_BRAIN_RESULT_SCHEMA_V1",
+    "SHADOW_HYPOTHESIS_SCHEMA_V1",
+    "SHADOW_HYPOTHESES",
+    "ShadowBrainResultV1",
+    "ShadowHypothesisV1",
     "IndexBreadthSourceV1",
     "IndexNewsSourceV1",
     "IndexOptionChainSourceV1",
