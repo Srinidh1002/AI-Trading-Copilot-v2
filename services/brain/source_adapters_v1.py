@@ -1012,13 +1012,337 @@ def adapt_mcx_native_v1(
     )
 
 
+@dataclass(
+    frozen=True,
+    slots=True,
+)
+class IndexBreadthSourceV1:
+    """Already-produced index breadth/constituent evidence."""
+
+    market: str
+    observed_at: datetime
+    generated_at: datetime
+
+    status: str = "AVAILABLE"
+    freshness: str = "FRESH"
+    source: str = "LEGACY_INDEX_BREADTH"
+
+    breadth_score: float | None = None
+    breadth_direction: str = "UNKNOWN"
+
+    advances: int | None = None
+    declines: int | None = None
+    unchanged: int | None = None
+
+    heavyweight_direction: str | None = None
+
+    source_authoritative: bool = True
+    missing_reason: str | None = None
+
+
+@dataclass(
+    frozen=True,
+    slots=True,
+)
+class IndexOptionChainSourceV1:
+    """Already-produced index option-chain evidence.
+
+    PCR direction is supplied by the existing source and is not normalized by
+    this adapter.
+    """
+
+    market: str
+    observed_at: datetime
+    generated_at: datetime
+
+    status: str = "AVAILABLE"
+    freshness: str = "FRESH"
+    source: str = "LEGACY_INDEX_OPTION_CHAIN"
+
+    pcr_value: float | None = None
+    pcr_direction: str = "UNKNOWN"
+    pcr_interpretation: str | None = None
+
+    max_pain: float | None = None
+
+    support: float | None = None
+    resistance: float | None = None
+
+    atm_strike: float | None = None
+    expiry: str | None = None
+
+    chain_coverage_pct: float | None = None
+
+    source_authoritative: bool = True
+    missing_reason: str | None = None
+
+
+@dataclass(
+    frozen=True,
+    slots=True,
+)
+class McxEventRiskSourceV1:
+    """Already-produced MCX event-risk state."""
+
+    market: str
+    observed_at: datetime
+    generated_at: datetime
+
+    status: str = "UNVERIFIED"
+    freshness: str = "UNKNOWN"
+    source: str = "MCX_NATIVE_EVENT_RISK"
+
+    event_state: str | None = None
+    event_direction: str = "UNKNOWN"
+
+    event_name: str | None = None
+    minutes_to_event: int | None = None
+
+    provider_block_entries: bool = False
+    hard_block_eligible: bool = False
+
+    source_authoritative: bool = False
+    missing_reason: str | None = None
+
+
+def adapt_index_breadth_v1(
+    source: IndexBreadthSourceV1,
+) -> AnalyzerResultV1:
+    _require_market(
+        source.market,
+        INDEX_MARKETS,
+    )
+
+    analyzer_id = "index.breadth.legacy_v1"
+
+    evidence = (
+        _evidence(
+            analyzer_id=analyzer_id,
+            market=source.market,
+            observed_at=source.observed_at,
+            generated_at=source.generated_at,
+            category="BREADTH",
+            feature="INDEX_BREADTH",
+            status=source.status,
+            freshness=source.freshness,
+            source=source.source,
+            value=source.breadth_score,
+            direction=source.breadth_direction,
+            source_authoritative=source.source_authoritative,
+            missing_reason=source.missing_reason,
+            metadata=(
+                (
+                    "advances",
+                    source.advances,
+                ),
+                (
+                    "declines",
+                    source.declines,
+                ),
+                (
+                    "unchanged",
+                    source.unchanged,
+                ),
+                (
+                    "heavyweight_direction",
+                    source.heavyweight_direction,
+                ),
+            ),
+        ),
+    )
+
+    return _result(
+        analyzer_id=analyzer_id,
+        market=source.market,
+        generated_at=source.generated_at,
+        evidence=evidence,
+    )
+
+
+def adapt_index_option_chain_v1(
+    source: IndexOptionChainSourceV1,
+) -> AnalyzerResultV1:
+    _require_market(
+        source.market,
+        INDEX_MARKETS,
+    )
+
+    analyzer_id = "index.option_chain.legacy_v1"
+
+    evidence = [
+        _evidence(
+            analyzer_id=analyzer_id,
+            market=source.market,
+            observed_at=source.observed_at,
+            generated_at=source.generated_at,
+            category="OPTIONS",
+            feature="PCR",
+            status=source.status,
+            freshness=source.freshness,
+            source=source.source,
+            value=source.pcr_value,
+            unit="RATIO",
+            direction=source.pcr_direction,
+            source_authoritative=source.source_authoritative,
+            missing_reason=source.missing_reason,
+            metadata=(
+                (
+                    "source_interpretation",
+                    source.pcr_interpretation,
+                ),
+                (
+                    "atm_strike",
+                    source.atm_strike,
+                ),
+                (
+                    "expiry",
+                    source.expiry,
+                ),
+                (
+                    "chain_coverage_pct",
+                    source.chain_coverage_pct,
+                ),
+            ),
+        ),
+
+        _evidence(
+            analyzer_id=analyzer_id,
+            market=source.market,
+            observed_at=source.observed_at,
+            generated_at=source.generated_at,
+            category="OPTIONS",
+            feature="MAX_PAIN",
+            status=source.status,
+            freshness=source.freshness,
+            source=source.source,
+            value=source.max_pain,
+            unit="STRIKE",
+            direction="UNKNOWN",
+            source_authoritative=source.source_authoritative,
+            missing_reason=source.missing_reason,
+        ),
+    ]
+
+
+    if source.support is not None:
+
+        evidence.append(
+            _evidence(
+                analyzer_id=analyzer_id,
+                market=source.market,
+                observed_at=source.observed_at,
+                generated_at=source.generated_at,
+                category="OPTIONS",
+                feature="SUPPORT",
+                status=source.status,
+                freshness=source.freshness,
+                source=source.source,
+                value=source.support,
+                unit="STRIKE",
+                direction="BULLISH",
+                source_authoritative=source.source_authoritative,
+                missing_reason=source.missing_reason,
+            )
+        )
+
+
+    if source.resistance is not None:
+
+        evidence.append(
+            _evidence(
+                analyzer_id=analyzer_id,
+                market=source.market,
+                observed_at=source.observed_at,
+                generated_at=source.generated_at,
+                category="OPTIONS",
+                feature="RESISTANCE",
+                status=source.status,
+                freshness=source.freshness,
+                source=source.source,
+                value=source.resistance,
+                unit="STRIKE",
+                direction="BEARISH",
+                source_authoritative=source.source_authoritative,
+                missing_reason=source.missing_reason,
+            )
+        )
+
+
+    return _result(
+        analyzer_id=analyzer_id,
+        market=source.market,
+        generated_at=source.generated_at,
+        evidence=evidence,
+    )
+
+
+def adapt_mcx_event_risk_v1(
+    source: McxEventRiskSourceV1,
+) -> AnalyzerResultV1:
+    _require_market(
+        source.market,
+        MCX_MARKETS,
+    )
+
+    analyzer_id = "mcx.event_risk.native_v1"
+
+    evidence = (
+        _evidence(
+            analyzer_id=analyzer_id,
+            market=source.market,
+            observed_at=source.observed_at,
+            generated_at=source.generated_at,
+            category="EVENT",
+            feature="EVENT_RISK_STATE",
+            status=source.status,
+            freshness=source.freshness,
+            source=source.source,
+            value=source.event_state,
+            direction=source.event_direction,
+            source_authoritative=source.source_authoritative,
+            missing_reason=source.missing_reason,
+            metadata=(
+                (
+                    "event_name",
+                    source.event_name,
+                ),
+                (
+                    "minutes_to_event",
+                    source.minutes_to_event,
+                ),
+                (
+                    "provider_block_entries",
+                    source.provider_block_entries,
+                ),
+                (
+                    "hard_block_eligible",
+                    source.hard_block_eligible,
+                ),
+            ),
+        ),
+    )
+
+    return _result(
+        analyzer_id=analyzer_id,
+        market=source.market,
+        generated_at=source.generated_at,
+        evidence=evidence,
+    )
+
+
 __all__ = [
+    "IndexBreadthSourceV1",
     "IndexNewsSourceV1",
+    "IndexOptionChainSourceV1",
     "IndexPremarketSourceV1",
     "IndexTechnicalSourceV1",
+    "McxEventRiskSourceV1",
     "McxNativeSourceV1",
+    "adapt_index_breadth_v1",
     "adapt_index_news_v1",
+    "adapt_index_option_chain_v1",
     "adapt_index_premarket_v1",
     "adapt_index_technical_v1",
+    "adapt_mcx_event_risk_v1",
     "adapt_mcx_native_v1",
 ]
