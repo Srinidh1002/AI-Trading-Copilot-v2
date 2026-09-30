@@ -13,6 +13,10 @@ from .analyzer_registry_v1 import (
     AnalyzerRegistryV1,
     DEFAULT_ANALYZER_REGISTRY_V1,
 )
+from .market_snapshot_v1 import (
+    MarketSnapshotV1,
+    build_market_snapshot_v1,
+)
 from .source_adapters_v1 import (
     IndexBreadthSourceV1,
     IndexNewsSourceV1,
@@ -38,6 +42,8 @@ __all__ = [
     "AnalyzerDescriptorV1",
     "AnalyzerRegistryV1",
     "DEFAULT_ANALYZER_REGISTRY_V1",
+    "MarketSnapshotV1",
+    "build_market_snapshot_v1",
     "IndexBreadthSourceV1",
     "IndexNewsSourceV1",
     "IndexOptionChainSourceV1",
