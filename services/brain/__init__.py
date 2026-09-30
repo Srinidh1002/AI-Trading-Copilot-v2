@@ -123,7 +123,13 @@ from .shadow_market_hypothesis_v1 import (
     evaluate_market_hypothesis_v1,
 )
 
+from .shadow_composer_v1 import (
+    compose_shadow_brain_v1,
+)
+
 __all__ = [
+    "compose_shadow_brain_v1",
+
     "CONFIDENCE_V1_DEFERRED_SENTINEL",
     "RESOLVED_CATEGORY_STATES",
     "UNRESOLVED_CATEGORY_STATES",
