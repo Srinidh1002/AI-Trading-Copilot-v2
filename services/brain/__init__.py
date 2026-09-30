@@ -13,6 +13,16 @@ from .analyzer_registry_v1 import (
     AnalyzerRegistryV1,
     DEFAULT_ANALYZER_REGISTRY_V1,
 )
+from .source_adapters_v1 import (
+    IndexNewsSourceV1,
+    IndexPremarketSourceV1,
+    IndexTechnicalSourceV1,
+    McxNativeSourceV1,
+    adapt_index_news_v1,
+    adapt_index_premarket_v1,
+    adapt_index_technical_v1,
+    adapt_mcx_native_v1,
+)
 
 __all__ = [
     "ANALYZER_CATEGORIES",
@@ -22,4 +32,12 @@ __all__ = [
     "AnalyzerDescriptorV1",
     "AnalyzerRegistryV1",
     "DEFAULT_ANALYZER_REGISTRY_V1",
+    "IndexNewsSourceV1",
+    "IndexPremarketSourceV1",
+    "IndexTechnicalSourceV1",
+    "McxNativeSourceV1",
+    "adapt_index_news_v1",
+    "adapt_index_premarket_v1",
+    "adapt_index_technical_v1",
+    "adapt_mcx_native_v1",
 ]
