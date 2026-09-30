@@ -98,7 +98,25 @@ from .source_adapters_v1 import (
     adapt_mcx_native_v1,
 )
 
+from .shadow_reducer_v1 import (
+    ANALYZER_REDUCER_STATES,
+    CATEGORY_REDUCER_STATES,
+    AnalyzerReductionV1,
+    CategoryReductionV1,
+    expected_category_analyzer_ids_v1,
+    reduce_analyzer_result_v1,
+    reduce_category_v1,
+)
+
 __all__ = [
+    "ANALYZER_REDUCER_STATES",
+    "CATEGORY_REDUCER_STATES",
+    "AnalyzerReductionV1",
+    "CategoryReductionV1",
+    "expected_category_analyzer_ids_v1",
+    "reduce_analyzer_result_v1",
+    "reduce_category_v1",
+
     "ANALYZER_CATEGORIES",
     "RUNTIME_ROLES",
     "SOURCE_FAMILIES",
