@@ -6,8 +6,8 @@ silent fallback. Callers must explicitly name the provider they want.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import math
+from datetime import UTC, datetime
 from threading import RLock
 
 from services.contracts.market_data_v2 import (
@@ -130,7 +130,7 @@ def _validate_freshness(
 
     if now is None:
         now = datetime.now(
-            timezone.utc
+            UTC
         )
 
     if (
@@ -496,6 +496,49 @@ class SharedMarketDataHubV2:
             )
 
         return health
+
+    def invalidate_instrument(
+        self,
+        *,
+        provider: str,
+        market_symbol: str,
+        exchange: str,
+        instrument_type: str,
+        canonical_instrument_id: str,
+    ) -> dict[str, int]:
+        """Remove cached quotes, depth and candle series for
+        exactly one instrument identity.
+
+        Returns counts of removed items. This is the only
+        invalidation primitive X1 uses; it never touches other
+        providers or other instruments.
+        """
+        key = _instrument_key(
+            provider=provider,
+            market_symbol=market_symbol,
+            exchange=exchange,
+            instrument_type=instrument_type,
+            canonical_instrument_id=canonical_instrument_id,
+        )
+        with self._lock:
+            removed_quotes = (
+                1 if self._quotes.pop(key, None) is not None else 0
+            )
+            removed_depth = (
+                1 if self._depth.pop(key, None) is not None else 0
+            )
+            candle_keys = [
+                candle_key
+                for candle_key in self._candles
+                if candle_key[:5] == key
+            ]
+            for candle_key in candle_keys:
+                self._candles.pop(candle_key, None)
+        return {
+            "quotes": removed_quotes,
+            "depth": removed_depth,
+            "candle_series": len(candle_keys),
+        }
 
     def snapshot_counts(
         self,

@@ -135,13 +135,37 @@ class FyersRateLimitCoordinator:
                 pass
             raise FyersRateLimitError("RATE_LIMIT_STATE_WRITE_FAILED") from exc
 
-    def wait_if_needed(self, endpoint: str = "default"):
+    def wait_if_needed(
+        self,
+        endpoint: str = "default",
+        *,
+        max_wait_seconds: float | None = None,
+    ):
         """Block until a call can proceed within the shared budget.
 
         endpoint parameter is kept for signature compatibility with the
         legacy AngelRateLimitCoordinator. All calls share the same bucket
         because FYERS applies one quota per account, not per endpoint.
+
+        max_wait_seconds:
+            Optional bounded wait. When None (default), behaviour is
+            unchanged and the call may block indefinitely. When set,
+            the call raises FyersRateLimitError with reason
+            RATE_LIMIT_WAIT_DEADLINE_EXCEEDED after the deadline.
         """
+        if max_wait_seconds is not None and (
+            isinstance(max_wait_seconds, bool)
+            or not isinstance(max_wait_seconds, (int, float))
+            or max_wait_seconds <= 0
+        ):
+            raise ValueError(
+                "max_wait_seconds must be a positive number or None."
+            )
+        deadline = (
+            None
+            if max_wait_seconds is None
+            else time.monotonic() + float(max_wait_seconds)
+        )
         while True:
             with _exclusive_file_lock(self._lock_path):
                 now = time.time()
@@ -150,21 +174,25 @@ class FyersRateLimitCoordinator:
                 c = _counts(calls, now)
 
                 if c["sec"] >= _LIMITS["per_second"]:
-                    # Wait until the oldest of the last-second calls ages out
                     recent = sorted(t for t in calls if t > now - _SECOND_BUCKET_SECONDS)
                     sleep_for = 1.05 - (now - recent[0]) if recent else 0.2
                 elif c["min"] >= _LIMITS["per_minute"]:
                     recent = sorted(t for t in calls if t > now - _MINUTE_BUCKET_SECONDS)
-                    # Sleep until the oldest minute-window call ages out, capped at 5s
                     sleep_for = min(5.0, 60.0 - (now - recent[0])) if recent else 1.0
                 elif c["day"] >= _LIMITS["per_day"]:
-                    # Day cap; unrecoverable in-session, back off hard.
                     sleep_for = 30.0
                 else:
                     calls.append(now)
                     self._write({"calls": calls})
                     return True
 
+            if (
+                deadline is not None
+                and time.monotonic() >= deadline
+            ):
+                raise FyersRateLimitError(
+                    "RATE_LIMIT_WAIT_DEADLINE_EXCEEDED"
+                )
             time.sleep(max(0.1, sleep_for))
 
     def stats(self):

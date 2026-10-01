@@ -102,3 +102,5 @@ _mcx_calibration_verifier.json
 # Phase F15-R1: runtime-only artifacts (Phase 17)
 data/execution_evidence/mcx/fyers/
 data/paper_trades/counterfactual/
+# X1 data-plane runtime journal (never commit runtime observations)
+data/x1/observations/

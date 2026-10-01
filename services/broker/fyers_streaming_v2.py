@@ -3,6 +3,25 @@
 Implements ``StreamingMarketDataProviderV2`` without exposing any order
 capability. One adapter owns one FYERS DataSocket and multiplexes logical
 consumer subscriptions over the socket's physical symbol subscriptions.
+
+X1 additions:
+
+* Each socket instance is bound to its own set of SDK callbacks. A
+  callback that arrives from a socket instance other than the current
+  one is dropped. This defends against late callbacks from a replaced
+  or closed socket.
+* Every callback reads the current ``connection_generation`` under the
+  provider lock and stamps that value on each emitted record as
+  ``connection_generation``. Downstream consumers can therefore reject
+  observations from a previous generation.
+* The FYERS SDK does not expose message-level generation information.
+  On a same-socket reconnect (``on_close`` followed by ``on_connect``
+  on the same instance), a message delivered to ``on_message`` after
+  the new generation is recorded will be tagged with the new
+  generation even though it may have originated from the previous
+  transport. X1 fails closed: such observations carry an explicit
+  generation and the X1 tracker drops any observation whose
+  generation does not match the currently active one.
 """
 
 from __future__ import annotations
@@ -10,7 +29,7 @@ from __future__ import annotations
 import socket
 import threading
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 
@@ -149,7 +168,7 @@ def _provider_datetime(
         try:
             return datetime.fromtimestamp(
                 number,
-                tz=timezone.utc,
+                tz=UTC,
             )
         except (
             OSError,
@@ -171,7 +190,7 @@ def _provider_datetime(
         if parsed.tzinfo is None:
             return None
         return parsed.astimezone(
-            timezone.utc
+            UTC
         )
 
     return None
@@ -252,7 +271,7 @@ class FyersStreamingDataProviderV2:
         self._reconnect = bool(reconnect)
         self._ipv4_only = bool(ipv4_only)
         self._now = now or (
-            lambda: datetime.now(timezone.utc)
+            lambda: datetime.now(UTC)
         )
 
         self._lock = threading.RLock()
@@ -262,6 +281,8 @@ class FyersStreamingDataProviderV2:
         self._restore_dns: Callable[[], None] | None = None
 
         self._closed = False
+        self._transport_connected = False
+        self._subscribed = False
         self._connected = False
         self._counter = 0
         self._connection_generation = 0
@@ -276,9 +297,25 @@ class FyersStreamingDataProviderV2:
         ] = {}
 
         self._last_message_at: datetime | None = None
+        self._first_connected_at: datetime | None = None
+        self._last_reconnected_at: datetime | None = None
+        self._reconnect_count = 0
         self._last_error: str | None = None
         self._error_count = 0
         self._callback_error_count = 0
+
+    def _safe_now(self) -> datetime | None:
+        try:
+            value = self._now()
+        except Exception:
+            return None
+        if (
+            not isinstance(value, datetime)
+            or value.tzinfo is None
+            or value.utcoffset() is None
+        ):
+            return None
+        return value.astimezone(UTC)
 
     def _desired_symbols_locked(self) -> set[str]:
         desired: set[str] = set()
@@ -302,17 +339,41 @@ class FyersStreamingDataProviderV2:
                 _install_fyers_ipv4_filter()
             )
 
+        holder: dict[str, FyersRawDataSocketV2 | None] = {
+            "socket": None,
+        }
+
+        def _bound_on_connect() -> None:
+            socket_ref = holder["socket"]
+            if socket_ref is not None:
+                self._on_connect_for_socket(socket_ref)
+
+        def _bound_on_close(message: object = None) -> None:
+            socket_ref = holder["socket"]
+            if socket_ref is not None:
+                self._on_close_for_socket(socket_ref, message)
+
+        def _bound_on_error(message: object) -> None:
+            socket_ref = holder["socket"]
+            if socket_ref is not None:
+                self._on_error_for_socket(socket_ref, message)
+
+        def _bound_on_message(message: object) -> None:
+            socket_ref = holder["socket"]
+            if socket_ref is not None:
+                self._on_message_for_socket(socket_ref, message)
+
         try:
-            self._socket = self._socket_factory(
+            socket = self._socket_factory(
                 access_token=self._access_token,
                 log_path=self._log_path,
                 litemode=False,
                 write_to_file=False,
                 reconnect=self._reconnect,
-                on_connect=self._on_connect,
-                on_close=self._on_close,
-                on_error=self._on_error,
-                on_message=self._on_message,
+                on_connect=_bound_on_connect,
+                on_close=_bound_on_close,
+                on_error=_bound_on_error,
+                on_message=_bound_on_message,
             )
         except Exception as exc:
             if self._restore_dns is not None:
@@ -322,8 +383,10 @@ class FyersStreamingDataProviderV2:
                 "FYERS_DATA_SOCKET_CONSTRUCTION_FAILED"
             ) from exc
 
+        holder["socket"] = socket
+        self._socket = socket
         self._access_token = ""
-        return self._socket, True
+        return socket, True
 
     def _start_thread(
         self,
@@ -383,14 +446,27 @@ class FyersStreamingDataProviderV2:
             data_type=self.DATA_TYPE,
         )
 
-    def _on_connect(self) -> None:
+    def _on_connect_for_socket(
+        self,
+        socket: FyersRawDataSocketV2,
+    ) -> None:
         with self._lock:
-            if self._closed:
+            if self._closed or socket is not self._socket:
                 return
-            self._connected = True
+            now_dt = self._safe_now()
+            if self._first_connected_at is None:
+                if now_dt is not None:
+                    self._first_connected_at = now_dt
+            else:
+                self._reconnect_count += 1
+                if now_dt is not None:
+                    self._last_reconnected_at = now_dt
+            self._transport_connected = True
+            self._subscribed = False
+            self._connected = False
             self._last_error = None
             self._connection_generation += 1
-            raw_socket = self._socket
+            raw_socket = socket
             desired = self._desired_symbols_locked()
             self._physical_symbols.clear()
 
@@ -404,6 +480,8 @@ class FyersStreamingDataProviderV2:
             )
         except Exception as exc:
             with self._lock:
+                self._transport_connected = False
+                self._subscribed = False
                 self._connected = False
                 self._connected_event.clear()
                 self._last_error = (
@@ -413,21 +491,41 @@ class FyersStreamingDataProviderV2:
             return
 
         with self._lock:
-            if self._connected and not self._closed:
-                self._physical_symbols = set(
-                    desired
-                )
+            if (
+                self._transport_connected
+                and not self._closed
+                and socket is self._socket
+            ):
+                self._physical_symbols = set(desired)
+                self._subscribed = True
+                self._connected = True
                 self._connected_event.set()
 
-    def _on_close(self, message=None) -> None:
+    def _on_close_for_socket(
+        self,
+        socket: FyersRawDataSocketV2,
+        message: object = None,
+    ) -> None:
         del message
         with self._lock:
+            if self._closed or socket is not self._socket:
+                return
+            self._transport_connected = False
+            self._subscribed = False
             self._connected = False
             self._physical_symbols.clear()
             self._connected_event.clear()
 
-    def _on_error(self, message) -> None:
+    def _on_error_for_socket(
+        self,
+        socket: FyersRawDataSocketV2,
+        message: object,
+    ) -> None:
         with self._lock:
+            if self._closed or socket is not self._socket:
+                return
+            self._transport_connected = False
+            self._subscribed = False
             self._connected = False
             self._physical_symbols.clear()
             self._connected_event.clear()
@@ -474,7 +572,7 @@ class FyersStreamingDataProviderV2:
                 "now() must return a timezone-aware datetime"
             )
         received_at = received_at.astimezone(
-            timezone.utc
+            UTC
         )
 
         provider_timestamp = (
@@ -514,7 +612,11 @@ class FyersStreamingDataProviderV2:
             "live_execution_eligible": False,
         }
 
-    def _on_message(self, message) -> None:
+    def _on_message_for_socket(
+        self,
+        socket: FyersRawDataSocketV2,
+        message: object,
+    ) -> None:
         items = (
             message
             if isinstance(message, list)
@@ -542,8 +644,13 @@ class FyersStreamingDataProviderV2:
             ] = []
 
             with self._lock:
-                if self._closed:
+                if (
+                    self._closed
+                    or not self._connected
+                    or socket is not self._socket
+                ):
                     return
+                current_generation = self._connection_generation
                 self._last_message_at = base["received_at"]
                 self._latest_by_symbol[symbol] = dict(base)
 
@@ -561,6 +668,7 @@ class FyersStreamingDataProviderV2:
 
             for callback, metadata in callbacks:
                 record = dict(base)
+                record["connection_generation"] = current_generation
                 instrument_token = metadata.get(
                     "provider_token"
                 )
@@ -793,7 +901,7 @@ class FyersStreamingDataProviderV2:
                 "now() must return a timezone-aware datetime"
             )
         now = now.astimezone(
-            timezone.utc
+            UTC
         )
 
         with self._lock:
@@ -812,6 +920,8 @@ class FyersStreamingDataProviderV2:
             return {
                 "provider": "FYERS",
                 "connected": self._connected,
+                "transport_connected": self._transport_connected,
+                "subscribed": self._subscribed,
                 "closed": self._closed,
                 "subscription_count": len(
                     self._subscriptions
@@ -823,6 +933,10 @@ class FyersStreamingDataProviderV2:
                     self._physical_symbols
                 ),
                 "connection_generation": self._connection_generation,
+                "reconnect_count": self._reconnect_count,
+                "first_connected_at": self._first_connected_at,
+                "last_reconnected_at": self._last_reconnected_at,
+                "reconnect_ambiguity_documented": True,
                 "last_message_at": self._last_message_at,
                 "last_error": self._last_error,
                 "error_count": self._error_count,
@@ -838,6 +952,8 @@ class FyersStreamingDataProviderV2:
             if self._closed:
                 return
             self._closed = True
+            self._transport_connected = False
+            self._subscribed = False
             self._connected = False
             self._connected_event.clear()
             self._subscriptions.clear()
