@@ -1,0 +1,9 @@
+# X8-B2 — Five-market descriptive regime-evidence diagnostics
+
+Parent is frozen X7 commit `b69061f562ab03b2deb3a17cd8a3943bda955cb2`. The X8 Phase A and B1 files are not modified. New code is limited to `services/x8/regime_description_v1.py` and its isolated tests.
+
+`describe_x8_regime_evidence_v1` consumes one **original** immutable `X8RegimeReadinessV1` for NIFTY, SENSEX, CRUDEOILM, GOLDM or NATGASMINI. It applies one explicit positive finite maximum-observation-age budget to every source reference. Original `UNAVAILABLE`, `UNVERIFIED`, `PARTIAL`, `STALE`, point-in-time proof and availability timestamps remain conservative. A reference labeled AVAILABLE by an upstream caller is still downgraded to STALE when its original observation exceeds the B2 age budget. Missing required technical/session/quality evidence (and futures for MCX) results in `UNAVAILABLE`. Degraded optional evidence results in `PARTIAL`. Otherwise the output is `READY_FOR_CLASSIFICATION`, **not** an actual regime class.
+
+Each diagnostic preserves family, exact immutable reference SHA-256, observation age and usability state. `validate_x8_regime_description_v1` recalculates the entire result from the supplied original readiness and rejects changed provenance, budgets, family classifications and result status. Constructor checks prevent manual upgrading of incomplete research. Validated caller assertions and reproducible SHA-256 digests are internal evidence, not independent proof of a provider's historical delivery.
+
+The result deliberately has `regime_label`, `direction` and `volatility_regime` fixed at `UNASSESSED`. A true trend/range/high-volatility classifier requires future verified X2/X3/X4/X6 adapters and a separately reviewed policy. B2 never evaluates a trade, produces a directional vote, chooses a market or affects PAPER certification or broker submission.

@@ -1,0 +1,9 @@
+# X10-B1 — Read-only P7/P8 interface and market-coverage audit
+
+The audited repository contains historical typed `PaperTradePositionV1`, `PaperTradePersistenceSnapshotV1`, P7 recovery services and P8 PAPER portfolio snapshots, reservations and persistence/reconciliation services. The four-index legacy portfolio scope is **not proof** of certified MCX portfolio accounting, and a typed interface's existence is not proof it is active in a runtime.
+
+`audit_x10_interfaces_v1` binds the original immutable `X9FiveMarketLedgerV1` and `X10PortfolioReadinessV1` by exact parent-cycle identity and their full SHA-256 digests. It emits a five-slot immutable coverage record. Each market retains P7 position/recovery interfaces as CONTRACT_REFERENCE_ONLY. NIFTY and SENSEX may describe the existing P8 contract boundary as INDEX_CONTRACT_REFERENCE_ONLY; the three MCX products remain MCX_UNVERIFIED. Every runtime-adapter flag and verified-adapter count is permanently false/zero in B1.
+
+This package **does not read any real P7/P8 snapshot**. It does not inspect or reconcile a production journal, position ID, reservation ID, account value, P&L or available capital, and cannot certify P8 as working for any specific market. It neither creates nor modifies a P8 reservation. The output has no portfolio, position, execution, certification or capital-admission authority.
+
+The next safe implementation step is a separately tested, read-only typed P7/P8 projection that validates actual persisted snapshot identities, event sequences, integrity hashes, position ownership and recovery status. No P7/P8 projection can be considered verified from a caller string or from an `EXTERNAL_RESEARCH` exposure count. MCX requires a separate explicit owner/capability decision before any P8 projection can be treated as canonical.

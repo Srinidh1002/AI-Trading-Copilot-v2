@@ -1,0 +1,7 @@
+# X9-B1 — Five-market session research prerequisites
+
+`build_x9_session_matrix_v1` consumes an unchanged `X9FiveMarketLedgerV1`, its exact five linked `X8RegimeReadinessV1` results and one **caller-declared** session state per market. Each declared report must bind the existing X8 `MARKET_SESSION` source digest. An absent, unverified or non-point-in-time session may be represented only as UNKNOWN, not REPORTED_OPEN or REPORTED_CLOSED.
+
+Output is deterministic in the canonical order NIFTY, SENSEX, CRUDEOILM, GOLDM, NATGASMINI, independent of supplied input order. It retains the parent-cycle identity, X9 full-ledger hash, individual X8 hashes, session source hashes and observation times. `reported_index_overlap` is descriptive: it means *the supplied records* label both NIFTY and SENSEX open. It does not establish true exchange-open status, a synchronized NFO/BFO order window, eligible instruments, common price timestamps or trade eligibility. MCX has its own session semantics, which are not inferred from NSE/BSE.
+
+`COMPLETE_DESCRIPTIVE` means all five session statuses were supplied and traceable. It is not synonymous with `COMPLETE_RESEARCH`, execution permission or a valid market comparison. The canonical session/calendar service remains authoritative. No rankings, selected market, CALL/PUT or execution/position/risk authority is produced. A separate verified typed session adapter and a reviewed five-market eligibility policy are deferred.
