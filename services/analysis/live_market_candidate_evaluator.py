@@ -32,11 +32,13 @@ class LiveCandidatePolicySourceV1:
 
 @dataclass(frozen=True,slots=True)
 class LiveMarketCandidateEvaluationInputV1:
- market_spec:CertifiedIndexMarketSpecV1;parent_cycle_id:str;candidate_id:str;observation_id:str;spot_response:object;candle_rows_by_timeframe:Mapping[str,object];option_contracts:object;option_chain_evidence_contracts:object|None;provider_timestamp:datetime;evaluated_at:datetime;session:MarketSessionValidationV1;policy:LiveCandidatePolicySourceV1;engines:LiveCanonicalEvidenceEnginesV1;broader_market:BroaderMarketIntelligenceResultV1|None=None;external_context:ExternalMarketContextResultV1|None=None;provider_state:str="OK";blockers:tuple[str,...]=();warnings:tuple[str,...]=()
+ market_spec:CertifiedIndexMarketSpecV1;parent_cycle_id:str;candidate_id:str;observation_id:str;spot_response:object;candle_rows_by_timeframe:Mapping[str,object];option_contracts:object;option_chain_evidence_contracts:object|None;provider_timestamp:datetime;evaluated_at:datetime;session:MarketSessionValidationV1;policy:LiveCandidatePolicySourceV1;engines:LiveCanonicalEvidenceEnginesV1;broader_market:BroaderMarketIntelligenceResultV1|None=None;external_context:ExternalMarketContextResultV1|None=None;provider_state:str="OK";blockers:tuple[str,...]=();warnings:tuple[str,...]=();provider_name:str="ANGEL_ONE";option_timestamp_basis:str="PROVIDER_TIMESTAMP"
  def __post_init__(self):
   if type(self.market_spec) is not CertifiedIndexMarketSpecV1 or type(self.session) is not MarketSessionValidationV1 or type(self.policy) is not LiveCandidatePolicySourceV1 or type(self.engines) is not LiveCanonicalEvidenceEnginesV1:raise TypeError("typed evaluation input")
   if type(self.parent_cycle_id) is not str or not self.parent_cycle_id.strip():raise ValueError("parent_cycle_id")
   if self.provider_timestamp.tzinfo is None or self.evaluated_at.tzinfo is None:raise ValueError("timestamps")
+  if not str(self.provider_name or "").strip():raise ValueError("provider_name")
+  if not str(self.option_timestamp_basis or "").strip():raise ValueError("option_timestamp_basis")
   if (self.session.symbol,self.session.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange):raise ValueError("session identity")
   if self.broader_market is not None and (type(self.broader_market) is not BroaderMarketIntelligenceResultV1 or (self.broader_market.underlying_symbol,self.broader_market.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange)):raise ValueError("broader market identity")
   if self.external_context is not None and (type(self.external_context) is not ExternalMarketContextResultV1 or (self.external_context.underlying_symbol,self.external_context.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange) or self.external_context.created_at != self.evaluated_at):raise ValueError("external context identity or evaluation boundary")
@@ -83,6 +85,8 @@ def _build_live_candidate_base_evidence(
         provider_state=value.provider_state,
         blockers=value.blockers,
         warnings=value.warnings,
+        provider_name=str(value.provider_name).strip().upper(),
+        timestamp_basis=str(value.option_timestamp_basis).strip().upper(),
     )
 
     evidence = build_live_canonical_evidence(
@@ -349,6 +353,16 @@ def evaluate_captured_certified_market_candidate(
         warnings=(
             captured_evidence.provider_warnings
         ),
+        provider_name=str(
+            dict(captured_evidence.cache_metadata).get("options", {}).get(
+                "provider_name", "ANGEL_ONE"
+            )
+        ).strip().upper(),
+        option_timestamp_basis=str(
+            dict(captured_evidence.cache_metadata).get("options", {}).get(
+                "timestamp_basis", "PROVIDER_TIMESTAMP"
+            )
+        ).strip().upper(),
     )
 
     return evaluate_live_market_candidate(
@@ -451,6 +465,16 @@ def evaluate_captured_certified_market_candidate_with_policy_factory(
         warnings=(
             captured_evidence.provider_warnings
         ),
+        provider_name=str(
+            dict(captured_evidence.cache_metadata).get("options", {}).get(
+                "provider_name", "ANGEL_ONE"
+            )
+        ).strip().upper(),
+        option_timestamp_basis=str(
+            dict(captured_evidence.cache_metadata).get("options", {}).get(
+                "timestamp_basis", "PROVIDER_TIMESTAMP"
+            )
+        ).strip().upper(),
     )
 
     return (
