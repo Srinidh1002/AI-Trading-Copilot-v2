@@ -114,7 +114,11 @@ def _matches_market(record, market: str) -> bool:
     )
 
 
-def _market_contract_readiness(index: FyersSymbolMasterIndexV2, market: str, as_of: date) -> tuple[bool, str]:
+def _market_contract_readiness(
+    index: FyersSymbolMasterIndexV2,
+    market: str,
+    as_of: date,
+) -> tuple[bool, str]:
     records = [r for r in index.records if _matches_market(r, market)]
 
     if market in INDEX_MARKETS_V2:
