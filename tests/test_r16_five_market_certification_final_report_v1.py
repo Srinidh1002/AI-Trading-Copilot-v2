@@ -7,7 +7,6 @@ from services.reporting.five_market_certification_final_report_v1 import (
     build_five_market_certification_final_report,
 )
 
-
 INDEX_VERSION = "NS_DESIGN_B_BID_AUTH_V3"
 INDEX_EPOCH = "NS_CERT_20260916_V3"
 
