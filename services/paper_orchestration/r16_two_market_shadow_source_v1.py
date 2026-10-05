@@ -23,15 +23,15 @@ from services.contracts.two_market_parent_cycle_input_v1 import (
     TwoMarketParentCycleInputV1,
 )
 from services.market_session.validator import validate_session_timestamp
+from services.paper_orchestration.authoritative_two_market_entry_point import (
+    run_authoritative_two_market_parent_cycle,
+)
 from services.paper_orchestration.certified_cycle_input_factory import (
     build_certified_cycle_input,
 )
 from services.paper_orchestration.certified_live_provider_readers import (
     CertifiedLiveProviderReaders,
     market_spec_for,
-)
-from services.paper_orchestration.authoritative_two_market_entry_point import (
-    run_authoritative_two_market_parent_cycle,
 )
 
 
