@@ -7,10 +7,9 @@ resolver. It is data-only and has no order or fallback capability.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from datetime import date, datetime, timezone
+from collections.abc import Callable, Mapping, Sequence
+from datetime import UTC, date, datetime
 from math import isfinite
-from typing import Callable
 
 
 class FyersCertifiedOptionChainError(RuntimeError):
@@ -35,7 +34,7 @@ def _date_value(value: object) -> date | None:
             ts = float(value)
             if ts > 1e12:
                 ts /= 1000.0
-            return datetime.fromtimestamp(ts, tz=timezone.utc).date()
+            return datetime.fromtimestamp(ts, tz=UTC).date()
         except (OSError, OverflowError, ValueError):
             return None
     text = str(value or "").strip().upper()
@@ -43,7 +42,7 @@ def _date_value(value: object) -> date | None:
         return None
     if text.isdigit() and len(text) >= 9:
         try:
-            return datetime.fromtimestamp(int(text), tz=timezone.utc).date()
+            return datetime.fromtimestamp(int(text), tz=UTC).date()
         except (OSError, OverflowError, ValueError):
             return None
     for fmt in ("%Y-%m-%d", "%d%b%Y", "%d-%m-%Y"):
@@ -103,11 +102,16 @@ class FyersCertifiedOptionChainBuilderV2:
         self.market = normalized
         self._provider = provider
         self._resolver = resolver
-        self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._clock = clock or (lambda: datetime.now(UTC))
         if not callable(self._clock):
             raise TypeError("clock")
 
-    def _select_expiry(self, result: Mapping[str, object], rows: Sequence[Mapping[str, object]], now: datetime) -> date:
+    def _select_expiry(
+        self,
+        result: Mapping[str, object],
+        rows: Sequence[Mapping[str, object]],
+        now: datetime,
+    ) -> date:
         candidates = set()
         for row in rows:
             parsed = _date_value(row.get("expiry"))
@@ -126,7 +130,11 @@ class FyersCertifiedOptionChainBuilderV2:
         return min(candidates)
 
     @staticmethod
-    def _nearby_strikes(rows: Sequence[Mapping[str, object]], spot: float, strikes_each_side: int) -> set[float]:
+    def _nearby_strikes(
+        rows: Sequence[Mapping[str, object]],
+        spot: float,
+        strikes_each_side: int,
+    ) -> set[float]:
         strikes = sorted(
             {
                 float(row["strike"])
