@@ -129,6 +129,9 @@ def test_five_market_view_separates_operational_and_certification(tmp_path):
     assert nifty.certification_counter == 1
     assert nifty.operational_completed_trades == 2
     assert nifty.noncountable_completed_trades == 1
+    assert nifty.ambiguous_completed_trades == 1
+    assert nifty.unresolved_first_touch_completed_trades == 0
+    assert nifty.ambiguity_rate_percent == 50.0
     assert nifty.operational_net_pnl == 100.0
 
     sensex = by_market["SENSEX"]
