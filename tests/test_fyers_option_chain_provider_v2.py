@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 
 from services.broker.fyers_response_normalizer_v2 import (
@@ -181,3 +183,23 @@ def test_option_chain_fails_closed_on_provider_error():
                 "NSE:NIFTY50-INDEX",
             strike_count=5,
         )
+
+
+def test_native_option_chain_records_synchronous_response_receipt_time():
+    client = FakeClient()
+    now = datetime(2026, 10, 5, 5, 0, tzinfo=timezone.utc)
+    provider = FyersOptionChainProviderV2(
+        client,
+        clock=lambda: now,
+    )
+
+    result = provider.get_option_chain(
+        underlying_symbol="NSE:NIFTY50-INDEX",
+        strike_count=5,
+    )
+
+    assert result["response_received_at"] == now
+    assert (
+        result["timestamp_basis"]
+        == "SYNCHRONOUS_FYERS_OPTIONCHAIN_RESPONSE"
+    )
