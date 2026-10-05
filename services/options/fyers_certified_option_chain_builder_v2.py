@@ -311,3 +311,48 @@ class FyersCertifiedOptionChainBuilderV2:
                 "reason": "OPTION_GREEKS_NOT_INCLUDED_IN_FYERS_NATIVE_CHAIN",
             },
         }
+
+
+class FyersCertifiedTwoIndexOptionChainBuilderV2:
+    """Shared NIFTY/SENSEX dispatcher for one certified option pipeline."""
+
+    data_only = True
+    order_capability_allowed = False
+    automatic_fallback_allowed = False
+
+    def __init__(
+        self,
+        *,
+        provider,
+        resolver,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        self._builders = {
+            market: FyersCertifiedOptionChainBuilderV2(
+                market=market,
+                provider=provider,
+                resolver=resolver,
+                clock=clock,
+            )
+            for market in ("NIFTY", "SENSEX")
+        }
+
+    def build_chain(
+        self,
+        underlying,
+        spot_price,
+        strikes_each_side=5,
+        option_exchange="NFO",
+    ) -> dict[str, object]:
+        market = str(underlying or "").strip().upper()
+        builder = self._builders.get(market)
+        if builder is None:
+            raise FyersCertifiedOptionChainError(
+                "UNSUPPORTED_CERTIFIED_INDEX_MARKET"
+            )
+        return builder.build_chain(
+            underlying=market,
+            spot_price=spot_price,
+            strikes_each_side=strikes_each_side,
+            option_exchange=option_exchange,
+        )
