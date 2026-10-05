@@ -212,6 +212,46 @@ class FyersFiveMarketInstrumentResolverV2:
             market, as_of_dt, _coerce_date(expiry), float(strike), str(option_type)
         )
 
+    def nearest_option_expiry(self, *, market_symbol, as_of=None, exclude_same_day=False):
+        """Return the nearest master-backed tradable option expiry.
+
+        This is a data-only discovery helper over the already-loaded FYERS
+        symbol master.  It performs no provider network call and is used by
+        R16 shadow capture to choose the same expiry authority as resolve().
+        """
+        market = get_target_market(market_symbol)
+        as_of_dt = as_of if as_of is not None else self._clock()
+        if not isinstance(as_of_dt, datetime):
+            raise FyersResolutionError("as_of must be a datetime")
+        if as_of_dt.tzinfo is None or as_of_dt.utcoffset() is None:
+            raise FyersResolutionError("as_of must be timezone-aware")
+
+        segment = _MARKET_SEGMENTS[market.symbol]["derivative"]
+        idx = self._require_index(segment)
+        expiries = {
+            record.expiry
+            for record in idx.records
+            if record.instrument_kind == "OPTION"
+            and record.expiry is not None
+            and _is_expiry_tradable(record.expiry, as_of_dt, market.symbol)
+            and (
+                not bool(exclude_same_day)
+                or record.expiry > as_of_dt.astimezone(_IST_TZ).date()
+            )
+            and (
+                (record.underlying_symbol or "").upper() == market.symbol
+                or record.symbol.upper().startswith(market.symbol)
+                or record.symbol.upper().startswith(
+                    f"{market.derivative_exchange}:{market.symbol}"
+                )
+            )
+        }
+        if not expiries:
+            raise FyersResolutionError(
+                f"no non-expired options for {market.symbol}"
+            )
+        return min(expiries)
+
     # ---------- UNDERLYING ----------
 
     def _resolve_underlying(self, market, as_of_dt):

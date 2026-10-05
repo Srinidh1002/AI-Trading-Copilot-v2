@@ -198,6 +198,10 @@ class FyersOptionChainProviderV2:
         ] = {
             "symbol": underlying_symbol.strip(),
             "strikecount": strike_count,
+            # FYERS API V3 (2026-04) exposes provider-calculated option
+            # Greeks/IV when greeks=1 is requested.  Preserve provider
+            # evidence instead of calculating local Greeks in the runtime.
+            "greeks": 1,
         }
 
         if expiry_timestamp is not None and str(expiry_timestamp).strip():

@@ -32,11 +32,14 @@ class LiveCandidatePolicySourceV1:
 
 @dataclass(frozen=True,slots=True)
 class LiveMarketCandidateEvaluationInputV1:
- market_spec:CertifiedIndexMarketSpecV1;parent_cycle_id:str;candidate_id:str;observation_id:str;spot_response:object;candle_rows_by_timeframe:Mapping[str,object];option_contracts:object;option_chain_evidence_contracts:object|None;provider_timestamp:datetime;evaluated_at:datetime;session:MarketSessionValidationV1;policy:LiveCandidatePolicySourceV1;engines:LiveCanonicalEvidenceEnginesV1;broader_market:BroaderMarketIntelligenceResultV1|None=None;external_context:ExternalMarketContextResultV1|None=None;provider_state:str="OK";blockers:tuple[str,...]=();warnings:tuple[str,...]=()
+ market_spec:CertifiedIndexMarketSpecV1;parent_cycle_id:str;candidate_id:str;observation_id:str;spot_response:object;candle_rows_by_timeframe:Mapping[str,object];option_contracts:object;option_chain_evidence_contracts:object|None;provider_timestamp:datetime;evaluated_at:datetime;session:MarketSessionValidationV1;policy:LiveCandidatePolicySourceV1;engines:LiveCanonicalEvidenceEnginesV1;broader_market:BroaderMarketIntelligenceResultV1|None=None;external_context:ExternalMarketContextResultV1|None=None;provider_state:str="OK";provider_name:str="ANGEL_ONE";blockers:tuple[str,...]=();warnings:tuple[str,...]=()
  def __post_init__(self):
   if type(self.market_spec) is not CertifiedIndexMarketSpecV1 or type(self.session) is not MarketSessionValidationV1 or type(self.policy) is not LiveCandidatePolicySourceV1 or type(self.engines) is not LiveCanonicalEvidenceEnginesV1:raise TypeError("typed evaluation input")
   if type(self.parent_cycle_id) is not str or not self.parent_cycle_id.strip():raise ValueError("parent_cycle_id")
   if self.provider_timestamp.tzinfo is None or self.evaluated_at.tzinfo is None:raise ValueError("timestamps")
+  provider_name=str(self.provider_name or "").strip().upper()
+  if provider_name not in {"ANGEL_ONE","FYERS"}:raise ValueError("provider_name")
+  object.__setattr__(self,"provider_name",provider_name)
   if (self.session.symbol,self.session.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange):raise ValueError("session identity")
   if self.broader_market is not None and (type(self.broader_market) is not BroaderMarketIntelligenceResultV1 or (self.broader_market.underlying_symbol,self.broader_market.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange)):raise ValueError("broader market identity")
   if self.external_context is not None and (type(self.external_context) is not ExternalMarketContextResultV1 or (self.external_context.underlying_symbol,self.external_context.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange) or self.external_context.created_at != self.evaluated_at):raise ValueError("external context identity or evaluation boundary")
@@ -65,6 +68,7 @@ def _build_live_candidate_base_evidence(
         provider_timestamp=value.provider_timestamp,
         evaluated_at=value.evaluated_at,
         provider_state=value.provider_state,
+        provider_name=value.provider_name,
         blockers=value.blockers,
         warnings=value.warnings,
     )
@@ -81,6 +85,7 @@ def _build_live_candidate_base_evidence(
         provider_timestamp=value.provider_timestamp,
         evaluated_at=value.evaluated_at,
         provider_state=value.provider_state,
+        provider_name=value.provider_name,
         blockers=value.blockers,
         warnings=value.warnings,
     )
@@ -343,6 +348,16 @@ def evaluate_captured_certified_market_candidate(
         engines,
         broader_market=broader_market,
         external_context=external_context,
+        provider_name=(
+            str(
+                (
+                    (captured_evidence.cache_metadata.get("options") or {})
+                    .get("provider", "ANGEL_ONE")
+                )
+            )
+            .strip()
+            .upper()
+        ),
         blockers=(
             captured_evidence.provider_blockers
         ),
@@ -445,6 +460,16 @@ def evaluate_captured_certified_market_candidate_with_policy_factory(
         engines,
         broader_market=broader_market,
         external_context=external_context,
+        provider_name=(
+            str(
+                (
+                    (captured_evidence.cache_metadata.get("options") or {})
+                    .get("provider", "ANGEL_ONE")
+                )
+            )
+            .strip()
+            .upper()
+        ),
         blockers=(
             captured_evidence.provider_blockers
         ),

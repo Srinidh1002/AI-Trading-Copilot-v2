@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 
 from config import APP_NAME, BUILD, PHASE, VERSION
 from dashboard.dashboard_operational_read_model_state import (
@@ -42,6 +43,12 @@ from dashboard.dashboard_status_components import (
 )
 from dashboard.trades_pnl_components import render_trades_pnl_center
 from dashboard.task9_certification_components import render_task9_certification_center
+from dashboard.five_market_campaign_sync_v2 import (
+    synchronize_five_market_campaign_projection,
+)
+from dashboard.five_market_certification_components_v2 import (
+    render_five_market_certification_center,
+)
 from dashboard.recommendation_history_components import render_recommendation_history
 from dashboard.data_health_components import render_data_health_strip
 from dashboard.decision_observability_components import (
@@ -97,6 +104,15 @@ def _render_r4_lifecycle_section(view) -> None:
 
 
 def home() -> None:
+    try:
+        synchronize_five_market_campaign_projection(
+            st.session_state,
+            repo_root=Path(__file__).resolve().parents[1],
+        )
+    except Exception:
+        # Keep the dashboard read-only and available if projection recovery fails.
+        pass
+
     synchronize_registered_dashboard_publication(
         st.session_state
     )
@@ -157,6 +173,11 @@ def home() -> None:
         elif page == "💼 Trades & P&L":
             render_trades_pnl_center(st=st, view=application_view)
         elif page == "🧪 Certification":
+            render_five_market_certification_center(
+                st=st,
+                state=st.session_state,
+            )
+            st.divider()
             render_task9_certification_center(st=st, view=application_view)
         elif page == "🧮 Manual Planner":
             render_manual_live_planner(st=st, view=application_view)

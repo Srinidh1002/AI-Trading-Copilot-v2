@@ -1,0 +1,157 @@
+name: r16-focused
+
+on:
+  push:
+    branches:
+      - r16-final-product-hardening
+  pull_request:
+    branches:
+      - r15-five-market-release-v1
+  workflow_dispatch:
+
+jobs:
+  r16-focused:
+    name: R16 focused safety and architecture gate
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    env:
+      PYTHONUNBUFFERED: "1"
+      PYTHONUTF8: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONPATH: "${{ github.workspace }}/src;${{ github.workspace }}"
+      FYERS_APP_ID: ""
+      FYERS_ACCESS_TOKEN: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install validated runtime and test tooling
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-runtime-lock.txt
+          python -m pip install pytest ruff
+
+      - name: Compile R16 and modified FYERS files
+        shell: pwsh
+        run: |
+          $files = @(
+            "services/broker/fyers_master_readiness_v2.py",
+            "services/broker/fyers_five_market_resolver_v2.py",
+            "services/broker/fyers_response_normalizer_v2.py",
+            "services/options/angel_option_chain_normalizer.py",
+            "services/analysis/live_market_candidate_evaluator.py",
+            "services/options/fyers_option_chain_provider_v2.py",
+            "services/options/fyers_native_option_chain_engine_v2.py",
+            "services/options/r16_fyers_native_option_capture_v1.py",
+            "services/paper_orchestration/five_market_campaign_read_model_v2.py",
+            "services/paper_orchestration/r16_two_market_shadow_source_v1.py",
+            "services/paper_orchestration/r16_canonical_candidate_reader_v1.py",
+            "services/paper_orchestration/r16_fyers_shadow_composition_v1.py",
+            "services/paper_orchestration/r16_strategy_authority_v1.py",
+            "services/paper_orchestration/r16_selector_paper_runtime_v1.py",
+            "services/reporting/five_market_certification_final_report_v1.py",
+            "services/live_execution/r16_pre_live_eligibility_v1.py",
+            "dashboard/five_market_campaign_sync_v2.py",
+            "dashboard/five_market_certification_components_v2.py",
+            "dashboard/dashboard_v2.py",
+            "tools/preflight_and_start_five_market_paper.py",
+            "tools/generate_five_market_certification_report.py",
+            "tools/run_r16_two_market_shadow_once.py"
+          )
+          python -m py_compile @files
+
+      - name: Ruff R16 maintained files
+        shell: pwsh
+        run: |
+          $files = @(
+            "services/broker/fyers_master_readiness_v2.py",
+            "services/options/angel_option_chain_normalizer.py",
+            "services/analysis/live_market_candidate_evaluator.py",
+            "services/options/r16_fyers_native_option_capture_v1.py",
+            "services/paper_orchestration/five_market_campaign_read_model_v2.py",
+            "services/paper_orchestration/r16_two_market_shadow_source_v1.py",
+            "services/paper_orchestration/r16_canonical_candidate_reader_v1.py",
+            "services/paper_orchestration/r16_fyers_shadow_composition_v1.py",
+            "services/paper_orchestration/r16_strategy_authority_v1.py",
+            "services/paper_orchestration/r16_selector_paper_runtime_v1.py",
+            "services/reporting/five_market_certification_final_report_v1.py",
+            "services/live_execution/r16_pre_live_eligibility_v1.py",
+            "dashboard/five_market_campaign_sync_v2.py",
+            "dashboard/five_market_certification_components_v2.py",
+            "tools/generate_five_market_certification_report.py",
+            "tools/run_r16_two_market_shadow_once.py",
+            "tests/test_r16_fyers_master_readiness_v2.py",
+            "tests/test_r16_five_market_campaign_read_model_v2.py",
+            "tests/test_r16_two_market_shadow_source_v1.py",
+            "tests/test_r16_canonical_candidate_reader_v1.py",
+            "tests/test_r16_fyers_native_option_capture_v1.py",
+            "tests/test_r16_fyers_shadow_composition_v1.py",
+            "tests/test_r16_strategy_authority_v1.py",
+            "tests/test_r16_shadow_persistence_v1.py",
+            "tests/test_r16_selector_paper_runtime_v1.py",
+            "tests/test_r16_pre_live_eligibility_v1.py",
+            "tests/test_r16_five_market_certification_final_report_v1.py"
+          )
+          python -m ruff check @files
+
+      - name: Focused R16 aggregate regression
+        shell: pwsh
+        run: |
+          $tests = @(
+            "tests/test_p0_preflight_v2.py",
+            "tests/test_fyers_option_chain_provider_v2.py",
+            "tests/test_f13_fyers_native_option_chain_engine_v2.py",
+            "tests/test_r16_fyers_master_readiness_v2.py",
+            "tests/test_r16_five_market_campaign_read_model_v2.py",
+            "tests/test_r16_two_market_shadow_source_v1.py",
+            "tests/test_r16_canonical_candidate_reader_v1.py",
+            "tests/test_r16_fyers_native_option_capture_v1.py",
+            "tests/test_r16_fyers_shadow_composition_v1.py",
+            "tests/test_r16_strategy_authority_v1.py",
+            "tests/test_r16_shadow_persistence_v1.py",
+            "tests/test_r16_selector_paper_runtime_v1.py",
+            "tests/test_r16_pre_live_eligibility_v1.py",
+            "tests/test_r16_five_market_certification_final_report_v1.py"
+          )
+          python -m pytest @tests -q --tb=short
+
+      - name: Verify R16 source remains PAPER-only
+        shell: pwsh
+        run: |
+          $paths = @(
+            "services/options/r16_fyers_native_option_capture_v1.py",
+            "services/paper_orchestration/r16_two_market_shadow_source_v1.py",
+            "services/paper_orchestration/r16_canonical_candidate_reader_v1.py",
+            "services/paper_orchestration/r16_fyers_shadow_composition_v1.py",
+            "services/paper_orchestration/r16_strategy_authority_v1.py",
+            "services/paper_orchestration/r16_selector_paper_runtime_v1.py",
+            "services/live_execution/r16_pre_live_eligibility_v1.py",
+            "tools/run_r16_two_market_shadow_once.py"
+          )
+          $forbidden = @(
+            "placeOrder(",
+            "place_order(",
+            "submit_order(",
+            "modify_order(",
+            "cancel_order(",
+            "broker_order_submission=True",
+            "live_execution_eligible=True"
+          )
+          foreach ($path in $paths) {
+            $source = Get-Content $path -Raw
+            foreach ($needle in $forbidden) {
+              if ($source.Contains($needle)) {
+                Write-Host "FORBIDDEN token $needle in $path"
+                exit 1
+              }
+            }
+          }
+          Write-Host "R16_PAPER_SAFETY=PASS"

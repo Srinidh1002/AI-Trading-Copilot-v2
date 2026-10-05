@@ -236,6 +236,38 @@ def check_rate_limiter():
     return True, "limiter ok"
 
 
+def check_symbol_masters(markets, repo_root, now):
+    """Read-only FYERS derivative-master readiness gate per requested market."""
+    try:
+        from services.broker.fyers_master_readiness_v2 import (
+            audit_required_master_cache,
+        )
+        return audit_required_master_cache(
+            repo_root=repo_root,
+            markets=markets,
+            as_of=now,
+        )
+    except Exception as exc:
+        return {
+            m: (False, f"MASTER_GATE_RAISED:{type(exc).__name__}")
+            for m in markets
+        }
+
+
+def sync_symbol_masters(markets, repo_root, source_dir, now):
+    """Explicit cache-only provisioning used by release/deployment launch."""
+    from services.broker.fyers_master_readiness_v2 import (
+        sync_required_master_cache,
+    )
+
+    return sync_required_master_cache(
+        repo_root=repo_root,
+        source_dir=source_dir,
+        markets=markets,
+        as_of=now,
+    )
+
+
 def check_cert_authority(markets):
     try:
         from services.paper_orchestration.certification_halt_v2 import market_state
@@ -503,7 +535,7 @@ def check_provider_health(creds, markets):
     return out
 
 
-def _summarize(cert, state, cal, calibration, health, locks, requested=None):
+def _summarize(cert, state, masters, cal, calibration, health, locks, requested=None):
     """Summarize over the requested markets only.
 
     If the operator passed --markets NIFTY,SENSEX, only those two are
@@ -552,6 +584,14 @@ def main(argv=None):
         "--allow-partial",
         action="store_true",
         help="permit launching a subset of markets when some are held",
+    )
+    ap.add_argument(
+        "--sync-master-cache-from",
+        default=None,
+        help=(
+            "explicitly validate and atomically provision required FYERS "
+            "master caches from this directory before readiness checks"
+        ),
     )
     ap.add_argument("--markets", default=None, help="comma-separated subset; default all five")
     args = ap.parse_args(argv)
@@ -608,10 +648,26 @@ def main(argv=None):
         print("PREFLIGHT=HOLD")
         return 1
 
+    if args.sync_master_cache_from:
+        try:
+            installed = sync_symbol_masters(
+                requested,
+                args.repo_root,
+                args.sync_master_cache_from,
+                now,
+            )
+        except Exception as exc:
+            _log("MASTER", f"FAIL sync={type(exc).__name__}:{str(exc)[:120]}")
+            print("PREFLIGHT=HOLD")
+            return 1
+        for segment, path in sorted(installed.items()):
+            _log("MASTER", f"SYNCED {segment} -> {path}")
+
     # per-market checks
     _section("PREFLIGHT — PER-MARKET AUTHORITY")
     cert = check_cert_authority(requested)
     state = check_state_authority(requested, args.repo_root)
+    masters = check_symbol_masters(requested, args.repo_root, now)
     cal = check_calendar(requested, now)
     calibration = check_calibration(requested)
 
@@ -621,6 +677,7 @@ def main(argv=None):
         for m in requested
         if cert.get(m, (False,))[0]
         and state.get(m, (False,))[0]
+        and masters.get(m, (False,))[0]
         and cal.get(m, (False,))[0]
         and calibration.get(m, (False,))[0]
         and locks.get(m, False)
@@ -630,17 +687,18 @@ def main(argv=None):
     for m in requested:
         ok_c, why_c = cert.get(m, (False, "?"))
         ok_s, why_s = state.get(m, (False, "?"))
+        ok_m, why_m = masters.get(m, (False, "?"))
         ok_k, why_k = cal.get(m, (False, "?"))
         ok_l, why_l = calibration.get(m, (False, "?"))
         ok_h, why_h = health.get(m, (True, "not probed"))
-        tag = "OK" if all([ok_c, ok_s, ok_k, ok_l, ok_h]) else "HOLD"
+        tag = "OK" if all([ok_c, ok_s, ok_m, ok_k, ok_l, ok_h]) else "HOLD"
         _log(
             m,
-            f"{tag} cert={why_c} state={why_s} cal={why_k} "
+            f"{tag} cert={why_c} state={why_s} master={why_m} cal={why_k} "
             f"cali={why_l} health={why_h} lock={locks.get(m, False)}",
         )
 
-    ready, held = _summarize(cert, state, cal, calibration, health, locks, requested)
+    ready, held = _summarize(cert, state, masters, cal, calibration, health, locks, requested)
 
     _section("PREFLIGHT SUMMARY")
     if ready and not held:

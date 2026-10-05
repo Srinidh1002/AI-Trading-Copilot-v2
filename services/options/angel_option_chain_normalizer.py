@@ -70,9 +70,11 @@ class AngelOptionNormalizationResultV1:
         if self.snapshot is None and self.universe is None and not self.blockers: raise ValueError("unavailable option data requires blocker")
         if (self.snapshot is None) != (self.universe is None): raise ValueError("snapshot/universe availability mismatch")
 
-def normalize_angel_option_chain(*, contracts: object, snapshot_contracts: object | None = None, market_spec: CertifiedIndexMarketSpecV1, spot_price: object, provider_timestamp: datetime, evaluated_at: datetime, provider_state: str = "OK", blockers: tuple[str, ...] = (), warnings: tuple[str, ...] = ()) -> AngelOptionNormalizationResultV1:
-    """Normalize captured ``LiveOptionChainBuilder.build_chain`` contracts only."""
+def normalize_angel_option_chain(*, contracts: object, snapshot_contracts: object | None = None, market_spec: CertifiedIndexMarketSpecV1, spot_price: object, provider_timestamp: datetime, evaluated_at: datetime, provider_state: str = "OK", provider_name: str = "ANGEL_ONE", blockers: tuple[str, ...] = (), warnings: tuple[str, ...] = ()) -> AngelOptionNormalizationResultV1:
+    """Normalize captured option-chain contracts without changing provider identity."""
     spec = _spec(market_spec); _aware(provider_timestamp, "provider_timestamp"); _aware(evaluated_at, "evaluated_at")
+    provider_name = str(provider_name or "").strip().upper()
+    if provider_name not in {"ANGEL_ONE", "FYERS"}: raise ValueError("provider_name")
     spot = _num(spot_price, "spot_price", positive=True)
     if not isinstance(contracts, Sequence) or isinstance(contracts, (str, bytes)) or not contracts:
         return AngelOptionNormalizationResultV1(None, None, tuple(blockers) or ("OPTION_CHAIN_UNAVAILABLE",), tuple(warnings), provider_state, spec.underlying_symbol, spec.exchange, spec.option_exchange)
@@ -147,6 +149,6 @@ def normalize_angel_option_chain(*, contracts: object, snapshot_contracts: objec
         iv = _num(raw.get("iv", raw.get("implied_volatility")), "iv")
         records.append({"strike": strike, "option_type": option_type, "ltp": last, "bid_price": bid, "ask_price": ask, "bid_quantity": _num(raw.get("bid_quantity"), "bid_quantity", integer=True), "ask_quantity": _num(raw.get("ask_quantity"), "ask_quantity", integer=True), "volume": int(volume) if volume is not None else None, "open_interest": int(oi) if oi is not None else None, "change_in_open_interest": int(change) if change is not None else None, "implied_volatility": iv, "underlying_value": spot, "source_record_id": str(raw.get("token", "")), "is_complete": True})
 
-    snapshot = normalize_option_chain_records(underlying_symbol=spec.underlying_symbol, exchange=spec.exchange, expiry=snapshot_expiry_value, underlying_value=spot, source_timestamp=provider_timestamp, provider_name="ANGEL_ONE", records=tuple(records), clock=lambda: evaluated_at)
-    universe = OptionContractUniverseV1(f"angel-universe:{spec.symboltoken}:{provider_timestamp.isoformat()}", spec.underlying_symbol, spec.exchange, evaluated_at, spot, tuple(values), "ANGEL_ONE", True)
+    snapshot = normalize_option_chain_records(underlying_symbol=spec.underlying_symbol, exchange=spec.exchange, expiry=snapshot_expiry_value, underlying_value=spot, source_timestamp=provider_timestamp, provider_name=provider_name, records=tuple(records), clock=lambda: evaluated_at)
+    universe = OptionContractUniverseV1(f"angel-universe:{spec.symboltoken}:{provider_timestamp.isoformat()}", spec.underlying_symbol, spec.exchange, evaluated_at, spot, tuple(values), provider_name, True)
     return AngelOptionNormalizationResultV1(snapshot, universe, tuple(blockers), tuple(warnings), provider_state, spec.underlying_symbol, spec.exchange, spec.option_exchange)
