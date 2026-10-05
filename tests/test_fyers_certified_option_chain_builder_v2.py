@@ -7,6 +7,7 @@ import pytest
 from services.options.fyers_certified_option_chain_builder_v2 import (
     FyersCertifiedOptionChainBuilderV2,
     FyersCertifiedOptionChainError,
+    FyersCertifiedTwoIndexOptionChainBuilderV2,
 )
 
 
@@ -207,3 +208,39 @@ def test_market_identity_is_strict():
         match="OPTION_EXCHANGE_IDENTITY_MISMATCH",
     ):
         builder.build_chain("NIFTY", 22462.0, option_exchange="BFO")
+
+
+def test_two_index_dispatcher_routes_nifty_without_changing_contract():
+    provider = FakeProvider()
+    resolver = FakeResolver()
+    dispatcher = FyersCertifiedTwoIndexOptionChainBuilderV2(
+        provider=provider,
+        resolver=resolver,
+        clock=lambda: NOW,
+    )
+    chain = dispatcher.build_chain(
+        "NIFTY",
+        22462.0,
+        strikes_each_side=1,
+        option_exchange="NFO",
+    )
+    assert chain["provider"] == "FYERS"
+    assert chain["underlying"] == "NIFTY"
+    assert len(provider.calls) == 1
+
+
+def test_two_index_dispatcher_rejects_non_index_market():
+    dispatcher = FyersCertifiedTwoIndexOptionChainBuilderV2(
+        provider=FakeProvider(),
+        resolver=FakeResolver(),
+        clock=lambda: NOW,
+    )
+    with pytest.raises(
+        FyersCertifiedOptionChainError,
+        match="UNSUPPORTED_CERTIFIED_INDEX_MARKET",
+    ):
+        dispatcher.build_chain(
+            "CRUDEOILM",
+            7000.0,
+            option_exchange="MCX",
+        )
