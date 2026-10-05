@@ -15,6 +15,7 @@ Every safety gate is verified before any worker is spawned:
   * per-market state file authority (index/MCX load contract)
   * per-market session calendar authority (calendar HOLD markets dropped)
   * MCX execution calibration (product-scoped, verified)
+  * required FYERS symbol-master caches with current derivative identities
   * FYERS provider health, one read-only call per surviving market
 
 Zero ready markets is not an error: prints HOLD summary, exits 0.
@@ -234,6 +235,26 @@ def check_rate_limiter():
     except Exception as exc:
         return False, f"limiter self-check failed: {type(exc).__name__}"
     return True, "limiter ok"
+
+
+def check_master_authority(markets, repo_root):
+    """Read-only FYERS symbol-master deployment gate."""
+    try:
+        from services.broker.fyers_master_preflight_v2 import (
+            check_fyers_master_authority_v2,
+        )
+    except Exception as exc:
+        return {
+            m: (False, f"FYERS_MASTER_GATE_IMPORT_FAILED:{type(exc).__name__}")
+            for m in markets
+        }
+    try:
+        return check_fyers_master_authority_v2(repo_root, markets)
+    except Exception as exc:
+        return {
+            m: (False, f"FYERS_MASTER_GATE_RAISED:{type(exc).__name__}")
+            for m in markets
+        }
 
 
 def check_cert_authority(markets):
@@ -503,7 +524,7 @@ def check_provider_health(creds, markets):
     return out
 
 
-def _summarize(cert, state, cal, calibration, health, locks, requested=None):
+def _summarize(cert, state, cal, calibration, master, health, locks, requested=None):
     """Summarize over the requested markets only.
 
     If the operator passed --markets NIFTY,SENSEX, only those two are
@@ -518,6 +539,7 @@ def _summarize(cert, state, cal, calibration, health, locks, requested=None):
             (state, "state"),
             (cal, "calendar"),
             (calibration, "calibration"),
+            (master, "master"),
             (health, "health"),
         ):
             # Health table defaults to non-failure; other tables default to failure
@@ -614,6 +636,7 @@ def main(argv=None):
     state = check_state_authority(requested, args.repo_root)
     cal = check_calendar(requested, now)
     calibration = check_calibration(requested)
+    master = check_master_authority(requested, args.repo_root)
 
     # provider health only for markets that passed everything so far
     pre_ready = [
@@ -623,6 +646,7 @@ def main(argv=None):
         and state.get(m, (False,))[0]
         and cal.get(m, (False,))[0]
         and calibration.get(m, (False,))[0]
+        and master.get(m, (False,))[0]
         and locks.get(m, False)
     ]
     health = check_provider_health(creds, pre_ready) if pre_ready else {}
@@ -632,15 +656,25 @@ def main(argv=None):
         ok_s, why_s = state.get(m, (False, "?"))
         ok_k, why_k = cal.get(m, (False, "?"))
         ok_l, why_l = calibration.get(m, (False, "?"))
+        ok_m, why_m = master.get(m, (False, "?"))
         ok_h, why_h = health.get(m, (True, "not probed"))
-        tag = "OK" if all([ok_c, ok_s, ok_k, ok_l, ok_h]) else "HOLD"
+        tag = "OK" if all([ok_c, ok_s, ok_k, ok_l, ok_m, ok_h]) else "HOLD"
         _log(
             m,
             f"{tag} cert={why_c} state={why_s} cal={why_k} "
-            f"cali={why_l} health={why_h} lock={locks.get(m, False)}",
+            f"cali={why_l} master={why_m} health={why_h} lock={locks.get(m, False)}",
         )
 
-    ready, held = _summarize(cert, state, cal, calibration, health, locks, requested)
+    ready, held = _summarize(
+        cert,
+        state,
+        cal,
+        calibration,
+        master,
+        health,
+        locks,
+        requested,
+    )
 
     _section("PREFLIGHT SUMMARY")
     if ready and not held:
