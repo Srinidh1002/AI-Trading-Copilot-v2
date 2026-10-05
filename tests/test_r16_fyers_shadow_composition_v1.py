@@ -1,24 +1,24 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
+from services.options.r16_fyers_native_option_capture_v1 import (
+    R16FyersNativeOptionCapturePipelineV1,
+)
 from services.paper_orchestration.r16_canonical_candidate_reader_v1 import (
     R16CanonicalCandidateReaderV1,
 )
 from services.paper_orchestration.r16_fyers_shadow_composition_v1 import (
     build_r16_fyers_shadow_readers_v1,
 )
-from services.options.r16_fyers_native_option_capture_v1 import (
-    R16FyersNativeOptionCapturePipelineV1,
-)
 
 
-NOW = datetime(2026, 10, 5, 8, 0, 2, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 5, 8, 0, 2, tzinfo=UTC)
 MARKET_EPOCH = int(
-    datetime(2026, 10, 5, 8, 0, 0, tzinfo=timezone.utc).timestamp()
+    datetime(2026, 10, 5, 8, 0, 0, tzinfo=UTC).timestamp()
 )
 
 
@@ -140,7 +140,7 @@ def test_fyers_shadow_quote_reader_preserves_provider_market_timestamp(tmp_path)
     assert quote["spot_price"] == 22460.0
     assert quote["market_timestamp"] == datetime.fromtimestamp(
         MARKET_EPOCH,
-        tz=timezone.utc,
+        tz=UTC,
     )
     assert quote["received_at"] == NOW
     assert quote["timestamp_source"] == "FYERS_QUOTES_TT"
