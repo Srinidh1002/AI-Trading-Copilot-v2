@@ -254,6 +254,10 @@ def build_fyers_certified_runtime_providers_v2(
         analysis_pipeline=analysis_pipeline,
         option_decision_pipeline=option_pipeline,
         clock=now,
+        provider_name="FYERS",
+        data_only=True,
+        order_capability_allowed=False,
+        automatic_fallback_allowed=False,
     )
 
     # Explicit post-composition safety assertions prevent a permissive injected
