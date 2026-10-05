@@ -502,6 +502,26 @@ def normalize_option_chain(
             if value is not None:
                 normalized[target] = value
 
+        # FYERS API V3 can return provider-calculated Greeks and IV in a
+        # nested `greeks` object when the request includes greeks=1.
+        # Preserve only finite numeric provider values; never fabricate a
+        # missing Greek locally at this normalization boundary.
+        greeks = row.get("greeks")
+        if isinstance(greeks, Mapping):
+            for name in ("delta", "gamma", "theta", "vega", "iv"):
+                value = greeks.get(name)
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    normalized[name] = float(value)
+
+        # Tolerate a provider serialization that exposes the same fields at
+        # row level while retaining nested values as the first authority.
+        for name in ("delta", "gamma", "theta", "vega", "iv"):
+            if name in normalized:
+                continue
+            value = row.get(name)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                normalized[name] = float(value)
+
         result.append(normalized)
 
     if not result:
