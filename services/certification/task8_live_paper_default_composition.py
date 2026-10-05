@@ -612,7 +612,9 @@ def build_task8_dependencies(
                             "timestamp_source"
                         ),
                         "captured_spot_payload": {
+                            "provider": raw.get("provider"),
                             "spot_price": raw["spot_price"],
+                            "ltp": raw.get("ltp", raw["spot_price"]),
                             "timestamp_source": raw.get(
                                 "timestamp_source"
                             ),
