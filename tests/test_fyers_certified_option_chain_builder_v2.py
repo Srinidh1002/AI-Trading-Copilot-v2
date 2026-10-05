@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -11,7 +11,7 @@ from services.options.fyers_certified_option_chain_builder_v2 import (
 )
 
 
-NOW = datetime(2026, 10, 5, 7, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 5, 7, 0, tzinfo=UTC)
 
 
 class FakeProvider:
