@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from test_certified_two_market_parent_runtime import candidate_for
+from test_two_market_runtime_readiness import (
+    OfflineAnalysisPipeline,
+    OfflineOptionPipeline,
+)
 
 from services.paper_orchestration.certified_live_provider_readers import (
     CertifiedLiveProviderReaders,
@@ -11,15 +16,10 @@ from services.paper_orchestration.certified_live_provider_readers import (
 from services.paper_orchestration.r16_two_market_shadow_source_v1 import (
     R16TwoMarketShadowSourceV1,
 )
-from test_certified_two_market_parent_runtime import candidate_for
-from test_two_market_runtime_readiness import (
-    OfflineAnalysisPipeline,
-    OfflineOptionPipeline,
-)
 
 
-NOW = datetime(2026, 8, 4, 5, 0, 10, tzinfo=timezone.utc)
-MARKET_TS = datetime(2026, 8, 4, 5, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 8, 4, 5, 0, 10, tzinfo=UTC)
+MARKET_TS = datetime(2026, 8, 4, 5, 0, 0, tzinfo=UTC)
 
 
 class Clock:
