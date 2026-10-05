@@ -223,6 +223,41 @@ jobs:
           $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_five_market_certification_final_report_v1.py")
           python -m pytest @tests -q --tb=short
 
+      - name: Cumulative diagnostic A plus B1-B2
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py")
+          python -m pytest @tests -q --tb=short
+
+      - name: Cumulative diagnostic A plus B1-B3
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py")
+          python -m pytest @tests -q --tb=short
+
+      - name: Cumulative diagnostic A plus B1-B4
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py","tests/test_r16_selector_paper_runtime_v1.py")
+          python -m pytest @tests -q --tb=short
+
+      - name: Cumulative diagnostic A plus B1-B5
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py","tests/test_r16_selector_paper_runtime_v1.py","tests/test_r16_pre_live_eligibility_v1.py")
+          python -m pytest @tests -q --tb=short
+
+      - name: Cumulative diagnostic A plus B1-B6
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py","tests/test_r16_selector_paper_runtime_v1.py","tests/test_r16_pre_live_eligibility_v1.py","tests/test_r16_five_market_certification_final_report_v1.py")
+          python -m pytest @tests -q --tb=short
+
       - name: Focused R16 aggregate gate
         shell: pwsh
         run: |
