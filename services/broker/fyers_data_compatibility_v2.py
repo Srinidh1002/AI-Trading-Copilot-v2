@@ -201,6 +201,31 @@ class FyersDataOnlyCompatibilityV2:
             ),
         )
 
+    def get_historical_data(
+        self,
+        *,
+        exchange: str,
+        symboltoken: str,
+        interval: str,
+        fromdate: str,
+        todate: str,
+    ) -> dict[str, object]:
+        """Compatibility alias used by LiveMultiTimeframeData.
+
+        The certified analysis stack calls the repository's read-only market
+        client through get_historical_data(); route that exact request into the
+        already-proven FYERS getCandleData compatibility path.
+        """
+        return self.getCandleData(
+            {
+                "exchange": exchange,
+                "symboltoken": symboltoken,
+                "interval": interval,
+                "fromdate": fromdate,
+                "todate": todate,
+            }
+        )
+
     def getCandleData(
         self,
         params: Mapping[str, object],
