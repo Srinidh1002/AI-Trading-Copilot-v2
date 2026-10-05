@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -19,6 +20,13 @@ from services.paper_orchestration.r16_canonical_candidate_reader_v1 import (
     R16CanonicalCandidateReaderV1,
     _canonical_policy_source,
     install_r16_canonical_candidate_reader,
+)
+from services.analysis.live_canonical_engine_adapters import (
+    build_default_live_canonical_evidence_engines,
+)
+from services.analysis.live_market_candidate_evaluator import (
+    LiveCandidatePolicySourceV1,
+    evaluate_captured_certified_market_candidate,
 )
 from tests.fixtures.p5_12 import (
     STRONG_BEARISH,
@@ -194,3 +202,35 @@ def test_source_contains_no_execution_stage_imports():
         "live_execution_eligible=True",
     )
     assert all(item not in source for item in forbidden)
+
+def test_fyers_capture_preserves_provider_provenance_through_normalization():
+    value = captured(
+        "NIFTY",
+        "NSE",
+        25000.0,
+        complete_options=True,
+    )
+    value = replace(
+        value,
+        cache_metadata={
+            "options": {
+                "provider": "FYERS",
+            }
+        },
+    )
+    cycle_input = cycle("NIFTY", "NSE", value)
+
+    result = evaluate_captured_certified_market_candidate(
+        captured_evidence=value,
+        session_validation=cycle_input.session_validation,
+        policy_source=LiveCandidatePolicySourceV1.unavailable(),
+        parent_cycle_id="r16-provider-parent",
+        candidate_id="r16-provider-candidate",
+        observation_id=cycle_input.observation_id,
+        engines=build_default_live_canonical_evidence_engines(),
+    )
+
+    assert result.options.snapshot is not None
+    assert result.options.universe is not None
+    assert result.options.snapshot.provider_name == "FYERS"
+    assert result.options.universe.source_name == "FYERS"
