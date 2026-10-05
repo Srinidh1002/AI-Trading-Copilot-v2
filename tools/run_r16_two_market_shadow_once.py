@@ -11,28 +11,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
-
-from services.broker.fyers_auth_v2 import (
-    assert_fyers_token_current_v2,
-    load_canonical_credentials_v2,
-)
-from services.broker.fyers_master_readiness_v2 import (
-    audit_required_master_cache,
-)
-from services.broker.fyers_provider_runtime_v2 import (
-    check_fyers_provider_health_v2,
-)
-from services.broker.fyers_sdk_data_client_v2 import (
-    build_fyers_data_client_v2,
-)
-from services.paper_orchestration.r16_fyers_shadow_composition_v1 import (
-    build_r16_fyers_shadow_readers_v1,
-)
-from services.paper_orchestration.r16_two_market_shadow_source_v1 import (
-    R16TwoMarketShadowSourceV1,
-)
 
 
 def _safe_candidate(candidate):
@@ -114,6 +95,42 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.repo_root).resolve()
+    for value in (str(root), str(root / "src")):
+        if value not in sys.path:
+            sys.path.insert(0, value)
+
+    from services.broker.fyers_auth_v2 import (
+        assert_fyers_token_current_v2,
+        load_canonical_credentials_v2,
+    )
+    from services.broker.fyers_master_readiness_v2 import (
+        audit_required_master_cache,
+    )
+    from services.broker.fyers_provider_runtime_v2 import (
+        check_fyers_provider_health_v2,
+    )
+    from services.broker.fyers_sdk_data_client_v2 import (
+        build_fyers_data_client_v2,
+    )
+    from services.certification.task9_prediction_lifecycle_context_store import (
+        Task9PredictionLifecycleContextStore,
+    )
+    from services.paper_orchestration.paper_orchestration_journal import (
+        PaperOrchestrationJournal,
+    )
+    from services.paper_orchestration.prediction_ledger import (
+        PredictionLedger,
+    )
+    from services.paper_orchestration.r16_fyers_shadow_composition_v1 import (
+        build_r16_fyers_shadow_readers_v1,
+    )
+    from services.paper_orchestration.r16_two_market_shadow_source_v1 import (
+        R16TwoMarketShadowSourceV1,
+    )
+    from services.paper_orchestration.two_market_parent_cycle_journal_adapter import (
+        TwoMarketParentCycleJournalAdapter,
+    )
+
     env_file = Path(args.env_file)
     if not env_file.is_absolute():
         env_file = root / env_file
@@ -179,8 +196,47 @@ def main() -> int:
         clock=lambda: datetime.now(UTC),
     )
 
-    result = source.run_shadow_cycle()
+    shadow_root = (
+        root
+        / "data"
+        / "paper_trading"
+        / "r16_two_market_parent"
+        / "shadow"
+    )
+    parent_journal = PaperOrchestrationJournal(
+        shadow_root / "parent_journal.json"
+    )
+    parent_adapter = TwoMarketParentCycleJournalAdapter(
+        journal=parent_journal,
+        clock=lambda: datetime.now(UTC),
+    )
+    prediction_ledger = PredictionLedger(
+        shadow_root / "prediction_ledger.json"
+    )
+    lifecycle_store = Task9PredictionLifecycleContextStore(
+        shadow_root / "prediction_lifecycle_contexts.json"
+    )
+
+    result = source.run_shadow_cycle(
+        parent_journal_adapter=parent_adapter,
+        prediction_ledger=prediction_ledger,
+        prediction_lifecycle_context_store=lifecycle_store,
+    )
     payload = _decision_payload(result)
+    payload["evidence_paths"] = {
+        "parent_journal": str(parent_journal.file_path),
+        "prediction_ledger": str(prediction_ledger.file_path),
+        "prediction_lifecycle_contexts": str(lifecycle_store.file_path),
+    }
+    payload["evidence_counts"] = {
+        "parent_journal_records": parent_journal.count(),
+        "prediction_records": prediction_ledger.count(),
+        "predictions_for_parent": len(
+            prediction_ledger.records_for_parent(
+                result.parent.parent_cycle_id
+            )
+        ),
+    }
 
     text = json.dumps(
         payload,
@@ -209,6 +265,11 @@ def main() -> int:
             else "NONE"
         )
     )
+    print(
+        "PREDICTION_RECORDS="
+        f"{payload['evidence_counts']['predictions_for_parent']}"
+    )
+    print("SHADOW_EVIDENCE_PERSISTED=TRUE")
     print("EXECUTION_MODE=PAPER")
     print("PAPER_ENTRY_AUTHORITY=FALSE")
     print("BROKER_ORDER_SUBMISSION=FALSE")
