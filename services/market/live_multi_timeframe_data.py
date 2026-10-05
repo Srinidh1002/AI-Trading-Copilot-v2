@@ -1294,7 +1294,7 @@ class LiveMultiTimeframeData:
                             "provider_source": (
                                 cache_metadata.get(
                                     "cache_source",
-                                    "ANGEL_ONE_HISTORICAL",
+                                    self.provider_source,
                                 )
                             ),
                             "requested_until": (
@@ -1766,7 +1766,7 @@ class LiveMultiTimeframeData:
                 timeframe,
                 response,
                 source=(
-                    "ANGEL_ONE_HISTORICAL"
+                    self.provider_source
                 ),
                 requested_until=(
                     requested_until
@@ -1834,7 +1834,7 @@ class LiveMultiTimeframeData:
                 True
             ),
             "provider_source": (
-                "ANGEL_ONE_HISTORICAL"
+                self.provider_source
             ),
             "requested_until": (
                 requested_until
