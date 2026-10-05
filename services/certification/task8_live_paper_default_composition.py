@@ -131,6 +131,84 @@ def _git(*args: str) -> str:
     ).strip()
 
 
+def _capture_parent_spot_quotes_from_bundle(bundle):
+    """Capture the exact NIFTY/SENSEX parent spots from the injected bundle.
+
+    Provider-neutral and read-only. Each supported child market is read exactly
+    once. Returned provider timestamps remain provider evidence; this helper
+    never substitutes receipt time or fabricates exchange timestamps.
+    """
+    quote_reader = getattr(bundle, "quote_reader", None)
+    if not callable(quote_reader):
+        raise TypeError("provider bundle quote_reader must be callable")
+
+    captures: dict[tuple[str, str], dict[str, object]] = {}
+
+    for symbol, exchange in _SUPPORTED_MARKETS:
+        spec = market_spec_for(symbol, exchange)
+        raw = quote_reader(
+            spec.exchange,
+            spec.symboltoken,
+            spec.underlying_symbol,
+        )
+        if not isinstance(raw, Mapping):
+            raise TypeError(
+                "certified provider quote_reader must return a mapping"
+            )
+
+        spot_price = raw.get("spot_price", raw.get("ltp"))
+        market_timestamp = raw.get("market_timestamp")
+        received_at = raw.get("received_at")
+        timestamp_source = raw.get("timestamp_source")
+
+        if (
+            not isinstance(spot_price, (int, float))
+            or isinstance(spot_price, bool)
+            or float(spot_price) <= 0
+        ):
+            raise ValueError(
+                f"{symbol} certified provider spot price is invalid"
+            )
+        if (
+            not isinstance(market_timestamp, datetime)
+            or market_timestamp.tzinfo is None
+            or market_timestamp.utcoffset() is None
+        ):
+            raise ValueError(
+                f"{symbol} certified provider market timestamp is invalid"
+            )
+        if (
+            not isinstance(received_at, datetime)
+            or received_at.tzinfo is None
+            or received_at.utcoffset() is None
+        ):
+            raise ValueError(
+                f"{symbol} certified provider receipt timestamp is invalid"
+            )
+        if received_at < market_timestamp:
+            raise ValueError(
+                f"{symbol} certified provider receipt precedes market timestamp"
+            )
+        if not isinstance(timestamp_source, str) or not timestamp_source.strip():
+            raise ValueError(
+                f"{symbol} certified provider timestamp source is missing"
+            )
+
+        captures[(symbol, exchange)] = {
+            **dict(raw),
+            "spot_price": float(spot_price),
+            "ltp": float(spot_price),
+            "market_timestamp": market_timestamp,
+            "received_at": received_at,
+            "timestamp_source": timestamp_source.strip(),
+        }
+
+    if set(captures) != set(_SUPPORTED_MARKETS):
+        raise RuntimeError("parent spot capture did not retain both markets")
+
+    return captures
+
+
 def _validate_retained_task8_evaluations(
     decision,
     retained_evaluations,
@@ -468,77 +546,9 @@ def build_task8_dependencies(
         retained_evaluations.clear()
         retained_request_diagnostics.clear()
 
-        captures: dict[
-            tuple[str, str],
-            dict[str, object],
-        ] = {}
-
-        # Provider-neutral parent spot acquisition. The supplied certified
-        # provider bundle is the sole spot authority; Task 8 must never bypass
-        # it by constructing or calling a provider-specific client directly.
-        # Each child is read exactly once and the returned typed-compatible
-        # mapping is retained unchanged for the downstream cycle.
-        for symbol, exchange in _SUPPORTED_MARKETS:
-            spec = market_spec_for(symbol, exchange)
-            raw = bundle.quote_reader(
-                spec.exchange,
-                spec.symboltoken,
-                spec.underlying_symbol,
-            )
-            if not isinstance(raw, Mapping):
-                raise TypeError(
-                    "certified provider quote_reader must return a mapping"
-                )
-
-            spot_price = raw.get(
-                "spot_price",
-                raw.get("ltp"),
-            )
-            market_timestamp = raw.get("market_timestamp")
-            received_at = raw.get("received_at")
-            timestamp_source = raw.get("timestamp_source")
-
-            if (
-                not isinstance(spot_price, (int, float))
-                or isinstance(spot_price, bool)
-                or float(spot_price) <= 0
-            ):
-                raise ValueError(
-                    f"{symbol} certified provider spot price is invalid"
-                )
-            if (
-                not isinstance(market_timestamp, datetime)
-                or market_timestamp.tzinfo is None
-                or market_timestamp.utcoffset() is None
-            ):
-                raise ValueError(
-                    f"{symbol} certified provider market timestamp is invalid"
-                )
-            if (
-                not isinstance(received_at, datetime)
-                or received_at.tzinfo is None
-                or received_at.utcoffset() is None
-            ):
-                raise ValueError(
-                    f"{symbol} certified provider receipt timestamp is invalid"
-                )
-            if received_at < market_timestamp:
-                raise ValueError(
-                    f"{symbol} certified provider receipt precedes market timestamp"
-                )
-            if not isinstance(timestamp_source, str) or not timestamp_source.strip():
-                raise ValueError(
-                    f"{symbol} certified provider timestamp source is missing"
-                )
-
-            captures[(symbol, exchange)] = {
-                **dict(raw),
-                "spot_price": float(spot_price),
-                "ltp": float(spot_price),
-                "market_timestamp": market_timestamp,
-                "received_at": received_at,
-                "timestamp_source": timestamp_source.strip(),
-            }
+        captures = _capture_parent_spot_quotes_from_bundle(
+            bundle
+        )
 
         requested = datetime.now(timezone.utc)
         cycles = {}
