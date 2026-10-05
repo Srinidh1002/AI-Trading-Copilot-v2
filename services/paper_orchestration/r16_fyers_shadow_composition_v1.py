@@ -19,6 +19,9 @@ from services.broker.fyers_five_market_resolver_v2 import (
 from services.broker.fyers_legacy_identity_resolver_v2 import (
     FyersLegacyIdentityResolverV2,
 )
+from services.broker.fyers_symbol_master_v2 import (
+    FyersSymbolMasterStoreV2,
+)
 from services.broker.fyers_provider_adapters_v2 import (
     FyersQuoteDepthProviderV2,
 )
@@ -73,6 +76,7 @@ def build_r16_fyers_shadow_readers_v1(
     data_client,
     instrument_rows,
     legacy_instrument_path: str | Path,
+    master_base_dir: str | Path | None = None,
     available_capital: float = 100_000.0,
     clock=None,
     historical_cache=None,
@@ -95,8 +99,16 @@ def build_r16_fyers_shadow_readers_v1(
     if not callable(now):
         raise TypeError("clock")
 
+    master_store = FyersSymbolMasterStoreV2(
+        base_dir=(
+            str(Path(master_base_dir).resolve())
+            if master_base_dir is not None
+            else "data/provider_cache/fyers_master"
+        )
+    )
     resolver = FyersFiveMarketInstrumentResolverV2(
         data_client=data_client,
+        master_store=master_store,
         clock=now,
     )
     legacy_resolver = FyersLegacyIdentityResolverV2(
