@@ -47,6 +47,13 @@ class FakeClient:
                             160.1,
                         "fyToken":
                             "CE1",
+                        "greeks": {
+                            "delta": 0.55,
+                            "gamma": 0.001,
+                            "theta": -12.5,
+                            "vega": 8.2,
+                            "iv": 13.7,
+                        },
                     },
                     {
                         "symbol":
@@ -69,6 +76,13 @@ class FakeClient:
                             95.1,
                         "fyToken":
                             "PE1",
+                        "greeks": {
+                            "delta": -0.45,
+                            "gamma": 0.0011,
+                            "theta": -11.5,
+                            "vega": 8.0,
+                            "iv": 14.1,
+                        },
                     },
                 ]
             },
@@ -181,3 +195,22 @@ def test_option_chain_fails_closed_on_provider_error():
                 "NSE:NIFTY50-INDEX",
             strike_count=5,
         )
+
+def test_option_chain_requests_and_preserves_provider_greeks_and_iv():
+    client = FakeClient()
+    provider = FyersOptionChainProviderV2(client)
+
+    result = provider.get_option_chain(
+        underlying_symbol="NSE:NIFTY50-INDEX",
+        strike_count=5,
+    )
+
+    assert client.calls[0]["greeks"] == 1
+    ce, pe = result["rows"]
+    assert ce["delta"] == 0.55
+    assert ce["gamma"] == 0.001
+    assert ce["theta"] == -12.5
+    assert ce["vega"] == 8.2
+    assert ce["iv"] == 13.7
+    assert pe["delta"] == -0.45
+    assert pe["iv"] == 14.1
