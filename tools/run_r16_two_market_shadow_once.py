@@ -169,6 +169,9 @@ def main() -> int:
         data_client=client,
         instrument_rows=rows,
         legacy_instrument_path=instrument_file,
+        master_base_dir=(
+            root / "data" / "provider_cache" / "fyers_master"
+        ),
         available_capital=args.capital,
     )
     source = R16TwoMarketShadowSourceV1(
