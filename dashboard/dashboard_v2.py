@@ -50,6 +50,13 @@ from dashboard.decision_observability_components import (
 from dashboard.manual_live_planner_components import render_manual_live_planner
 from dashboard.dashboard_navigation import render_dashboard_navigation
 from dashboard.markets_components import render_markets_comparison
+from dashboard.five_market_paper_campaign_sync import (
+    get_five_market_paper_campaign_projection,
+    synchronize_five_market_paper_campaign_projection,
+)
+from dashboard.five_market_paper_campaign_components import (
+    render_five_market_paper_campaign,
+)
 
 
 _OPERATOR_VIEW_MODEL_KEY = (
@@ -115,6 +122,10 @@ def home() -> None:
         ),
     )
 
+    synchronize_five_market_paper_campaign_projection(
+        st.session_state,
+    )
+
     operator_view_model = get_operator_application_view_model(
         st.session_state
     )
@@ -157,6 +168,13 @@ def home() -> None:
         elif page == "💼 Trades & P&L":
             render_trades_pnl_center(st=st, view=application_view)
         elif page == "🧪 Certification":
+            render_five_market_paper_campaign(
+                st=st,
+                view=get_five_market_paper_campaign_projection(
+                    st.session_state
+                ),
+            )
+            st.divider()
             render_task9_certification_center(st=st, view=application_view)
         elif page == "🧮 Manual Planner":
             render_manual_live_planner(st=st, view=application_view)
