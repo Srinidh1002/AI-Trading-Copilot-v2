@@ -3,6 +3,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from test_task8_parent_typed_candidate_certification import (
+    NOW,
+    captured,
+    cycle,
+)
 
 from services.paper_orchestration.certified_live_provider_readers import (
     CertifiedLiveProviderReaders,
@@ -16,19 +21,11 @@ from services.paper_orchestration.r16_canonical_candidate_reader_v1 import (
     install_r16_canonical_candidate_reader,
 )
 from tests.fixtures.p5_12 import (
-    REPLAY_EVALUATED_AT,
     STRONG_BEARISH,
     build_market_regime,
     build_option_chain_intelligence,
     build_technical_intelligence,
 )
-from test_task8_parent_typed_candidate_certification import (
-    NOW,
-    captured,
-    cycle,
-)
-
-
 class Analysis:
     def analyse(self, **_kwargs):
         return {"legacy": "ignored by canonical candidate reader"}
