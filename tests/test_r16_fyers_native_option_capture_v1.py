@@ -10,7 +10,6 @@ from services.options.r16_fyers_native_option_capture_v1 import (
     load_legacy_index_option_instruments,
 )
 
-
 NOW = datetime(2026, 10, 5, 8, 0, tzinfo=UTC)
 RECEIVED = datetime(2026, 10, 5, 8, 0, 1, tzinfo=UTC)
 
