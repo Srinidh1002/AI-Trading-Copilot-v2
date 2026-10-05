@@ -34,6 +34,8 @@ class FiveMarketPaperMarketViewV1:
     operational_losses: int
     operational_net_pnl: float
     noncountable_completed_trades: int
+    ambiguous_completed_trades: int
+    unresolved_first_touch_completed_trades: int
     active_position_count: int
     active_trade_id: str | None = None
     active_first_touch: str | None = None
@@ -62,6 +64,8 @@ class FiveMarketPaperMarketViewV1:
             "operational_wins",
             "operational_losses",
             "noncountable_completed_trades",
+            "ambiguous_completed_trades",
+            "unresolved_first_touch_completed_trades",
             "active_position_count",
         ):
             value = getattr(self, name)
@@ -91,6 +95,16 @@ class FiveMarketPaperMarketViewV1:
         )
 
     @property
+    def ambiguity_rate_percent(self) -> float | None:
+        if self.operational_completed_trades == 0:
+            return None
+        return (
+            self.ambiguous_completed_trades
+            / self.operational_completed_trades
+            * 100.0
+        )
+
+    @property
     def remaining_trade_count(self) -> int:
         return max(0, self.target_trade_count - self.certification_counter)
 
@@ -108,6 +122,7 @@ class FiveMarketPaperMarketViewV1:
         value = asdict(self)
         value["remaining_trade_count"] = self.remaining_trade_count
         value["certification_win_rate"] = self.certification_win_rate
+        value["ambiguity_rate_percent"] = self.ambiguity_rate_percent
         value["warnings"] = list(self.warnings)
         return value
 
