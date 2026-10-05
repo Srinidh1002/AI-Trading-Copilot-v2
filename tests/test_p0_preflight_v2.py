@@ -128,6 +128,10 @@ def _patch_all_ok(monkeypatch):
         lambda markets: {m: (True, "n/a") for m in markets},
     )
     monkeypatch.setattr(
+        pf, "check_master_authority",
+        lambda markets, repo_root: {m: (True, "master ok") for m in markets},
+    )
+    monkeypatch.setattr(
         pf, "check_provider_health",
         lambda creds, markets: {m: (True, "ok") for m in markets},
     )
@@ -182,6 +186,32 @@ def test_partial_with_allow_partial_returns_zero(fake_repo, stub_creds, clean_en
     rc, out = _run(["--repo-root", str(fake_repo), "--dry-run", "--allow-partial"])
     assert rc == 0, out
     assert "PREFLIGHT=PARTIAL" in out
+
+
+def test_missing_index_master_holds_only_affected_market(
+    fake_repo, stub_creds, clean_env, monkeypatch
+):
+    _patch_all_ok(monkeypatch)
+    monkeypatch.setattr(
+        pf,
+        "check_master_authority",
+        lambda markets, repo_root: {
+            m: (
+                (False, "FYERS_MASTER_MISSING:NSE_FO")
+                if m == "NIFTY"
+                else (True, "master ok")
+            )
+            for m in markets
+        },
+    )
+    rc, out = _run([
+        "--repo-root", str(fake_repo), "--dry-run", "--allow-partial"
+    ])
+    assert rc == 0, out
+    assert "PREFLIGHT=PARTIAL" in out
+    assert "READY_MARKETS=SENSEX,CRUDEOILM,GOLDM,NATGASMINI" in out
+    assert "HELD_MARKETS=NIFTY" in out
+    assert "FYERS_MASTER_MISSING:NSE_FO" in out
 
 
 def test_hold_zero_ready(fake_repo, stub_creds, clean_env, monkeypatch):
