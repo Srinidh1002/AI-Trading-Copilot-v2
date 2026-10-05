@@ -282,6 +282,11 @@ class FyersNativeOptionChainEngineV2:
                 "close": 0.0,
                 "volume": volume,
                 "oi": oi,
+                "change_in_open_interest": (
+                    self._number(row.get("oich"), default=0.0)
+                    if row.get("oich") is not None
+                    else None
+                ),
                 "bid": bid,
                 "ask": ask,
                 "bid_ask_source": (
@@ -290,6 +295,33 @@ class FyersNativeOptionChainEngineV2:
                 "fetched_at": self._clock().isoformat(),
                 "spread": spread,
                 "spread_pct": spread_pct,
+                # Provider-owned FYERS API V3 option analytics. Missing
+                # fields remain None; this engine never calculates them.
+                "delta": (
+                    self._number(row.get("delta"))
+                    if row.get("delta") is not None
+                    else None
+                ),
+                "gamma": (
+                    self._number(row.get("gamma"))
+                    if row.get("gamma") is not None
+                    else None
+                ),
+                "theta": (
+                    self._number(row.get("theta"))
+                    if row.get("theta") is not None
+                    else None
+                ),
+                "vega": (
+                    self._number(row.get("vega"))
+                    if row.get("vega") is not None
+                    else None
+                ),
+                "iv": (
+                    self._number(row.get("iv"))
+                    if row.get("iv") is not None
+                    else None
+                ),
             }
             matched_symbols.add(provider_symbol)
             if expected_type == "CE":
