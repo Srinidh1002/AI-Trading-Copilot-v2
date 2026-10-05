@@ -9,6 +9,7 @@ strategy-version/epoch decision.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from threading import RLock
@@ -55,6 +56,42 @@ class R16TwoMarketShadowCycleV1:
             or self.broker_order_submission is not False
         ):
             raise ValueError("shadow PAPER-only boundary")
+
+
+class _R16LazyPreEntryActions(Mapping):
+    """Resolve canonical actions after child evaluation without re-analysis."""
+
+    def __init__(self, *, candidate_reader, parent_cycle_id, cycles) -> None:
+        self._candidate_reader = candidate_reader
+        self._parent_cycle_id = str(parent_cycle_id)
+        self._market_by_observation = {
+            cycle.observation_id: cycle.underlying_symbol
+            for cycle in cycles
+        }
+
+    def __getitem__(self, key):
+        market = self._market_by_observation.get(key)
+        if market is None:
+            raise KeyError(key)
+        evaluation = self._candidate_reader.get_evaluation(
+            parent_cycle_id=self._parent_cycle_id,
+            market=market,
+        )
+        if evaluation is None or evaluation.pre_entry_action is None:
+            raise KeyError(key)
+        return evaluation.pre_entry_action
+
+    def __iter__(self):
+        return iter(self._market_by_observation)
+
+    def __len__(self):
+        return len(self._market_by_observation)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
 
 class R16TwoMarketShadowSourceV1:
@@ -237,6 +274,27 @@ class R16TwoMarketShadowSourceV1:
     ) -> R16TwoMarketShadowCycleV1:
         parent, nifty_cycle, sensex_cycle = self.build_inputs()
 
+        resolved_pre_entry_actions = pre_entry_actions
+        if (
+            resolved_pre_entry_actions is None
+            and (
+                prediction_ledger is not None
+                or prediction_lifecycle_context_store is not None
+            )
+            and callable(
+                getattr(
+                    self.readers.candidate_reader,
+                    "get_evaluation",
+                    None,
+                )
+            )
+        ):
+            resolved_pre_entry_actions = _R16LazyPreEntryActions(
+                candidate_reader=self.readers.candidate_reader,
+                parent_cycle_id=parent.parent_cycle_id,
+                cycles=(nifty_cycle, sensex_cycle),
+            )
+
         decision = run_authoritative_two_market_parent_cycle(
             parent,
             nifty_cycle=nifty_cycle,
@@ -245,7 +303,7 @@ class R16TwoMarketShadowSourceV1:
             parent_journal_adapter=parent_journal_adapter,
             prediction_ledger=prediction_ledger,
             prediction_lifecycle_context_store=prediction_lifecycle_context_store,
-            pre_entry_actions=pre_entry_actions,
+            pre_entry_actions=resolved_pre_entry_actions,
             prediction_records_sink=prediction_records_sink,
             substage_callback=substage_callback,
         )
