@@ -278,6 +278,8 @@ def build_task8_dependencies(
     precomposed_timeframe_provider_factory=None,
     option_oi_change_authority=None,
     providers=None,
+    parent_quote_reader=None,
+    preflight_override=None,
 ) -> Task8CanaryDependenciesV1:
     """Build the production Task 8 PAPER-only dependency composition."""
 
@@ -297,6 +299,10 @@ def build_task8_dependencies(
         getattr(option_oi_change_authority, "enrich", None)
     ):
         raise TypeError("option_oi_change_authority")
+    if parent_quote_reader is not None and not callable(parent_quote_reader):
+        raise TypeError("parent_quote_reader")
+    if preflight_override is not None and not callable(preflight_override):
+        raise TypeError("preflight_override")
     provider_kwargs = {}
 
     if historical_request_interval_seconds is not None:
