@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -124,7 +124,7 @@ class R16FyersNativeOptionCapturePipelineV1:
             str(key).upper(): tuple(value)
             for key, value in instruments_by_market.items()
         }
-        self.clock = clock or (lambda: datetime.now(timezone.utc))
+        self.clock = clock or (lambda: datetime.now(UTC))
         if not callable(self.clock):
             raise TypeError("clock")
         if resolver is None or not callable(getattr(resolver, "resolve", None)):
