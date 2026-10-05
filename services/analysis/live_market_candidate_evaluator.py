@@ -41,6 +41,19 @@ class LiveMarketCandidateEvaluationInputV1:
   if self.broader_market is not None and (type(self.broader_market) is not BroaderMarketIntelligenceResultV1 or (self.broader_market.underlying_symbol,self.broader_market.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange)):raise ValueError("broader market identity")
   if self.external_context is not None and (type(self.external_context) is not ExternalMarketContextResultV1 or (self.external_context.underlying_symbol,self.external_context.exchange)!=(self.market_spec.underlying_symbol,self.market_spec.exchange) or self.external_context.created_at != self.evaluated_at):raise ValueError("external context identity or evaluation boundary")
 
+def _spot_provider_name(response: object) -> str:
+    if not isinstance(response, Mapping):
+        return "ANGEL_ONE"
+    raw = str(response.get("provider") or "").strip().upper()
+    if not raw:
+        return "ANGEL_ONE"
+    aliases = {
+        "ANGEL": "ANGEL_ONE",
+        "ANGEL_SMARTAPI": "ANGEL_ONE",
+    }
+    return aliases.get(raw, raw)
+
+
 @dataclass(frozen=True,slots=True)
 class LiveMarketCandidateEvaluationResultV1:
  observation:AngelLiveMarketObservationV1;options:AngelOptionNormalizationResultV1;evidence:LiveCanonicalEvidenceResultV1;composition:MarketAnalysisCandidateCompositionInputV1;policy:MarketAnalysisCandidateCompositionPolicyV1;candidate:MarketAnalysisCandidateV1;pre_entry_action:object|None=None
@@ -67,6 +80,7 @@ def _build_live_candidate_base_evidence(
         provider_state=value.provider_state,
         blockers=value.blockers,
         warnings=value.warnings,
+        provider=_spot_provider_name(value.spot_response),
     )
 
     options = normalize_angel_option_chain(
@@ -313,7 +327,9 @@ def evaluate_captured_certified_market_candidate(
     )
 
     if "data" not in payload:
+        provider_name = payload.get("provider")
         payload = {
+            "provider": provider_name,
             "data": {
                 "ltp": payload.get(
                     "spot_price",
@@ -404,7 +420,9 @@ def evaluate_captured_certified_market_candidate_with_policy_factory(
     )
 
     if "data" not in payload:
+        provider_name = payload.get("provider")
         payload = {
+            "provider": provider_name,
             "data": {
                 "ltp": payload.get(
                     "spot_price",

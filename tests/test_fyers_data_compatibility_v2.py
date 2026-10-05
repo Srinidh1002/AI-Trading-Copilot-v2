@@ -449,3 +449,21 @@ def test_adapter_module_has_no_provider_sdk_or_network_imports():
         )
         for name in imports
     )
+
+
+def test_get_historical_data_alias_routes_to_same_fyers_history_request():
+    client, adapter = build()
+
+    result = adapter.get_historical_data(
+        exchange="NSE",
+        symboltoken="26000",
+        interval="FIVE_MINUTE",
+        fromdate="2026-09-17 09:15",
+        todate="2026-09-17 15:30",
+    )
+
+    assert result["status"] is True
+    assert len(client.history_requests) == 1
+    request = client.history_requests[0]
+    assert request["symbol"] == "NSE:NIFTY50-INDEX"
+    assert request["resolution"] == "5"

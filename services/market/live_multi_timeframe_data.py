@@ -408,6 +408,7 @@ class LiveMultiTimeframeData:
         *,
         cache_enabled=None,
         historical_request_interval_seconds=None,
+        provider_source="ANGEL_ONE_HISTORICAL",
     ):
         self.client = (
             client
@@ -442,6 +443,13 @@ class LiveMultiTimeframeData:
         self.cache_enabled = bool(
             cache_enabled
         )
+
+        if (
+            not isinstance(provider_source, str)
+            or not provider_source.strip()
+        ):
+            raise ValueError("provider_source")
+        self.provider_source = provider_source.strip().upper()
 
         cache_path = getattr(
             self.cache,
@@ -1286,7 +1294,7 @@ class LiveMultiTimeframeData:
                             "provider_source": (
                                 cache_metadata.get(
                                     "cache_source",
-                                    "ANGEL_ONE_HISTORICAL",
+                                    self.provider_source,
                                 )
                             ),
                             "requested_until": (
@@ -1758,7 +1766,7 @@ class LiveMultiTimeframeData:
                 timeframe,
                 response,
                 source=(
-                    "ANGEL_ONE_HISTORICAL"
+                    self.provider_source
                 ),
                 requested_until=(
                     requested_until
@@ -1826,7 +1834,7 @@ class LiveMultiTimeframeData:
                 True
             ),
             "provider_source": (
-                "ANGEL_ONE_HISTORICAL"
+                self.provider_source
             ),
             "requested_until": (
                 requested_until

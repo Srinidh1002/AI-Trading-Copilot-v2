@@ -164,11 +164,15 @@ def normalize_angel_spot_response(*, response: object, market_spec: CertifiedInd
 
 def normalize_angel_candle_series(*, rows: object, market_spec: CertifiedIndexMarketSpecV1, timeframe: str, provider_timestamp: datetime, evaluated_at: datetime, provider: str = "ANGEL_ONE", is_cached: bool = False, cache_age_seconds: float | None = None) -> MarketCandleSeriesV1:
     spec = _spec(market_spec); _aware(provider_timestamp, "provider_timestamp"); _aware(evaluated_at, "evaluated_at")
+    provider_name = str(provider or "").strip().upper()
+    if not provider_name:
+        raise ValueError("provider")
+    provider_prefix = "angel" if provider_name == "ANGEL_ONE" else provider_name.lower()
     if timeframe not in _INTERVALS: raise ValueError("unsupported timeframe")
     if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes)):
         raise TypeError("candle rows")
     provenance = MarketDataProvenanceV1(
-        provider=provider,
+        provider=provider_name,
         provider_symbol=spec.underlying_symbol,
         provider_exchange=spec.exchange,
         source_type="CACHE" if is_cached else "LIVE",
@@ -190,13 +194,13 @@ def normalize_angel_candle_series(*, rows: object, market_spec: CertifiedIndexMa
         o, h, l, c, v = (_number(row[n], "candle value", positive=n < 4) for n in range(1, 6))
         end = start + timedelta(minutes=_INTERVALS[timeframe])
         if end > evaluated_at: continue
-        candles.append(MarketCandleV1(f"angel:{spec.symboltoken}:{timeframe}:{start.isoformat()}", spec.underlying_symbol, spec.exchange, timeframe, start, end, o, h, l, c, v, True, provenance))
+        candles.append(MarketCandleV1(f"{provider_prefix}:{spec.symboltoken}:{timeframe}:{start.isoformat()}", spec.underlying_symbol, spec.exchange, timeframe, start, end, o, h, l, c, v, True, provenance))
     candles.sort(key=lambda item: item.start_at)
     blockers = ("EMPTY_OR_FORMING_CANDLE_SERIES",) if not candles else ()
-    return MarketCandleSeriesV1(f"angel:{spec.symboltoken}:{timeframe}:{provider_timestamp.isoformat()}", spec.underlying_symbol, spec.exchange, timeframe, tuple(candles), None, None, evaluated_at, blockers=blockers)
+    return MarketCandleSeriesV1(f"{provider_prefix}:{spec.symboltoken}:{timeframe}:{provider_timestamp.isoformat()}", spec.underlying_symbol, spec.exchange, timeframe, tuple(candles), None, None, evaluated_at, blockers=blockers)
 
 
-def normalize_angel_live_observation(*, spot_response: object, candle_rows_by_timeframe: Mapping[str, object], market_spec: CertifiedIndexMarketSpecV1, provider_timestamp: datetime | None, evaluated_at: datetime, provider_state: str = "OK", blockers: tuple[str, ...] = (), warnings: tuple[str, ...] = ()) -> AngelLiveMarketObservationV1:
+def normalize_angel_live_observation(*, spot_response: object, candle_rows_by_timeframe: Mapping[str, object], market_spec: CertifiedIndexMarketSpecV1, provider_timestamp: datetime | None, evaluated_at: datetime, provider_state: str = "OK", blockers: tuple[str, ...] = (), warnings: tuple[str, ...] = (), provider: str = "ANGEL_ONE") -> AngelLiveMarketObservationV1:
     spot = normalize_angel_spot_response(response=spot_response, market_spec=market_spec, provider_timestamp=provider_timestamp, evaluated_at=evaluated_at, provider_state=provider_state, blockers=blockers, warnings=warnings)
     if provider_timestamp is None:
         return AngelLiveMarketObservationV1(spot, (), blockers=tuple(spot.blockers) + ("CANDLE_PROVIDER_TIMESTAMP_MISSING",))
@@ -207,6 +211,7 @@ def normalize_angel_live_observation(*, spot_response: object, candle_rows_by_ti
             timeframe=name,
             provider_timestamp=provider_timestamp,
             evaluated_at=evaluated_at,
+            provider=provider,
         )
         for name in _TIMEFRAME_ORDER
         if name in candle_rows_by_timeframe

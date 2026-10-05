@@ -138,3 +138,48 @@ def test_missing_optional_warning_is_deduplicated():
     assert value.warnings == (
         "optional_timeframe_unavailable_1d",
     )
+
+
+
+def test_fyers_candle_provenance_is_preserved_without_changing_shape():
+    completed = [
+        "2026-08-03T15:15:00+05:30",
+        100,
+        102,
+        99,
+        101,
+        10,
+    ]
+    result = normalize_angel_candle_series(
+        rows=(completed,),
+        market_spec=NIFTY_MARKET_SPEC,
+        timeframe="5m",
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+        provider="FYERS",
+    )
+    candle = result.candles[0]
+    assert candle.provenance.provider == "FYERS"
+    assert candle.candle_id.startswith("fyers:")
+    assert result.series_id.startswith("fyers:")
+
+
+def test_live_observation_passes_fyers_provider_to_candle_series():
+    result = normalize_angel_live_observation(
+        spot_response={
+            "provider": "FYERS",
+            **_spot(),
+        },
+        candle_rows_by_timeframe={
+            "5m": (
+                _completed_row(
+                    "2026-08-03T15:15:00+05:30"
+                ),
+            ),
+        },
+        market_spec=NIFTY_MARKET_SPEC,
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+        provider="FYERS",
+    )
+    assert result.candle_series[0].candles[0].provenance.provider == "FYERS"

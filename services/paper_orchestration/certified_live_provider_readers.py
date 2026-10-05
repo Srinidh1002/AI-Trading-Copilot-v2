@@ -329,13 +329,22 @@ class CertifiedLiveProviderReaders:
 
         spec = market_spec_for(cycle_input.underlying_symbol, cycle_input.exchange)
         payload = dict(captured.spot_payload)
+        provider_name = str(payload.get("provider") or "ANGEL_ONE").strip().upper()
         if "data" not in payload:
-            payload = {"data": {"ltp": payload.get("spot_price", payload.get("ltp")), "tradingsymbol": spec.underlying_symbol, "exchange": spec.exchange, "symboltoken": spec.symboltoken}}
+            payload = {
+                "provider": provider_name,
+                "data": {
+                    "ltp": payload.get("spot_price", payload.get("ltp")),
+                    "tradingsymbol": spec.underlying_symbol,
+                    "exchange": spec.exchange,
+                    "symboltoken": spec.symboltoken,
+                },
+            }
         return normalize_angel_live_observation(
             spot_response=payload, candle_rows_by_timeframe=captured.candle_rows_by_timeframe,
             market_spec=spec, provider_timestamp=captured.provider_timestamp,
             evaluated_at=evaluated_at if evaluated_at is not None else captured.evaluated_at, blockers=captured.provider_blockers,
-            warnings=captured.provider_warnings,
+            warnings=captured.provider_warnings, provider=provider_name,
         )
 
     def prepare_shared_broader_context(self, nifty_cycle: PaperOrchestrationCycleInputV1, sensex_cycle: PaperOrchestrationCycleInputV1) -> CertifiedSharedMarketContextV1:
