@@ -43,11 +43,20 @@ def render_five_market_paper_campaign(*, st, view) -> None:
                 f"Strategy: {market.strategy_version} | "
                 f"Epoch: {market.certification_epoch}"
             )
+            ambiguity = (
+                "Unavailable"
+                if market.ambiguity_rate_percent is None
+                else f"{market.ambiguity_rate_percent:.1f}%"
+            )
             st.write(
                 "Operational completed: "
                 f"{market.operational_completed_trades} | "
                 "Noncountable completed: "
                 f"{market.noncountable_completed_trades} | "
+                "Ambiguous first-touch: "
+                f"{market.ambiguous_completed_trades} ({ambiguity}) | "
+                "Unresolved first-touch: "
+                f"{market.unresolved_first_touch_completed_trades} | "
                 "Active positions: "
                 f"{market.active_position_count}"
             )
