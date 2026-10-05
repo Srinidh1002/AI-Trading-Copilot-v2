@@ -55,6 +55,22 @@ def _trade_pnl(trade: Mapping[str, object]) -> float:
     return 0.0
 
 
+def _first_touch_counts(
+    trades: tuple[Mapping[str, object], ...],
+) -> tuple[int, int]:
+    ambiguous = 0
+    unresolved = 0
+    for trade in trades:
+        value = str(
+            trade.get("first_touch_result") or ""
+        ).strip().upper()
+        if value == "AMBIGUOUS":
+            ambiguous += 1
+        elif value in {"", "NONE"}:
+            unresolved += 1
+    return ambiguous, unresolved
+
+
 def _active_details(
     trades: tuple[Mapping[str, object], ...],
 ) -> tuple[int, str | None, str | None]:
@@ -131,6 +147,7 @@ def _index_view(root: Path, market: str) -> FiveMarketPaperMarketViewV1:
         for item in completed
         if str(item.get("trade_id") or "") not in set(counted_ids)
     )
+    ambiguous, unresolved = _first_touch_counts(completed)
     active_count, active_id, first_touch = _active_details(active)
     warnings = list(_safety_warnings(completed + active))
 
@@ -153,6 +170,8 @@ def _index_view(root: Path, market: str) -> FiveMarketPaperMarketViewV1:
         operational_losses=operational_losses,
         operational_net_pnl=operational_pnl,
         noncountable_completed_trades=noncountable,
+        ambiguous_completed_trades=ambiguous,
+        unresolved_first_touch_completed_trades=unresolved,
         active_position_count=active_count,
         active_trade_id=active_id,
         active_first_touch=first_touch,
@@ -230,6 +249,7 @@ def _mcx_view(root: Path, market: str) -> FiveMarketPaperMarketViewV1:
         aggregate_warning = None
 
     noncountable = max(0, len(completed) - counter)
+    ambiguous, unresolved = _first_touch_counts(completed)
     active_count, active_id, first_touch = _active_details(active)
     warnings = list(_safety_warnings(completed + active))
     if aggregate_warning:
