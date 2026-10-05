@@ -26,6 +26,8 @@ from tests.fixtures.p5_12 import (
     build_option_chain_intelligence,
     build_technical_intelligence,
 )
+
+
 class Analysis:
     def analyse(self, **_kwargs):
         return {"legacy": "ignored by canonical candidate reader"}
