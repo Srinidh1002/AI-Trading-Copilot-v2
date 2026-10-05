@@ -510,33 +510,83 @@ def build_task8_dependencies(
     )
 
     def preflight():
-        required_credentials = (
-            "ANGEL_API_KEY",
-            "ANGEL_CLIENT_ID",
-            "ANGEL_PIN",
-            "ANGEL_TOTP_SECRET",
+        provider_name = str(
+            getattr(providers, "provider_name", "ANGEL_ONE")
+        ).strip().upper()
+
+        # Default Angel construction still owns credential discovery. An
+        # explicitly injected non-Angel provider has already crossed its own
+        # authentication/composition boundary; Task 8 validates its data-only
+        # safety contract rather than inspecting provider-specific secrets.
+        if provider_name == "ANGEL_ONE":
+            required_credentials = (
+                "ANGEL_API_KEY",
+                "ANGEL_CLIENT_ID",
+                "ANGEL_PIN",
+                "ANGEL_TOTP_SECRET",
+            )
+            credentials_present = all(
+                bool(os.getenv(name, "").strip())
+                for name in required_credentials
+            )
+        else:
+            credentials_present = True
+
+        inside_worktree = (
+            _git("rev-parse", "--is-inside-work-tree").lower()
+            == "true"
         )
-        credentials_present = all(
-            bool(os.getenv(name, "").strip())
-            for name in required_credentials
+        tracked_source_clean = (
+            _git("status", "--porcelain", "--untracked-files=no")
+            == ""
+        )
+        provider_safe = (
+            getattr(providers, "data_only", None) is True
+            and getattr(
+                providers,
+                "order_capability_allowed",
+                None,
+            ) is False
+            and getattr(
+                providers,
+                "automatic_fallback_allowed",
+                None,
+            ) is False
         )
 
         return {
             "branch_worktree": (
-                _git("branch", "--show-current")
-                == "p10-two-market-weekend-readiness"
+                inside_worktree
+                and tracked_source_clean
             ),
             "paper_mode": True,
             "live_execution_ineligible": True,
             "broker_submission_disabled": True,
-            "nifty_provider": True,
-            "sensex_provider": True,
+            "nifty_provider": provider_safe,
+            "sensex_provider": provider_safe,
             "routing": True,
             "persistence_writable": True,
             "journal_writable": True,
             "emergency_halt": True,
             "market_session_checked": True,
             "credentials_present": credentials_present,
+            "provider_name": provider_name,
+            "provider_data_only": getattr(
+                providers,
+                "data_only",
+                None,
+            ),
+            "provider_order_capability_allowed": getattr(
+                providers,
+                "order_capability_allowed",
+                None,
+            ),
+            "provider_automatic_fallback_allowed": getattr(
+                providers,
+                "automatic_fallback_allowed",
+                None,
+            ),
+            "tracked_source_clean": tracked_source_clean,
             "journal_status": "NOT_WRITTEN",
         }
 
@@ -844,7 +894,10 @@ def build_task8_dependencies(
         return result
 
     return Task8CanaryDependenciesV1(
-        branch=_git("branch", "--show-current"),
+        branch=(
+            _git("branch", "--show-current")
+            or "DETACHED_RELEASE"
+        ),
         commit=_git("rev-parse", "--short", "HEAD"),
         preflight=preflight,
         parent_cycle=parent_cycle,

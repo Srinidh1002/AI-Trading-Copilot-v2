@@ -61,3 +61,69 @@ def test_task91043_snapshot_uses_evidence_contracts_but_universe_stays_strict():
     assert result.snapshot.complete_pair_count == 1
     assert result.snapshot.call_only_count == 0
     assert result.snapshot.put_only_count == 0
+
+
+def test_provider_identity_can_be_overridden_without_changing_default_contract():
+    spec = market_spec_for("NIFTY", "NSE")
+    result = normalize_angel_option_chain(
+        contracts=(
+            {
+                "token": "fy-1",
+                "symbol": "NSE:NIFTY26O0622450CE",
+                "exchange": "NFO",
+                "underlying": "NIFTY",
+                "option_type": "CE",
+                "strike": 22450.0,
+                "expiry": "2026-10-06",
+                "lot_size": 65,
+                "tick_size": 0.05,
+                "premium": 120.0,
+                "bid": 119.5,
+                "ask": 120.0,
+                "volume": 100,
+                "open_interest": 200,
+                "provider_timestamp": NOW,
+                "provider_timestamp_basis": (
+                    "SYNCHRONOUS_FYERS_OPTIONCHAIN_RESPONSE"
+                ),
+            },
+            {
+                "token": "fy-2",
+                "symbol": "NSE:NIFTY26O0622450PE",
+                "exchange": "NFO",
+                "underlying": "NIFTY",
+                "option_type": "PE",
+                "strike": 22450.0,
+                "expiry": "2026-10-06",
+                "lot_size": 65,
+                "tick_size": 0.05,
+                "premium": 110.0,
+                "bid": 109.5,
+                "ask": 110.0,
+                "volume": 100,
+                "open_interest": 200,
+                "provider_timestamp": NOW,
+                "provider_timestamp_basis": (
+                    "SYNCHRONOUS_FYERS_OPTIONCHAIN_RESPONSE"
+                ),
+            },
+        ),
+        market_spec=spec,
+        spot_price=22460.0,
+        provider_timestamp=NOW,
+        evaluated_at=NOW,
+        provider_name="FYERS",
+        timestamp_basis="SYNCHRONOUS_FYERS_OPTIONCHAIN_RESPONSE",
+    )
+
+    assert result.snapshot.provider_name == "FYERS"
+    assert result.universe.provider_name == "FYERS"
+    assert all(
+        contract.metadata["provider_name"] == "FYERS"
+        for contract in result.universe.contracts
+    )
+    assert all(
+        contract.metadata["timestamp_basis"]
+        == "SYNCHRONOUS_FYERS_OPTIONCHAIN_RESPONSE"
+        for contract in result.universe.contracts
+    )
