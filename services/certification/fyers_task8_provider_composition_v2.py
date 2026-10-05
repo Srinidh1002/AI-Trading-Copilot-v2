@@ -9,7 +9,7 @@ Nothing in this module launches a runtime or grants PAPER/live authorization.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from math import isfinite
 from pathlib import Path
 
@@ -59,7 +59,7 @@ class FyersHistoricalProviderCooldownV2(HistoricalProviderCooldown):
 
 
 def _aware_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _positive(value: object, name: str) -> float:
@@ -88,7 +88,7 @@ def _provider_timestamp(value: object) -> datetime:
     if numeric > 100_000_000_000:
         numeric /= 1000.0
     try:
-        return datetime.fromtimestamp(numeric, tz=timezone.utc)
+        return datetime.fromtimestamp(numeric, tz=UTC)
     except (OSError, OverflowError, ValueError) as exc:
         raise FyersTask8CompositionError(
             "FYERS_QUOTE_TIMESTAMP_INVALID"
@@ -251,7 +251,7 @@ def build_fyers_parent_quote_reader_v2(
             raise FyersTask8CompositionError("CLOCK_NOT_TIMEZONE_AWARE")
 
         age_seconds = (
-            received_at.astimezone(timezone.utc)
+            received_at.astimezone(UTC)
             - market_timestamp
         ).total_seconds()
         if age_seconds > maximum_age:
