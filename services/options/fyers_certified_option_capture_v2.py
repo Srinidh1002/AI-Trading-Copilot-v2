@@ -165,6 +165,12 @@ class FyersCertifiedOptionCaptureV2:
             )
         return symbol.strip()
 
+    def analyse(self, *args, **kwargs):
+        """Legacy full-decision entry point is intentionally unsupported."""
+        raise FyersCertifiedOptionCaptureError(
+            "FYERS_CERTIFIED_CAPTURE_ONLY"
+        )
+
     def capture_option_inputs(
         self,
         *,
