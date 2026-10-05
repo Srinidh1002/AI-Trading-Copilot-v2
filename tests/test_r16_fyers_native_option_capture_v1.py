@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -11,8 +11,8 @@ from services.options.r16_fyers_native_option_capture_v1 import (
 )
 
 
-NOW = datetime(2026, 10, 5, 8, 0, tzinfo=timezone.utc)
-RECEIVED = datetime(2026, 10, 5, 8, 0, 1, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 5, 8, 0, tzinfo=UTC)
+RECEIVED = datetime(2026, 10, 5, 8, 0, 1, tzinfo=UTC)
 
 
 class Resolver:
