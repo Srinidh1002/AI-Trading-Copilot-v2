@@ -7,6 +7,7 @@ reads and has no P6/P7/P8 or broker authority.
 from __future__ import annotations
 
 from dataclasses import replace
+from threading import RLock
 
 from services.analysis.canonical_directional_policy_evaluator import (
     evaluate_canonical_directional_policy,
@@ -132,6 +133,27 @@ class R16CanonicalCandidateReaderV1:
             if engines is not None
             else build_default_live_canonical_evidence_engines()
         )
+        self._evaluation_lock = RLock()
+        self._evaluations = {}
+
+    def get_evaluation(self, *, parent_cycle_id: str, market: str):
+        key = (
+            str(parent_cycle_id).strip(),
+            str(market).strip().upper(),
+        )
+        with self._evaluation_lock:
+            return self._evaluations.get(key)
+
+    def clear_parent(self, parent_cycle_id: str) -> None:
+        parent = str(parent_cycle_id).strip()
+        with self._evaluation_lock:
+            stale = [
+                key
+                for key in self._evaluations
+                if key[0] == parent
+            ]
+            for key in stale:
+                self._evaluations.pop(key, None)
 
     def __call__(
         self,
@@ -220,6 +242,13 @@ class R16CanonicalCandidateReaderV1:
                 external_context=external,
             )
         )
+        with self._evaluation_lock:
+            self._evaluations[
+                (
+                    str(parent_cycle_id).strip(),
+                    identity[0],
+                )
+            ] = evaluation
 
         candidate = evaluation.candidate
         if type(candidate) is not MarketAnalysisCandidateV1:
