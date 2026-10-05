@@ -444,6 +444,12 @@ def build_task8_dependencies(
     )
 
     def preflight():
+        if preflight_override is not None:
+            value = preflight_override()
+            if not isinstance(value, Mapping):
+                raise TypeError("preflight_override must return a mapping")
+            return dict(value)
+
         required_credentials = (
             "ANGEL_API_KEY",
             "ANGEL_CLIENT_ID",
@@ -480,48 +486,76 @@ def build_task8_dependencies(
         retained_evaluations.clear()
         retained_request_diagnostics.clear()
 
-        full_quotes = fetch_canonical_two_market_full_quotes(
-            get_certification_market_client(),
-            clock=bundle.clock,
-        )
-
         captures: dict[
             tuple[str, str],
             dict[str, object],
         ] = {}
 
-        for quote in full_quotes.ordered():
-            captures[
-                (
-                    quote.market,
-                    quote.exchange,
-                )
-            ] = {
-                "spot_price": quote.ltp,
-                "ltp": quote.ltp,
-                "market_timestamp": (
-                    quote.provider_timestamp
-                ),
-                "received_at": quote.received_at,
-                "timestamp_source": (
-                    "ANGEL_PROVIDER_"
-                    f"{quote.timestamp_field.upper()}"
-                ),
-                "provider_timestamp_field": (
-                    quote.timestamp_field
-                ),
-                "quote_age_seconds": (
-                    quote.quote_age_seconds
-                ),
-                "provider_trading_symbol": (
-                    quote.tradingsymbol
-                ),
-                "provider_response": dict(
-                    quote.payload
-                ),
-            }
+        if parent_quote_reader is None:
+            full_quotes = fetch_canonical_two_market_full_quotes(
+                get_certification_market_client(),
+                clock=bundle.clock,
+            )
 
-        requested = datetime.now(timezone.utc)
+            for quote in full_quotes.ordered():
+                captures[
+                    (
+                        quote.market,
+                        quote.exchange,
+                    )
+                ] = {
+                    "spot_price": quote.ltp,
+                    "ltp": quote.ltp,
+                    "market_timestamp": (
+                        quote.provider_timestamp
+                    ),
+                    "received_at": quote.received_at,
+                    "timestamp_source": (
+                        "ANGEL_PROVIDER_"
+                        f"{quote.timestamp_field.upper()}"
+                    ),
+                    "provider_timestamp_field": (
+                        quote.timestamp_field
+                    ),
+                    "quote_age_seconds": (
+                        quote.quote_age_seconds
+                    ),
+                    "provider_trading_symbol": (
+                        quote.tradingsymbol
+                    ),
+                    "provider_response": dict(
+                        quote.payload
+                    ),
+                }
+        else:
+            for symbol, exchange in _SUPPORTED_MARKETS:
+                spec = market_spec_for(symbol, exchange)
+                raw = parent_quote_reader(
+                    exchange,
+                    spec.symboltoken,
+                    symbol,
+                )
+                if not isinstance(raw, Mapping):
+                    raise TypeError(
+                        "parent_quote_reader must return a mapping"
+                    )
+                for required_field in (
+                    "spot_price",
+                    "market_timestamp",
+                    "received_at",
+                ):
+                    if raw.get(required_field) is None:
+                        raise ValueError(
+                            "parent quote missing "
+                            f"{required_field}"
+                        )
+                captures[(symbol, exchange)] = dict(raw)
+
+        requested = (
+            bundle.clock()
+            if parent_quote_reader is not None
+            else datetime.now(timezone.utc)
+        )
         cycles = {}
 
         for symbol, exchange in _SUPPORTED_MARKETS:
