@@ -183,7 +183,9 @@ def test_installation_returns_fresh_reader_and_does_not_mutate_source():
     assert type(installed.candidate_reader) is R16CanonicalCandidateReaderV1
     assert installed.capture_reader is original.capture_reader
     assert installed.available_capital == original.available_capital
-    assert installed.execution_mode if hasattr(installed, "execution_mode") else "PAPER"
+    assert installed.candidate_reader.execution_mode == "PAPER"
+    assert installed.candidate_reader.live_execution_eligible is False
+    assert installed.candidate_reader.broker_order_submission is False
 
 
 def test_source_contains_no_execution_stage_imports():
