@@ -449,3 +449,38 @@ def test_adapter_module_has_no_provider_sdk_or_network_imports():
         )
         for name in imports
     )
+
+
+def test_certified_snake_case_aliases_delegate_to_fyers_data_only_boundary():
+    client, adapter = build()
+
+    ltp = adapter.get_ltp(
+        "NSE",
+        "NIFTY 50",
+        "26000",
+    )
+    assert ltp["status"] is True
+    assert len(client.quote_requests) == 1
+
+    candles = adapter.get_historical_data(
+        exchange="NSE",
+        symboltoken="26000",
+        interval="FIVE_MINUTE",
+        fromdate="2026-09-17 09:15",
+        todate="2026-09-17 15:30",
+    )
+    assert candles["status"] is True
+    assert len(client.history_requests) == 1
+
+    full = adapter.get_market_data(
+        "FULL",
+        {"NFO": ["101"]},
+    )
+    assert full["status"] is True
+    assert len(client.depth_requests) == 1
+
+
+def test_fyers_compatibility_declares_greeks_capability_absent():
+    _, adapter = build()
+    assert adapter.option_greeks_supported is False
+    assert not hasattr(adapter, "get_option_greeks")
