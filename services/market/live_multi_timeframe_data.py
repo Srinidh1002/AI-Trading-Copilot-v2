@@ -408,7 +408,7 @@ class LiveMultiTimeframeData:
         *,
         cache_enabled=None,
         historical_request_interval_seconds=None,
-        provider_source=self.provider_source,
+        provider_source="ANGEL_ONE_HISTORICAL",
     ):
         self.client = (
             client
