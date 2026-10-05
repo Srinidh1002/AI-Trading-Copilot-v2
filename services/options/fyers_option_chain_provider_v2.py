@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-from datetime import datetime, time as dtime
+from datetime import datetime, time as dtime, timezone
 from zoneinfo import ZoneInfo
 
 
@@ -112,8 +112,13 @@ class FyersOptionChainProviderV2:
     def __init__(
         self,
         client,
+        *,
+        clock=None,
     ) -> None:
         self._client = client
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
+        if not callable(self._clock):
+            raise TypeError("clock")
         self._expiry_data_cache: dict[str, tuple[float, tuple]] = {}
         self._expiry_cache_ttl = 300.0  # 5 minutes
 
@@ -216,6 +221,13 @@ class FyersOptionChainProviderV2:
                 request["timestamp"] = _resolved_ts
 
         response = self._client.optionchain(data=request)
+        received_at = self._clock()
+        if (
+            not isinstance(received_at, datetime)
+            or received_at.tzinfo is None
+            or received_at.utcoffset() is None
+        ):
+            raise ValueError("clock must return timezone-aware datetime")
 
         if not isinstance(
             response,
@@ -288,4 +300,6 @@ class FyersOptionChainProviderV2:
             "expiry_data": expiry_data,
             "provider_expiry_date": provider_expiry_date,
             "provider_expiry_timestamp": provider_expiry_timestamp,
+            "response_received_at": received_at,
+            "timestamp_basis": "SYNCHRONOUS_FYERS_OPTIONCHAIN_RESPONSE",
         }
