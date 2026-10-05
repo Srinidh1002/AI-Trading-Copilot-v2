@@ -59,14 +59,14 @@ from mcx.mcx_version import (
 PRODUCTS_UNDER_TEST = (
     "CRUDEOILM",
     "GOLDM",
-    "SILVERM",
+    "NATGASMINI",
 )
 
 
 STRIKES = {
     "CRUDEOILM": 9500.0,
     "GOLDM": 125000.0,
-    "SILVERM": 180000.0,
+    "NATGASMINI": 350.0,
 }
 
 
@@ -631,8 +631,10 @@ def _run_product_lifecycle(
     )
 
     # -----------------------------------------------------------------
-    # FYERS execution calibration is intentionally absent before live
-    # observation, so NONE of these offline trades may count.
+    # Current FYERS calibration may be present, but this is an offline
+    # lifecycle proof. Its deterministic quote hashes were never persisted
+    # into the hash-addressed execution-evidence store, so the trade must
+    # still fail closed and remain NON_COUNTABLE.
     # -----------------------------------------------------------------
 
     countable, reasons = (
@@ -646,12 +648,12 @@ def _run_product_lifecycle(
     assert countable is False
 
     assert (
-        "EXECUTION_FRESHNESS_UNCALIBRATED"
+        "ENTRY_QUOTE_EVIDENCE_NOT_FOUND"
         in reasons
     )
 
     assert (
-        "DEPTH_QUANTITY_SEMANTICS_UNVERIFIED"
+        "EXIT_QUOTE_EVIDENCE_NOT_FOUND"
         in reasons
     )
 
@@ -914,20 +916,18 @@ def test_crude_uses_current_v4_not_stale_v2():
     )
 
 
-def test_gold_and_silver_remain_precert():
-    for product in (
-        "GOLDM",
-        "SILVERM",
-    ):
+def test_current_three_products_are_registry_eligible_but_offline_evidence_cannot_count():
+    for product in PRODUCTS_UNDER_TEST:
         cfg = get_product_epochs(
             product
         )
 
+        assert cfg is not None
         assert (
             cfg[
                 "certification_eligible"
             ]
-            is False
+            is True
         )
 
         result = (
@@ -939,6 +939,21 @@ def test_gold_and_silver_remain_precert():
         assert (
             result["countable"]
             is False
+        )
+
+        reasons = set(
+            result[
+                "countability_reasons"
+            ]
+        )
+
+        assert (
+            "ENTRY_QUOTE_EVIDENCE_NOT_FOUND"
+            in reasons
+        )
+        assert (
+            "EXIT_QUOTE_EVIDENCE_NOT_FOUND"
+            in reasons
         )
 
 

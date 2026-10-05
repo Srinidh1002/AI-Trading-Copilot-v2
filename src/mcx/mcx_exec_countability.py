@@ -21,7 +21,7 @@ REJECTIONS = (
     "ENTRY_QUOTE_EVIDENCE_NOT_FOUND",
     "EXIT_QUOTE_EVIDENCE_NOT_FOUND",
     "ENTRY_QUOTE_HASH_MISMATCH",
-    "EXIT_QUOTE_HASH_MISMATCH",
+    "EXIT_QUOTE_HASH_MISMATCH" , "FIRST_TOUCH_MISSING_OR_AMBIGUOUS",
     "ENTRY_IDENTITY_MISMATCH",
     "EXIT_IDENTITY_MISMATCH",
     "FILL_NOT_REPRODUCIBLE_FROM_DEPTH",
@@ -169,8 +169,11 @@ def is_countable(trade, product=None, known_trade_ids=None, *,
         reasons.append("ENTRY_QUOTE_STALE")
     if trade.get("exit_quote_stale"):
         reasons.append("EXIT_QUOTE_STALE")
-    if trade.get("first_touch_result") == "AMBIGUOUS":
+    first_touch = str(trade.get("first_touch_result") or "").strip().upper()
+    if first_touch == "AMBIGUOUS":
         reasons.append("AMBIGUOUS_FIRST_TOUCH")
+    elif first_touch not in ("T1_FIRST", "SL_FIRST"):
+        reasons.append("FIRST_TOUCH_MISSING_OR_AMBIGUOUS")
     if not trade.get("lifecycle_evidence_complete", True):
         reasons.append("LIFECYCLE_EVIDENCE_INCOMPLETE")
     p = product or trade.get("product")

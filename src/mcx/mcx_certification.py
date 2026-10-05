@@ -83,7 +83,10 @@ def update_counters(state, trade):
     )
 
     if tid in seen or tid in rejected:
+        trade["certification_accepted"] = tid in seen
         return state
+
+    trade["certification_accepted"] = False
 
     # Registry authority remains mandatory.
     from mcx.mcx_version import (
@@ -139,6 +142,7 @@ def update_counters(state, trade):
         ] = (
             "FIRST_TOUCH_MISSING_OR_AMBIGUOUS"
         )
+        trade["_counter_rejected"] = "FIRST_TOUCH_MISSING_OR_AMBIGUOUS"
 
         rejected.append(tid)
 
@@ -237,6 +241,7 @@ def update_counters(state, trade):
 
 
     seen.append(tid)
+    trade["certification_accepted"] = True
 
     state[
         "_counted_trade_ids"

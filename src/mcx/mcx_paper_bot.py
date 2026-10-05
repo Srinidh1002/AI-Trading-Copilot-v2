@@ -61,7 +61,7 @@ from mcx.mcx_version import (initialize_or_verify as version_check,
 from mcx.mcx_structure import compute_structure, session_vwap, describe as structure_describe
 from mcx.mcx_price_oi import PriceOITracker, score as price_oi_score
 from mcx.mcx_setup import classify as classify_setup, describe as setup_describe
-from mcx.mcx_reconcile import reconcile as reconcile_trade, append_outcome
+from mcx.mcx_reconcile import reconcile as reconcile_trade, append_outcome, accepted_ledger_gaps
 from mcx.mcx_greeks import analyze_option
 from mcx.mcx_certification import update_counters as cert_update, print_status as cert_print, status as cert_status
 from mcx.mcx_learning import collect as learn_collect
@@ -955,9 +955,6 @@ def close_and_reconcile(obj, pos, exit_reason, exit_ltp, pnl_pct, state):
         rec["_countability_reasons"] = reasons
         print(f"  NON_COUNTABLE: {reasons}")
 
-    if rec.get("certification_eligible"):
-        append_outcome(rec, product=PRODUCT)
-
     state["total_trades"] += 1
     if rec.get("is_win"):
         state["winning_trades"] += 1
@@ -967,8 +964,20 @@ def close_and_reconcile(obj, pos, exit_reason, exit_ltp, pnl_pct, state):
     state["active_position"] = None
     state["completed_trades"].append(rec)
 
-    # Certification T1/SL counters
+    # Certification T1/SL counters; distinguish candidates from accepted trades.
     cert_update(state, rec)
+    rec["certification_accepted"] = bool(rec.get("certification_accepted")
+                                        and rec.get("trade_id") in state.get("_counted_trade_ids", []))
+    rec["certification_rejection_reason"] = (
+        rec.get("_cert_noncountable_reason") or rec.get("_counter_rejected")
+        or (";".join(rec.get("_countability_reasons") or []) if not rec.get("countable") else None)
+    )
+    if rec["certification_accepted"]:
+        # Save accepted state BEFORE writing ledger; restart audit blocks entry on a gap.
+        save_state(state)
+        outcome = append_outcome(rec, product=PRODUCT)
+        if outcome.get("status") != "APPENDED":
+            raise RuntimeError("CERTIFICATION_LEDGER_WRITE_NOT_CONFIRMED")
     # Learning collection (features only, no strategy change)
     try:
         learn_collect(rec, product=PRODUCT)
@@ -1057,6 +1066,11 @@ def main():
         else:
             print(f"STARTUP_BLOCKED: STATE_AUTHORITY: {_reason}")
             return 1
+    _r15_gaps = accepted_ledger_gaps(state, PRODUCT)
+    if _r15_gaps:
+        integ["certification_ready"] = False
+        integ.setdefault("issues", []).append("R15_ACCEPTED_LEDGER_GAP")
+        print("R15_ACCEPTED_LEDGER_GAP: observation only; repair requires review")
     save_state(state)  # PATCH A: persist initial state (idempotent)
 
     # Section 7.27 — startup RECOVERY_ONLY if open position exists

@@ -24,6 +24,7 @@ def reconcile(pos, product="CRUDEOILM"):
         get_product_epochs as _get_product_epochs,
         is_certification_eligible as _is_cert_eligible,
     )
+    from mcx.mcx_version import get_product_epochs
     from mcx.mcx_certification import classify_win as _classify_win
 
     required = ["trade_id", "entry", "exit", "lots"]
@@ -41,8 +42,16 @@ def reconcile(pos, product="CRUDEOILM"):
         or {}
     )
 
+    # Preserve original campaign provenance; never relabel an old position.
+    cfg = get_product_epochs(product) or {}
+    epoch = pos.get("epoch_id") or pos.get("certification_epoch") or cfg.get("epoch")
+    version = pos.get("strategy_version") or cfg.get("strategy_version")
+    identity_ok = bool(cfg and (pos.get("epoch_id") or pos.get("certification_epoch"))
+                       and pos.get("strategy_version")
+                       and epoch == cfg.get("epoch")
+                       and version == cfg.get("strategy_version"))
     # Certification gate: unique, closed, reconciled, non-synthetic
-    registry_ok = _is_cert_eligible(product)
+    registry_ok = _is_cert_eligible(product) and identity_ok
     cert_eligible = (
         registry_ok
         and pos.get("_synthetic") is not True
@@ -53,10 +62,8 @@ def reconcile(pos, product="CRUDEOILM"):
 
     result = dict(pos)
     result.update({
-        "epoch_id": product_cfg.get("epoch"),
-        "strategy_version": product_cfg.get(
-            "strategy_version"
-        ),
+        "epoch_id": epoch,
+        "strategy_version": version,
         "certification_eligible": cert_eligible,
         "registry_certification_eligible": registry_ok,
         "gross_pnl": net["gross_pnl"],
@@ -106,6 +113,42 @@ def append_outcome(reconciled, product="CRUDEOILM"):
             "certification_eligible": reconciled.get("certification_eligible")}
 
 
+
+def accepted_ledger_gaps(state, product="CRUDEOILM"):
+    """Return missing or contradictory accepted trade IDs; never modify history."""
+    cfg = __import__("mcx.mcx_version", fromlist=["get_product_epochs"]).get_product_epochs(product) or {}
+    accepted = {
+        t["trade_id"]: t for t in state.get("completed_trades", [])
+        if t.get("certification_accepted") is True
+        and t.get("trade_id") in set(state.get("_counted_trade_ids", []))
+        and t.get("epoch_id") == cfg.get("epoch")
+        and t.get("strategy_version") == cfg.get("strategy_version")
+    }
+    if not accepted:
+        return []
+    ledger = outcomes_path(product)
+    if not os.path.isfile(ledger):
+        return sorted(accepted)
+    matched = set()
+    invalid = set()
+    with open(ledger, encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except (ValueError, TypeError):
+                return sorted(accepted)
+            tid = row.get("trade_id")
+            if tid not in accepted:
+                continue
+            if tid in matched or row.get("certification_accepted") is not True or (
+                row.get("epoch_id"), row.get("strategy_version")
+            ) != (cfg.get("epoch"), cfg.get("strategy_version")):
+                invalid.add(tid)
+            matched.add(tid)
+    return sorted((set(accepted) - matched) | invalid)
+
 def count_certified(product="CRUDEOILM"):
     """Return count of certification-eligible trades for the product."""
     from mcx.mcx_version import get_product_epochs
@@ -122,7 +165,7 @@ def count_certified(product="CRUDEOILM"):
                 r = json.loads(line)
             except Exception:
                 continue
-            if (r.get("certification_eligible")
+            if (r.get('certification_accepted') is True
                 and r.get("strategy_version") == target_version
                 and r.get("epoch_id") == target_epoch):
                 n += 1

@@ -47,11 +47,11 @@ def _rows():
             "future_tick": 1.0,
             "option_tick": 0.50,
         },
-        "SILVERM": {
-            "strike": 180000.0,
-            "lot": 5,
-            "future_tick": 1.0,
-            "option_tick": 0.50,
+        "NATGASMINI": {
+            "strike": 350.0,
+            "lot": 250,
+            "future_tick": 0.10,
+            "option_tick": 0.05,
         },
     }
 
@@ -114,7 +114,7 @@ def _rows():
                     else (
                         100
                         if product == "GOLDM"
-                        else 1000
+                        else 5
                     )
                 )
             )
@@ -264,7 +264,7 @@ def test_supported_products_are_exact_requested_mcx_three():
     assert SUPPORTED_MCX_FYERS_PRODUCTS == (
         "CRUDEOILM",
         "GOLDM",
-        "SILVERM",
+        "NATGASMINI",
     )
 
 
@@ -273,7 +273,7 @@ def test_supported_products_are_exact_requested_mcx_three():
     (
         "CRUDEOILM",
         "GOLDM",
-        "SILVERM",
+        "NATGASMINI",
     ),
 )
 def test_identity_resolves_future_and_nearest_non_same_day_options(product):
@@ -316,30 +316,30 @@ def test_identity_resolves_future_and_nearest_non_same_day_options(product):
     )
 
 
-def test_silverm_legacy_chain_shape_preserves_real_strike_after_division():
+def test_natgasmini_legacy_chain_shape_preserves_real_strike_after_division():
     result = (
         _bridge()
         .identity
         .resolve_active(
-            "SILVERM",
+            "NATGASMINI",
             as_of=NOW,
         )
     )
 
-    assert 180000.0 in result["calls"]
+    assert 350.0 in result["calls"]
 
     legacy_record = (
-        result["calls"][180000.0]
+        result["calls"][350.0]
     )
 
     # Existing mcx_chain divides record strike by 100.
     assert (
         legacy_record["strike"] / 100.0
-        == 180000.0
+        == 350.0
     )
 
     assert legacy_record["token"].startswith(
-        "MCX:SILVERM"
+        "MCX:NATGASMINI"
     )
 
 
@@ -347,11 +347,11 @@ def test_full_market_data_uses_fyers_depth_and_keeps_legacy_shape():
     bridge = _bridge()
 
     identity = bridge.identity.resolve_active(
-        "SILVERM",
+        "NATGASMINI",
         as_of=NOW,
     )
 
-    option = identity["calls"][180000.0]
+    option = identity["calls"][350.0]
 
     result = bridge.data.getMarketData(
         "FULL",
@@ -454,7 +454,7 @@ def test_missing_master_evidence_returns_unavailable_not_fallback():
     )
 
     result = bridge.identity.resolve_active(
-        "SILVERM",
+        "NATGASMINI",
         as_of=NOW,
     )
 
@@ -468,14 +468,14 @@ def test_missing_master_evidence_returns_unavailable_not_fallback():
     assert result["puts"] == {}
 
 
-def test_natgasmini_is_not_supported_by_new_bridge():
+def test_silverm_is_not_supported_by_new_bridge():
     bridge = _bridge()
 
     with pytest.raises(
         MCXFyersBridgeError
     ):
         bridge.identity.resolve_active(
-            "NATGASMINI",
+            "SILVERM",
             as_of=NOW,
         )
 
@@ -569,11 +569,11 @@ def test_crudeoilm_full_depth_preserves_provider_quantity_until_semantics_proven
     assert row["tradeVolume"] == 4567
 
 
-def test_silverm_full_depth_is_not_scaled_before_live_quantity_proof():
+def test_natgasmini_full_depth_is_not_scaled_before_live_quantity_proof():
     bridge = _bridge()
 
     identity = bridge.identity.resolve_active(
-        "SILVERM",
+        "NATGASMINI",
         as_of=NOW,
     )
 
@@ -586,7 +586,7 @@ def test_silverm_full_depth_is_not_scaled_before_live_quantity_proof():
 
     row = result["data"]["fetched"][0]
 
-    # SILVERM has not yet completed its live FYERS quantity calibration.
+    # NATGASMINI has not yet completed its live FYERS quantity calibration.
     assert row["bestFiveBuyData"][0]["quantity"] == 20
 
     assert "provider_quantity_lots" not in row["bestFiveBuyData"][0]

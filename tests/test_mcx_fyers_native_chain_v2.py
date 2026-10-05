@@ -37,10 +37,10 @@ class FakeIdentity:
                 125000.0,
                 125100.0,
             ),
-            "SILVERM": (
-                179000.0,
-                180000.0,
-                181000.0,
+            "NATGASMINI": (
+                345.0,
+                350.0,
+                355.0,
             ),
         }[product]
 
@@ -102,7 +102,7 @@ class FakeData:
         prices = {
             "CRUDEOILM": 9500.0,
             "GOLDM": 125000.0,
-            "SILVERM": 180000.0,
+            "NATGASMINI": 350.0,
         }
 
         return {
@@ -136,10 +136,10 @@ class FakeClient:
                 125000.0,
                 125100.0,
             ),
-            "SILVERM": (
-                179000.0,
-                180000.0,
-                181000.0,
+            "NATGASMINI": (
+                345.0,
+                350.0,
+                355.0,
             ),
         }[self.product]
 
@@ -203,7 +203,7 @@ class FakeClient:
     (
         "CRUDEOILM",
         "GOLDM",
-        "SILVERM",
+        "NATGASMINI",
     ),
 )
 def test_native_chain_uses_one_optionchain_and_zero_depth_fanout(product):
@@ -239,7 +239,7 @@ def test_native_chain_uses_one_optionchain_and_zero_depth_fanout(product):
         == 0
     )
 
-    assert client.optionchain_calls == 1
+    assert client.optionchain_calls == 2  # expiryData discovery + selected-expiry chain fetch
     assert client.depth_calls == 0
 
     assert result["ce_data"]
@@ -249,9 +249,9 @@ def test_native_chain_uses_one_optionchain_and_zero_depth_fanout(product):
     assert result["max_pain"] is not None
 
 
-def test_silverm_atm_and_identity_are_preserved():
+def test_natgasmini_atm_and_identity_are_preserved():
     client = FakeClient(
-        "SILVERM"
+        "NATGASMINI"
     )
 
     result = (
@@ -259,32 +259,32 @@ def test_silverm_atm_and_identity_are_preserved():
             data_client=client,
             identity=FakeIdentity(),
             data_api=FakeData(
-                "SILVERM"
+                "NATGASMINI"
             ),
             clock=lambda: NOW,
         )
         .build(
-            "SILVERM",
+            "NATGASMINI",
             as_of=NOW,
         )
     )
 
-    assert result["atm"] == 180000.0
+    assert result["atm"] == 350.0
 
     option = result[
         "ce_data"
-    ][180000.0]
+    ][350.0]
 
     assert option[
         "provider_symbol"
     ] == (
-        "MCX:SILVERM_180000_CE"
+        "MCX:NATGASMINI_350_CE"
     )
 
     assert option[
         "token"
     ] == (
-        "MCX:SILVERM_180000_CE"
+        "MCX:NATGASMINI_350_CE"
     )
 
 
@@ -304,7 +304,7 @@ def test_unknown_product_fails_closed():
         MCXFyersNativeChainError
     ):
         engine.build(
-            "NATGASMINI"
+            "SILVERM"
         )
 
 
