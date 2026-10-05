@@ -55,6 +55,33 @@ def _type(value: object) -> str:
     if normalized not in {"CALL", "PUT"}: raise ValueError("option_type")
     return normalized
 
+
+def _provider_name(*groups: object) -> str:
+    """Preserve provider provenance while keeping legacy Angel inputs valid."""
+    names = set()
+    for group in groups:
+        if group is None or not isinstance(group, Sequence) or isinstance(group, (str, bytes)):
+            continue
+        for raw in group:
+            if not isinstance(raw, Mapping):
+                continue
+            provider = str(raw.get("provider") or "").strip().upper()
+            if provider:
+                names.add(provider)
+    if not names:
+        return "ANGEL_ONE"
+    aliases = {
+        "ANGEL": "ANGEL_ONE",
+        "ANGEL_ONE": "ANGEL_ONE",
+        "ANGEL_SMARTAPI": "ANGEL_ONE",
+        "FYERS": "FYERS",
+    }
+    canonical = {aliases.get(name, name) for name in names}
+    if len(canonical) != 1:
+        raise ValueError("mixed option providers")
+    return next(iter(canonical))
+
+
 @dataclass(frozen=True, slots=True)
 class AngelOptionNormalizationResultV1:
     snapshot: object | None
@@ -74,6 +101,7 @@ def normalize_angel_option_chain(*, contracts: object, snapshot_contracts: objec
     """Normalize captured ``LiveOptionChainBuilder.build_chain`` contracts only."""
     spec = _spec(market_spec); _aware(provider_timestamp, "provider_timestamp"); _aware(evaluated_at, "evaluated_at")
     spot = _num(spot_price, "spot_price", positive=True)
+    provider_name = _provider_name(contracts, snapshot_contracts)
     if not isinstance(contracts, Sequence) or isinstance(contracts, (str, bytes)) or not contracts:
         return AngelOptionNormalizationResultV1(None, None, tuple(blockers) or ("OPTION_CHAIN_UNAVAILABLE",), tuple(warnings), provider_state, spec.underlying_symbol, spec.exchange, spec.option_exchange)
     values: list[OptionContractV1] = []; records = []; tokens=set(); symbols=set(); identities=set(); expiry_value=None
@@ -147,6 +175,7 @@ def normalize_angel_option_chain(*, contracts: object, snapshot_contracts: objec
         iv = _num(raw.get("iv", raw.get("implied_volatility")), "iv")
         records.append({"strike": strike, "option_type": option_type, "ltp": last, "bid_price": bid, "ask_price": ask, "bid_quantity": _num(raw.get("bid_quantity"), "bid_quantity", integer=True), "ask_quantity": _num(raw.get("ask_quantity"), "ask_quantity", integer=True), "volume": int(volume) if volume is not None else None, "open_interest": int(oi) if oi is not None else None, "change_in_open_interest": int(change) if change is not None else None, "implied_volatility": iv, "underlying_value": spot, "source_record_id": str(raw.get("token", "")), "is_complete": True})
 
-    snapshot = normalize_option_chain_records(underlying_symbol=spec.underlying_symbol, exchange=spec.exchange, expiry=snapshot_expiry_value, underlying_value=spot, source_timestamp=provider_timestamp, provider_name="ANGEL_ONE", records=tuple(records), clock=lambda: evaluated_at)
-    universe = OptionContractUniverseV1(f"angel-universe:{spec.symboltoken}:{provider_timestamp.isoformat()}", spec.underlying_symbol, spec.exchange, evaluated_at, spot, tuple(values), "ANGEL_ONE", True)
+    snapshot = normalize_option_chain_records(underlying_symbol=spec.underlying_symbol, exchange=spec.exchange, expiry=snapshot_expiry_value, underlying_value=spot, source_timestamp=provider_timestamp, provider_name=provider_name, records=tuple(records), clock=lambda: evaluated_at)
+    universe_prefix = "angel" if provider_name == "ANGEL_ONE" else provider_name.lower()
+    universe = OptionContractUniverseV1(f"{universe_prefix}-universe:{spec.symboltoken}:{provider_timestamp.isoformat()}", spec.underlying_symbol, spec.exchange, evaluated_at, spot, tuple(values), provider_name, True)
     return AngelOptionNormalizationResultV1(snapshot, universe, tuple(blockers), tuple(warnings), provider_state, spec.underlying_symbol, spec.exchange, spec.option_exchange)

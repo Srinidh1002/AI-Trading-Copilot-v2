@@ -61,3 +61,57 @@ def test_task91043_snapshot_uses_evidence_contracts_but_universe_stays_strict():
     assert result.snapshot.complete_pair_count == 1
     assert result.snapshot.call_only_count == 0
     assert result.snapshot.put_only_count == 0
+
+
+def test_fyers_contracts_preserve_provider_provenance():
+    fyers_row = row(
+        provider="FYERS",
+        token="FY-1",
+        symbol="NSE:NIFTY26O0625000CE",
+        option_type="CE",
+        expiry="2026-10-06",
+        strike=25000,
+        lotsize=65,
+        tick_size=0.05,
+        premium=100,
+        bid=99,
+        ask=101,
+        volume=50,
+        open_interest=100,
+    )
+    evaluated = datetime(2026, 10, 5, tzinfo=timezone.utc)
+    out = normalize_angel_option_chain(
+        contracts=(fyers_row,),
+        market_spec=NIFTY_MARKET_SPEC,
+        spot_price=25000,
+        provider_timestamp=evaluated,
+        evaluated_at=evaluated,
+    )
+    assert out.universe.source_name == "FYERS"
+    assert out.snapshot.provider_name == "FYERS"
+    assert out.universe.universe_id.startswith("fyers-universe:")
+
+
+def test_mixed_provider_contracts_fail_closed():
+    evaluated = datetime(2026, 10, 5, tzinfo=timezone.utc)
+    angel = row(
+        provider="ANGEL_ONE",
+        token="A-1",
+        symbol="NIFTY26O0625000CE",
+        expiry="2026-10-06",
+    )
+    fyers = row(
+        provider="FYERS",
+        token="F-1",
+        symbol="NIFTY26O0625000PE",
+        option_type="PE",
+        expiry="2026-10-06",
+    )
+    with pytest.raises(ValueError, match="mixed option providers"):
+        normalize_angel_option_chain(
+            contracts=(angel, fyers),
+            market_spec=NIFTY_MARKET_SPEC,
+            spot_price=25000,
+            provider_timestamp=evaluated,
+            evaluated_at=evaluated,
+        )
