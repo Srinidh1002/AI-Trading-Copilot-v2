@@ -79,7 +79,13 @@ def native_rows():
                     "type": "CE",
                     "ltp": 100.0 + index,
                     "oi": 100 * index,
+                    "oich": 10 * index,
                     "volume": 1000 * index,
+                    "delta": 0.50 + (index * 0.01),
+                    "gamma": 0.001 * index,
+                    "theta": -10.0 - index,
+                    "vega": 7.0 + index,
+                    "iv": 12.0 + index,
                     "bid": 99.5 + index,
                     "ask": 100.5 + index,
                     "token": f"FYCE{index}",
@@ -90,7 +96,13 @@ def native_rows():
                     "type": "PE",
                     "ltp": 90.0 + index,
                     "oi": 200 * index,
+                    "oich": 20 * index,
                     "volume": 2000 * index,
+                    "delta": -0.50 + (index * 0.01),
+                    "gamma": 0.0015 * index,
+                    "theta": -9.0 - index,
+                    "vega": 6.0 + index,
+                    "iv": 13.0 + index,
                     "bid": 89.5 + index,
                     "ask": 90.5 + index,
                     "token": f"FYPE{index}",
@@ -262,3 +274,21 @@ def test_invalid_market_rejected():
             resolver=FakeResolver(),
             legacy_identity_resolver=identity_resolver,
         )
+
+def test_native_projection_preserves_provider_greeks_iv_and_oi_change():
+    _, engine = build()
+    result = engine.fetch("22SEP2026", 25000, instruments(), strike_range=50)
+
+    ce = result["ce_data"][25000.0]
+    pe = result["pe_data"][25000.0]
+
+    assert ce["change_in_open_interest"] == 20.0
+    assert ce["delta"] == 0.52
+    assert ce["gamma"] == 0.002
+    assert ce["theta"] == -12.0
+    assert ce["vega"] == 9.0
+    assert ce["iv"] == 14.0
+
+    assert pe["change_in_open_interest"] == 40.0
+    assert pe["delta"] == -0.48
+    assert pe["iv"] == 15.0
