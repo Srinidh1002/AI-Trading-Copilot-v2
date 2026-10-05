@@ -69,7 +69,6 @@ jobs:
           python -m py_compile @files
 
       - name: Ruff R16 maintained files
-        continue-on-error: true
         shell: pwsh
         run: |
           $files = @(
@@ -96,172 +95,32 @@ jobs:
             "tests/test_r16_fyers_native_option_capture_v1.py",
             "tests/test_r16_fyers_shadow_composition_v1.py",
             "tests/test_r16_strategy_authority_v1.py",
+            "tests/test_r16_shadow_persistence_v1.py",
             "tests/test_r16_selector_paper_runtime_v1.py",
             "tests/test_r16_pre_live_eligibility_v1.py",
             "tests/test_r16_five_market_certification_final_report_v1.py"
           )
           python -m ruff check @files
 
-      - name: Test p0 preflight v2
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_p0_preflight_v2.py -q --tb=short
-
-      - name: Test fyers option chain provider v2
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_fyers_option_chain_provider_v2.py -q --tb=short
-
-      - name: Test f13 fyers native option chain engine v2
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_f13_fyers_native_option_chain_engine_v2.py -q --tb=short
-
-      - name: Test r16 fyers master readiness v2
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_fyers_master_readiness_v2.py -q --tb=short
-
-      - name: Test r16 five market campaign read model v2
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_five_market_campaign_read_model_v2.py -q --tb=short
-
-      - name: Test r16 two market shadow source v1
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_two_market_shadow_source_v1.py -q --tb=short
-
-      - name: Test r16 canonical candidate reader v1
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_canonical_candidate_reader_v1.py -q --tb=short
-
-      - name: Test r16 fyers native option capture v1
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_fyers_native_option_capture_v1.py -q --tb=short
-
-      - name: Test r16 fyers shadow composition v1
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_fyers_shadow_composition_v1.py -q --tb=short
-
-      - name: Test r16 strategy authority v1
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_strategy_authority_v1.py -q --tb=short
-
-      - name: Test r16 selector paper runtime v1
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_selector_paper_runtime_v1.py -q --tb=short
-
-      - name: Test r16 pre live eligibility v1
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_pre_live_eligibility_v1.py -q --tb=short
-
-      - name: Test r16 five market certification final report v1
-        continue-on-error: true
-        shell: pwsh
-        run: python -m pytest tests/test_r16_five_market_certification_final_report_v1.py -q --tb=short
-
-      - name: Aggregate diagnostic group A
-        continue-on-error: true
+      - name: Focused R16 aggregate regression
         shell: pwsh
         run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Aggregate diagnostic group B
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py","tests/test_r16_shadow_persistence_v1.py","tests/test_r16_selector_paper_runtime_v1.py","tests/test_r16_pre_live_eligibility_v1.py","tests/test_r16_five_market_certification_final_report_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cross diagnostic A plus r16 fyers native option capture v1
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cross diagnostic A plus r16 fyers shadow composition v1
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_shadow_composition_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cross diagnostic A plus r16 strategy authority v1
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_strategy_authority_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cross diagnostic A plus r16 selector paper runtime v1
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_selector_paper_runtime_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cross diagnostic A plus r16 pre live eligibility v1
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_pre_live_eligibility_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cross diagnostic A plus r16 five market certification final report v1
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_five_market_certification_final_report_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cumulative diagnostic A plus B1-B2
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cumulative diagnostic A plus B1-B3
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cumulative diagnostic A plus B1-B4
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py","tests/test_r16_shadow_persistence_v1.py","tests/test_r16_selector_paper_runtime_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cumulative diagnostic A plus B1-B5
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py","tests/test_r16_selector_paper_runtime_v1.py","tests/test_r16_pre_live_eligibility_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Cumulative diagnostic A plus B1-B6
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py","tests/test_r16_selector_paper_runtime_v1.py","tests/test_r16_pre_live_eligibility_v1.py","tests/test_r16_five_market_certification_final_report_v1.py")
-          python -m pytest @tests -q --tb=short
-
-      - name: Focused R16 aggregate gate
-        shell: pwsh
-        run: |
-          $tests = @("tests/test_p0_preflight_v2.py","tests/test_fyers_option_chain_provider_v2.py","tests/test_f13_fyers_native_option_chain_engine_v2.py","tests/test_r16_fyers_master_readiness_v2.py","tests/test_r16_five_market_campaign_read_model_v2.py","tests/test_r16_two_market_shadow_source_v1.py","tests/test_r16_canonical_candidate_reader_v1.py","tests/test_r16_fyers_native_option_capture_v1.py","tests/test_r16_fyers_shadow_composition_v1.py","tests/test_r16_strategy_authority_v1.py","tests/test_r16_selector_paper_runtime_v1.py","tests/test_r16_pre_live_eligibility_v1.py","tests/test_r16_five_market_certification_final_report_v1.py")
+          $tests = @(
+            "tests/test_p0_preflight_v2.py",
+            "tests/test_fyers_option_chain_provider_v2.py",
+            "tests/test_f13_fyers_native_option_chain_engine_v2.py",
+            "tests/test_r16_fyers_master_readiness_v2.py",
+            "tests/test_r16_five_market_campaign_read_model_v2.py",
+            "tests/test_r16_two_market_shadow_source_v1.py",
+            "tests/test_r16_canonical_candidate_reader_v1.py",
+            "tests/test_r16_fyers_native_option_capture_v1.py",
+            "tests/test_r16_fyers_shadow_composition_v1.py",
+            "tests/test_r16_strategy_authority_v1.py",
+            "tests/test_r16_shadow_persistence_v1.py",
+            "tests/test_r16_selector_paper_runtime_v1.py",
+            "tests/test_r16_pre_live_eligibility_v1.py",
+            "tests/test_r16_five_market_certification_final_report_v1.py"
+          )
           python -m pytest @tests -q --tb=short
 
       - name: Verify R16 source remains PAPER-only
@@ -272,13 +131,17 @@ jobs:
             "services/paper_orchestration/r16_two_market_shadow_source_v1.py",
             "services/paper_orchestration/r16_canonical_candidate_reader_v1.py",
             "services/paper_orchestration/r16_fyers_shadow_composition_v1.py",
+            "services/paper_orchestration/r16_strategy_authority_v1.py",
             "services/paper_orchestration/r16_selector_paper_runtime_v1.py",
+            "services/live_execution/r16_pre_live_eligibility_v1.py",
             "tools/run_r16_two_market_shadow_once.py"
           )
           $forbidden = @(
             "placeOrder(",
             "place_order(",
             "submit_order(",
+            "modify_order(",
+            "cancel_order(",
             "broker_order_submission=True",
             "live_execution_eligible=True"
           )
