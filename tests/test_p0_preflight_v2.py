@@ -120,6 +120,10 @@ def _patch_all_ok(monkeypatch):
         lambda markets, repo_root: {m: (True, "STATE_OK") for m in markets},
     )
     monkeypatch.setattr(
+        pf, "check_symbol_masters",
+        lambda markets, repo_root, now: {m: (True, "MASTER_OK") for m in markets},
+    )
+    monkeypatch.setattr(
         pf, "check_calendar",
         lambda markets, now: {m: (True, "OPEN") for m in markets},
     )
