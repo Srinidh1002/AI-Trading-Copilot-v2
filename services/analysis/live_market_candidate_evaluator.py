@@ -85,6 +85,7 @@ def _build_live_candidate_base_evidence(
         provider_timestamp=value.provider_timestamp,
         evaluated_at=value.evaluated_at,
         provider_state=value.provider_state,
+        provider_name=value.provider_name,
         blockers=value.blockers,
         warnings=value.warnings,
     )
