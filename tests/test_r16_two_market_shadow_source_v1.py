@@ -17,7 +17,6 @@ from services.paper_orchestration.r16_two_market_shadow_source_v1 import (
     R16TwoMarketShadowSourceV1,
 )
 
-
 NOW = datetime(2026, 8, 4, 5, 0, 10, tzinfo=UTC)
 MARKET_TS = datetime(2026, 8, 4, 5, 0, 0, tzinfo=UTC)
 
