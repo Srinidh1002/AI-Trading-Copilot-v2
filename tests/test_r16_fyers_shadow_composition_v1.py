@@ -15,7 +15,6 @@ from services.paper_orchestration.r16_fyers_shadow_composition_v1 import (
     build_r16_fyers_shadow_readers_v1,
 )
 
-
 NOW = datetime(2026, 10, 5, 8, 0, 2, tzinfo=UTC)
 MARKET_EPOCH = int(
     datetime(2026, 10, 5, 8, 0, 0, tzinfo=UTC).timestamp()
