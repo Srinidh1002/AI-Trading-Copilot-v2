@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -22,7 +22,7 @@ from services.paper_orchestration.certified_runtime_composition import (
 )
 
 
-NOW = datetime(2026, 10, 5, 7, 30, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 5, 7, 30, tzinfo=UTC)
 
 
 class FakeFyersClient:
