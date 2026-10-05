@@ -273,6 +273,16 @@ class LiveOptionChainBuilder:
         authority.  ``AngelMarketDataClient`` also caches this exact request
         key, preventing duplicate requests by concurrent/reused captures.
         """
+        # An injected provider client may explicitly declare that this
+        # compatibility boundary has no Greeks capability. Treat that as
+        # truthful unsupported evidence before consulting Angel-specific
+        # capability metadata or attempting any method call.
+        if getattr(self.market_client, "option_greeks_supported", None) is False:
+            return (), {
+                "state": "UNSUPPORTED_BY_PROVIDER",
+                "reason": "OPTION_GREEKS_PROVIDER_CAPABILITY_UNAVAILABLE",
+            }
+
         capability = angel_option_provider_capabilities(
             underlying,
             option_exchange,

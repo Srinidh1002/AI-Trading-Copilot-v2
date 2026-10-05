@@ -436,3 +436,28 @@ def test_task91043_positive_price_contracts_exist_in_both_builder_views():
     } == {"CE", "PE"}
 
     market_client.get_market_data.assert_called_once()
+
+
+def test_injected_provider_can_truthfully_disable_option_greeks_without_call():
+    class NoGreekClient:
+        option_greeks_supported = False
+
+        def get_option_greeks(self, *_args, **_kwargs):
+            raise AssertionError("Greeks endpoint must not be called")
+
+    builder = LiveOptionChainBuilder(
+        instrument_master=object(),
+        market_client=NoGreekClient(),
+    )
+
+    rows, capture = builder._capture_greek_rows(
+        underlying="NIFTY",
+        option_exchange="NFO",
+        expiry="06OCT2026",
+    )
+
+    assert rows == ()
+    assert capture == {
+        "state": "UNSUPPORTED_BY_PROVIDER",
+        "reason": "OPTION_GREEKS_PROVIDER_CAPABILITY_UNAVAILABLE",
+    }

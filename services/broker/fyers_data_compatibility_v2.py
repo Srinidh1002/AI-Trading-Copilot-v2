@@ -71,6 +71,11 @@ class FyersDataOnlyCompatibilityV2:
     data_only = True
     order_capability_allowed = False
     automatic_fallback_allowed = False
+    # FYERS V2 compatibility does not expose a separately authenticated
+    # option-Greeks endpoint through this Angel-shaped facade. Downstream
+    # readers must treat Greeks as truthful provider-capability absence, never
+    # as a provider failure and never as synthetic zeroes.
+    option_greeks_supported = False
 
     def __init__(
         self,
@@ -299,6 +304,49 @@ class FyersDataOnlyCompatibilityV2:
 
         return normalize_history(
             response
+        )
+
+    def get_ltp(
+        self,
+        exchange: str,
+        tradingsymbol: str,
+        symboltoken: str,
+    ) -> dict[str, object]:
+        """Snake-case read-only alias used by certified provider readers."""
+        return self.ltpData(
+            exchange,
+            tradingsymbol,
+            symboltoken,
+        )
+
+    def get_historical_data(
+        self,
+        exchange: str,
+        symboltoken: str,
+        interval: str,
+        fromdate: str,
+        todate: str,
+    ) -> dict[str, object]:
+        """Snake-case historical alias used by LiveMultiTimeframeData."""
+        return self.getCandleData(
+            {
+                "exchange": exchange,
+                "symboltoken": symboltoken,
+                "interval": interval,
+                "fromdate": fromdate,
+                "todate": todate,
+            }
+        )
+
+    def get_market_data(
+        self,
+        mode: str,
+        exchange_tokens: Mapping[str, Sequence[str]],
+    ) -> dict[str, object]:
+        """Snake-case FULL-data alias used by option capture."""
+        return self.getMarketData(
+            mode,
+            exchange_tokens,
         )
 
     def getMarketData(
