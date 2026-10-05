@@ -151,7 +151,10 @@ class R16CanonicalCandidateReaderV1:
             raise RuntimeError("CANONICAL_CAPTURE_REQUIRED")
         if type(captured_evidence) is not CertifiedLiveCapturedEvidenceV1:
             raise TypeError("captured_evidence")
-        if shared_context is not None and type(shared_context) is not CertifiedSharedMarketContextV1:
+        if (
+            shared_context is not None
+            and type(shared_context) is not CertifiedSharedMarketContextV1
+        ):
             raise TypeError("shared_context")
         if type(parent_cycle_id) is not str or not parent_cycle_id.strip():
             raise ValueError("parent_cycle_id")
