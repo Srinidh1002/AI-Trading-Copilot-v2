@@ -7,7 +7,7 @@ writes, or certification counters are owned here.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from services.broker.fyers_data_compatibility_v2 import (
@@ -59,7 +59,7 @@ def _as_aware_timestamp(value: object, *, fallback: datetime) -> datetime:
 
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         try:
-            return datetime.fromtimestamp(float(value), tz=timezone.utc)
+            return datetime.fromtimestamp(float(value), tz=UTC)
         except (OSError, ValueError, OverflowError) as exc:
             raise ValueError("provider timestamp invalid") from exc
 
@@ -91,7 +91,7 @@ def build_r16_fyers_shadow_readers_v1(
     if getattr(data_client, "automatic_fallback_allowed", None) is not False:
         raise ValueError("automatic fallback prohibited")
 
-    now = clock or (lambda: datetime.now(timezone.utc))
+    now = clock or (lambda: datetime.now(UTC))
     if not callable(now):
         raise TypeError("clock")
 
