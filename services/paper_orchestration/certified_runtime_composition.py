@@ -948,6 +948,10 @@ class CertifiedRuntimeProviderBundleV1:
     option_decision_pipeline: object
     candidate_reader: Callable[..., object] | None = None
     clock: Clock = _aware_now
+    provider_name: str = "ANGEL_ONE"
+    data_only: bool = True
+    order_capability_allowed: bool = False
+    automatic_fallback_allowed: bool = False
     schema_version: str = (
         "certified_runtime_provider_bundle.v1"
     )
@@ -982,6 +986,20 @@ class CertifiedRuntimeProviderBundleV1:
             )
         if self.candidate_reader is not None and not callable(self.candidate_reader):
             raise TypeError("candidate_reader")
+
+        if not isinstance(self.provider_name, str) or not self.provider_name.strip():
+            raise ValueError("provider_name")
+        object.__setattr__(
+            self,
+            "provider_name",
+            self.provider_name.strip().upper(),
+        )
+        if self.data_only is not True:
+            raise ValueError("certified provider must remain data-only")
+        if self.order_capability_allowed is not False:
+            raise ValueError("certified provider order capability is prohibited")
+        if self.automatic_fallback_allowed is not False:
+            raise ValueError("certified provider automatic fallback is prohibited")
 
         if self.schema_version != (
             "certified_runtime_provider_bundle.v1"
