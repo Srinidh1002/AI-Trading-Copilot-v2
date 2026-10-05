@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -279,3 +280,21 @@ def test_dependency_wrapper_requires_explicit_preflight_authority():
             master_store=FakeMasterStore(),
             clock=lambda: NOW,
         )
+
+
+
+def test_fyers_task8_composition_has_no_order_or_live_execution_surface():
+    source = Path(
+        "services/certification/fyers_task8_provider_composition_v2.py"
+    ).read_text(encoding="utf-8")
+    forbidden = (
+        "placeOrder(",
+        "place_order(",
+        "submit_order(",
+        "modifyOrder(",
+        "cancelOrder(",
+        "FyersOrderSocket",
+        "live_execution_eligible=True",
+        "broker_order_submission=True",
+    )
+    assert not [marker for marker in forbidden if marker in source]
