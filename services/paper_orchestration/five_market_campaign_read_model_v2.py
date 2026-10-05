@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from services.paper_orchestration.state_authority_readonly_v2 import (
@@ -242,7 +242,7 @@ def build_five_market_campaign_view_v2(
         views.append(view)
 
     return FiveMarketCampaignViewV2(
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(UTC).isoformat(),
         execution_mode="PAPER",
         broker_submission=False,
         live_execution=False,
