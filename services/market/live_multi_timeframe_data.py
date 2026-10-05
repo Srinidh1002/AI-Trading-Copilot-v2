@@ -408,6 +408,7 @@ class LiveMultiTimeframeData:
         *,
         cache_enabled=None,
         historical_request_interval_seconds=None,
+        provider_source=self.provider_source,
     ):
         self.client = (
             client
@@ -442,6 +443,13 @@ class LiveMultiTimeframeData:
         self.cache_enabled = bool(
             cache_enabled
         )
+
+        if (
+            not isinstance(provider_source, str)
+            or not provider_source.strip()
+        ):
+            raise ValueError("provider_source")
+        self.provider_source = provider_source.strip().upper()
 
         cache_path = getattr(
             self.cache,
