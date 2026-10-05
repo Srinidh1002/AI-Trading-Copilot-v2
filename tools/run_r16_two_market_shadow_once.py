@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from services.broker.fyers_auth_v2 import (
@@ -23,7 +24,7 @@ from services.broker.fyers_provider_runtime_v2 import (
 from services.broker.fyers_sdk_data_client_v2 import (
     build_fyers_data_client_v2,
 )
-from services.paper_orchestration.fyers_master_readiness_v2 import (
+from services.broker.fyers_master_readiness_v2 import (
     audit_required_master_cache,
 )
 from services.paper_orchestration.r16_fyers_shadow_composition_v1 import (
@@ -172,11 +173,7 @@ def main() -> int:
     )
     source = R16TwoMarketShadowSourceV1(
         readers=readers,
-        clock=lambda: __import__(
-            "datetime"
-        ).datetime.now(
-            __import__("datetime").timezone.utc
-        ),
+        clock=lambda: datetime.now(timezone.utc),
     )
 
     result = source.run_shadow_cycle()
