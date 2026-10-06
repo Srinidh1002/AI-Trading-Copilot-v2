@@ -45,10 +45,7 @@ def test_choppy_observation_flags_four_losses_and_no_wins():
 
 def test_pre_t1_threshold_scan_does_not_claim_alternate_pnl():
     report = analyze_index_observations(_dataset()["index_trades"])
-    rows = {
-        row["threshold_pct"]: row
-        for row in report["pre_t1_threshold_observations"]
-    }
+    rows = {row["threshold_pct"]: row for row in report["pre_t1_threshold_observations"]}
 
     assert rows[8.0]["armed_count"] == 6
     assert rows[8.0]["armed_losses"] == 4
@@ -74,10 +71,7 @@ def test_crude_retest_and_reentry_observations_are_stable():
     assert second["same_thesis"] is True
     assert second["minutes_since_previous_exit"] == 9.15
 
-    cooldowns = {
-        row["cooldown_minutes"]: row
-        for row in report["cooldown_observations"]
-    }
+    cooldowns = {row["cooldown_minutes"]: row for row in report["cooldown_observations"]}
     assert cooldowns[5]["observed_entries_inside_window"] == 1
     assert cooldowns[10]["observed_entries_inside_window"] == 2
     assert cooldowns[15]["observed_entries_inside_window"] == 2
@@ -112,12 +106,7 @@ def test_r18b_recommendations_remain_shadow_only():
     assert recommendation["deploy_index_choppy_veto_now"] is False
     assert recommendation["deploy_pre_t1_profit_lock_now"] is False
     assert recommendation["deploy_fixed_crude_cooldown_now"] is False
-    assert (
-        recommendation[
-            "promote_explicit_breakout_retest_evidence_requirement_to_candidate"
-        ]
-        is True
-    )
+    assert recommendation["promote_explicit_breakout_retest_evidence_requirement_to_candidate"] is True
 
 
 def test_current_production_breakout_retest_label_does_not_require_retest_event():
