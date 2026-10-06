@@ -285,6 +285,9 @@ class UnifiedTradingBot:
         self.same_direction_stops = 0
         self.daily_realized_loss = 0.0
         self.daily_trade_count = 0
+        # R19-B: daily re-entry/risk authority survives same-day restarts
+        # but is reset when a new calendar trading day is loaded.
+        self.daily_risk_date = datetime.now().date().isoformat()
         self.MAX_CONSECUTIVE_SAME_DIR_STOPS = 3
         self.COOLDOWN_AFTER_STOP_SECONDS = 300      # 5 min
         self.COOLDOWN_AFTER_2_STOPS_SECONDS = 900    # 15 min
@@ -341,6 +344,13 @@ class UnifiedTradingBot:
             'active_trades': list(self.active_trades.values()),
             'orphaned_trades': list(getattr(self, 'orphaned_trades', [])),
             'sessions_completed_today': self.sessions_completed_today,
+            # R19-B: durable same-day re-entry/daily-risk authority.
+            'daily_risk_date': self.daily_risk_date,
+            'last_exit_time': self.last_exit_time,
+            'last_exit_direction': self.last_exit_direction,
+            'same_direction_stops': self.same_direction_stops,
+            'daily_realized_loss': self.daily_realized_loss,
+            'daily_trade_count': self.daily_trade_count,
             # R9_epoch_metadata - may be None for legacy state; do not silently relabel
             'strategy_version':    self.strategy_version,
             'certification_epoch': self.certification_epoch,
@@ -424,12 +434,13 @@ class UnifiedTradingBot:
                         print('STATE_LOAD_HOLD: MALFORMED_ACTIVE_TRADE')
                         return False
 
-                # Phase 9.21b — orphan purge after restore.
-                # Runs once, after all active_trades are reconstructed.
-                # Extends the durable archive loaded from state above.
+                # R19-B: never silently purge a prior-session active trade.
+                # An active record without terminal evidence is an operational
+                # incident.  Startup must fail closed until an explicit,
+                # separately audited reconciliation moves it out of authority.
                 _today = datetime.now().date()
-                _new_orphans = []
-                for _tid, _t in list(self.active_trades.items()):
+                _prior_session_active = []
+                for _tid, _t in self.active_trades.items():
                     _et = (_t.get("entry_time") or "")[:10]
                     try:
                         _et_date = datetime.fromisoformat(_et).date() if _et else None
@@ -439,19 +450,17 @@ class UnifiedTradingBot:
                         self.state_load_classification = 'SCHEMA_INVALID'
                         print('STATE_LOAD_HOLD: MALFORMED_ACTIVE_ENTRY_TIME')
                         return False
-                    if _et_date is not None and _et_date < _today:
-                        _rec = dict(_t)
-                        _rec["status"] = "ORPHANED_PRIOR_SESSION"
-                        _rec["reason"] = "ORPHANED_LOAD_STATE"
-                        _rec["orphaned_at"] = datetime.now().isoformat(timespec="seconds")
-                        _new_orphans.append(_rec)
-                        del self.active_trades[_tid]
-                if _new_orphans:
-                    self.orphaned_trades.extend(_new_orphans)
-                    print(f"  ORPHAN_PURGE: {len(_new_orphans)} prior-session active trade(s) archived "
-                          f"(total archive: {len(self.orphaned_trades)})")
-                    # The removed active records must never be reloaded after a crash.
-                    self.save_state()
+                    if _et_date < _today:
+                        _prior_session_active.append(_tid)
+                if _prior_session_active:
+                    self.state_load_classification = (
+                        'PRIOR_SESSION_ACTIVE_REQUIRES_RECONCILIATION'
+                    )
+                    print(
+                        'STATE_LOAD_HOLD: PRIOR_SESSION_ACTIVE_REQUIRES_RECONCILIATION '
+                        + ','.join(sorted(_prior_session_active))
+                    )
+                    return False
                 
                 # R9_epoch_metadata - legacy-safe resolution.
                 # No default: if either key is missing, treat as legacy/pre-cert.
@@ -477,6 +486,43 @@ class UnifiedTradingBot:
                 # R15_diversity_authority - restore (legacy-safe: fresh empty if absent)
                 _dstate = state.get('diversity_state')
                 self.certification_diversity = EquityCertificationDiversityTracker.from_state(_dstate)
+
+                # R19-B: restore daily risk/re-entry authority only for the
+                # current calendar day.  Older-day values must not leak into
+                # a new session.
+                _today_iso = datetime.now().date().isoformat()
+                _risk_day = state.get('daily_risk_date')
+                if _risk_day == _today_iso:
+                    _last_exit_raw = state.get('last_exit_time')
+                    if _last_exit_raw:
+                        try:
+                            self.last_exit_time = datetime.fromisoformat(
+                                str(_last_exit_raw)
+                            )
+                        except (TypeError, ValueError):
+                            self.state_load_classification = 'SCHEMA_INVALID'
+                            print('STATE_LOAD_HOLD: MALFORMED_LAST_EXIT_TIME')
+                            return False
+                    else:
+                        self.last_exit_time = None
+                    self.last_exit_direction = state.get('last_exit_direction')
+                    self.same_direction_stops = int(
+                        state.get('same_direction_stops', 0) or 0
+                    )
+                    self.daily_realized_loss = float(
+                        state.get('daily_realized_loss', 0.0) or 0.0
+                    )
+                    self.daily_trade_count = int(
+                        state.get('daily_trade_count', 0) or 0
+                    )
+                    self.daily_risk_date = _today_iso
+                else:
+                    self.last_exit_time = None
+                    self.last_exit_direction = None
+                    self.same_direction_stops = 0
+                    self.daily_realized_loss = 0.0
+                    self.daily_trade_count = 0
+                    self.daily_risk_date = _today_iso
                 
                 print(f"✅ Loaded {self.market} state:")
                 print(f"   Sessions: {self.current_session}/{self.total_sessions}")
@@ -2172,17 +2218,61 @@ class UnifiedTradingBot:
                 print(f"  [R4] CYCLE_ERROR: {str(e)[:80]}")
         
         if trade_id in self.active_trades:
-            try:
-                # D7_D9_design_b — session-close uses bid-based exit too
-                _quote = self._fetch_option_quote_full(trade['symbol'], trade['token'])
-                _ltp = _quote.get('ltp') or 0
-                _bid = _quote.get('bid')
-                if _bid is not None and _bid > 0:  # R2_bid_authority - session-close requires valid bid
-                    _exit_px, _pnl, _pnl_pct = self._bid_based_exit(entry, _bid, self.lot_size)
-                    self.close_position(trade_id, _exit_px, 'MARKET_CLOSE_3:28PM', _pnl, _pnl_pct)
-                    self.market_close_exits += 1
-            except Exception as _e:
-                print(f"  [session-close] err: {str(_e)[:60]}")
+            # R19-B: bounded close-drain retry.  The old path made one
+            # quote attempt at FINAL_EXIT and then returned even when no
+            # executable bid existed, leaving an OPEN trade behind.
+            _close_deadline = self.MARKET_CLOSE
+            _close_attempt = 0
+            while (
+                trade_id in self.active_trades
+                and datetime.now() < _close_deadline
+            ):
+                _close_attempt += 1
+                try:
+                    _quote = self._fetch_option_quote_full(
+                        trade['symbol'], trade['token']
+                    )
+                    _bid = _quote.get('bid')
+                    if _bid is not None and _bid > 0:
+                        _exit_px, _pnl, _pnl_pct = self._bid_based_exit(
+                            entry, _bid, self.lot_size
+                        )
+                        self.close_position(
+                            trade_id,
+                            _exit_px,
+                            'MARKET_CLOSE_3:28PM',
+                            _pnl,
+                            _pnl_pct,
+                        )
+                        self.market_close_exits += 1
+                        break
+                except Exception as _e:
+                    print(
+                        f"  [session-close] attempt={_close_attempt} "
+                        f"err={str(_e)[:60]}"
+                    )
+                if trade_id in self.active_trades:
+                    time.sleep(5)
+
+            if trade_id in self.active_trades:
+                # No executable bid was available before exchange close.
+                # Preserve the position exactly; do not invent P&L and do not
+                # let it become certification evidence.
+                active_trade['session_close_unresolved'] = True
+                active_trade['session_close_unresolved_at'] = (
+                    datetime.now().isoformat()
+                )
+                active_trade['certification_countable'] = False
+                active_trade['certification_countability_reason'] = (
+                    'SESSION_CLOSE_UNRESOLVED'
+                )
+                active_trade['evidence_ambiguous'] = True
+                self.save_state()
+                print(
+                    'SESSION_CLOSE_UNRESOLVED: active position preserved; '
+                    'manual reconciliation required'
+                )
+                return None
         
         # R10_net_pnl_reporting - session_history uses reconciled net P&L,
         # not the mid-loop gross pnl local.
