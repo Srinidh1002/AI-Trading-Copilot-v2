@@ -1,0 +1,47 @@
+{
+  "schema_version": "r18c.crude_first_entry_episode.v1",
+  "source_note": "Derived from operator-captured Oct-5 decision snapshots. Research only; one-minute/cycle snapshots cannot exclude an intracycle retest.",
+  "trade_id": "MCX_CRUDEOILM_20261005_184424183508",
+  "direction": "BEARISH",
+  "breakout_level_reference": 8635,
+  "entry_timestamp": "2026-10-05T18:43:23",
+  "snapshot_only": true,
+  "intracycle_path_available": false,
+  "cycles": [
+    {
+      "timestamp": "2026-10-05T18:39:19",
+      "future_ltp": 8635,
+      "regime": "RANGE",
+      "action": "NO_TRADE",
+      "setup": "NONE"
+    },
+    {
+      "timestamp": "2026-10-05T18:40:20",
+      "future_ltp": 8632,
+      "regime": "BREAKOUT_DOWN",
+      "action": "WAIT",
+      "setup": "NONE"
+    },
+    {
+      "timestamp": "2026-10-05T18:41:20",
+      "future_ltp": 8632,
+      "regime": "BREAKOUT_DOWN",
+      "action": "WAIT",
+      "setup": "NONE"
+    },
+    {
+      "timestamp": "2026-10-05T18:42:21",
+      "future_ltp": 8627,
+      "regime": "BREAKOUT_DOWN",
+      "action": "WAIT",
+      "setup": "NONE"
+    },
+    {
+      "timestamp": "2026-10-05T18:43:23",
+      "future_ltp": 8617,
+      "regime": "BREAKOUT_DOWN",
+      "action": "BUY_PUT",
+      "setup": "BREAKOUT_RETEST"
+    }
+  ]
+}
