@@ -1,0 +1,123 @@
+{
+  "schema_version": "r18b.observed_trade_summary.v1",
+  "source_note": "Operator-captured OCT05_FINAL_SESSION evidence. Offline research only; not certification evidence and not a causal counterfactual replay.",
+  "session_date": "2026-10-05",
+  "index_trades": [
+    {
+      "trade_id": "TRD_NIFTY_20261005_130413250319",
+      "market": "NIFTY",
+      "outcome": "LOSS",
+      "net_pnl": -461.76,
+      "peak_pnl_pct": 8.45,
+      "regime": "TRENDING_DOWN",
+      "exit_reason": "STOP_LOSS"
+    },
+    {
+      "trade_id": "TRD_NIFTY_20261005_133200077478",
+      "market": "NIFTY",
+      "outcome": "WIN",
+      "net_pnl": 653.43,
+      "peak_pnl_pct": 15.15,
+      "regime": "TRENDING_DOWN",
+      "exit_reason": "TRAIL_STOP"
+    },
+    {
+      "trade_id": "TRD_NIFTY_20261005_134315638655",
+      "market": "NIFTY",
+      "outcome": "LOSS",
+      "net_pnl": -569.79,
+      "peak_pnl_pct": 0,
+      "regime": "CHOPPY",
+      "exit_reason": "STOP_LOSS"
+    },
+    {
+      "trade_id": "TRD_NIFTY_20261005_134952381049",
+      "market": "NIFTY",
+      "outcome": "LOSS",
+      "net_pnl": -425.36,
+      "peak_pnl_pct": 10.35,
+      "regime": "CHOPPY",
+      "exit_reason": "STOP_LOSS"
+    },
+    {
+      "trade_id": "TRD_NIFTY_20261005_141429545211",
+      "market": "NIFTY",
+      "outcome": "LOSS",
+      "net_pnl": -443.57,
+      "peak_pnl_pct": 2.1,
+      "regime": "TRENDING_UP",
+      "exit_reason": "STOP_LOSS"
+    },
+    {
+      "trade_id": "TRD_SENSEX_20261005_130413771089",
+      "market": "SENSEX",
+      "outcome": "WIN",
+      "net_pnl": 2755.96,
+      "peak_pnl_pct": 32.81,
+      "regime": "TRENDING_DOWN",
+      "exit_reason": "TRAIL_STOP"
+    },
+    {
+      "trade_id": "TRD_SENSEX_20261005_134911790116",
+      "market": "SENSEX",
+      "outcome": "LOSS",
+      "net_pnl": -649.07,
+      "peak_pnl_pct": 8.77,
+      "regime": "CHOPPY",
+      "exit_reason": "STOP_LOSS"
+    },
+    {
+      "trade_id": "TRD_SENSEX_20261005_140920014540",
+      "market": "SENSEX",
+      "outcome": "LOSS",
+      "net_pnl": -770.32,
+      "peak_pnl_pct": 12.41,
+      "regime": "CHOPPY",
+      "exit_reason": "STOP_LOSS"
+    }
+  ],
+  "crude_trades": [
+    {
+      "trade_id": "MCX_CRUDEOILM_20261005_184424183508",
+      "product": "CRUDEOILM",
+      "outcome": "LOSS",
+      "net_pnl": -607.64,
+      "mfe_pct": 0.92,
+      "mae_pct": -8.15,
+      "entry_time": "2026-10-05T18:44:24",
+      "exit_time": "2026-10-05T19:23:46+05:30",
+      "setup": "BREAKOUT_RETEST",
+      "regime": "BREAKOUT_DOWN",
+      "direction": "BEARISH",
+      "explicit_retest_evidence": false
+    },
+    {
+      "trade_id": "MCX_CRUDEOILM_20261005_192548551993",
+      "product": "CRUDEOILM",
+      "outcome": "LOSS",
+      "net_pnl": -485.28,
+      "mfe_pct": 0,
+      "mae_pct": -8.28,
+      "entry_time": "2026-10-05T19:25:48",
+      "exit_time": "2026-10-05T19:30:55+05:30",
+      "setup": "BREAKOUT_RETEST",
+      "regime": "BREAKOUT_DOWN",
+      "direction": "BEARISH",
+      "explicit_retest_evidence": false
+    },
+    {
+      "trade_id": "MCX_CRUDEOILM_20261005_194004036298",
+      "product": "CRUDEOILM",
+      "outcome": "LOSS",
+      "net_pnl": -589.31,
+      "mfe_pct": 0,
+      "mae_pct": -8.67,
+      "entry_time": "2026-10-05T19:40:04",
+      "exit_time": "2026-10-05T19:55:22+05:30",
+      "setup": "BREAKOUT_RETEST",
+      "regime": "BREAKOUT_DOWN",
+      "direction": "BEARISH",
+      "explicit_retest_evidence": false
+    }
+  ]
+}
