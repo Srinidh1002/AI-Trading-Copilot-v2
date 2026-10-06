@@ -64,10 +64,11 @@ def main() -> int:
         "PROMOTE_EXPLICIT_RETEST_CANDIDATE="
         f"{recommendation['promote_explicit_breakout_retest_evidence_requirement_to_candidate']}"
     )
-    print(
-        "DEPLOY_INDEX_STRATEGY_CHANGE_NOW="
-        f"{recommendation['deploy_index_choppy_veto_now'] or recommendation['deploy_pre_t1_profit_lock_now']}"
+    deploy_index_change = (
+        recommendation["deploy_index_choppy_veto_now"]
+        or recommendation["deploy_pre_t1_profit_lock_now"]
     )
+    print(f"DEPLOY_INDEX_STRATEGY_CHANGE_NOW={deploy_index_change}")
     print(f"DEPLOY_FIXED_CRUDE_COOLDOWN_NOW={recommendation['deploy_fixed_crude_cooldown_now']}")
 
     if args.json_out:
