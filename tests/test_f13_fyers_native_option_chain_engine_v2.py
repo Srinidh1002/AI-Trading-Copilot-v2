@@ -135,6 +135,7 @@ def test_native_chain_uses_one_provider_request_and_zero_depth_fanout():
     assert provider.calls[0] == {
         "underlying_symbol": "NSE:NIFTY50-INDEX",
         "strike_count": 10,
+        "expected_expiry": "22SEP2026",
     }
     assert result["request_count"] == 1
     assert result["per_contract_depth_requests"] == 0
