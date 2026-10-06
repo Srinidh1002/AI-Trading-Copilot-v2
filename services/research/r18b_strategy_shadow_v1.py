@@ -32,19 +32,13 @@ def analyze_index_observations(
     arms = []
     for threshold in thresholds:
         threshold = float(threshold)
-        armed = [
-            row
-            for row in rows
-            if float(row.get("peak_pnl_pct") or 0.0) >= threshold
-        ]
+        armed = [row for row in rows if float(row.get("peak_pnl_pct") or 0.0) >= threshold]
         arms.append(
             {
                 "threshold_pct": threshold,
                 "armed_count": len(armed),
                 "armed_wins": sum(str(row.get("outcome")) == "WIN" for row in armed),
-                "armed_losses": sum(
-                    str(row.get("outcome")) == "LOSS" for row in armed
-                ),
+                "armed_losses": sum(str(row.get("outcome")) == "LOSS" for row in armed),
                 "trade_ids": [str(row.get("trade_id")) for row in armed],
             }
         )
@@ -111,8 +105,7 @@ def analyze_crude_observations(
             and str(previous.get("direction")) == str(current.get("direction"))
         )
         seconds = (
-            _parse_time(current.get("entry_time"))
-            - _parse_time(previous.get("exit_time"))
+            _parse_time(current.get("entry_time")) - _parse_time(previous.get("exit_time"))
         ).total_seconds()
         intervals.append(
             {
@@ -128,8 +121,7 @@ def analyze_crude_observations(
         flagged = [
             row
             for row in intervals
-            if row["same_thesis"]
-            and float(row["minutes_since_previous_exit"]) < float(minutes)
+            if row["same_thesis"] and float(row["minutes_since_previous_exit"]) < float(minutes)
         ]
         cooldown_observations.append(
             {
@@ -146,13 +138,9 @@ def analyze_crude_observations(
             sum(float(row.get("net_pnl") or 0.0) for row in rows),
             2,
         ),
-        "breakout_retest_count": sum(
-            str(row.get("setup")) == "BREAKOUT_RETEST" for row in rows
-        ),
+        "breakout_retest_count": sum(str(row.get("setup")) == "BREAKOUT_RETEST" for row in rows),
         "breakout_retest_missing_explicit_retest_evidence": len(missing_retest),
-        "missing_retest_trade_ids": [
-            str(row.get("trade_id")) for row in missing_retest
-        ],
+        "missing_retest_trade_ids": [str(row.get("trade_id")) for row in missing_retest],
         "observed_same_thesis_intervals": intervals,
         "cooldown_observations": cooldown_observations,
         "causal_counterfactual_valid": False,
