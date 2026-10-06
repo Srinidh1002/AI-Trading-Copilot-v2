@@ -35,6 +35,7 @@ from mcx.mcx_contracts import PRODUCTS
 from mcx.mcx_fyers_runtime_v2 import build_mcx_fyers_runtime_from_env_v2
 from mcx.mcx_external_context import fetch_context
 from mcx.mcx_mtf import compute_mtf
+from mcx.mcx_retest_shadow import BreakoutRetestShadowTracker
 from mcx.mcx_regime import classify as classify_regime, describe as describe_regime
 from mcx.mcx_decision import compose as compose_decision, print_decision
 from mcx.mcx_strike import select_strike
@@ -1147,6 +1148,26 @@ def main():
     price_oi = PriceOITracker()
     history = []
 
+    # R18D: observation-only CRUDE breakout/retest instrumentation.
+    # Disabled by default and deliberately isolated from PAPER/certification
+    # state. When enabled, it only consumes data already fetched this cycle.
+    retest_shadow = BreakoutRetestShadowTracker(PRODUCT)
+    retest_shadow_enabled = (
+        PRODUCT == "CRUDEOILM"
+        and os.getenv("R18D_CRUDE_RETEST_SHADOW", "0").strip() == "1"
+    )
+    retest_shadow_path = str(
+        _REPO_ROOT_STATE
+        / "data"
+        / "research"
+        / "r18d"
+        / "mcx_crudeoil_retest_shadow.jsonl"
+    )
+    print(
+        "  R18D_CRUDE_RETEST_SHADOW="
+        f"{'ENABLED' if retest_shadow_enabled else 'DISABLED'}"
+    )
+
     attempts = 0
 
     def _hb(stage):
@@ -1490,6 +1511,33 @@ def main():
         # R2-4: setup was already classified above (before the WAIT
         # counterfactual block, which reads setup.get("setup")).
         print(f"  SETUP: {setup_describe(setup)}")
+
+        # R18D shadow instrumentation has no entry/exit/certification authority.
+        # It is env-gated, adds zero provider calls, and failures are isolated
+        # from the trading loop because research capture is non-authoritative.
+        if retest_shadow_enabled:
+            try:
+                shadow_record = retest_shadow.observe(
+                    timestamp=datetime.now(IST).isoformat(),
+                    future_ltp=fut_ltp,
+                    regime=regime,
+                    structure=structure,
+                    mtf=mtf,
+                    decision=decision,
+                    setup=setup,
+                )
+                append_jsonl(retest_shadow_path, shadow_record)
+                if shadow_record.get("ordered_sequence_complete"):
+                    print(
+                        "  R18D_RETEST_SHADOW: "
+                        "ORDERED_SEQUENCE_COMPLETE"
+                    )
+            except Exception as _shadow_error:
+                print(
+                    "  R18D_RETEST_SHADOW_SKIPPED: "
+                    f"{type(_shadow_error).__name__}: "
+                    f"{str(_shadow_error)[:80]}"
+                )
 
         # Persist decision record
         append_jsonl(DECISIONS_PATH, {
