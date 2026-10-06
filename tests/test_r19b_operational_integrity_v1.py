@@ -164,6 +164,34 @@ def test_close_window_exit_with_persisted_position_is_hold_not_clean(tmp_path, m
     assert starts == []
 
 
+
+def test_persisted_position_blocks_fresh_worker_start_after_supervisor_restart(
+    tmp_path, monkeypatch
+):
+    t0 = datetime(2026, 10, 6, 11, 0, tzinfo=IST)
+    clock = _Clock(t0)
+    sup = _sup(tmp_path, clock)
+    _open_authority(monkeypatch)
+
+    rt = sup.workers["NIFTY"]
+    assert rt.process is None
+
+    monkeypatch.setattr(sup, "_market_has_persisted_position", lambda spec: True)
+    monkeypatch.setattr(sup, "_run_analysis_and_record", lambda *args: "OK")
+
+    starts = []
+    monkeypatch.setattr(
+        sup,
+        "_start_worker",
+        lambda spec: starts.append(spec.name) or StartOutcome("STARTED", _Proc(None)),
+    )
+
+    sup.tick()
+
+    assert rt.recovery_required is True
+    assert rt.process is None
+    assert starts == []
+
 def test_index_daily_risk_fields_are_saved_and_restored():
     source = (REPO / "src" / "target_focused_bot.py").read_text(
         encoding="utf-8",
