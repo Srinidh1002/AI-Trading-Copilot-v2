@@ -7,7 +7,7 @@ diagnostics* from causal counterfactual claims.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, Mapping, Sequence
 
 DEFAULT_PRE_T1_THRESHOLDS = (8.0, 10.0, 12.0, 15.0)
@@ -75,11 +75,17 @@ def analyze_index_observations(
     }
 
 
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
 def _parse_time(value: object) -> datetime:
     text = str(value or "").strip()
     if not text:
         raise ValueError("timestamp is required")
-    return datetime.fromisoformat(text)
+    parsed = datetime.fromisoformat(text)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=_IST)
+    return parsed
 
 
 def analyze_crude_observations(
