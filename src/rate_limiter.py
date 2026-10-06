@@ -1,16 +1,14 @@
-"""Cross-process FYERS rate limiter for the five-market PAPER runtime.
+"""Cross-process FYERS request budget for the five-market PAPER runtime.
 
-Replaces the Angel-era per-process limiter. All workers share one
-budget via a file-backed token bucket so the aggregate stays under the
-provider limit regardless of how many workers run.
+Every synchronous FYERS REST request must consume this shared file-backed
+budget before reaching the SDK.  The limiter intentionally uses a conservative
+local safety envelope instead of assuming that every FYERS endpoint has the
+same provider-side quota.
 
-FYERS Standard documented limits (2026-09):
-  * 10 req/sec
-  * 200 req/min
-  * 100,000 req/day
-
-We use conservative headroom: 8/sec, 170/min. The extra 30/min of
-provider capacity absorbs retries and any clock skew between workers.
+A provider 429 is also recorded in this shared state.  That creates a short
+cross-process cooldown so the other workers do not continue a request storm.
+The failed request is not retried here; callers keep their existing fail-closed
+semantics.
 """
 
 from __future__ import annotations
@@ -35,26 +33,30 @@ _LIVE_STATE_PATH = _REPO_ROOT / "data" / "rate_limit" / "state.json"
 def _default_state_path():
     """Return the default limiter state path.
 
-    In production this is the live repository path. Offline test suites
-    set FYERS_RATE_LIMIT_STATE_PATH to a temp file so no test can mutate
-    data/rate_limit/state.json. Tests always construct the coordinator
-    with an explicit state_path as well; this env var is the second
-    belt-and-braces layer.
+    Offline tests set FYERS_RATE_LIMIT_STATE_PATH to a temporary file so no
+    test can mutate the live runtime budget.
     """
     override = os.environ.get("FYERS_RATE_LIMIT_STATE_PATH")
     if override:
         return Path(override)
     return _LIVE_STATE_PATH
+
+
 _DAY_BUCKET_SECONDS = 86400
 _MINUTE_BUCKET_SECONDS = 60
 _SECOND_BUCKET_SECONDS = 1
 
-# FYERS Standard with headroom
+# R18: intentionally conservative aggregate safety envelope.  This is a local
+# runtime guard, not a claim about the provider's contractual quota.
 _LIMITS = {
-    "per_second": 8,
-    "per_minute": 170,
+    "per_second": 4,
+    "per_minute": 120,
     "per_day": 90_000,
 }
+
+_RATE_LIMIT_BASE_COOLDOWN_SECONDS = 5.0
+_RATE_LIMIT_MAX_COOLDOWN_SECONDS = 60.0
+_RATE_LIMIT_STREAK_WINDOW_SECONDS = 60.0
 
 
 class FyersRateLimitError(RuntimeError):
@@ -71,6 +73,15 @@ def _counts(calls, now):
         "sec": sum(1 for t in calls if t > now - _SECOND_BUCKET_SECONDS),
         "min": sum(1 for t in calls if t > now - _MINUTE_BUCKET_SECONDS),
         "day": len(calls),
+    }
+
+
+def _default_state():
+    return {
+        "calls": [],
+        "cooldown_until": 0.0,
+        "rate_limit_streak": 0,
+        "last_rate_limit_at": 0.0,
     }
 
 
@@ -109,18 +120,28 @@ class FyersRateLimitCoordinator:
 
     def _read(self):
         if not self._state_path.exists():
-            return {"calls": []}
+            return _default_state()
         try:
             raw = json.loads(self._state_path.read_text(encoding="utf-8"))
-            calls = raw.get("calls") if isinstance(raw, dict) else None
+            if not isinstance(raw, dict):
+                raise ValueError("state must be a mapping")
+
+            calls = raw.get("calls")
             if not isinstance(calls, list):
-                raise ValueError("calls must be a list")  # noqa: TRY004
-            return {"calls": [float(timestamp) for timestamp in calls]}
+                raise ValueError("calls must be a list")
+
+            return {
+                "calls": [float(timestamp) for timestamp in calls],
+                "cooldown_until": float(raw.get("cooldown_until") or 0.0),
+                "rate_limit_streak": int(raw.get("rate_limit_streak") or 0),
+                "last_rate_limit_at": float(raw.get("last_rate_limit_at") or 0.0),
+            }
         except (OSError, ValueError, TypeError) as exc:
             raise FyersRateLimitError("RATE_LIMIT_STATE_INVALID") from exc
 
     def _write(self, state):
         d = self._state_path.parent
+        d.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(prefix=".rate_limit_", suffix=".json", dir=str(d))
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -136,42 +157,87 @@ class FyersRateLimitCoordinator:
             raise FyersRateLimitError("RATE_LIMIT_STATE_WRITE_FAILED") from exc
 
     def wait_if_needed(self, endpoint: str = "default"):
-        """Block until a call can proceed within the shared budget.
+        """Block until one aggregate FYERS REST permit is available."""
+        del endpoint  # one account-wide budget; retained for compatibility
 
-        endpoint parameter is kept for signature compatibility with the
-        legacy AngelRateLimitCoordinator. All calls share the same bucket
-        because FYERS applies one quota per account, not per endpoint.
-        """
         while True:
             with _exclusive_file_lock(self._lock_path):
                 now = time.time()
                 state = self._read()
                 calls = _prune(state["calls"], now)
                 c = _counts(calls, now)
+                cooldown_until = float(state.get("cooldown_until") or 0.0)
 
-                if c["sec"] >= _LIMITS["per_second"]:
-                    # Wait until the oldest of the last-second calls ages out
+                if now < cooldown_until:
+                    sleep_for = min(5.0, cooldown_until - now)
+                elif c["sec"] >= _LIMITS["per_second"]:
                     recent = sorted(t for t in calls if t > now - _SECOND_BUCKET_SECONDS)
                     sleep_for = 1.05 - (now - recent[0]) if recent else 0.2
                 elif c["min"] >= _LIMITS["per_minute"]:
                     recent = sorted(t for t in calls if t > now - _MINUTE_BUCKET_SECONDS)
-                    # Sleep until the oldest minute-window call ages out, capped at 5s
                     sleep_for = min(5.0, 60.0 - (now - recent[0])) if recent else 1.0
                 elif c["day"] >= _LIMITS["per_day"]:
-                    # Day cap; unrecoverable in-session, back off hard.
                     sleep_for = 30.0
                 else:
                     calls.append(now)
-                    self._write({"calls": calls})
+                    state["calls"] = calls
+                    self._write(state)
                     return True
 
             time.sleep(max(0.1, sleep_for))
 
+    def record_rate_limit(self, endpoint: str = "default"):
+        """Record one provider-side 429 and apply a shared cooldown.
+
+        The method deliberately does not retry the failed call.  The caller sees
+        the original provider result/exception while every process observes the
+        same cooldown before its next request.
+        """
+        del endpoint
+
+        with _exclusive_file_lock(self._lock_path):
+            now = time.time()
+            state = self._read()
+            state["calls"] = _prune(state["calls"], now)
+
+            last = float(state.get("last_rate_limit_at") or 0.0)
+            previous_streak = int(state.get("rate_limit_streak") or 0)
+            if last and now - last <= _RATE_LIMIT_STREAK_WINDOW_SECONDS:
+                streak = previous_streak + 1
+            else:
+                streak = 1
+
+            cooldown = min(
+                _RATE_LIMIT_MAX_COOLDOWN_SECONDS,
+                _RATE_LIMIT_BASE_COOLDOWN_SECONDS * (2 ** (streak - 1)),
+            )
+
+            state["rate_limit_streak"] = streak
+            state["last_rate_limit_at"] = now
+            state["cooldown_until"] = max(
+                float(state.get("cooldown_until") or 0.0),
+                now + cooldown,
+            )
+            self._write(state)
+
+            return cooldown
+
     def stats(self):
         now = time.time()
         with _exclusive_file_lock(self._lock_path):
-            calls = _prune(self._read()["calls"], now)
-            return _counts(calls, now)
+            state = self._read()
+            calls = _prune(state["calls"], now)
+            result = _counts(calls, now)
+            result.update(
+                {
+                    "cooldown_remaining": max(
+                        0.0,
+                        float(state.get("cooldown_until") or 0.0) - now,
+                    ),
+                    "rate_limit_streak": int(state.get("rate_limit_streak") or 0),
+                }
+            )
+            return result
 
 
 # Backward-compatible alias so existing imports keep working.
