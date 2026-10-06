@@ -7,11 +7,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from services.research.r18b_strategy_shadow_v1 import analyze_dataset
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from services.research.r18b_strategy_shadow_v1 import analyze_dataset  # noqa: E402
+
 DEFAULT_DATASET = ROOT / "research" / "r18b" / "oct05_observed_trade_summary.json"
 
 
