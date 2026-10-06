@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 
 from mcx.mcx_retest_shadow import BreakoutRetestShadowTracker
+from services.research.r18c_retest_evidence_candidate_v1 import (
+    validate_explicit_retest_evidence,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 R18C_EPISODE = ROOT / "research" / "r18c" / "oct05_crude_first_entry_episode.json"
@@ -166,6 +169,10 @@ def test_distinct_minute_breakout_extension_retest_rejection_orders_correctly():
     assert evidence["extension_at"] == "2026-10-06T10:02:00+05:30"
     assert evidence["retest_at"] == "2026-10-06T10:03:00+05:30"
     assert evidence["rejection_at"] == "2026-10-06T10:04:00+05:30"
+
+    validation = validate_explicit_retest_evidence(evidence)
+    assert validation["confirmed"] is True
+    assert validation["reason"] == "EXPLICIT_BREAKOUT_RETEST_CONFIRMED"
 
 
 def test_same_minute_bar_cannot_fabricate_ordered_sequence():
