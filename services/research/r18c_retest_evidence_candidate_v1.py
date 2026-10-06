@@ -6,8 +6,8 @@ certification state, or change the production MCX setup classifier.
 
 from __future__ import annotations
 
+import datetime as dt
 from collections.abc import Mapping, Sequence
-from datetime import datetime
 
 
 _REQUIRED_EVENTS = (
@@ -25,11 +25,11 @@ _REQUIRED_TIMES = (
 )
 
 
-def _parse_timestamp(value: object) -> datetime:
+def _parse_timestamp(value: object) -> dt.datetime:
     text = str(value or "").strip()
     if not text:
         raise ValueError("timestamp is required")
-    return datetime.fromisoformat(text)
+    return dt.datetime.fromisoformat(text)
 
 
 def validate_explicit_retest_evidence(evidence: Mapping[str, object] | None) -> dict:
