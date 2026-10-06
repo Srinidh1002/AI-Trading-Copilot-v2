@@ -8,44 +8,37 @@ class FyersRawDataClientV2(Protocol):
     def quotes(
         self,
         data: Mapping[str, object] | None = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     def depth(
         self,
         data: Mapping[str, object] | None = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     def history(
         self,
         data: Mapping[str, object] | None = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     def optionchain(
         self,
         data: Mapping[str, object] | None = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     def futures_chain(
         self,
         data: Mapping[str, object] | None = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     def expiry_dates(
         self,
         data: Mapping[str, object],
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     def fno_historical_data(
         self,
         data: Mapping[str, object],
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
 
 FyersModelFactoryV2 = Callable[..., FyersRawDataClientV2]
@@ -126,9 +119,7 @@ class FyersDataOnlySdkFacadeV2:
         rate_limiter=None,
     ) -> None:
         if raw_client is None:
-            raise ValueError(
-                "raw_client is required"
-            )
+            raise ValueError("raw_client is required")
 
         if rate_limiter is None:
             rate_limiter = _default_rate_limiter()
@@ -209,35 +200,20 @@ def _raw_access_token(
     client_id: str,
     access_token: str,
 ) -> str:
-    client_id = str(
-        client_id
-    ).strip()
+    client_id = str(client_id).strip()
 
-    access_token = str(
-        access_token
-    ).strip()
+    access_token = str(access_token).strip()
 
     if not client_id:
-        raise ValueError(
-            "client_id is required"
-        )
+        raise ValueError("client_id is required")
 
     if not access_token:
-        raise ValueError(
-            "access_token is required"
-        )
+        raise ValueError("access_token is required")
 
-    prefix = (
-        client_id
-        + ":"
-    )
+    prefix = client_id + ":"
 
-    if access_token.startswith(
-        prefix
-    ):
-        return access_token[
-            len(prefix):
-        ]
+    if access_token.startswith(prefix):
+        return access_token[len(prefix) :]
 
     return access_token
 
@@ -259,18 +235,12 @@ def build_fyers_data_client_v2(
     FYERS package, network capability or live limiter state is required.
     """
 
-    client_id = str(
-        client_id
-    ).strip()
+    client_id = str(client_id).strip()
 
-    log_path = str(
-        log_path
-    ).strip()
+    log_path = str(log_path).strip()
 
     if not log_path:
-        raise ValueError(
-            "log_path is required"
-        )
+        raise ValueError("log_path is required")
 
     raw_token = _raw_access_token(
         client_id=client_id,
@@ -280,9 +250,7 @@ def build_fyers_data_client_v2(
     if model_factory is None:
         from fyers_apiv3 import fyersModel
 
-        model_factory = (
-            fyersModel.FyersModel
-        )
+        model_factory = fyersModel.FyersModel
 
     raw_client = model_factory(
         client_id=client_id,
