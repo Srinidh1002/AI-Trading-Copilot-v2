@@ -36,10 +36,7 @@ def main() -> int:
     print(f"INDEX_OBSERVED_LOSSES={report['index']['observed_losses']}")
     print(f"INDEX_CHOPPY_TRADES={report['index']['choppy_trade_count']}")
     print(f"INDEX_CHOPPY_LOSSES={report['index']['choppy_loss_count']}")
-    print(
-        "INDEX_CHOPPY_OBSERVED_NET_PNL="
-        f"{report['index']['choppy_observed_net_pnl']:.2f}"
-    )
+    print(f"INDEX_CHOPPY_OBSERVED_NET_PNL={report['index']['choppy_observed_net_pnl']:.2f}")
     print(f"CRUDE_OBSERVED_TRADES={report['crude']['observed_trade_count']}")
     print(
         "CRUDE_BREAKOUT_RETEST_MISSING_EXPLICIT_EVIDENCE="
@@ -71,10 +68,7 @@ def main() -> int:
         "DEPLOY_INDEX_STRATEGY_CHANGE_NOW="
         f"{recommendation['deploy_index_choppy_veto_now'] or recommendation['deploy_pre_t1_profit_lock_now']}"
     )
-    print(
-        "DEPLOY_FIXED_CRUDE_COOLDOWN_NOW="
-        f"{recommendation['deploy_fixed_crude_cooldown_now']}"
-    )
+    print(f"DEPLOY_FIXED_CRUDE_COOLDOWN_NOW={recommendation['deploy_fixed_crude_cooldown_now']}")
 
     if args.json_out:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
