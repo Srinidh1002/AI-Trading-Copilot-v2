@@ -4,6 +4,9 @@ Research-only contract.  It does not call FYERS, place PAPER trades, mutate
 certification state, or change the production MCX setup classifier.
 """
 
+# Import ordering is intentionally explicit for the research-only module.
+# ruff: noqa: I001
+
 from __future__ import annotations
 
 import collections.abc as cabc
