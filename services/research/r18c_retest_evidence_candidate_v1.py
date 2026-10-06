@@ -134,11 +134,7 @@ def audit_bearish_snapshot_episode(
         }
 
     entry_time = _parse_timestamp(entry_timestamp)
-    usable = [
-        row
-        for row in rows
-        if _parse_timestamp(row.get("timestamp")) <= entry_time
-    ]
+    usable = [row for row in rows if _parse_timestamp(row.get("timestamp")) <= entry_time]
 
     breakout_index = None
     for index, row in enumerate(usable):
