@@ -11,7 +11,6 @@ from services.broker.fyers_data_compatibility_v2 import (
 from src import previous_day_engine as previous_day_module
 from src.previous_day_engine import PreviousDayEngine
 
-
 IST = ZoneInfo("Asia/Kolkata")
 NOW = datetime(
     2026,

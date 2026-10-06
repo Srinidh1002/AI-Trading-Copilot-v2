@@ -12,7 +12,6 @@ import math
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-
 IST = ZoneInfo("Asia/Kolkata")
 
 
@@ -170,10 +169,10 @@ class PreviousDayEngine:
 
             o = float(prev[1])
             h = float(prev[2])
-            l = float(prev[3])
+            low = float(prev[3])
             c = float(prev[4])
 
-            rng = h - l
+            rng = h - low
             body = abs(c - o)
             direction = (
                 "UP"
@@ -182,7 +181,7 @@ class PreviousDayEngine:
             )
 
             if rng > 0:
-                close_loc = (c - l) / rng
+                close_loc = (c - low) / rng
             else:
                 close_loc = 0.5
 
@@ -216,7 +215,7 @@ class PreviousDayEngine:
                 "date": prev_dt.date().isoformat(),
                 "open": o,
                 "high": h,
-                "low": l,
+                "low": low,
                 "close": c,
                 "range": rng,
                 "range_pct": range_pct,
@@ -248,12 +247,12 @@ class PreviousDayEngine:
                 min(len(data), period + 1),
             ):
                 h = float(data[-i][2])
-                l = float(data[-i][3])
+                low = float(data[-i][3])
                 pc = float(data[-i - 1][4])
                 tr = max(
-                    h - l,
+                    h - low,
                     abs(h - pc),
-                    abs(l - pc),
+                    abs(low - pc),
                 )
                 trs.append(tr)
 
