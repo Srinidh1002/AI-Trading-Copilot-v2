@@ -15,7 +15,7 @@ import hashlib
 import json
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -182,7 +182,7 @@ def main() -> int:
         return 2
 
     state = json.loads(raw.decode("utf-8"))
-    reconciled_at = datetime.now(timezone.utc).isoformat()
+    reconciled_at = datetime.now(UTC).isoformat()
     new_state, incident = reconcile_state(
         state,
         args.trade_id,
