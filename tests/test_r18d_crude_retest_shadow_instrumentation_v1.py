@@ -242,7 +242,7 @@ def test_oct05_coarse_first_entry_still_does_not_confirm_retest_sequence():
     tracker = BreakoutRetestShadowTracker("CRUDEOILM")
 
     result = None
-    for index, row in enumerate(episode["cycles"]):
+    for row in episode["cycles"]:
         structure = _structure(low=episode["breakout_level_reference"])
         result = _observe(
             tracker,
