@@ -104,9 +104,21 @@ def _analyze(df):
         swing_high = None
         swing_low = None
 
+    # R18D shadow evidence reuses the already-fetched final candle. This adds
+    # no provider request and has no trading-decision authority.
+    last_timestamp = df["timestamp"].iloc[-1]
+    try:
+        last_bar_timestamp = last_timestamp.isoformat()
+    except AttributeError:
+        last_bar_timestamp = str(last_timestamp)
+
     return {
         "status": "OK",
         "rows": len(df),
+        "last_bar_timestamp": last_bar_timestamp,
+        "last_open": float(df["open"].iloc[-1]),
+        "last_high": float(df["high"].iloc[-1]),
+        "last_low": float(df["low"].iloc[-1]),
         "last_close": float(close.iloc[-1]),
         "ema9": float(ema9) if ema9 == ema9 and ema9 is not None else None,
         "ema20": float(ema20),
