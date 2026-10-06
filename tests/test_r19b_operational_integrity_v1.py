@@ -210,7 +210,12 @@ def test_index_daily_risk_fields_are_saved_and_restored():
     save_start = source.index("def save_state")
     load_start = source.index("def load_state", save_start)
     save_src = source[save_start:load_start]
-    load_src = source[load_start:source.index("def activate_current_certification_epoch_if_safe", load_start)]
+    load_src = source[
+        load_start : source.index(
+            "def activate_current_certification_epoch_if_safe",
+            load_start,
+        )
+    ]
 
     for field in fields:
         assert repr(field) in save_src or f'"{field}"' in save_src
