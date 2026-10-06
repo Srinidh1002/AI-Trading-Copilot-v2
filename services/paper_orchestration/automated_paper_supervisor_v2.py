@@ -160,6 +160,9 @@ class WorkerRuntimeV2:
     last_exit_status: Optional[str] = None
     last_exit_at: Optional[datetime] = None
     runtime_session_date: Optional[date] = None
+    # R19-B: once a worker reaches a clean terminal close for a trading
+    # day, keep that market terminal for the remainder of the same day.
+    session_terminal_date: Optional[date] = None
     # Phase F15-R1: worker liveness (Phase 6).
     last_heartbeat_age_seconds: Optional[float] = None
     recovery_required: bool = False
@@ -573,10 +576,19 @@ class AutomatedPaperSupervisorV2:
         rc = proc.poll()
         if rc is None:
             return None
+        # R19-B: persisted position authority outranks process exit code.
+        # A worker that exits while its state still contains an active
+        # position must never be called CLEAN_SESSION_END.  Holding the
+        # market is safer than restarting a normal entry-capable worker or
+        # silently treating the position as terminal.
+        persisted_position = self._market_has_persisted_position(spec)
+        if persisted_position:
+            status = "UNRESOLVED_ACTIVE_POSITION"
+            rt.recovery_required = True
         # Close-window override: a legitimate voluntary end-of-session
-        # exit inside the grace window is CLEAN_SESSION_END even if the
-        # supervisor would otherwise have expected the worker alive.
-        if rc == 0 and self._in_close_grace(spec, now):
+        # exit inside the grace window is CLEAN_SESSION_END only when the
+        # persisted state is flat.
+        elif rc == 0 and self._in_close_grace(spec, now):
             status = "CLEAN_SESSION_END"
         else:
             status = self._classify_exit(
@@ -587,6 +599,9 @@ class AutomatedPaperSupervisorV2:
         rt.last_exit_status = status
         rt.last_exit_at = now
         rt.consumed_exit_count += 1
+        if status == "CLEAN_SESSION_END":
+            rt.session_terminal_date = day
+            rt.recovery_required = False
         # Phase F15-R1: during a liveness recovery cycle, exit is
         # expected and must not be counted as a restart failure.
         in_recovery = bool(getattr(rt, "recovery_required", False))
@@ -620,6 +635,7 @@ class AutomatedPaperSupervisorV2:
         rt.next_restart_ist = None
         rt.circuit_open = False
         rt.consecutive_healthy_ticks = 0
+        rt.session_terminal_date = None
 
     def _record_ownership_hold(self, rt, now):
         """Another process owns this market's worker lock. Push the
@@ -746,6 +762,16 @@ class AutomatedPaperSupervisorV2:
                 continue
 
             if auth.session_open:
+                # R19-B: a clean close already consumed for this market/day
+                # is terminal authority.  Do not relaunch it during the
+                # remaining close-grace ticks.
+                if rt.session_terminal_date == day and rt.process is None:
+                    self._log(
+                        f"[{spec.name}] SESSION_TERMINAL_LATCH day={day}; no restart"
+                    )
+                    self._run_analysis_and_record(rt, spec, day)
+                    continue
+
                 # Consume any pending exit exactly once.
                 if rt.process is not None:
                     rc = rt.process.poll()
@@ -762,6 +788,11 @@ class AutomatedPaperSupervisorV2:
                     if status == "CLEAN_SESSION_END":
                         # Legitimate close-window exit: no restart, run analysis.
                         self._run_analysis_and_record(rt, spec, day)
+                        continue
+                    if status == "UNRESOLVED_ACTIVE_POSITION":
+                        self._log(
+                            f"[{spec.name}] ACTIVE_POSITION_RECONCILIATION_HOLD; no restart"
+                        )
                         continue
                 # rt.process is None. Respect backoff and try to start.
                 if not self._may_start(rt, now):
@@ -808,10 +839,23 @@ class AutomatedPaperSupervisorV2:
                         self._stop_worker(spec)
                         rt.last_stop_ist = now
                         rt.last_expected_stop_ist = now
+                        if self._market_has_persisted_position(spec):
+                            rt.recovery_required = True
+                            self._log(
+                                f"[{spec.name}] POST_CLOSE_ACTIVE_POSITION_HOLD; "
+                                "analysis/restart suppressed"
+                            )
+                            continue
                     else:
-                        self._consume_exit(
+                        status = self._consume_exit(
                             rt, spec, now, day, expected_alive=False
                         )
+                        if status == "UNRESOLVED_ACTIVE_POSITION":
+                            self._log(
+                                f"[{spec.name}] POST_CLOSE_ACTIVE_POSITION_HOLD; "
+                                "analysis/restart suppressed"
+                            )
+                            continue
                 self._run_analysis_and_record(rt, spec, day)
 
     def run_forever(self, poll_seconds=30.0):
