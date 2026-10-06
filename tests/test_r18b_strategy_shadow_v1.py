@@ -118,3 +118,32 @@ def test_r18b_recommendations_remain_shadow_only():
         ]
         is True
     )
+
+
+def test_current_production_breakout_retest_label_does_not_require_retest_event():
+    from mcx.mcx_setup import classify
+
+    decision = {"action": "BUY_PUT"}
+    regime = {"regime": "BREAKOUT_DOWN"}
+    structure = {"overall_structure": "BEARISH", "vwap_position": "BELOW"}
+    mtf = {
+        "timeframes": {
+            "5m": {"status": "OK", "trend": "DOWN"},
+            "15m": {"status": "OK", "trend": "DOWN"},
+            "30m": {"status": "OK", "trend": "DOWN"},
+        }
+    }
+
+    current = classify(decision, regime, structure, mtf)
+
+    assert current["setup"] == "BREAKOUT_RETEST"
+    assert current["blocked"] is False
+    assert current["reasons"] == ["BREAKOUT_REGIME", "MTF_ALIGNED"]
+
+    shadow = shadow_breakout_retest_gate(
+        regime="BREAKOUT_DOWN",
+        mtf_aligned=True,
+        explicit_retest_evidence=False,
+    )
+    assert shadow["allow"] is False
+    assert shadow["reason"] == "EXPLICIT_RETEST_EVIDENCE_MISSING"
