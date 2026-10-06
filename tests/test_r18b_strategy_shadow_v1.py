@@ -106,7 +106,9 @@ def test_r18b_recommendations_remain_shadow_only():
     assert recommendation["deploy_index_choppy_veto_now"] is False
     assert recommendation["deploy_pre_t1_profit_lock_now"] is False
     assert recommendation["deploy_fixed_crude_cooldown_now"] is False
-    assert recommendation["promote_explicit_breakout_retest_evidence_requirement_to_candidate"] is True
+    assert (
+        recommendation["promote_explicit_breakout_retest_evidence_requirement_to_candidate"] is True
+    )
 
 
 def test_current_production_breakout_retest_label_does_not_require_retest_event():
