@@ -302,4 +302,4 @@ def test_runtime_wiring_is_env_gated_and_shadow_only():
     assert "R18D_CRUDE_RETEST_SHADOW" in source
     assert "BreakoutRetestShadowTracker" in source
     assert "R18D_RETEST_SHADOW_SKIPPED" in source
-    assert "data" / "research" / "r18d"" in source
+    assert "mcx_crudeoil_retest_shadow.jsonl" in source
