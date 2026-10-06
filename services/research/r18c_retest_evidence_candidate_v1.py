@@ -6,8 +6,8 @@ certification state, or change the production MCX setup classifier.
 
 from __future__ import annotations
 
+import collections.abc as cabc
 import datetime as dt
-from collections.abc import Mapping, Sequence
 
 
 _REQUIRED_EVENTS = (
@@ -32,9 +32,9 @@ def _parse_timestamp(value: object) -> dt.datetime:
     return dt.datetime.fromisoformat(text)
 
 
-def validate_explicit_retest_evidence(evidence: Mapping[str, object] | None) -> dict:
+def validate_explicit_retest_evidence(evidence: cabc.Mapping[str, object] | None) -> dict:
     """Validate breakout -> extension -> retest -> rejection event ordering."""
-    if not isinstance(evidence, Mapping):
+    if not isinstance(evidence, cabc.Mapping):
         return {
             "confirmed": False,
             "reason": "RETEST_EVIDENCE_MISSING",
@@ -84,7 +84,7 @@ def evaluate_breakout_retest_candidate(
     *,
     regime: str,
     mtf_aligned: bool,
-    evidence: Mapping[str, object] | None,
+    evidence: cabc.Mapping[str, object] | None,
 ) -> dict:
     """Fail closed unless the named BREAKOUT_RETEST sequence is explicit."""
     if regime not in {"BREAKOUT_UP", "BREAKOUT_DOWN"}:
@@ -115,7 +115,7 @@ def evaluate_breakout_retest_candidate(
 
 
 def audit_bearish_snapshot_episode(
-    cycles: Sequence[Mapping[str, object]],
+    cycles: cabc.Sequence[cabc.Mapping[str, object]],
     *,
     breakout_level_reference: float,
     entry_timestamp: str,
@@ -208,7 +208,7 @@ def audit_bearish_snapshot_episode(
     }
 
 
-def audit_oct05_candidate_blocks(trades: Sequence[Mapping[str, object]]) -> dict:
+def audit_oct05_candidate_blocks(trades: cabc.Sequence[cabc.Mapping[str, object]]) -> dict:
     """Apply the candidate contract to captured Oct-5 CRUDE trade summaries."""
     results = []
     for row in trades or ():
@@ -216,7 +216,7 @@ def audit_oct05_candidate_blocks(trades: Sequence[Mapping[str, object]]) -> dict
         result = evaluate_breakout_retest_candidate(
             regime=str(row.get("regime") or ""),
             mtf_aligned=True,
-            evidence=evidence if isinstance(evidence, Mapping) else None,
+            evidence=evidence if isinstance(evidence, cabc.Mapping) else None,
         )
         results.append(
             {
