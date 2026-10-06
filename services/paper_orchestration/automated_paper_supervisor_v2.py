@@ -794,6 +794,21 @@ class AutomatedPaperSupervisorV2:
                             f"[{spec.name}] ACTIVE_POSITION_RECONCILIATION_HOLD; no restart"
                         )
                         continue
+                # rt.process is None. Persisted position authority must
+                # be checked before any normal worker start. This covers a
+                # fresh supervisor process after an index worker crash: the
+                # in-memory recovery flag does not survive supervisor restart,
+                # but the position state does. Until a dedicated recovery-only
+                # worker exists, fail closed rather than start an entry-capable
+                # worker that could open a duplicate position.
+                if self._market_has_persisted_position(spec):
+                    rt.recovery_required = True
+                    self._log(
+                        f"[{spec.name}] ACTIVE_POSITION_RECONCILIATION_HOLD; "
+                        "persisted position present with no worker"
+                    )
+                    continue
+
                 # rt.process is None. Respect backoff and try to start.
                 if not self._may_start(rt, now):
                     continue
