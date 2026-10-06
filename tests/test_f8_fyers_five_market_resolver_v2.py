@@ -290,7 +290,7 @@ class TestFutures:
         assert r["provider_symbol"] == "MCX:GOLDM26OCTFUT"
         assert r["expiry"] == "2026-10-31"
 
-    def test_silverm_front_future_from_master(self):
+    def test_natgasmini_front_future_from_master(self):
         r = _resolver().resolve(
             market_symbol="NATGASMINI", instrument_type="FUTURE",
             as_of=_fixed_as_of(),
