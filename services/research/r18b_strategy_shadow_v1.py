@@ -7,8 +7,8 @@ diagnostics* from causal counterfactual claims.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, Mapping, Sequence
 
 DEFAULT_PRE_T1_THRESHOLDS = (8.0, 10.0, 12.0, 15.0)
 DEFAULT_COOLDOWNS_MINUTES = (5, 10, 15)
